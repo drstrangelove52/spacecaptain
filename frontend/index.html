@@ -366,10 +366,10 @@ async function doLogin() {
     S.guestName  = data.guest_name;
     S.username   = data.username;
     S.guestId    = data.guest_id;
-    sessionStorage.setItem('guest_token',    S.guestToken);
-    sessionStorage.setItem('guest_name',     S.guestName);
-    sessionStorage.setItem('guest_username', S.username);
-    sessionStorage.setItem('guest_id',       data.guest_id);
+    localStorage.setItem('guest_token',    S.guestToken);
+    localStorage.setItem('guest_name',     S.guestName);
+    localStorage.setItem('guest_username', S.username);
+    localStorage.setItem('guest_id',       data.guest_id);
     setHeaderUser(S.username);
 
     if (S.machineToken) {
@@ -616,7 +616,7 @@ async function switchMachine(action) {
 // ── Logout ────────────────────────────────────────────
 function doLogout() {
   stopLiveRefresh();
-  sessionStorage.clear();
+  localStorage.clear();
   S.guestToken = null; S.guestName = null; S.username = null; S.guestId = null;
   setHeaderUser(null);
   document.getElementById('login-username').value = '';
@@ -747,10 +747,10 @@ async function init() {
         S.guestName  = d.guest_name;
         S.username   = d.username;
         S.guestId    = d.guest_id;
-        sessionStorage.setItem('guest_token',    S.guestToken);
-        sessionStorage.setItem('guest_name',     S.guestName);
-        sessionStorage.setItem('guest_username', S.username);
-        sessionStorage.setItem('guest_id',       S.guestId);
+        localStorage.setItem('guest_token',    S.guestToken);
+        localStorage.setItem('guest_name',     S.guestName);
+        localStorage.setItem('guest_username', S.username);
+        localStorage.setItem('guest_id',       S.guestId);
         setHeaderUser(S.username);
         // URL bereinigen (lt-Parameter entfernen) ohne Reload
         const cleanUrl = window.location.pathname + (S.machineToken ? `?m=${S.machineToken}` : '');
@@ -770,9 +770,9 @@ async function init() {
   }
 
   // Session wiederherstellen
-  const savedToken    = sessionStorage.getItem('guest_token');
-  const savedName     = sessionStorage.getItem('guest_name');
-  const savedUsername = sessionStorage.getItem('guest_username');
+  const savedToken    = localStorage.getItem('guest_token');
+  const savedName     = localStorage.getItem('guest_name');
+  const savedUsername = localStorage.getItem('guest_username');
 
   // Maschine vorladen (falls QR-Code)
   if (S.machineToken) {
@@ -784,7 +784,7 @@ async function init() {
     S.guestToken = savedToken;
     S.guestName  = savedName;
     S.username   = savedUsername;
-    S.guestId    = parseInt(sessionStorage.getItem('guest_id')) || null;
+    S.guestId    = parseInt(localStorage.getItem('guest_id')) || null;
     setHeaderUser(savedUsername);
 
     if (S.machineToken) {
