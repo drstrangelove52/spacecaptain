@@ -17,8 +17,9 @@
   body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
   .sidebar{width:240px;height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;align-self:flex-start}
   .sidebar::after{content:'';position:absolute;top:0;right:0;bottom:0;width:1px;background:linear-gradient(to bottom,transparent,var(--accent) 40%,var(--accent2) 60%,transparent);opacity:.4}
-  .logo{padding:24px 20px;border-bottom:1px solid var(--border)}
-  .logo-img{height:52px;width:auto;display:block;margin-bottom:6px}
+  .logo{padding:24px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px}
+  .logo-img{height:44px;width:auto;flex-shrink:0}
+  .logo-mark{font-family:var(--display);font-size:18px;font-weight:900;letter-spacing:2px;color:var(--accent)}
   .logo-sub{font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-top:2px}
   .nav{padding:16px 0;flex:1}
   .nav-section{padding:8px 20px 4px;font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:3px;text-transform:uppercase;margin-top:8px}
@@ -46,8 +47,10 @@
   /* LOGIN */
   .login-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:5000}
   .login-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;width:380px;padding:40px}
-  .login-logo{display:block;height:90px;width:auto;margin:0 auto 12px}
-  .login-sub{font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;text-align:center;margin-bottom:32px}
+  .login-logo-row{display:flex;align-items:center;gap:18px;margin-bottom:32px}
+  .login-logo{height:80px;width:auto;flex-shrink:0}
+  .login-logo-name{font-family:var(--display);font-size:26px;font-weight:900;color:var(--accent);letter-spacing:2px}
+  .login-sub{font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-top:4px}
   .login-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:10px 12px;font-size:14px;color:var(--danger);margin-bottom:16px;display:none}
   /* STATS */
   .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
@@ -187,8 +190,13 @@
 <!-- LOGIN -->
 <div class="login-overlay" id="login-overlay">
   <div class="login-box">
-    <img src="/SpaceCaptain.svg" class="login-logo" alt="SpaceCaptain">
-    <div class="login-sub">Navigating Creativity</div>
+    <div class="login-logo-row">
+      <img src="/SpaceCaptain.svg" class="login-logo" alt="SpaceCaptain">
+      <div>
+        <div class="login-logo-name">SpaceCaptain</div>
+        <div class="login-sub">Navigating Creativity</div>
+      </div>
+    </div>
     <div class="login-error" id="login-error"></div>
     <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="login-email" type="email" value="admin@spacecaptain.local"></div>
     <div class="form-group"><label class="form-label">Passwort</label><input class="form-input" id="login-pass" type="password" value="admin1234"></div>
@@ -199,7 +207,7 @@
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
-  <div class="logo"><img src="/SpaceCaptain.svg" class="logo-img" alt="SpaceCaptain"><div class="logo-sub">Navigating Creativity</div><div style="margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--accent);opacity:.85;letter-spacing:1px">v2.17</div></div>
+  <div class="logo"><img src="/SpaceCaptain.svg" class="logo-img" alt="SpaceCaptain"><div><div class="logo-mark">SpaceCaptain</div><div class="logo-sub">Navigating Creativity</div><div style="margin-top:4px;font-family:var(--mono);font-size:11px;color:var(--accent);opacity:.85;letter-spacing:1px">v2.17</div></div></div>
   <nav class="nav">
     <div class="nav-section">ÜBERSICHT</div>
     <div class="nav-item active" data-page="dashboard" onclick="navigate(this)"><span class="nav-icon">◈</span> Dashboard</div>
@@ -215,6 +223,7 @@
     <div class="nav-item" data-page="stats" onclick="navigate(this)"><span class="nav-icon">▤</span> Statistiken</div>
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
     <div class="nav-item" data-page="backup" onclick="navigate(this)"><span class="nav-icon">⬡</span> Backup</div>
+    <div class="nav-item" data-page="info" onclick="navigate(this)"><span class="nav-icon">ℹ</span> Info</div>
   </nav>
   <div class="sidebar-footer">
     <div><span class="status-dot"></span>System online</div>
@@ -487,6 +496,82 @@
       </div>
     </div>
 
+    <div class="page" id="page-info">
+      <div class="section-header">
+        <div class="section-title">Info <span>// RECHTLICHE ANGABEN</span></div>
+      </div>
+      <div style="max-width:700px;display:flex;flex-direction:column;gap:20px">
+
+        <!-- Logo + Version -->
+        <div class="card" style="padding:28px 28px 24px;display:flex;align-items:center;gap:24px">
+          <img src="/SpaceCaptain.svg" alt="SpaceCaptain" style="height:64px;width:auto;flex-shrink:0">
+          <div>
+            <div style="font-family:var(--display);font-size:24px;font-weight:900;color:var(--accent);letter-spacing:2px">SpaceCaptain</div>
+            <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px;margin-top:4px">Version 2.17</div>
+            <div style="font-size:13px;color:var(--text-mid);margin-top:8px;line-height:1.6">Webbasiertes Verwaltungssystem für Makerspaces mit Smart-Plug-Anbindung und QR-Code-Workflow.</div>
+          </div>
+        </div>
+
+        <!-- Copyright -->
+        <div class="card" style="padding:24px">
+          <div class="section-title" style="font-size:12px;margin-bottom:14px">COPYRIGHT</div>
+          <p style="font-size:14px;color:var(--text);line-height:1.7">
+            © <span id="info-year"></span> Martin Nigg<br>
+            <a href="mailto:martin.nigg@makerspace.li" style="color:var(--accent);text-decoration:none">martin.nigg@makerspace.li</a>
+          </p>
+          <p style="font-size:13px;color:var(--text-mid);margin-top:12px;line-height:1.7">
+            Alle Rechte vorbehalten. Vervielfältigung, Weitergabe oder Modifikation dieser Software — auch auszugsweise — sind ohne ausdrückliche schriftliche Genehmigung des Urhebers nicht gestattet.
+          </p>
+        </div>
+
+        <!-- Haftungsausschluss -->
+        <div class="card" style="padding:24px">
+          <div class="section-title" style="font-size:12px;margin-bottom:14px">HAFTUNGSAUSSCHLUSS</div>
+          <p style="font-size:13px;color:var(--text-mid);line-height:1.7">
+            Diese Software wird ohne jegliche ausdrückliche oder stillschweigende Gewährleistung bereitgestellt. Der Urheber übernimmt keine Haftung für direkte oder indirekte Schäden, die aus der Nutzung oder Nichtnutzbarkeit der Software entstehen, einschliesslich Datenverlust oder Betriebsunterbrechungen.
+          </p>
+        </div>
+
+        <!-- Datenschutz -->
+        <div class="card" style="padding:24px">
+          <div class="section-title" style="font-size:12px;margin-bottom:14px">DATENSCHUTZ</div>
+          <p style="font-size:13px;color:var(--text-mid);line-height:1.7">
+            Die Software speichert personenbezogene Daten (Name, E-Mail-Adresse) ausschliesslich in der lokal betriebenen Datenbank. Es werden keine Daten an Dritte übermittelt oder ausserhalb der eigenen Infrastruktur gespeichert. Für den datenschutzkonformen Betrieb ist der jeweilige Betreiber verantwortlich.
+          </p>
+        </div>
+
+        <!-- Open-Source-Komponenten -->
+        <div class="card" style="padding:24px">
+          <div class="section-title" style="font-size:12px;margin-bottom:14px">OPEN-SOURCE-KOMPONENTEN</div>
+          <p style="font-size:13px;color:var(--text-mid);margin-bottom:16px;line-height:1.7">
+            Diese Software verwendet die folgenden Open-Source-Bibliotheken und -Dienste, die unter ihren jeweiligen Lizenzen stehen:
+          </p>
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border)">
+                <th style="text-align:left;padding:6px 12px 8px 0;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text-dim);font-weight:400">KOMPONENTE</th>
+                <th style="text-align:left;padding:6px 12px 8px 0;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text-dim);font-weight:400">LIZENZ</th>
+                <th style="text-align:left;padding:6px 0 8px 0;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text-dim);font-weight:400">URHEBER</th>
+              </tr>
+            </thead>
+            <tbody style="color:var(--text-mid)">
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">FastAPI</td><td style="padding:7px 12px 7px 0">MIT</td><td style="padding:7px 0">Sebastián Ramírez</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">SQLAlchemy</td><td style="padding:7px 12px 7px 0">MIT</td><td style="padding:7px 0">Mike Bayer</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">aiomysql</td><td style="padding:7px 12px 7px 0">MIT</td><td style="padding:7px 0">aio-libs</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">uvicorn</td><td style="padding:7px 12px 7px 0">BSD-3-Clause</td><td style="padding:7px 0">Encode</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">passlib / bcrypt</td><td style="padding:7px 12px 7px 0">MIT / Apache 2.0</td><td style="padding:7px 0">Eli Collins / OpenBSD</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">python-jose</td><td style="padding:7px 12px 7px 0">MIT</td><td style="padding:7px 0">Michael Davis</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">nginx</td><td style="padding:7px 12px 7px 0">BSD-2-Clause</td><td style="padding:7px 0">Igor Sysoev / nginx Inc.</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">MariaDB</td><td style="padding:7px 12px 7px 0">GPL-2.0</td><td style="padding:7px 0">MariaDB Foundation</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">Barlow / Barlow Condensed</td><td style="padding:7px 12px 7px 0">SIL OFL 1.1</td><td style="padding:7px 0">Jeremy Tribby</td></tr>
+              <tr><td style="padding:7px 12px 7px 0">Share Tech Mono</td><td style="padding:7px 12px 7px 0">SIL OFL 1.1</td><td style="padding:7px 0">Ralph du Carrois</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 </main>
 
@@ -565,7 +650,7 @@ function doLogout() {
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',permissions:'Berechtigungen',qr:'QR-Code System',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',backup:'Backup & Restore'};
+const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',permissions:'Berechtigungen',qr:'QR-Code System',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',backup:'Backup & Restore',info:'Info'};
 const pageActions={
   guests:()=>`<button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`,
@@ -1940,6 +2025,8 @@ async function saveRecord(intervalId) {
     await refreshMaintenanceOverview();
   }
 }
+
+document.getElementById('info-year').textContent = new Date().getFullYear();
 
 </script>
 </body>
