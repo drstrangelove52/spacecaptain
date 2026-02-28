@@ -1,5 +1,9 @@
 # SpaceCaptain
 
+<p align="center">
+  <img src="SpaceCaptain.svg" alt="SpaceCaptain Logo" height="120">
+</p>
+
 Webbasiertes Verwaltungssystem für Makerspaces. Gäste werden per QR-Code an Maschinen freigeschaltet, Smart Plugs schalten automatisch ein und aus.
 
 ## Features
