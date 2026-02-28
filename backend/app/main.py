@@ -31,14 +31,14 @@ async def lifespan(app: FastAPI):
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.openapi.utils import get_openapi
 
-app = FastAPI(title="SpaceCaptain API", version="1.00", lifespan=lifespan)
+app = FastAPI(title="SpaceCaptain API", version="1.01", lifespan=lifespan)
 
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
     schema = get_openapi(
         title="SpaceCaptain API",
-        version="1.00",
+        version="1.01",
         description="SpaceCaptain Management API — Authorize mit E-Mail als Username",
         routes=app.routes,
     )

@@ -57,6 +57,11 @@ async def update_user(
     if current.role != "admin" and current.id != user_id:
         raise HTTPException(403, "Keine Berechtigung")
 
+    # Manager darf Rolle und is_active nicht ändern
+    restricted = {"role", "is_active"}
+    if current.role != "admin" and restricted & payload.model_dump(exclude_unset=True).keys():
+        raise HTTPException(403, "Keine Berechtigung")
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:

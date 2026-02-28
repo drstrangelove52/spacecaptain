@@ -209,7 +209,7 @@
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
-  <div class="logo"><img src="/SpaceCaptain.svg" class="logo-img" alt="SpaceCaptain"><div><div class="logo-mark">SpaceCaptain</div><div class="logo-sub">Navigating Creativity</div><div style="margin-top:4px;font-family:var(--mono);font-size:11px;color:var(--accent);opacity:.85;letter-spacing:1px">v1.00</div></div></div>
+  <div class="logo"><img src="/SpaceCaptain.svg" class="logo-img" alt="SpaceCaptain"><div><div class="logo-mark">SpaceCaptain</div><div class="logo-sub">Navigating Creativity</div><div style="margin-top:4px;font-family:var(--mono);font-size:11px;color:var(--accent);opacity:.85;letter-spacing:1px">v1.01</div></div></div>
   <nav class="nav">
     <div class="nav-section">ÜBERSICHT</div>
     <div class="nav-item active" data-page="dashboard" onclick="navigate(this)"><span class="nav-icon">◈</span> Dashboard</div>
@@ -509,7 +509,7 @@
           <img src="/SpaceCaptain.svg" alt="SpaceCaptain" style="height:64px;width:auto;flex-shrink:0">
           <div>
             <div style="font-family:var(--display);font-size:24px;font-weight:900;color:var(--accent);letter-spacing:2px">SpaceCaptain</div>
-            <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px;margin-top:4px">Version 1.00</div>
+            <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px;margin-top:4px">Version 1.01</div>
             <div style="font-size:13px;color:var(--text-mid);margin-top:8px;line-height:1.6">Webbasiertes Verwaltungssystem für Makerspaces mit Smart-Plug-Anbindung und QR-Code-Workflow.</div>
           </div>
         </div>
@@ -981,14 +981,17 @@ function showAddLM() {
 
 function editLM(id) {
   const u=cache.users.find(x=>x.id===id); if (!u) return;
+  const isAdmin=currentUser&&currentUser.role==='admin';
   openModal('Lab Manager bearbeiten',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${u.name}"></div>
     <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="e-email" value="${u.email}"></div>
     <div class="form-group"><label class="form-label">Neues Passwort</label><input class="form-input" id="e-pass" type="password" placeholder="Leer = nicht ändern"></div>
-    <div class="form-group"><label class="form-label">Rolle</label><select class="form-input" id="e-role"><option value="manager" ${u.role==='manager'?'selected':''}>Manager</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></div>
+    ${isAdmin?`<div class="form-group"><label class="form-label">Rolle</label><select class="form-input" id="e-role"><option value="manager" ${u.role==='manager'?'selected':''}>Manager</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></div>`:''}
     <div class="form-group"><label class="form-label">Bereich</label><input class="form-input" id="e-area" value="${u.area||''}"></div>
+    ${isAdmin?`<div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-lm-active"><option value="true" ${u.is_active?'selected':''}>Aktiv</option><option value="false" ${!u.is_active?'selected':''}>Inaktiv</option></select></div>`:''}
   `, async()=>{
-    const upd={name:document.getElementById('e-name').value.trim(),email:document.getElementById('e-email').value.trim(),role:document.getElementById('e-role').value,area:document.getElementById('e-area').value.trim()};
+    const upd={name:document.getElementById('e-name').value.trim(),email:document.getElementById('e-email').value.trim(),area:document.getElementById('e-area').value.trim()};
+    if (isAdmin) { upd.role=document.getElementById('e-role').value; upd.is_active=document.getElementById('e-lm-active').value==='true'; }
     const p=document.getElementById('e-pass').value; if (p) upd.password=p;
     const res=await PATCH(`/users/${id}`,upd);
     if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
