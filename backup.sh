@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================
-# Makerspace — Automatisches Backup-Skript
+# SpaceCaptain — Automatisches Backup-Skript
 # Nutzt die eingebaute JSON-Export-API (/api/backup/export)
 #
 # Konfiguration via .env:
@@ -11,7 +11,7 @@
 #   HTTP_PORT        API-Port (Standard: 80)
 #
 # Cron-Beispiel (täglich um 03:00 Uhr):
-#   0 3 * * * /home/martin/makerspace/backup.sh >> /home/martin/makerspace/backups/backup.log 2>&1
+#   0 3 * * * /opt/spacecaptain/backup.sh >> /opt/spacecaptain/backups/backup.log 2>&1
 # =============================================================
 
 set -euo pipefail
@@ -42,13 +42,13 @@ fi
 mkdir -p "$BACKUP_DIR"
 
 TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
-BACKUP_FILE="$BACKUP_DIR/makerspace-backup-${TIMESTAMP}.json.gz"
+BACKUP_FILE="$BACKUP_DIR/spacecaptain-backup-${TIMESTAMP}.json.gz"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
-log "=== Makerspace Backup gestartet ==="
+log "=== SpaceCaptain Backup gestartet ==="
 log "Ziel: $BACKUP_FILE"
 
 # ── 1. JWT-Token holen ────────────────────────────────────────
@@ -122,10 +122,10 @@ while IFS= read -r OLD_FILE; do
     rm -f "$OLD_FILE"
     log "Gelöscht: $(basename "$OLD_FILE")"
     DELETED=$((DELETED + 1))
-done < <(ls -1t "$BACKUP_DIR"/makerspace-backup-*.json.gz 2>/dev/null \
+done < <(ls -1t "$BACKUP_DIR"/spacecaptain-backup-*.json.gz 2>/dev/null \
     | tail -n +$((BACKUP_KEEP + 1)))
 
-REMAINING=$(ls -1 "$BACKUP_DIR"/makerspace-backup-*.json.gz 2>/dev/null | wc -l)
+REMAINING=$(ls -1 "$BACKUP_DIR"/spacecaptain-backup-*.json.gz 2>/dev/null | wc -l)
 log "Rotation: ${DELETED} alte(s) Backup(s) gelöscht, ${REMAINING} verbleiben."
 
 log "=== Backup erfolgreich abgeschlossen ==="

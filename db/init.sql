@@ -1,4 +1,4 @@
--- MakerSpace Datenbank Schema
+-- SpaceCaptain Datenbank Schema
 SET NAMES utf8mb4;
 SET time_zone = '+00:00';
 
@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS activity_log (
 -- --------------------------------------------------------
 INSERT IGNORE INTO users (name, email, password_hash, role) VALUES (
     'Administrator',
-    'admin@makerspace.local',
+    'admin@spacecaptain.local',
     '$2b$12$u2YsbkDXyEvovgDwCPlUx.wpi.GI6klYGpocKTdKuTOq8Cbv4UcFq',
     'admin'
 );

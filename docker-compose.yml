@@ -7,9 +7,9 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${DB_NAME:-makerspace}
-      MYSQL_USER: ${DB_USER:-makerspace}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-makerspace123}
+      MYSQL_DATABASE: ${DB_NAME:-spacecaptain}
+      MYSQL_USER: ${DB_USER:-spacecaptain}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-changeme}
     volumes:
       - db_data:/var/lib/mysql
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -31,9 +31,9 @@ services:
       TZ: ${TIMEZONE:-Europe/Zurich}
       DB_HOST: db
       DB_PORT: 3306
-      DB_NAME: ${DB_NAME:-makerspace}
-      DB_USER: ${DB_USER:-makerspace}
-      DB_PASSWORD: ${DB_PASSWORD:-makerspace123}
+      DB_NAME: ${DB_NAME:-spacecaptain}
+      DB_USER: ${DB_USER:-spacecaptain}
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
       JWT_SECRET: ${JWT_SECRET:-changeme_use_long_random_string_in_production}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost}

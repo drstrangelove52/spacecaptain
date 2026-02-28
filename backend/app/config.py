@@ -6,9 +6,9 @@ class Settings(BaseSettings):
     # Datenbank
     db_host: str = "db"
     db_port: int = 3306
-    db_name: str = "makerspace"
-    db_user: str = "makerspace"
-    db_password: str = "makerspace123"
+    db_name: str = "spacecaptain"
+    db_user: str = "spacecaptain"
+    db_password: str = "changeme"
 
     # JWT
     jwt_secret: str = "changeme"
