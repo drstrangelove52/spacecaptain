@@ -278,10 +278,10 @@ async def get_qr_image(
     if not machine:
         raise HTTPException(404, "Nicht gefunden")
 
-    # QR-Code enthält die vollständige Gäste-URL: /guest.html?m=<token>
+    # QR-Code enthält die vollständige Gäste-URL
     # Der Hostname wird aus dem Request-Header ermittelt
     base_url = str(request.base_url).rstrip("/")
-    guest_url = f"{base_url}/guest.html?m={machine.qr_token}"
+    guest_url = f"{base_url}/?m={machine.qr_token}"
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
     qr.add_data(guest_url)
     qr.make(fit=True)
