@@ -42,7 +42,7 @@ fi
 mkdir -p "$BACKUP_DIR"
 
 TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
-BACKUP_FILE="$BACKUP_DIR/spacecaptain-backup-${TIMESTAMP}.json.gz"
+BACKUP_FILE="$BACKUP_DIR/spacecaptain-backup-${TIMESTAMP}.json"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
@@ -97,13 +97,13 @@ if [ ! -s "$TMP_FILE" ]; then
     exit 1
 fi
 
-# JSON validieren und komprimiert speichern
+# JSON validieren und speichern
 python3 -c "import sys,json; json.load(sys.stdin)" < "$TMP_FILE" || {
     log "FEHLER: Ungültiges JSON in der Serverantwort."
     exit 1
 }
 
-gzip -c "$TMP_FILE" > "$BACKUP_FILE"
+cp "$TMP_FILE" "$BACKUP_FILE"
 
 SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
 RECORDS=$(python3 -c "
@@ -122,10 +122,10 @@ while IFS= read -r OLD_FILE; do
     rm -f "$OLD_FILE"
     log "Gelöscht: $(basename "$OLD_FILE")"
     DELETED=$((DELETED + 1))
-done < <(ls -1t "$BACKUP_DIR"/spacecaptain-backup-*.json.gz 2>/dev/null \
+done < <(ls -1t "$BACKUP_DIR"/spacecaptain-backup-*.json 2>/dev/null \
     | tail -n +$((BACKUP_KEEP + 1)))
 
-REMAINING=$(ls -1 "$BACKUP_DIR"/spacecaptain-backup-*.json.gz 2>/dev/null | wc -l)
+REMAINING=$(ls -1 "$BACKUP_DIR"/spacecaptain-backup-*.json 2>/dev/null | wc -l)
 log "Rotation: ${DELETED} alte(s) Backup(s) gelöscht, ${REMAINING} verbleiben."
 
 log "=== Backup erfolgreich abgeschlossen ==="
