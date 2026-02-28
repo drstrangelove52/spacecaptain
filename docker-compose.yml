@@ -3,7 +3,7 @@ name: spacecaptain
 services:
   db:
     image: mariadb:11
-    container_name: makerspace_db
+    container_name: spacecaptain_db
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
@@ -14,7 +14,7 @@ services:
       - db_data:/var/lib/mysql
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
-      - makerspace_net
+      - spacecaptain_net
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
@@ -25,7 +25,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: makerspace_backend
+    container_name: spacecaptain_backend
     restart: unless-stopped
     environment:
       TZ: ${TIMEZONE:-Europe/Zurich}
@@ -41,23 +41,23 @@ services:
       db:
         condition: service_healthy
     networks:
-      - makerspace_net
+      - spacecaptain_net
     volumes:
       - ./backend:/app
 
   frontend:
     image: nginx:alpine
-    container_name: makerspace_frontend
+    container_name: spacecaptain_frontend
     restart: unless-stopped
     volumes:
       - ./frontend:/usr/share/nginx/html:ro
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
-      - makerspace_net
+      - spacecaptain_net
 
   nginx:
     image: nginx:alpine
-    container_name: makerspace_proxy
+    container_name: spacecaptain_proxy
     restart: unless-stopped
     ports:
       - "${HTTP_PORT:-80}:80"
@@ -67,11 +67,11 @@ services:
       - backend
       - frontend
     networks:
-      - makerspace_net
+      - spacecaptain_net
 
 volumes:
   db_data:
 
 networks:
-  makerspace_net:
+  spacecaptain_net:
     driver: bridge
