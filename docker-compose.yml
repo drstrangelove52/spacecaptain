@@ -1,3 +1,5 @@
+name: spacecaptain
+
 services:
   db:
     image: mariadb:11
