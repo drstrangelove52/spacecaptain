@@ -67,7 +67,7 @@ docker compose -f "$APP_DIR/docker-compose.yml" up -d --build
 # ── Warten bis Backend antwortet ─────────────────────────────
 info "Warte auf Backend..."
 for i in $(seq 1 30); do
-    STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/api/auth/me 2>/dev/null || true)
+    STATUS=$(curl -sk -o /dev/null -w "%{http_code}" https://localhost/api/auth/me 2>/dev/null || true)
     if [[ "$STATUS" =~ ^(200|401|422)$ ]]; then
         break
     fi
@@ -76,6 +76,6 @@ done
 
 info "Fertig! SpaceCaptain läuft."
 echo ""
-echo "  URL:      http://$(hostname -I | awk '{print $1}')"
+echo "  URL:      https://$(hostname -I | awk '{print $1}')"
 echo "  Login:    admin@spacecaptain.local / admin1234"
 echo ""
