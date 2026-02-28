@@ -8,7 +8,7 @@
 #   BACKUP_PASSWORD  Passwort des Admin-Accounts
 #   BACKUP_DIR       Zielverzeichnis (Standard: ./backups)
 #   BACKUP_KEEP      Anzahl zu behaltender Backups (Standard: 30)
-#   HTTP_PORT        API-Port (Standard: 80)
+#   HTTPS_PORT       API-Port (Standard: 443)
 #
 # Cron-Beispiel (täglich um 03:00 Uhr):
 #   0 3 * * * /opt/spacecaptain/backup.sh >> /opt/spacecaptain/backups/backup.log 2>&1
@@ -28,7 +28,7 @@ if [ -f "$ENV_FILE" ]; then
 fi
 
 # Konfiguration mit Standardwerten
-API_BASE="http://localhost:${HTTP_PORT:-80}/api"
+API_BASE="https://localhost:${HTTPS_PORT:-443}/api"
 BACKUP_DIR="${BACKUP_DIR:-$SCRIPT_DIR/backups}"
 BACKUP_KEEP="${BACKUP_KEEP:-30}"
 
@@ -54,7 +54,7 @@ log "Ziel: $BACKUP_FILE"
 # ── 1. JWT-Token holen ────────────────────────────────────────
 log "Authentifiziere als ${BACKUP_EMAIL}..."
 
-LOGIN_RESPONSE=$(curl -sf \
+LOGIN_RESPONSE=$(curl -sf -k \
     --max-time 30 \
     -X POST "${API_BASE}/auth/login" \
     -H "Content-Type: application/json" \
@@ -77,7 +77,7 @@ log "Exportiere Daten..."
 TMP_FILE=$(mktemp)
 trap 'rm -f "$TMP_FILE"' EXIT
 
-HTTP_STATUS=$(curl -sf \
+HTTP_STATUS=$(curl -sf -k \
     --max-time 120 \
     -o "$TMP_FILE" \
     -w "%{http_code}" \
