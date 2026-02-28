@@ -13,6 +13,8 @@
     --mono:'Share Tech Mono',monospace;--body:'Barlow',sans-serif;--display:'Barlow Condensed',sans-serif;
   }
   *{margin:0;padding:0;box-sizing:border-box}
+  a,a:visited{color:var(--accent2);text-decoration:none}
+  a:hover{text-decoration:underline}
   body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;display:flex;overflow-x:hidden}
   body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
   .sidebar{width:240px;height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;align-self:flex-start}
@@ -207,7 +209,7 @@
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
-  <div class="logo"><img src="/SpaceCaptain.svg" class="logo-img" alt="SpaceCaptain"><div><div class="logo-mark">SpaceCaptain</div><div class="logo-sub">Navigating Creativity</div><div style="margin-top:4px;font-family:var(--mono);font-size:11px;color:var(--accent);opacity:.85;letter-spacing:1px">v2.17</div></div></div>
+  <div class="logo"><img src="/SpaceCaptain.svg" class="logo-img" alt="SpaceCaptain"><div><div class="logo-mark">SpaceCaptain</div><div class="logo-sub">Navigating Creativity</div><div style="margin-top:4px;font-family:var(--mono);font-size:11px;color:var(--accent);opacity:.85;letter-spacing:1px">v1.00</div></div></div>
   <nav class="nav">
     <div class="nav-section">ÜBERSICHT</div>
     <div class="nav-item active" data-page="dashboard" onclick="navigate(this)"><span class="nav-icon">◈</span> Dashboard</div>
@@ -507,7 +509,7 @@
           <img src="/SpaceCaptain.svg" alt="SpaceCaptain" style="height:64px;width:auto;flex-shrink:0">
           <div>
             <div style="font-family:var(--display);font-size:24px;font-weight:900;color:var(--accent);letter-spacing:2px">SpaceCaptain</div>
-            <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px;margin-top:4px">Version 2.17</div>
+            <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px;margin-top:4px">Version 1.00</div>
             <div style="font-size:13px;color:var(--text-mid);margin-top:8px;line-height:1.6">Webbasiertes Verwaltungssystem für Makerspaces mit Smart-Plug-Anbindung und QR-Code-Workflow.</div>
           </div>
         </div>
@@ -517,7 +519,7 @@
           <div class="section-title" style="font-size:12px;margin-bottom:14px">COPYRIGHT</div>
           <p style="font-size:14px;color:var(--text);line-height:1.7">
             © <span id="info-year"></span> Martin Nigg<br>
-            <a href="mailto:martin.nigg@makerspace.li" style="color:var(--accent);text-decoration:none">martin.nigg@makerspace.li</a>
+            <a href="mailto:martin.nigg@makerspace.li">martin.nigg@makerspace.li</a>
           </p>
           <p style="font-size:13px;color:var(--text-mid);margin-top:12px;line-height:1.7">
             Alle Rechte vorbehalten. Vervielfältigung, Weitergabe oder Modifikation dieser Software — auch auszugsweise — sind ohne ausdrückliche schriftliche Genehmigung des Urhebers nicht gestattet.
