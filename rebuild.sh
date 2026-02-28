@@ -77,5 +77,5 @@ done
 info "Fertig! SpaceCaptain läuft."
 echo ""
 echo "  URL:      http://$(hostname -I | awk '{print $1}')"
-echo "  Login:    admin@makerspace.local / admin1234"
+echo "  Login:    admin@spacecaptain.local / admin1234"
 echo ""
