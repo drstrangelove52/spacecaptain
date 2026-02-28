@@ -1,0 +1,1946 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpaceCaptain</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0f12;--surface:#151820;--surface2:#1c2030;--border:#2a2f3e;
+    --accent:#f4a622;--accent2:#22d3ee;--danger:#ef4444;--success:#22c55e;
+    --text:#e2e8f0;--text-dim:#64748b;--text-mid:#94a3b8;
+    --mono:'Share Tech Mono',monospace;--body:'Barlow',sans-serif;--display:'Barlow Condensed',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;display:flex;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
+  .sidebar{width:240px;height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;align-self:flex-start}
+  .sidebar::after{content:'';position:absolute;top:0;right:0;bottom:0;width:1px;background:linear-gradient(to bottom,transparent,var(--accent) 40%,var(--accent2) 60%,transparent);opacity:.4}
+  .logo{padding:24px 20px;border-bottom:1px solid var(--border)}
+  .logo-mark{font-family:var(--display);font-size:22px;font-weight:900;letter-spacing:2px;color:var(--accent)}
+  .logo-sub{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:3px;margin-top:2px}
+  .nav{padding:16px 0;flex:1}
+  .nav-section{padding:8px 20px 4px;font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:3px;text-transform:uppercase;margin-top:8px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-mid);transition:all .15s;border-left:2px solid transparent}
+  .nav-item:hover{color:var(--text);background:var(--surface2)}
+  .nav-item.active{color:var(--accent);background:rgba(244,166,34,.08);border-left-color:var(--accent)}
+  .nav-badge-danger{background:var(--danger)!important;color:#fff!important}
+  .nav-icon{width:16px;text-align:center;font-size:14px}
+  .nav-badge{margin-left:auto;background:var(--accent);color:var(--bg);font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;font-family:var(--mono)}
+  .sidebar-footer{padding:16px 20px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+  .status-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success);margin-right:6px;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .main{flex:1;display:flex;flex-direction:column;overflow-x:hidden;min-width:0}
+  .topbar{height:60px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;background:var(--surface);flex-shrink:0}
+  .page-title{font-family:var(--display);font-size:20px;font-weight:900;letter-spacing:1px;text-transform:uppercase;flex:1}
+  .topbar-actions{display:flex;align-items:center;gap:10px}
+  .btn{padding:8px 16px;border:none;border-radius:4px;cursor:pointer;font-family:var(--body);font-size:13px;font-weight:600;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+  .btn-primary{background:var(--accent);color:var(--bg)}.btn-primary:hover{background:#f5b84a}
+  .btn-ghost{background:transparent;color:var(--text-mid);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}.btn-danger:hover{background:var(--danger);color:#fff}
+  .btn-success{background:var(--success);color:var(--bg)}.btn-success:hover{filter:brightness(1.1)}
+  .btn-sm{padding:5px 10px;font-size:11px}
+  .content{flex:1;padding:24px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+  .page{display:none}.page.active{display:block}
+  /* LOGIN */
+  .login-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:5000}
+  .login-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;width:380px;padding:40px}
+  .login-logo{font-family:var(--display);font-size:28px;font-weight:900;color:var(--accent);letter-spacing:2px;text-align:center;margin-bottom:4px;text-transform:none}
+  .login-sub{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:3px;text-align:center;margin-bottom:32px}
+  .login-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:10px 12px;font-size:13px;color:var(--danger);margin-bottom:16px;display:none}
+  /* STATS */
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+  .stat-card{background:var(--surface);border:1px solid var(--border);padding:20px;border-radius:6px;position:relative;overflow:hidden}
+  .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+  .stat-card.orange::before{background:var(--accent)}.stat-card.cyan::before{background:var(--accent2)}
+  .stat-card.green::before{background:var(--success)}.stat-card.red::before{background:var(--danger)}
+  .stat-label{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+  .stat-value{font-family:var(--display);font-size:36px;font-weight:900;line-height:1}
+  .stat-card.orange .stat-value{color:var(--accent)}.stat-card.cyan .stat-value{color:var(--accent2)}
+  .stat-card.green .stat-value{color:var(--success)}.stat-card.red .stat-value{color:var(--danger)}
+  .stat-sub{font-size:12px;color:var(--text-dim);margin-top:4px}
+  /* SECTION */
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .section-title{font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+  .section-title span{font-family:var(--mono);font-size:11px;color:var(--text-dim);font-weight:400;margin-left:8px;letter-spacing:2px}
+  /* TABLE */
+  .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse}
+  thead tr{background:var(--surface2);border-bottom:1px solid var(--border)}
+  th{padding:10px 16px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;font-weight:400}
+  td{padding:12px 16px;font-size:13px;color:var(--text-mid);border-bottom:1px solid rgba(42,47,62,.5)}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:rgba(255,255,255,.02)}
+  td strong{color:var(--text);font-weight:600}
+  /* BADGES */
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:3px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+  .badge-green{background:rgba(34,197,94,.15);color:var(--success);border:1px solid rgba(34,197,94,.3)}
+  .badge-orange{background:rgba(244,166,34,.15);color:var(--accent);border:1px solid rgba(244,166,34,.3)}
+  .badge-red{background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
+  .badge-cyan{background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3)}
+  .badge-gray{background:rgba(100,116,139,.15);color:var(--text-dim);border:1px solid rgba(100,116,139,.3)}
+  /* GRID */
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+  /* MACHINE CARDS */
+  .machine-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+  .machine-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px;cursor:pointer;position:relative;overflow:hidden;transition:border-color .2s}
+  .machine-card:hover{border-color:var(--accent)}
+  .machine-card.online::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 24px 24px 0;border-color:transparent var(--success) transparent transparent}
+  .machine-card.offline::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 24px 24px 0;border-color:transparent var(--border) transparent transparent}
+  .machine-card.maintenance::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 24px 24px 0;border-color:transparent var(--accent) transparent transparent}
+  .machine-icon{font-size:28px;margin-bottom:12px}
+  .machine-name{font-family:var(--display);font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px}
+  .machine-cat{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px}
+  .machine-comment{font-size:12px;color:var(--accent);background:rgba(244,166,34,.08);border:1px solid rgba(244,166,34,.2);border-radius:4px;padding:6px 8px;margin-bottom:10px;display:none}
+  .machine-stats{display:flex;gap:12px;margin-bottom:12px}
+  .machine-stat{font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+  .machine-stat strong{display:block;font-size:16px;color:var(--accent2);font-family:var(--display);font-weight:700}
+  /* PERMISSIONS — neue Ansicht */
+  .perm-panel{display:grid;grid-template-columns:280px 1fr;gap:16px;margin-bottom:24px;min-height:500px}
+  .perm-guest-list{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
+  .perm-guest-list-header{padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px}
+  .perm-guest-item{padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(42,47,62,.4);display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-mid);transition:all .15s}
+  .perm-guest-item:hover{background:rgba(255,255,255,.02);color:var(--text)}
+  .perm-guest-item.active{background:rgba(244,166,34,.08);color:var(--accent);border-left:2px solid var(--accent)}
+  .perm-guest-item .perm-count{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+  .perm-detail{background:var(--surface);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column}
+  .perm-detail-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .perm-detail-title{font-family:var(--display);font-size:18px;font-weight:700;letter-spacing:1px}
+  .perm-detail-body{padding:16px 20px;flex:1;overflow-y:auto}
+  .perm-machine-item{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid rgba(42,47,62,.4);cursor:pointer;transition:all .15s}
+  .perm-machine-item:last-child{border-bottom:none}
+  .perm-machine-item:hover{background:rgba(255,255,255,.01)}
+  .perm-toggle{width:40px;height:22px;border-radius:11px;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;position:relative}
+  .perm-toggle.on{background:var(--success)}
+  .perm-toggle.off{background:var(--border)}
+  .perm-toggle::after{content:'';position:absolute;top:3px;width:16px;height:16px;border-radius:50%;background:white;transition:left .2s}
+  .perm-toggle.on::after{left:21px}.perm-toggle.off::after{left:3px}
+  .perm-machine-info{flex:1}
+  .perm-machine-name{font-size:14px;font-weight:600;color:var(--text)}
+  .perm-machine-sub{font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px}
+  /* LOG FILTERS */
+  .log-filters{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr) auto;gap:12px;align-items:end}
+  .log-filter-row2{grid-template-columns:repeat(3,1fr) 1fr auto}
+  .filter-group{display:flex;flex-direction:column;gap:6px}
+  .filter-label{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase}
+  .filter-input{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;transition:border-color .15s;width:100%}
+  .filter-input:focus{border-color:var(--accent)}
+  /* LOG */
+  .log-entry{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(42,47,62,.5)}
+  .log-entry:last-child{border-bottom:none}
+  .log-time{font-family:var(--mono);font-size:10px;color:var(--text-dim);white-space:nowrap;min-width:160px;padding-top:2px}
+  .log-dot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0}
+  .log-content{flex:1;font-size:13px;color:var(--text-mid);line-height:1.5}
+  .log-content strong{color:var(--text)}
+  .log-tags{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}
+  .log-tag{font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:2px;background:var(--surface2);color:var(--text-dim)}
+  /* QR FLOW */
+  .qr-flow{display:flex;gap:0;margin-bottom:24px}
+  .qr-step{flex:1;background:var(--surface);border:1px solid var(--border);padding:20px;position:relative}
+  .qr-step:first-child{border-radius:6px 0 0 6px}.qr-step:last-child{border-radius:0 6px 6px 0}
+  .qr-step::after{content:'→';position:absolute;right:-14px;top:50%;transform:translateY(-50%);color:var(--accent);font-size:16px;z-index:1;font-weight:bold}
+  .qr-step:last-child::after{display:none}
+  .qr-step-num{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:3px;margin-bottom:8px}
+  .qr-step-title{font-family:var(--display);font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px}
+  .qr-step-desc{font-size:12px;color:var(--text-dim);line-height:1.5}
+  .qr-step-icon{font-size:24px;margin-bottom:10px}
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:1000}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;width:520px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .modal-title{font-family:var(--display);font-size:18px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+  .modal-close{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:20px;line-height:1}
+  .modal-close:hover{color:var(--text)}
+  .modal-body{padding:24px}
+  .form-group{margin-bottom:16px}
+  .form-label{display:block;font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  .form-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;color:var(--text);font-family:var(--body);font-size:14px;outline:none;transition:border-color .15s}
+  .form-input:focus{border-color:var(--accent)}
+  textarea.form-input{resize:vertical}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+  .plug-hint{font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.6;padding:8px;background:var(--bg);border-radius:4px;border:1px solid var(--border)}
+  /* SEARCH */
+  .search-wrap{position:relative;margin-bottom:16px}
+  .search-input{width:300px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 12px 8px 34px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none}
+  .search-input:focus{border-color:var(--accent)}
+  .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-dim);font-size:13px}
+  /* QR IMG */
+  .qr-img-box{background:white;padding:16px;display:inline-block;border-radius:6px}
+  .qr-img-box img{display:block;width:200px;height:200px;image-rendering:pixelated}
+  /* LOADING */
+  .loading{display:flex;align-items:center;gap:8px;color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:24px;justify-content:center}
+  .spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* TOAST */
+  .toast-container{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px}
+  .toast{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:13px;animation:slideIn .2s ease;border-left:3px solid var(--success);max-width:300px}
+  .toast.error{border-left-color:var(--danger)}.toast.warn{border-left-color:var(--accent)}
+  @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+  ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">SpaceCaptain</div>
+    <div class="login-sub">Navigating Creativity</div>
+    <div class="login-error" id="login-error"></div>
+    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="login-email" type="email" value="admin@makerspace.local"></div>
+    <div class="form-group"><label class="form-label">Passwort</label><input class="form-input" id="login-pass" type="password" value="admin1234"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="doLogin()">→ Anmelden</button>
+    <div style="margin-top:16px;font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:center">Standard: admin@makerspace.local / admin1234</div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo"><div class="logo-mark">SpaceCaptain</div><div class="logo-sub">Navigating Creativity</div><div style="margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--accent);opacity:.85;letter-spacing:1px">v2.17</div></div>
+  <nav class="nav">
+    <div class="nav-section">ÜBERSICHT</div>
+    <div class="nav-item active" data-page="dashboard" onclick="navigate(this)"><span class="nav-icon">◈</span> Dashboard</div>
+    <div class="nav-section">PERSONEN</div>
+    <div class="nav-item" data-page="guests" onclick="navigate(this)"><span class="nav-icon">◉</span> Gäste <span class="nav-badge" id="badge-guests">0</span></div>
+    <div class="nav-item" data-page="labmanager" onclick="navigate(this)"><span class="nav-icon">◈</span> Lab Manager <span class="nav-badge" id="badge-lm">0</span></div>
+    <div class="nav-section">AUSSTATTUNG</div>
+    <div class="nav-item" data-page="machines" onclick="navigate(this)"><span class="nav-icon">⚙</span> Maschinen <span class="nav-badge" id="badge-machines">0</span></div>
+    <div class="nav-item" data-page="permissions" onclick="navigate(this)"><span class="nav-icon">🔑</span> Berechtigungen</div>
+    <div class="nav-section">SYSTEM</div>
+    <div class="nav-item" data-page="qr" onclick="navigate(this)"><span class="nav-icon">▦</span> QR-System</div>
+    <div class="nav-item" data-page="log" onclick="navigate(this)"><span class="nav-icon">◫</span> Aktivitätslog</div>
+    <div class="nav-item" data-page="stats" onclick="navigate(this)"><span class="nav-icon">▤</span> Statistiken</div>
+    <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
+    <div class="nav-item" data-page="backup" onclick="navigate(this)"><span class="nav-icon">⬡</span> Backup</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div><span class="status-dot"></span>System online</div>
+    <div style="margin-top:4px;color:var(--text-dim)" id="current-user-label">—</div>
+    <div style="margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="doLogout()" style="padding:3px 8px;font-size:10px">⎋ Logout</button></div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <div class="page-title" id="page-title">Dashboard</div>
+    <div class="topbar-actions" id="topbar-actions"></div>
+  </div>
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card orange"><div class="stat-label">Gäste</div><div class="stat-value" id="stat-guests">—</div><div class="stat-sub">registriert</div></div>
+        <div class="stat-card cyan"><div class="stat-label">Maschinen</div><div class="stat-value" id="stat-machines">—</div><div class="stat-sub">im System</div></div>
+        <div class="stat-card green"><div class="stat-label">Lab Manager</div><div class="stat-value" id="stat-lm">—</div><div class="stat-sub">aktiv</div></div>
+        <div class="stat-card red"><div class="stat-label">Berechtigungen</div><div class="stat-value" id="stat-perms">—</div><div class="stat-sub">erteilt</div></div>
+      </div>
+      <!-- AKTIVE MASCHINEN — wichtigste Info beim Schliessen -->
+      <div id="dash-active-section" style="margin-bottom:24px;display:none">
+        <div class="section-header">
+          <div class="section-title" style="color:var(--accent2)">● Aktive Maschinen <span id="dash-active-count" style="color:var(--accent);font-size:14px"></span></div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:1px">BITTE VOR SCHLIESSUNG AUSSCHALTEN</div>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Maschine</th><th>Nutzer</th><th>Seit</th><th>Verbrauch</th><th>Aktion</th></tr></thead>
+          <tbody id="dash-active-machines"></tbody>
+        </table></div>
+      </div>
+      <!-- WARTUNGSWARNUNGEN -->
+      <div id="dash-maintenance-section" style="margin-bottom:24px;display:none">
+        <div class="section-header">
+          <div class="section-title" style="color:var(--danger)">🔧 Maschinenpflege <span id="dash-maintenance-count" style="color:var(--accent);font-size:14px"></span></div>
+          <button class="btn btn-ghost btn-sm" onclick="navigateTo('maintenance')">Zur Übersicht →</button>
+        </div>
+        <div id="dash-maintenance-list"></div>
+      </div>
+      <div class="section-header"><div class="section-title">Alle Maschinen <span>// STATUS</span></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Maschine</th><th>Kategorie</th><th>Status</th><th>Nutzer</th></tr></thead><tbody id="dash-machine-status"><tr><td colspan="4"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody></table></div>
+      <div class="section-header"><div class="section-title">Aktivitätslog <span>// RECENT</span></div></div>
+      <div class="table-wrap" style="padding:0 16px" id="dash-log"><div class="loading"><div class="spinner"></div>Laden…</div></div>
+    </div>
+
+    <!-- GUESTS -->
+    <div class="page" id="page-guests">
+      <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" placeholder="Gast suchen…" oninput="filterTable(this,'guests-table')"></div>
+      <div class="table-wrap"><table id="guests-table">
+        <thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Berechtigungen</th><th>Status</th><th>Aktionen</th></tr></thead>
+        <tbody id="guests-tbody"><tr><td colspan="6"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody>
+      </table></div>
+    </div>
+
+    <!-- LAB MANAGER -->
+    <div class="page" id="page-labmanager">
+      <div class="table-wrap"><table>
+        <thead><tr><th>Name</th><th>Email</th><th>Rolle</th><th>Zuständig für</th><th>Status</th><th>Aktionen</th></tr></thead>
+        <tbody id="lm-tbody"><tr><td colspan="6"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody>
+      </table></div>
+    </div>
+
+    <!-- MACHINES -->
+    <div class="page" id="page-machines">
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <div class="search-wrap" style="flex:1;min-width:200px"><span class="search-icon">🔍</span><input class="search-input" id="machine-search" placeholder="Maschine suchen…" oninput="filterMachines()"></div>
+        <select class="filter-input" id="machine-filter-cat" onchange="filterMachines()" style="width:160px">
+          <option value="">Alle Kategorien</option>
+          <option>Laser</option><option>CNC</option><option>3D-Druck</option>
+          <option>Holz</option><option>Metall</option><option>Elektronik</option><option>Sonstiges</option>
+        </select>
+        <select class="filter-input" id="machine-filter-status" onchange="filterMachines()" style="width:140px">
+          <option value="">Alle Status</option>
+          <option value="online">Online</option>
+          <option value="inuse">In Benutzung</option>
+          <option value="offline">Offline</option>
+          <option value="maintenance">Wartung</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('machine-search').value='';document.getElementById('machine-filter-cat').value='';document.getElementById('machine-filter-status').value='';filterMachines()">✕ Reset</button>
+      </div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:10px" id="machine-filter-count"></div>
+      <div class="machine-grid" id="machine-grid"><div class="loading"><div class="spinner"></div>Laden…</div></div>
+    </div>
+
+    <!-- PERMISSIONS — neue Ansicht -->
+    <div class="page" id="page-permissions">
+      <div class="section-header">
+        <div class="section-title">Berechtigungen <span>// GAST AUSWÄHLEN</span></div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Änderungen werden sofort gespeichert</div>
+      </div>
+      <div class="perm-panel">
+        <div class="perm-guest-list">
+          <div class="perm-guest-list-header">GÄSTE</div>
+          <div style="padding:8px"><input class="filter-input" placeholder="Suchen…" oninput="filterPermGuests(this.value)" style="width:100%"></div>
+          <div id="perm-guest-list" style="flex:1;overflow-y:auto">
+            <div class="loading"><div class="spinner"></div>Laden…</div>
+          </div>
+        </div>
+        <div class="perm-detail" id="perm-detail">
+          <div class="perm-detail-header">
+            <div class="perm-detail-title" id="perm-detail-title">← Gast auswählen</div>
+            <div id="perm-detail-stats" style="font-family:var(--mono);font-size:11px;color:var(--text-dim)"></div>
+          </div>
+          <div class="perm-detail-body" id="perm-detail-body">
+            <div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px;text-align:center">Wähle einen Gast aus der Liste um seine Berechtigungen zu verwalten.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QR SYSTEM -->
+    <div class="page" id="page-qr">
+      <div class="section-header"><div class="section-title">QR-Code System <span>// WORKFLOW</span></div></div>
+      <div class="qr-flow">
+        <div class="qr-step"><div class="qr-step-icon">👤</div><div class="qr-step-num">SCHRITT 01</div><div class="qr-step-title">Gast öffnet Seite</div><div class="qr-step-desc">Gast öffnet <strong>http://&lt;IP&gt;/</strong> auf dem Smartphone und meldet sich mit Username + Passwort an</div></div>
+        <div class="qr-step"><div class="qr-step-icon">▦</div><div class="qr-step-num">SCHRITT 02</div><div class="qr-step-title">QR-Code scannen</div><div class="qr-step-desc">Gast scannt den QR-Code an der gewünschten Maschine — der Code enthält die Maschinen-ID</div></div>
+        <div class="qr-step"><div class="qr-step-icon">🔑</div><div class="qr-step-num">SCHRITT 03</div><div class="qr-step-title">Prüfung</div><div class="qr-step-desc">Server prüft Berechtigung in der Datenbank in Echtzeit</div></div>
+        <div class="qr-step"><div class="qr-step-icon">⚡</div><div class="qr-step-num">SCHRITT 04</div><div class="qr-step-title">Maschine EIN</div><div class="qr-step-desc">Bei Berechtigung: myStrom / Shelly / Tasmota API schaltet die Steckdose ein</div></div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <div class="section-header"><div class="section-title">Maschinen-QR drucken</div></div>
+          <div class="table-wrap" style="padding:16px">
+            <div class="form-group"><label class="form-label">Maschine</label><select class="form-input" id="qr-machine-select"><option value="">— Maschine wählen —</option></select></div>
+            <button class="btn btn-primary" onclick="showMachineQR()">▦ QR-Code anzeigen</button>
+            <div id="qr-machine-display" style="margin-top:16px;text-align:center;display:none">
+              <div class="qr-img-box"><img id="qr-machine-img" src="" alt="QR Code"></div>
+              <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:8px" id="qr-machine-label"></div>
+              <div id="qr-machine-url-box" style="display:none;margin-top:8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px;word-break:break-all;text-align:left">
+                <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:4px;letter-spacing:2px">GÄSTE-URL (IM QR ENTHALTEN)</div>
+                <div style="font-family:var(--mono);font-size:10px;color:var(--accent2)" id="qr-machine-url"></div>
+              </div>
+              <div style="margin-top:10px;display:flex;gap:8px;justify-content:center">
+                <button class="btn btn-danger btn-sm" onclick="regenMachineQR()">↺ QR neu generieren</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOG -->
+    <div class="page" id="page-log">
+      <div class="section-header">
+        <div class="section-title">Aktivitätslog <span>// SYSTEM LOG</span></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadLog()">↺ Aktualisieren</button>
+      </div>
+      <!-- Filter -->
+      <div class="log-filters">
+        <div class="filter-group"><label class="filter-label">Gast</label><select class="filter-input" id="f-guest"><option value="">Alle Gäste</option></select></div>
+        <div class="filter-group"><label class="filter-label">Maschine</label><select class="filter-input" id="f-machine"><option value="">Alle Maschinen</option></select></div>
+        <div class="filter-group"><label class="filter-label">Typ</label><select class="filter-input" id="f-type"><option value="">Alle Typen</option></select></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn btn-ghost btn-sm" onclick="loadLog()">Filter anwenden</button></div>
+      </div>
+      <div class="log-filters" style="margin-top:-8px">
+        <div class="filter-group"><label class="filter-label">Von Datum</label><input class="filter-input" id="f-from" type="date"></div>
+        <div class="filter-group"><label class="filter-label">Bis Datum</label><input class="filter-input" id="f-to" type="date"></div>
+        <div class="filter-group"><label class="filter-label">Suche</label><input class="filter-input" id="f-search" type="text" placeholder="Begriff suchen…" onkeydown="if(event.key==='Enter')loadLog()"></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn btn-ghost btn-sm" onclick="resetLogFilters()">✕ Reset</button></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:12px" id="log-count"></div>
+      <div class="table-wrap" style="padding:0 16px" id="full-log"><div class="loading"><div class="spinner"></div>Laden…</div></div>
+    </div>
+
+    <!-- STATS -->
+    <div class="page" id="page-stats">
+      <div class="section-header">
+        <div class="section-title">Statistiken <span>// NUTZUNGSAUSWERTUNG</span></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadStats()">↺ Aktualisieren</button>
+      </div>
+      <!-- Filter -->
+      <div class="log-filters" style="margin-bottom:16px">
+        <div class="filter-group"><label class="filter-label">Maschine</label><select class="filter-input" id="s-machine"><option value="">Alle Maschinen</option></select></div>
+        <div class="filter-group"><label class="filter-label">Gast</label><select class="filter-input" id="s-guest"><option value="">Alle Gäste</option></select></div>
+        <div class="filter-group"><label class="filter-label">Zeitraum</label><select class="filter-input" id="s-days"><option value="7">Letzte 7 Tage</option><option value="30" selected>Letzte 30 Tage</option><option value="90">Letzte 90 Tage</option><option value="365">Letztes Jahr</option></select></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn btn-primary btn-sm" onclick="loadStats()">Auswerten</button></div>
+      </div>
+      <!-- Summary Cards -->
+      <div class="stats-grid" id="stats-summary">
+        <div class="stat-card orange"><div class="stat-label">Sessions</div><div class="stat-value" id="ss-count">—</div><div class="stat-sub">Nutzungen</div></div>
+        <div class="stat-card cyan"><div class="stat-label">Laufzeit</div><div class="stat-value" id="ss-hours">—</div><div class="stat-sub">Stunden total</div></div>
+        <div class="stat-card green"><div class="stat-label">Verbrauch</div><div class="stat-value" id="ss-kwh">—</div><div class="stat-sub">kWh total</div></div>
+        <div class="stat-card red"><div class="stat-label">Leerlauf-Abs.</div><div class="stat-value" id="ss-idle">—</div><div class="stat-sub">automatische</div></div>
+      </div>
+      <!-- Betriebsstunden -->
+      <div class="section-header" style="margin-top:24px"><div class="section-title">Betriebsstunden <span>// PRO MASCHINE</span></div></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Maschine</th><th>Kategorie</th><th>Betriebsstunden total</th><th>Ø pro Session</th><th>Sessions</th></tr></thead>
+          <tbody id="stats-hours-tbody"><tr><td colspan="5"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody>
+        </table>
+      </div>
+      <!-- Sessions Table -->
+      <div class="section-header" style="margin-top:24px"><div class="section-title">Einzelne Sessions <span>// DETAILS</span></div></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Maschine</th><th>Gast</th><th>Start</th><th>Dauer</th><th>Verbrauch</th><th>Beendet durch</th></tr></thead>
+          <tbody id="stats-tbody"><tr><td colspan="6"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- BACKUP PAGE -->
+
+    <!-- MASCHINENPFLEGE -->
+    <div class="page" id="page-maintenance">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <!-- Linke Spalte: Fällige Wartungen + Intervall-Liste -->
+        <div>
+          <div class="section-header">
+            <div class="section-title">Wartungsintervalle <span>// ÜBERSICHT</span></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" onclick="showFreeRecord()">+ Freie Wartung</button>
+              <button class="btn btn-primary btn-sm" onclick="showAddInterval()">+ Neues Intervall</button>
+            </div>
+          </div>
+          <div id="maintenance-filter" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+            <select class="form-input" id="maint-filter-machine" style="flex:1;min-width:140px;font-size:12px" onchange="renderIntervals()">
+              <option value="">Alle Maschinen</option>
+            </select>
+            <select class="form-input" id="maint-filter-status" style="width:130px;font-size:12px" onchange="renderIntervals()">
+              <option value="">Alle Status</option>
+              <option value="due">Fällig</option>
+              <option value="warning">Warnung</option>
+              <option value="ok">OK</option>
+            </select>
+          </div>
+          <div id="maintenance-list"><div class="loading"><div class="spinner"></div>Laden…</div></div>
+        </div>
+        <!-- Rechte Spalte: Wartungshistorie -->
+        <div>
+          <div class="section-header">
+            <div class="section-title">Wartungshistorie <span>// PROTOKOLL</span></div>
+          </div>
+          <div class="search-wrap" style="margin-bottom:12px"><span class="search-icon">🔍</span><input class="search-input" id="maint-history-search" placeholder="Maschine, Wartung, Person…" oninput="filterMaintenanceHistory()"></div>
+          <div id="maintenance-history"><div class="loading"><div class="spinner"></div>Laden…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-backup">
+      <div class="section-header">
+        <div class="section-title">Backup <span>// EXPORT &amp; IMPORT</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:900px">
+        <!-- Export -->
+        <div class="card" style="padding:24px">
+          <div class="section-title" style="font-size:13px;margin-bottom:8px">Export</div>
+          <p style="color:var(--text-dim);font-size:12px;margin-bottom:16px;line-height:1.6">
+            Exportiert alle Lab Manager, Gäste, Maschinen und Berechtigungen als JSON-Datei.<br>
+            <strong style="color:var(--accent)">⚠ Enthält Passwort-Hashes — sicher aufbewahren.</strong>
+          </p>
+          <button class="btn btn-primary" onclick="doExport()">⬇ Konfiguration exportieren</button>
+        </div>
+        <!-- Import -->
+        <div class="card" style="padding:24px">
+          <div class="section-title" style="font-size:13px;margin-bottom:8px">Import</div>
+          <p style="color:var(--text-dim);font-size:12px;margin-bottom:16px;line-height:1.6">
+            Importiert eine zuvor exportierte Konfiguration.<br>
+            Bestehende Einträge (gleiche Email/Username/QR-Token) werden übersprungen.
+          </p>
+          <input type="file" id="import-file" accept=".json" style="display:none" onchange="doImport(this)">
+          <button class="btn btn-ghost" onclick="document.getElementById('import-file').click()">⬆ JSON-Datei wählen &amp; importieren</button>
+          <div id="import-result" style="margin-top:12px;font-size:12px;font-family:var(--mono)"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="modal-title">Modal</div><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// CONFIG & STATE
+// ═══════════════════════════════════════════════════════
+const API = '/api';
+let token = localStorage.getItem('ms_token') || '';
+let currentUser = null;
+let cache = { guests:[], machines:[], users:[], permissions:[] };
+let selectedPermGuestId = null;
+let selectedMachineIdForQR = null;
+
+// ═══════════════════════════════════════════════════════
+// API
+// ═══════════════════════════════════════════════════════
+async function api(method, path, body=null) {
+  const opts = { method, headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API+path, opts);
+  if (r.status===401) { doLogout(); return null; }
+  if (!r.ok) {
+    const err = await r.json().catch(()=>({detail:r.statusText}));
+    showToast(typeof err.detail==='string'?err.detail:JSON.stringify(err.detail),'error');
+    return null;
+  }
+  return r.json();
+}
+
+// Lautlose Variante für Hintergrund-Calls — kein Toast, kein Logout bei Fehler
+async function apiSilent(method, path, body=null) {
+  try {
+    const opts = { method, headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})} };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(API+path, opts);
+    if (!r.ok) return null;  // kein doLogout() — Hintergrund-Fehler lautlos ignorieren
+    return r.json();
+  } catch { return null; }
+}
+const GET=(p)=>api('GET',p);
+const POST=(p,b)=>api('POST',p,b);
+const PATCH=(p,b)=>api('PATCH',p,b);
+const DELETE=(p)=>api('DELETE',p);
+
+// ═══════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════
+async function doLogin() {
+  const errEl = document.getElementById('login-error');
+  errEl.style.display='none';
+  const res = await POST('/auth/login',{email:document.getElementById('login-email').value,password:document.getElementById('login-pass').value});
+  if (!res) { errEl.textContent='Login fehlgeschlagen'; errEl.style.display='block'; return; }
+  token = res.access_token;
+  localStorage.setItem('ms_token',token);
+  document.getElementById('login-overlay').style.display='none';
+  currentUser = await GET('/auth/me');
+  if (currentUser) document.getElementById('current-user-label').textContent=currentUser.name;
+  loadAll();
+}
+function doLogout() {
+  token=''; localStorage.removeItem('ms_token');
+  document.getElementById('login-overlay').style.display='flex';
+}
+
+// ═══════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════
+const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',permissions:'Berechtigungen',qr:'QR-Code System',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',backup:'Backup & Restore'};
+const pageActions={
+  guests:()=>`<button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
+  labmanager:()=>`<button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`,
+  machines:()=>`<button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`,
+};
+function navigate(el) {
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+  const page=el.dataset.page;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.getElementById('page-title').textContent=pageTitles[page]||page;
+  document.getElementById('topbar-actions').innerHTML=pageActions[page]?pageActions[page]():'';
+  if (page==='log') { loadLogFilterOptions(); loadLog(); }
+  if (page==='qr') populateQRSelects();
+  if (page==='stats') loadStats();
+  if (page==='maintenance') loadMaintenance();
+  if (page==='dashboard' || page==='machines') refreshLiveData();
+  if (page==='dashboard') refreshMaintenanceOverview();
+}
+
+// ═══════════════════════════════════════════════════════
+// LOAD ALL
+// ═══════════════════════════════════════════════════════
+let _serverTZ = Intl.DateTimeFormat().resolvedOptions().timeZone; // Browser-Fallback
+
+function fmtDate(isoStr) {
+  if (!isoStr) return '—';
+  // Backend gibt Lokalzeit mit Offset zurück (z.B. 2025-01-01T10:30:00+01:00)
+  // Browser parst ISO mit Offset korrekt → direkt formatieren
+  const d = new Date(isoStr);
+  if (isNaN(d)) return isoStr;
+  return d.toLocaleString('de-CH', {
+    day:'2-digit', month:'2-digit', year:'numeric',
+    hour:'2-digit', minute:'2-digit'
+  });
+}
+
+async function loadAll() {
+  // Basis-Daten zuerst laden und sofort rendern (kein Plug-Status nötig)
+  const [guests,users,machines,perms,stats] = await Promise.all([
+    GET('/guests'),GET('/users'),GET('/machines'),GET('/permissions'),GET('/dashboard')
+  ]);
+  if (guests)   cache.guests   = guests;
+  if (users)    cache.users    = users;
+  if (machines) cache.machines = machines;
+  if (perms)    cache.permissions = perms;
+  if (stats) {
+    document.getElementById('stat-guests').textContent    = stats.total_guests;
+    document.getElementById('stat-machines').textContent  = stats.total_machines;
+    document.getElementById('stat-lm').textContent        = stats.total_managers;
+    document.getElementById('stat-perms').textContent     = stats.total_permissions;
+    document.getElementById('badge-guests').textContent   = stats.total_guests;
+    document.getElementById('badge-lm').textContent       = stats.total_managers;
+    document.getElementById('badge-machines').textContent = stats.total_machines;
+  }
+  // Sofort rendern — Dashboard und Log sind damit schon sichtbar
+  renderGuests(); renderLM(); renderMachines(); renderPermGuestList(); renderDashboard();
+  populateQRSelects(); loadLog();
+
+  // Live-Daten (Plug-Status, Session-Info) im Hintergrund nachladen
+  refreshLiveData();
+}
+
+async function refreshLiveData() {
+  // Aktive Maschinen per Einzelaufruf live updaten (Watt, Laufzeit, Gastname)
+  const activeMachines = cache.machines.filter(m => m.session_started_at);
+
+  if (activeMachines.length) {
+    const liveResults = await Promise.all(
+      activeMachines.map(m =>
+        fetch(`/api/guest/machine/${m.qr_token}`)
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
+      )
+    );
+    liveResults.forEach((live, i) => {
+      if (!live) return;
+      const cached = cache.machines.find(m => m.id === activeMachines[i].id);
+      if (!cached) return;
+      cached.power_w              = live.power_w ?? null;
+      cached.plug_on              = live.plug_on ?? null;
+      cached.plug_supported       = live.plug_supported ?? false;
+      cached.current_guest_name   = live.current_guest_name ?? null;
+      cached.session_duration_min = live.session_duration_min ?? null;
+      cached.session_manager_id   = live.session_manager_id ?? null;
+      cached.idle_state           = live.idle_state ?? null;
+      cached.idle_since_min       = live.idle_since_min ?? null;
+    });
+  }
+
+  // Session-Änderungen erkennen (Gast schaltet ein/aus ohne Manager-Aktion)
+  // Nur wenn keine Manager-Aktion gerade läuft
+  const fresh = await apiSilent('GET', '/machines');
+  if (fresh) {
+    // Sessions-IDs vergleichen
+    const cacheKey = m => `${m.id}:${m.session_started_at||''}`;
+    const prev = cache.machines.map(cacheKey).sort().join('|');
+    const next = fresh.map(cacheKey).sort().join('|');
+    if (prev !== next) cache.machines = fresh;
+  }
+
+  _checkIdleAlarm(cache.machines);
+  renderMachines();
+  renderDashboard();
+  refreshMaintenanceOverview();
+}
+
+// ═══════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════
+function renderDashboard() {
+  // Aktive Maschinen: session_started_at ist bereits im Basis-Response vorhanden
+  const active = cache.machines.filter(m => m.session_started_at || m.in_use || m.current_guest_name);
+  const activeSection = document.getElementById('dash-active-section');
+  activeSection.style.display = active.length ? 'block' : 'none';
+  if (active.length) {
+    document.getElementById('dash-active-count').textContent = `// ${active.length} AKTIV`;
+    document.getElementById('dash-active-machines').innerHTML = active.map(m => {
+      const dur = m.session_duration_min != null ? formatDuration(m.session_duration_min) : '—';
+      const watt = m.power_w != null ? `${Math.round(m.power_w)} W` : '—';
+
+      // Leerlauf-Status: eigene Zeile als farbiges Banner
+      let idleBanner = '';
+      let rowStyle = '';
+      let rowClass = '';
+      if (m.idle_state === 'idle_warning') {
+        const rem = (m.idle_timeout_min != null && m.idle_since_min != null)
+          ? Math.max(0, Math.ceil(m.idle_timeout_min - m.idle_since_min)) : '?';
+        idleBanner = `<tr class="idle-warn-banner" style="animation:idle-warn-row 1.5s ease-in-out infinite">
+          <td colspan="5" style="padding:6px 16px;background:rgba(239,68,68,.13);border-top:1px solid rgba(239,68,68,.3);border-bottom:1px solid rgba(239,68,68,.3)">
+            <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:#ef4444;letter-spacing:1px">
+              ⚠ LEERLAUF — AUTOMATISCHE ABSCHALTUNG IN ${rem} MINUTE${rem===1?'':'N'}
+            </span>
+            <span style="font-family:var(--mono);font-size:10px;color:rgba(239,68,68,.7);margin-left:12px">
+              ${m.idle_since_min!=null?`Leerlauf seit ${Math.floor(m.idle_since_min)} min`:''}
+            </span>
+          </td>
+        </tr>`;
+        rowStyle = 'border-left:3px solid #ef4444';
+      } else if (m.idle_state === 'idle') {
+        const since = m.idle_since_min != null ? ` seit ${Math.floor(m.idle_since_min)} min` : '';
+        const rem = (m.idle_timeout_min != null && m.idle_since_min != null)
+          ? Math.max(0, Math.ceil(m.idle_timeout_min - m.idle_since_min)) : null;
+        const remStr = rem != null ? ` — Abschaltung in ${rem} min` : '';
+        idleBanner = `<tr class="idle-caution-banner">
+          <td colspan="5" style="padding:5px 16px;background:rgba(244,166,34,.08);border-top:1px solid rgba(244,166,34,.25);border-bottom:1px solid rgba(244,166,34,.25)">
+            <span style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:0.5px">
+              ⏱ LEERLAUF${since}${remStr}
+            </span>
+          </td>
+        </tr>`;
+        rowStyle = 'border-left:3px solid var(--accent)';
+      }
+
+      return `<tr style="${rowStyle}">
+        <td><strong>${m.name}</strong><br><span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">${m.category}</span></td>
+        <td style="font-family:var(--mono);font-size:12px;color:var(--accent2)">${
+          m.current_guest_name
+            ? m.current_guest_name
+            : m.session_manager_id
+              ? '<span style="color:var(--accent);font-size:10px">◈ Manager</span>'
+              : '<span style="color:var(--text-dim)">—</span>'
+        }</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${dur}</td>
+        <td style="font-family:var(--mono);font-size:12px;color:var(--accent)">${watt}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="managerSwitchMachine(${m.id},'off',this)">○ AUS</button></td>
+      </tr>${idleBanner}`;
+    }).join('');
+  }
+
+  // Alle Maschinen
+  const mTbody=document.getElementById('dash-machine-status');
+  const sortedM=[...cache.machines].sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  mTbody.innerHTML=!sortedM.length
+    ?'<tr><td colspan="4" style="color:var(--text-dim);text-align:center;padding:16px">Keine Maschinen</td></tr>'
+    :sortedM.map(m=>{
+      const inUse = m.current_guest_name || m.in_use;
+      const userCell = inUse
+        ? `<span style="font-family:var(--mono);font-size:11px;color:var(--accent2)">◉ ${m.current_guest_name||'Manager'}</span>`
+        : `<span style="color:var(--text-dim);font-size:12px">—</span>`;
+      let idleCell='';
+      if (m.idle_state==='idle_warning'){
+        const rem=m.idle_timeout_min&&m.idle_since_min!=null?Math.max(0,Math.ceil(m.idle_timeout_min-m.idle_since_min)):'?';
+        idleCell=`<span style="background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.4);border-radius:4px;padding:2px 6px;font-family:var(--mono);font-size:10px;font-weight:700">⚠ ABS. in ${rem}min</span>`;
+      } else if (m.idle_state==='idle'){
+        idleCell=`<span style="background:rgba(244,166,34,.12);color:var(--accent);border:1px solid rgba(244,166,34,.3);border-radius:4px;padding:2px 6px;font-family:var(--mono);font-size:10px">⏱ Leerlauf</span>`;
+      }
+      return `<tr style="${m.idle_state==='idle_warning'?'background:rgba(239,68,68,.04)':''}"><td><strong>${m.name}</strong>${m.comment?` <span style="font-size:10px;color:var(--accent)">⚠</span>`:''} ${idleCell}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${m.category}</td><td><span class="badge ${m.status==='online'?'badge-green':m.status==='maintenance'?'badge-orange':'badge-gray'}">${m.status}</span></td><td>${userCell}</td></tr>`;
+    }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// GUESTS
+// ═══════════════════════════════════════════════════════
+function renderGuests() {
+  const tbody=document.getElementById('guests-tbody');
+  if (!cache.guests.length) { tbody.innerHTML='<tr><td colspan="6" style="color:var(--text-dim);text-align:center;padding:24px">Noch keine Gäste.</td></tr>'; return; }
+  const sorted=[...cache.guests].sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  tbody.innerHTML=sorted.map(g=>`<tr>
+    <td><strong>${g.name}</strong></td>
+    <td style="font-family:var(--mono);font-size:11px">@${g.username}</td>
+    <td style="font-family:var(--mono);font-size:11px">${g.email||'—'}</td>
+    <td><span class="badge badge-cyan">${g.permission_count} Maschinen</span></td>
+    <td><span class="badge ${g.is_active?'badge-green':'badge-gray'}">${g.is_active?'aktiv':'inaktiv'}</span></td>
+    <td style="display:flex;gap:6px;padding:8px 16px">
+      <button class="btn btn-ghost btn-sm" onclick="editGuest(${g.id})">✏</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteGuest(${g.id},'${g.name}')">✕</button>
+    </td>
+  </tr>`).join('');
+}
+
+function showAddGuest() {
+  openModal('Gast hinzufügen',`
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Vorname</label><input class="form-input" id="f-fn" placeholder="Max"></div>
+      <div class="form-group"><label class="form-label">Nachname</label><input class="form-input" id="f-ln" placeholder="Mustermann"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Username <span style="color:var(--accent)">*</span></label><input class="form-input" id="f-un" placeholder="max.mustermann"></div>
+      <div class="form-group"><label class="form-label">Passwort <span style="color:var(--accent)">*</span></label><input class="form-input" id="f-pass" type="password" placeholder="Sicheres Passwort"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="f-email" type="email" placeholder="optional"></div>
+    <div class="form-group"><label class="form-label">Telefon</label><input class="form-input" id="f-phone"></div>
+    <div class="form-group"><label class="form-label">Notiz</label><textarea class="form-input" id="f-note" rows="2"></textarea></div>
+  `, async()=>{
+    const fn=document.getElementById('f-fn').value.trim(), ln=document.getElementById('f-ln').value.trim();
+    const un=document.getElementById('f-un').value.trim(), pass=document.getElementById('f-pass').value;
+    if (!fn||!ln) { showToast('Name erforderlich','error'); return; }
+    if (!un||!pass) { showToast('Username und Passwort erforderlich','error'); return; }
+    const res=await POST('/guests',{name:`${fn} ${ln}`,username:un,password:pass,email:document.getElementById('f-email').value.trim(),phone:document.getElementById('f-phone').value.trim(),note:document.getElementById('f-note').value.trim()});
+    if (res) { closeModal(); await loadAll(); showToast(`${res.name} hinzugefügt!`,'success'); }
+  });
+}
+
+function editGuest(id) {
+  const g=cache.guests.find(x=>x.id===id); if (!g) return;
+  const loginUrl = g.login_token ? `${window.location.origin}/?lt=${g.login_token}` : null;
+  openModal('Gast bearbeiten',`
+    <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${g.name}"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Username</label><input class="form-input" id="e-un" value="${g.username||''}"></div>
+      <div class="form-group"><label class="form-label">Neues Passwort</label><input class="form-input" id="e-pass" type="password" placeholder="Leer = nicht ändern"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="e-email" value="${g.email||''}"></div>
+    <div class="form-group"><label class="form-label">Telefon</label><input class="form-input" id="e-phone" value="${g.phone||''}"></div>
+    <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-active"><option value="true" ${g.is_active?'selected':''}>aktiv</option><option value="false" ${!g.is_active?'selected':''}>inaktiv</option></select></div>
+    <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">LOGIN-LINK (OHNE PASSWORT)</div>
+      ${loginUrl
+        ? `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+             <input class="form-input" style="font-size:11px;font-family:var(--mono)" id="e-lt-url" value="${loginUrl}" readonly>
+             <button class="btn btn-ghost btn-sm" onclick="copyLoginLink('e-lt-url')" type="button">📋</button>
+           </div>
+           <button class="btn btn-danger btn-sm" onclick="revokeLoginToken(${g.id})" type="button">✕ Link widerrufen</button>`
+        : `<button class="btn btn-ghost btn-sm" onclick="genLoginToken(${g.id})" type="button">🔗 Login-Link generieren</button>`
+      }
+    </div>
+  `, async()=>{
+    const upd={name:document.getElementById('e-name').value.trim(),username:document.getElementById('e-un').value.trim(),email:document.getElementById('e-email').value.trim(),phone:document.getElementById('e-phone').value.trim(),is_active:document.getElementById('e-active').value==='true'};
+    const p=document.getElementById('e-pass').value; if (p) upd.password=p;
+    const res=await PATCH(`/guests/${id}`,upd);
+    if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
+  });
+}
+
+async function genLoginToken(guestId) {
+  const res = await POST(`/guests/${guestId}/login-token`, {});
+  if (res) { closeModal(); await loadAll(); editGuest(guestId); showToast('Login-Link generiert', 'success'); }
+}
+
+async function revokeLoginToken(guestId) {
+  if (!confirm('Login-Link widerrufen? Der Gast muss danach wieder mit Passwort einloggen.')) return;
+  await DELETE(`/guests/${guestId}/login-token`);
+  closeModal(); await loadAll(); editGuest(guestId); showToast('Login-Link widerrufen', 'warn');
+}
+
+function copyLoginLink(inputId) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  navigator.clipboard.writeText(el.value).then(() => showToast('Link kopiert', 'success'));
+}
+
+async function deleteGuest(id,name) {
+  if (!confirm(`Gast "${name}" wirklich löschen?`)) return;
+  if (await DELETE(`/guests/${id}`)) { await loadAll(); showToast(`${name} gelöscht`,'warn'); }
+}
+
+// ═══════════════════════════════════════════════════════
+// LAB MANAGER
+// ═══════════════════════════════════════════════════════
+function renderLM() {
+  const tbody=document.getElementById('lm-tbody');
+  if (!cache.users.length) { tbody.innerHTML='<tr><td colspan="6" style="color:var(--text-dim);text-align:center;padding:24px">Keine Lab Manager</td></tr>'; return; }
+  const sorted=[...cache.users].sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  tbody.innerHTML=sorted.map(u=>`<tr>
+    <td><strong>${u.name}</strong></td>
+    <td style="font-family:var(--mono);font-size:11px">${u.email}</td>
+    <td><span class="badge ${u.role==='admin'?'badge-red':'badge-orange'}">${u.role}</span></td>
+    <td style="font-size:12px;color:var(--text-dim)">${u.area||'—'}</td>
+    <td><span class="badge ${u.is_active?'badge-green':'badge-gray'}">${u.is_active?'aktiv':'inaktiv'}</span></td>
+    <td style="display:flex;gap:6px;padding:8px 16px">
+      <button class="btn btn-ghost btn-sm" onclick="editLM(${u.id})">✏</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteLM(${u.id},'${u.name}')">✕</button>
+    </td>
+  </tr>`).join('');
+}
+
+function showAddLM() {
+  openModal('Lab Manager hinzufügen',`
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Vorname</label><input class="form-input" id="lm-fn"></div>
+      <div class="form-group"><label class="form-label">Nachname</label><input class="form-input" id="lm-ln"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="lm-email" type="email"></div>
+    <div class="form-group"><label class="form-label">Passwort</label><input class="form-input" id="lm-pass" type="password"></div>
+    <div class="form-group"><label class="form-label">Rolle</label><select class="form-input" id="lm-role"><option value="manager">Manager</option><option value="admin">Admin</option></select></div>
+    <div class="form-group"><label class="form-label">Zuständigkeitsbereich</label><input class="form-input" id="lm-area"></div>
+  `, async()=>{
+    const fn=document.getElementById('lm-fn').value.trim(), ln=document.getElementById('lm-ln').value.trim(), pass=document.getElementById('lm-pass').value;
+    if (!fn||!ln||!pass) { showToast('Name und Passwort erforderlich','error'); return; }
+    const res=await POST('/users',{name:`${fn} ${ln}`,email:document.getElementById('lm-email').value.trim(),password:pass,role:document.getElementById('lm-role').value,area:document.getElementById('lm-area').value.trim()});
+    if (res) { closeModal(); await loadAll(); showToast(`${res.name} hinzugefügt!`,'success'); }
+  });
+}
+
+function editLM(id) {
+  const u=cache.users.find(x=>x.id===id); if (!u) return;
+  openModal('Lab Manager bearbeiten',`
+    <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${u.name}"></div>
+    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="e-email" value="${u.email}"></div>
+    <div class="form-group"><label class="form-label">Neues Passwort</label><input class="form-input" id="e-pass" type="password" placeholder="Leer = nicht ändern"></div>
+    <div class="form-group"><label class="form-label">Rolle</label><select class="form-input" id="e-role"><option value="manager" ${u.role==='manager'?'selected':''}>Manager</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></div>
+    <div class="form-group"><label class="form-label">Bereich</label><input class="form-input" id="e-area" value="${u.area||''}"></div>
+  `, async()=>{
+    const upd={name:document.getElementById('e-name').value.trim(),email:document.getElementById('e-email').value.trim(),role:document.getElementById('e-role').value,area:document.getElementById('e-area').value.trim()};
+    const p=document.getElementById('e-pass').value; if (p) upd.password=p;
+    const res=await PATCH(`/users/${id}`,upd);
+    if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
+  });
+}
+
+async function deleteLM(id,name) {
+  if (!confirm(`Lab Manager "${name}" löschen?`)) return;
+  if (await DELETE(`/users/${id}`)) { await loadAll(); showToast(`${name} gelöscht`,'warn'); }
+}
+
+// ═══════════════════════════════════════════════════════
+// MACHINES
+// ═══════════════════════════════════════════════════════
+const machineIcons={Laser:'⚡',CNC:'⚙','3D-Druck':'🖨',Holz:'🪚',Metall:'🔩',Elektronik:'🔌',Sonstiges:'🔧'};
+
+function filterMachines() {
+  const q=(document.getElementById('machine-search')?.value||'').toLowerCase();
+  const cat=document.getElementById('machine-filter-cat')?.value||'';
+  const statusF=document.getElementById('machine-filter-status')?.value||'';
+  let filtered=cache.machines.filter(m=>{
+    if (q && !m.name.toLowerCase().includes(q) && !(m.location||'').toLowerCase().includes(q)) return false;
+    if (cat && m.category!==cat) return false;
+    if (statusF==='inuse' && !m.in_use) return false;
+    else if (statusF && statusF!=='inuse' && m.status!==statusF) return false;
+    return true;
+  });
+  const countEl=document.getElementById('machine-filter-count');
+  if (countEl) countEl.textContent=(q||cat||statusF)?`${filtered.length} von ${cache.machines.length} Maschinen`:'' ;
+  renderMachinesFiltered([...filtered].sort((a,b)=>a.name.localeCompare(b.name,"de")));
+}
+
+function renderMachines() { filterMachines(); }
+
+function renderMachinesFiltered(machines) {
+  const grid=document.getElementById('machine-grid');
+  if (!machines.length) { grid.innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px">Keine Maschinen gefunden.</div>'; return; }
+  grid.innerHTML=machines.map(m=>{
+    const icon=machineIcons[m.category]||'🔧';
+    const statusColor=m.status==='online'?'var(--success)':m.status==='maintenance'?'var(--accent)':'var(--text-dim)';
+    // Aktive Session
+    let sessionHtml='';
+    if (m.current_guest_name) {
+      const dur=m.session_duration_min!=null?` // ${formatDuration(m.session_duration_min)}`:'';
+      sessionHtml=`<div style="background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px">
+        <span style="color:var(--accent2)">● IN BENUTZUNG</span>
+        <span style="color:var(--text-mid);margin-left:8px">${m.current_guest_name}${dur}</span>
+      </div>`;
+    } else if (m.status==='online' && m.plug_type!=='none') {
+      sessionHtml=`<div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--success)">● VERFÜGBAR</div>`;
+    }
+    // Leerlauf-Badge
+    let idleBadge=''; let idleClass='';
+    if (m.idle_state==='idle_warning') {
+      const remaining=m.idle_timeout_min && m.idle_since_min!=null
+        ? Math.max(0,Math.ceil(m.idle_timeout_min-m.idle_since_min)) : '?';
+      idleBadge=`<div class="idle-badge warning">⚠ LEERLAUF — Abschaltung in <span class="countdown">${remaining} min</span></div>`;
+      idleClass='idle-warning';
+    } else if (m.idle_state==='idle') {
+      const since=m.idle_since_min!=null?` seit ${Math.floor(m.idle_since_min)} min`:'';
+      idleBadge=`<div class="idle-badge caution">⏱ LEERLAUF${since}</div>`;
+      idleClass='idle-caution';
+    }
+    return `<div class="machine-card ${m.status} ${idleClass}" id="mc-${m.id}">
+      <div class="machine-icon">${icon}</div>
+      <div class="machine-name">${m.name}</div>
+      <div class="machine-cat">${m.category}${m.location?' // '+m.location:''}</div>
+      ${m.comment?`<div class="machine-comment" style="display:block">⚠ ${m.comment}</div>`:''}
+      ${sessionHtml}
+      <div class="machine-stats">
+        <div class="machine-stat"><strong style="color:${statusColor}">${m.status}</strong>Status</div>
+        ${m.plug_type!=='none'?`<div class="machine-stat"><strong style="color:${m.plug_on?'var(--success)':'var(--text-dim)'}">${m.plug_on==null?'—':m.plug_on?'EIN':'AUS'}</strong>Steckdose</div>`:''}
+        ${m.plug_type!=='none'?`<div class="machine-stat"><strong style="color:var(--accent2)">${m.power_w!=null?Math.round(m.power_w)+' W':'— W'}</strong>Verbrauch</div>`:''}
+      </div>
+      ${idleBadge}
+      ${m.plug_type!=='none'?`<div style="display:flex;gap:6px;margin-bottom:8px;margin-top:${idleBadge?'8':'0'}px">
+        <button class="btn btn-success btn-sm" onclick="managerSwitchMachine(${m.id},'on',this)" ${m.current_guest_name?'':''}style="flex:1;justify-content:center">⚡ EIN</button>
+        <button class="btn btn-danger btn-sm" onclick="managerSwitchMachine(${m.id},'off',this)" style="flex:1;justify-content:center">○ AUS</button>
+      </div>`:''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="editMachine(${m.id})">✏ Bearbeiten</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function formatDuration(min) {
+  if (min==null) return '';
+  if (min<60) return `${Math.round(min)} min`;
+  return `${Math.floor(min/60)}h ${Math.round(min%60)}min`;
+}
+
+async function managerSwitchMachine(id, action, btn) {
+  btn.disabled=true; btn.textContent='…';
+  const res=await POST(`/machines/${id}/switch?action=${action}`);
+  btn.disabled=false; btn.textContent=action==='on'?'⚡ EIN':'○ AUS';
+  if (res&&res.ok) { showToast(`${res.machine}: ${action==='on'?'Eingeschaltet':'Ausgeschaltet'}`,'success'); await loadAll(); }
+}
+
+function showAddMachine() {
+  openModal('Maschine hinzufügen',`
+    <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="mc-name" placeholder="Lasercutter XL-40"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="mc-cat"><option>Laser</option><option>CNC</option><option>3D-Druck</option><option>Holz</option><option>Metall</option><option>Elektronik</option><option>Sonstiges</option></select></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="mc-status"><option value="online">online</option><option value="offline">offline</option><option value="maintenance">maintenance</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Hersteller</label><input class="form-input" id="mc-mfr"></div>
+      <div class="form-group"><label class="form-label">Modell</label><input class="form-input" id="mc-model"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Standort</label><input class="form-input" id="mc-loc" placeholder="Raum A"></div>
+    <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="mc-comment" rows="2" placeholder="z.B. Linse verschmutzt, bitte melden"></textarea></div>
+    <hr style="border-color:var(--border);margin:16px 0">
+    <div class="form-group"><label class="form-label">Smart Plug</label>
+      <select class="form-input" id="mc-plug" onchange="updatePlugUI()">
+        <option value="none">Kein Smart Plug</option>
+        <option value="mystrom">myStrom Switch</option>
+        <option value="shelly">Shelly</option>
+      </select>
+    </div>
+    <div id="mc-plug-ip-row" style="display:none">
+      <div class="form-group"><label class="form-label">IP-Adresse des Plugs</label><input class="form-input" id="mc-plugip" placeholder="192.168.1.100"></div>
+      <div id="mc-token-row" style="display:none">
+        <div class="form-group">
+          <label class="form-label" id="mc-token-label">API-Token <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
+          <input class="form-input" id="mc-plugtoken" type="password" placeholder="myStrom API-Token">
+          <div style="font-size:11px;color:var(--text-dim);margin-top:4px" id="mc-token-hint">Wird als Token-Header mitgeschickt</div>
+        </div>
+      </div>
+      <div class="plug-hint" id="plug-hint"></div>
+    </div>
+    <div id="mc-idle-row" style="display:none">
+      <hr style="border-color:var(--border);margin:16px 0">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px">LEERLAUF-AUTOMATIK</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Leerlaufleistung (W)</label><input class="form-input" id="mc-idlew" type="number" step="0.1" placeholder="z.B. 5.0"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Unter diesem Wert gilt die Maschine als im Leerlauf</div></div>
+        <div class="form-group"><label class="form-label">Timeout (Minuten)</label><input class="form-input" id="mc-idlet" type="number" placeholder="z.B. 10"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Nach dieser Leerlaufdauer wird automatisch abgeschaltet</div></div>
+      </div>
+    </div>
+  `, async()=>{
+    const name=document.getElementById('mc-name').value.trim();
+    if (!name) { showToast('Name erforderlich','error'); return; }
+    const plugSel=document.getElementById('mc-plug').value;
+    const plug_type=plugSel;
+    const plug_extra=null;
+    const rawToken=document.getElementById('mc-plugtoken')?.value.trim()||'';
+    const plug_token=rawToken?(plugSel==='shelly'?`admin:${rawToken}`:rawToken):null;
+    const idle_w=document.getElementById('mc-idlew')?.value;
+    const idle_t=document.getElementById('mc-idlet')?.value;
+    const res=await POST('/machines',{name,category:document.getElementById('mc-cat').value,status:document.getElementById('mc-status').value,manufacturer:document.getElementById('mc-mfr').value.trim(),model:document.getElementById('mc-model').value.trim(),location:document.getElementById('mc-loc').value.trim(),comment:document.getElementById('mc-comment').value.trim()||null,plug_type,plug_ip:document.getElementById('mc-plugip')?.value.trim()||null,plug_extra,plug_token,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null});
+    if (res) { closeModal(); await loadAll(); showToast(`${res.name} hinzugefügt!`,'success'); }
+  });
+}
+
+function editMachine(id) {
+  const m=cache.machines.find(x=>x.id===id); if (!m) return;
+  const curPlugSel=m.plug_type;
+  const showPlug=curPlugSel!=='none';
+  openModal('Maschine bearbeiten',`
+    <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${m.name}"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="e-cat">${['Laser','CNC','3D-Druck','Holz','Metall','Elektronik','Sonstiges'].map(c=>`<option ${m.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-status"><option value="online" ${m.status==='online'?'selected':''}>online</option><option value="offline" ${m.status==='offline'?'selected':''}>offline</option><option value="maintenance" ${m.status==='maintenance'?'selected':''}>maintenance</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Standort</label><input class="form-input" id="e-loc" value="${m.location||''}"></div>
+    <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="e-comment" rows="2" placeholder="z.B. Linse verschmutzt">${m.comment||''}</textarea></div>
+    <hr style="border-color:var(--border);margin:16px 0">
+    <div class="form-group"><label class="form-label">Smart Plug</label>
+      <select class="form-input" id="e-plug" onchange="updateEditPlugUI()">
+        <option value="none" ${curPlugSel==='none'?'selected':''}>Kein Smart Plug</option>
+        <option value="mystrom" ${curPlugSel==='mystrom'?'selected':''}>myStrom Switch</option>
+        <option value="shelly" ${curPlugSel==='shelly'?'selected':''}>Shelly</option>
+      </select>
+    </div>
+    <div id="e-plug-ip-row" style="display:${showPlug?'block':'none'}">
+      <div class="form-group"><label class="form-label">IP-Adresse</label><input class="form-input" id="e-plugip" value="${m.plug_ip||''}" placeholder="192.168.1.100"></div>
+      <div id="e-token-row" style="display:${showPlug?'block':'none'}">
+        <div class="form-group">
+          <label class="form-label" id="e-token-label">${curPlugSel==='shelly'?'Passwort':'API-Token'} <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
+          <input class="form-input" id="e-plugtoken" type="password" value="${curPlugSel==='shelly'?(m.plug_token||'').replace(/^admin:/,''):m.plug_token||''}" placeholder="${curPlugSel==='shelly'?'Shelly-Passwort':'myStrom API-Token'}">
+          <div style="font-size:11px;color:var(--text-dim);margin-top:4px" id="e-token-hint">${curPlugSel==='shelly'?'Digest Auth — Benutzername ist immer "admin"':'Wird als Token-Header mitgeschickt'}</div>
+        </div>
+      </div>
+    </div>
+    <div id="e-idle-row" style="display:${showPlug?'block':'none'}">
+      <hr style="border-color:var(--border);margin:16px 0">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px">LEERLAUF-AUTOMATIK</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Leerlaufleistung (W)</label><input class="form-input" id="e-idlew" type="number" step="0.1" value="${m.idle_power_w||''}" placeholder="z.B. 5.0"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Unter diesem Wert = Leerlauf</div></div>
+        <div class="form-group"><label class="form-label">Timeout (Minuten)</label><input class="form-input" id="e-idlet" type="number" value="${m.idle_timeout_min||''}" placeholder="z.B. 10"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Dann automatisch abschalten</div></div>
+        <div class="form-group"><label class="form-label">Poll-Intervall (Sekunden)</label><input class="form-input" id="e-poll" type="number" min="10" value="${m.plug_poll_interval_sec??60}" placeholder="60"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Wie oft der Schaltzustand geprüft wird (min. 10s)</div></div>
+      </div>
+    </div>
+  `, async()=>{
+    const plugSel=document.getElementById('e-plug').value;
+    const plug_type=plugSel;
+    const plug_extra=null;
+    const rawToken=document.getElementById('e-plugtoken')?.value.trim()||'';
+    const plug_token=rawToken?(plugSel==='shelly'?`admin:${rawToken}`:rawToken):null;
+    const idle_w=document.getElementById('e-idlew')?.value;
+    const idle_t=document.getElementById('e-idlet')?.value;
+    const poll_s=document.getElementById('e-poll')?.value;
+    const res=await PATCH(`/machines/${id}`,{name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,plug_type,plug_ip:document.getElementById('e-plugip')?.value.trim()||null,plug_extra,plug_token,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60});
+    if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
+  });
+}
+
+function updatePlugUI() {
+  const v=document.getElementById('mc-plug')?.value;
+  const show=v&&v!=='none';
+  const isMystrom=v==='mystrom';
+  const isShelly=v==='shelly';
+  const hints={mystrom:'myStrom Switch — IP + optionaler API-Token.',shelly:'Shelly — IP + optionales Passwort für Digest Auth.'};
+  const ipRow=document.getElementById('mc-plug-ip-row');
+  const idleRow=document.getElementById('mc-idle-row');
+  const tokenRow=document.getElementById('mc-token-row');
+  if (ipRow) ipRow.style.display=show?'block':'none';
+  if (idleRow) idleRow.style.display=show?'block':'none';
+  if (tokenRow) tokenRow.style.display=(isMystrom||isShelly)?'block':'none';
+  // Label und Placeholder dynamisch anpassen
+  const lbl=document.querySelector('#mc-token-row .form-label');
+  const inp=document.getElementById('mc-plugtoken');
+  const hint=document.getElementById('mc-token-hint');
+  if (lbl) lbl.childNodes[0].textContent=isShelly?'Passwort ':'API-Token ';
+  if (inp) inp.placeholder=isShelly?'Shelly-Passwort':'myStrom API-Token';
+  if (hint) hint.textContent=isShelly?'Digest Auth — Benutzername ist immer "admin"':'Wird als Token-Header mitgeschickt';
+  const plugHint=document.getElementById('plug-hint');
+  if (plugHint) plugHint.textContent=hints[v]||'';
+}
+
+function updateEditPlugUI() {
+  const v=document.getElementById('e-plug')?.value;
+  const show=v&&v!=='none';
+  const isShelly=v==='shelly';
+  const ipRow=document.getElementById('e-plug-ip-row');
+  const idleRow=document.getElementById('e-idle-row');
+  const tokenRow=document.getElementById('e-token-row');
+  if (ipRow) ipRow.style.display=show?'block':'none';
+  if (idleRow) idleRow.style.display=show?'block':'none';
+  if (tokenRow) tokenRow.style.display=show?'block':'none';
+  const lbl=document.getElementById('e-token-label');
+  const inp=document.getElementById('e-plugtoken');
+  const hint=document.getElementById('e-token-hint');
+  if (lbl) lbl.childNodes[0].textContent=isShelly?'Passwort ':'API-Token ';
+  if (inp) inp.placeholder=isShelly?'Shelly-Passwort':'myStrom API-Token';
+  if (hint) hint.textContent=isShelly?'Digest Auth — Benutzername ist immer "admin"':'Wird als Token-Header mitgeschickt';
+}
+
+async function deleteMachine(id,name) {
+  if (!confirm(`Maschine "${name}" löschen?`)) return;
+  if (await DELETE(`/machines/${id}`)) { await loadAll(); showToast(`${name} gelöscht`,'warn'); }
+}
+
+
+
+// ═══════════════════════════════════════════════════════
+// PERMISSIONS — neue Ansicht
+// ═══════════════════════════════════════════════════════
+function renderPermGuestList(filter='') {
+  const el=document.getElementById('perm-guest-list');
+  const filtered=cache.guests.filter(g=>!filter||g.name.toLowerCase().includes(filter.toLowerCase())||g.username.toLowerCase().includes(filter.toLowerCase()));
+  if (!filtered.length) { el.innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:11px;padding:16px">Keine Gäste gefunden</div>'; return; }
+  el.innerHTML=filtered.map(g=>{
+    const permCount=cache.permissions.filter(p=>p.guest_id===g.id).length;
+    return `<div class="perm-guest-item ${selectedPermGuestId===g.id?'active':''}" onclick="selectPermGuest(${g.id})">
+      <div>
+        <div style="font-weight:600;color:var(--text)">${g.name}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">@${g.username}</div>
+      </div>
+      <span class="perm-count">${permCount} ✓</span>
+    </div>`;
+  }).join('');
+}
+
+function filterPermGuests(val) { renderPermGuestList(val); }
+
+async function selectPermGuest(guestId) {
+  selectedPermGuestId=guestId;
+  renderPermGuestList(document.querySelector('.perm-guest-list input')?.value||'');
+  const guest=cache.guests.find(g=>g.id===guestId);
+  if (!guest) return;
+  const guestPerms=new Set(cache.permissions.filter(p=>p.guest_id===guestId).map(p=>p.machine_id));
+  document.getElementById('perm-detail-title').textContent=guest.name;
+  document.getElementById('perm-detail-stats').textContent=`@${guest.username} — ${guestPerms.size} von ${cache.machines.length} Maschinen`;
+  if (!cache.machines.length) {
+    document.getElementById('perm-detail-body').innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px;text-align:center">Keine Maschinen vorhanden.</div>';
+    return;
+  }
+  const icon=m=>machineIcons[m.category]||'🔧';
+  document.getElementById('perm-detail-body').innerHTML=cache.machines.map(m=>{
+    const granted=guestPerms.has(m.id);
+    const statusColor=m.status==='online'?'var(--success)':m.status==='maintenance'?'var(--accent)':'var(--text-dim)';
+    return `<div class="perm-machine-item" onclick="togglePerm(${guestId},${m.id},this)">
+      <button class="perm-toggle ${granted?'on':'off'}" id="toggle-${guestId}-${m.id}"></button>
+      <div style="font-size:20px">${icon(m)}</div>
+      <div class="perm-machine-info">
+        <div class="perm-machine-name">${m.name}${m.comment?` <span style="font-size:11px;color:var(--accent)">⚠ ${m.comment}</span>`:''}</div>
+        <div class="perm-machine-sub">${m.category}${m.location?' · '+m.location:''} · <span style="color:${statusColor}">${m.status}</span></div>
+      </div>
+      <span class="badge ${granted?'badge-green':'badge-gray'}" id="perm-badge-${guestId}-${m.id}">${granted?'Berechtigt':'Gesperrt'}</span>
+    </div>`;
+  }).join('');
+}
+
+async function togglePerm(guestId,machineId,row) {
+  const toggle=document.getElementById(`toggle-${guestId}-${machineId}`);
+  const badge=document.getElementById(`perm-badge-${guestId}-${machineId}`);
+  const isGranted=toggle.classList.contains('on');
+  // Optimistic UI
+  toggle.className=`perm-toggle ${isGranted?'off':'on'}`;
+  badge.className=`badge ${isGranted?'badge-gray':'badge-green'}`;
+  badge.textContent=isGranted?'Gesperrt':'Berechtigt';
+
+  const endpoint=isGranted?`/permissions/revoke?guest_id=${guestId}&machine_id=${machineId}`:`/permissions/grant?guest_id=${guestId}&machine_id=${machineId}`;
+  const res=await POST(endpoint);
+  if (!res) {
+    // Rollback
+    toggle.className=`perm-toggle ${isGranted?'on':'off'}`;
+    badge.className=`badge ${isGranted?'badge-green':'badge-gray'}`;
+    badge.textContent=isGranted?'Berechtigt':'Gesperrt';
+    return;
+  }
+  // Update cache
+  if (isGranted) cache.permissions=cache.permissions.filter(p=>!(p.guest_id===guestId&&p.machine_id===machineId));
+  else cache.permissions.push({guest_id:guestId,machine_id:machineId,granted_at:new Date().toISOString()});
+  document.getElementById('perm-detail-stats').textContent=`@${cache.guests.find(g=>g.id===guestId)?.username} — ${cache.permissions.filter(p=>p.guest_id===guestId).length} von ${cache.machines.length} Maschinen`;
+  renderPermGuestList(document.querySelector('.perm-guest-list input')?.value||'');
+  document.getElementById('badge-guests') && renderStats();
+}
+
+function renderStats() {
+  document.getElementById('stat-perms').textContent=cache.permissions.length;
+}
+
+// ═══════════════════════════════════════════════════════
+// QR SYSTEM
+// ═══════════════════════════════════════════════════════
+function populateQRSelects() {
+  ['qr-machine-select','plug-machine-select'].forEach(id=>{
+    const el=document.getElementById(id); if (!el) return;
+    const prefix=id==='qr-machine-select'?'<option value="">— Maschine wählen —</option>':'';
+    el.innerHTML=prefix+cache.machines.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+  });
+}
+
+async function showMachineQR() {
+  const mid=document.getElementById('qr-machine-select').value;
+  if (!mid) { showToast('Bitte Maschine wählen','warn'); return; }
+  selectedMachineIdForQR=mid;
+  // Maschine frisch aus API laden damit qr_token sicher vorhanden ist
+  const fresh=await GET(`/machines/${mid}`);
+  const m=fresh||cache.machines.find(x=>x.id==mid);
+  if (!m?.qr_token) { showToast('QR-Token nicht verfügbar','error'); return; }
+  document.getElementById('qr-machine-display').style.display='block';
+  document.getElementById('qr-machine-img').src=`${API}/machines/${mid}/qr.png?token=${encodeURIComponent(token)}`;
+  const guestUrl=`${window.location.origin}/?m=${m.qr_token}`;
+  document.getElementById('qr-machine-label').textContent=`Maschine: ${m?.name}`;
+  document.getElementById('qr-machine-url').textContent=guestUrl;
+  document.getElementById('qr-machine-url-box').style.display='block';
+}
+
+async function regenMachineQR() {
+  if (!selectedMachineIdForQR||!confirm('QR-Code neu generieren? Der alte wird ungültig!')) return;
+  const res=await POST(`/machines/${selectedMachineIdForQR}/regenerate-qr`);
+  if (res) { await loadAll(); showMachineQR(); showToast('Neuer QR-Code generiert','success'); }
+}
+
+async function manualPlug(action) {
+  const mid=document.getElementById('plug-machine-select').value;
+  if (!mid) { showToast('Bitte Maschine wählen','warn'); return; }
+  const res=await POST(`/qr/plug/toggle?machine_id=${mid}&action=${action}`);
+  const el=document.getElementById('plug-result');
+  el.style.display='block';
+  el.innerHTML=res&&res.ok
+    ?`<div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:10px;font-size:13px;color:var(--success)">✓ ${res.message}</div>`
+    :`<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:10px;font-size:13px;color:var(--danger)">✗ Fehler beim Schalten</div>`;
+  if (res?.ok) showToast(res.message,'success');
+}
+
+// ═══════════════════════════════════════════════════════
+// LOG mit Filtern
+// ═══════════════════════════════════════════════════════
+const logColors={access_granted:'var(--success)',access_denied:'var(--danger)',plug_on:'var(--accent2)',plug_off:'var(--text-dim)',guest_created:'var(--success)',guest_deleted:'var(--accent)',machine_created:'var(--accent2)',machine_deleted:'var(--accent)',permission_granted:'var(--success)',permission_revoked:'var(--accent)',login:'var(--accent)',guest_login:'var(--accent2)',idle_off:'var(--text-dim)',error:'var(--danger)'};
+const logTypeLabels={access_granted:'✓ Zugang',access_denied:'✗ Verweigert',plug_on:'⚡ EIN',plug_off:'○ AUS',guest_created:'+ Gast',guest_deleted:'− Gast',machine_created:'+ Maschine',machine_deleted:'− Maschine',permission_granted:'+ Berechtigung',permission_revoked:'− Berechtigung',login:'⎋ Login',guest_login:'👤 Gast-Login',idle_off:'⏱ Leerlauf-AUS',error:'⚠ Fehler'};
+
+async function loadLogFilterOptions() {
+  const opts=await GET('/log/filter-options'); if (!opts) return;
+  const gSel=document.getElementById('f-guest');
+  const mSel=document.getElementById('f-machine');
+  const tSel=document.getElementById('f-type');
+  gSel.innerHTML='<option value="">Alle Gäste</option>'+opts.guests.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+  mSel.innerHTML='<option value="">Alle Maschinen</option>'+opts.machines.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+  tSel.innerHTML='<option value="">Alle Typen</option>'+opts.types.map(t=>`<option value="${t}">${logTypeLabels[t]||t}</option>`).join('');
+}
+
+async function loadLog() {
+  const params=new URLSearchParams({limit:200});
+  const guestId=document.getElementById('f-guest')?.value;
+  const machineId=document.getElementById('f-machine')?.value;
+  const type=document.getElementById('f-type')?.value;
+  const from=document.getElementById('f-from')?.value;
+  const to=document.getElementById('f-to')?.value;
+  const search=document.getElementById('f-search')?.value;
+  if (guestId)   params.append('guest_id',guestId);
+  if (machineId) params.append('machine_id',machineId);
+  if (type)      params.append('type',type);
+  if (from)      params.append('date_from',from);
+  if (to)        params.append('date_to',to);
+  if (search)    params.append('search',search);
+
+  const logs=await GET(`/log?${params}`); if (!logs) return;
+
+  const countEl=document.getElementById('log-count');
+  if (countEl) countEl.textContent=`${logs.length} Einträge gefunden`;
+
+  const render=(containerId,limit=999)=>{
+    const el=document.getElementById(containerId); if (!el) return;
+    if (!logs.length) { el.innerHTML='<div class="log-entry"><div class="log-content" style="color:var(--text-dim)">Keine Einträge gefunden.</div></div>'; return; }
+    el.innerHTML=logs.slice(0,limit).map(l=>{
+      const color=logColors[l.type]||'var(--accent2)';
+      const dt=fmtDate(l.created_at);
+      const tags=[];
+      if (l.guest_name)   tags.push(`<span class="log-tag">👤 ${l.guest_name}</span>`);
+      if (l.machine_name) tags.push(`<span class="log-tag">⚙ ${l.machine_name}</span>`);
+      if (l.user_name)    tags.push(`<span class="log-tag">◈ ${l.user_name}</span>`);
+      return `<div class="log-entry">
+        <div class="log-time">${dt}</div>
+        <div class="log-dot" style="background:${color}"></div>
+        <div class="log-content">
+          <span class="badge badge-gray" style="margin-bottom:4px">${logTypeLabels[l.type]||l.type}</span> ${l.message}
+          ${tags.length?`<div class="log-tags">${tags.join('')}</div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  };
+
+  render('full-log');
+  const dashLog=document.getElementById('dash-log');
+  if (dashLog) {
+    if (!logs.length) { dashLog.innerHTML='<div class="log-entry"><div class="log-content" style="color:var(--text-dim)">Keine Aktivität</div></div>'; return; }
+    dashLog.innerHTML=logs.slice(0,5).map(l=>{
+      const color=logColors[l.type]||'var(--accent2)';
+      const dt=fmtDate(l.created_at);
+      return `<div class="log-entry"><div class="log-time">${dt}</div><div class="log-dot" style="background:${color}"></div><div class="log-content">${l.message}</div></div>`;
+    }).join('');
+  }
+}
+
+function resetLogFilters() {
+  ['f-guest','f-machine','f-type'].forEach(id=>{ const el=document.getElementById(id); if (el) el.value=''; });
+  ['f-from','f-to','f-search'].forEach(id=>{ const el=document.getElementById(id); if (el) el.value=''; });
+  loadLog();
+}
+
+// ═══════════════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════════════
+function openModal(title,bodyHTML,onConfirm,confirmLabel) {
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-body').innerHTML=bodyHTML;
+  const lbl = confirmLabel || 'Speichern';
+  document.getElementById('modal-footer').innerHTML=`<button class="btn btn-ghost" onclick="closeModal()">Abbrechen</button><button class="btn btn-primary" onclick="window._mc&&window._mc()">${lbl}</button>`;
+  window._mc=onConfirm;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); window._mc=null; }
+document.getElementById('modal-overlay').addEventListener('click',e=>{ if (e.target.id==='modal-overlay') closeModal(); });
+
+// ═══════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════
+function showToast(msg,type='info') {
+  const c=document.getElementById('toasts');
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;
+  el.innerHTML=`<span>${{success:'✓',error:'✗',warn:'⚠',info:'ℹ'}[type]||'ℹ'}</span> ${msg}`;
+  c.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateX(100%)'; el.style.transition='.3s'; setTimeout(()=>el.remove(),300); },2500);
+}
+
+function filterTable(input,tableId) {
+  const q=input.value.toLowerCase();
+  document.querySelectorAll(`#${tableId} tbody tr`).forEach(r=>{ r.style.display=r.textContent.toLowerCase().includes(q)?'':'none'; });
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+if (token) {
+  GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
+}
+document.getElementById('login-pass').addEventListener('keydown',e=>{ if (e.key==='Enter') doLogin(); });
+setInterval(()=>{ if(document.querySelector('.nav-item.active')?.dataset.page==='log') loadLog(); },30000);
+// ── Audio-Warnung für Leerlauf ───────────────────────
+let _audioCtx = null;
+function _getAudio() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return _audioCtx;
+}
+function playIdleWarning() {
+  try {
+    const ctx = _getAudio();
+    // Drei kurze, aufsteigende Töne
+    [[0, 660], [0.28, 770], [0.56, 880]].forEach(([offset, freq]) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq; osc.type = 'sine';
+      gain.gain.setValueAtTime(0, ctx.currentTime + offset);
+      gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + offset + 0.025);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + offset + 0.2);
+      osc.start(ctx.currentTime + offset);
+      osc.stop(ctx.currentTime + offset + 0.22);
+    });
+  } catch(e) {}
+}
+
+let _prevWarningIds = new Set();
+let _lastAlarmTime = 0;
+const ALARM_INTERVAL_MS = 30000; // alle 30 Sekunden wiederholen
+
+function _checkIdleAlarm(machines) {
+  const warnings = machines.filter(m => m.idle_state === 'idle_warning').map(m => m.id);
+  const hasWarnings = warnings.length > 0;
+  const hasNew = warnings.some(id => !_prevWarningIds.has(id));
+  _prevWarningIds = new Set(warnings);
+
+  if (!hasWarnings) { _lastAlarmTime = 0; return; }
+
+  const now = Date.now();
+  // Sofort wenn neu + danach alle 30s wiederholen
+  if (hasNew || (now - _lastAlarmTime) >= ALARM_INTERVAL_MS) {
+    playIdleWarning();
+    _lastAlarmTime = now;
+  }
+}
+
+setInterval(async () => {
+  const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
+  if (activePage === 'machines' || activePage === 'dashboard') refreshLiveData();
+}, 5000);
+
+// ═══════════════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════════════
+async function loadStats() {
+  // Dropdowns befüllen
+  const mSel=document.getElementById('s-machine');
+  const gSel=document.getElementById('s-guest');
+  if (mSel.options.length<=1) {
+    cache.machines.forEach(m=>{ const o=document.createElement('option'); o.value=m.id; o.textContent=m.name; mSel.appendChild(o); });
+    cache.guests.forEach(g=>{ const o=document.createElement('option'); o.value=g.id; o.textContent=g.name; gSel.appendChild(o); });
+  }
+  const params=new URLSearchParams({days:document.getElementById('s-days').value});
+  const mid=document.getElementById('s-machine').value;
+  const gid=document.getElementById('s-guest').value;
+  if (mid) params.append('machine_id',mid);
+  if (gid) params.append('guest_id',gid);
+
+  const data=await GET('/guest/stats/sessions?'+params); if (!data) return;
+
+  // Betriebsstunden aus Sessions berechnen (alle Maschinen, nicht nur gefilterte)
+  const allMachinesLive = await GET('/machines/live') || cache.machines;
+  const machineCategories = Object.fromEntries(allMachinesLive.map(m => [m.name, m.category||'—']));
+
+  // Sessions nach Maschine gruppieren und Stunden summieren
+  const machineHoursMap = {};
+  data.sessions.forEach(s => {
+    if (!machineHoursMap[s.machine_name]) machineHoursMap[s.machine_name] = { sessions: [], category: machineCategories[s.machine_name]||'—' };
+    machineHoursMap[s.machine_name].sessions.push(s);
+  });
+
+  const hoursTbody = document.getElementById('stats-hours-tbody');
+  if (hoursTbody) {
+    const machinesWithHours = Object.entries(machineHoursMap).map(([name, d]) => {
+      const withDur = d.sessions.filter(s => s.duration_min);
+      const total_h = withDur.reduce((a, s) => a + s.duration_min, 0) / 60;
+      const avg_h   = withDur.length ? total_h / withDur.length : null;
+      return { name, category: d.category, total_hours: total_h, sessions: d.sessions.length, avg_h };
+    }).sort((a,b) => b.total_hours - a.total_hours);
+
+    if (!machinesWithHours.length) {
+      hoursTbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-dim);text-align:center;padding:16px;font-family:var(--mono);font-size:12px">Keine Sessions im gewählten Zeitraum.</td></tr>';
+    } else {
+      const maxH = Math.max(...machinesWithHours.map(m => m.total_hours), 0.01);
+      hoursTbody.innerHTML = machinesWithHours.map(m => {
+        const pct = Math.round((m.total_hours / maxH) * 100);
+        const bar = `<div style="background:var(--surface2);border-radius:3px;height:6px;margin-top:4px"><div style="background:var(--accent2);width:${pct}%;height:6px;border-radius:3px;transition:width .3s"></div></div>`;
+        return `<tr>
+          <td><strong>${m.name}</strong>${bar}</td>
+          <td style="font-size:12px;color:var(--text-dim)">${m.category}</td>
+          <td style="font-family:var(--mono);font-size:13px;color:var(--accent2);font-weight:700">${m.total_hours.toFixed(1)} h</td>
+          <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${m.avg_h != null ? m.avg_h.toFixed(2)+' h' : '—'}</td>
+          <td style="font-family:var(--mono);font-size:11px">${m.sessions}</td>
+        </tr>`;
+      }).join('');
+    }
+  }
+  const s=data.summary;
+  document.getElementById('ss-count').textContent=s.sessions;
+  document.getElementById('ss-hours').textContent=s.total_duration_h;
+  // Kleinen Verbrauch als Wh anzeigen, grossen als kWh
+  const totalWh = s.total_energy_wh;
+  document.getElementById('ss-kwh').textContent =
+    totalWh == null ? '—' :
+    totalWh < 1000 ? `${totalWh.toFixed(1)} Wh` :
+    `${s.total_energy_kwh} kWh`;
+
+  // Leerlauf-Abschaltungen zählen
+  const idleCount=data.sessions.filter(s=>s.ended_by==='idle_timeout').length;
+  document.getElementById('ss-idle').textContent=idleCount;
+
+  const endedByLabel={guest:'Gast',manager:'Manager',idle_timeout:'⏱ Leerlauf',system:'System'};
+  const tbody=document.getElementById('stats-tbody');
+  if (!data.sessions.length) {
+    tbody.innerHTML='<tr><td colspan="6" style="color:var(--text-dim);text-align:center;padding:24px;font-family:var(--mono);font-size:12px">Keine Sessions im gewählten Zeitraum.</td></tr>';
+    return;
+  }
+  tbody.innerHTML=data.sessions.map(s=>{
+    const dur=s.duration_min!=null?formatDuration(s.duration_min):'—';
+    const wh=s.energy_wh!=null
+      ? (s.energy_wh < 1 ? `${s.energy_wh.toFixed(3)} Wh` : `${s.energy_wh.toFixed(1)} Wh`)
+      : '—';
+    const dt=fmtDate(s.started_at);
+    const eb=endedByLabel[s.ended_by]||s.ended_by||'—';
+    const ebColor=s.ended_by==='idle_timeout'?'var(--accent)':s.ended_by==='manager'?'var(--accent2)':'var(--text-dim)';
+    return `<tr>
+      <td><strong>${s.machine_name}</strong></td>
+      <td style="font-family:var(--mono);font-size:11px">${s.guest_name}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${dt}</td>
+      <td><span class="badge badge-cyan">${dur}</span></td>
+      <td style="font-family:var(--mono);font-size:11px">${wh}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:${ebColor}">${eb}</td>
+    </tr>`;
+  }).join('');
+}
+// ═══════════════════════════════════════════════════════
+// BACKUP
+// ═══════════════════════════════════════════════════════
+async function doExport() {
+  const data = await GET('/backup/export');
+  if (!data) return;
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `makerspace-backup-${ts}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('Export erfolgreich', 'success');
+}
+
+async function doImport(input) {
+  const file = input.files[0]; if (!file) return;
+  const result = document.getElementById('import-result');
+  result.textContent = '⏳ Importiere…';
+  try {
+    const text = await file.text();
+    const payload = JSON.parse(text);
+    const res = await POST('/backup/import', payload);
+    if (!res) { result.textContent = '❌ Import fehlgeschlagen'; return; }
+    const s = res.imported;
+    result.innerHTML = `✅ Importiert: ${s.users} Benutzer, ${s.guests} Gäste, ${s.machines} Maschinen, ${s.permissions} Berechtigungen, ${s.sessions} Sessions, ${s.activity_log} Log-Einträge, ${s.maintenance_intervals||0} Wartungsintervalle, ${s.maintenance_records||0} Wartungsausführungen <span style="color:var(--text-dim)">(${s.skipped} übersprungen)</span>`;
+    showToast('Import erfolgreich', 'success');
+    await loadAll();
+  } catch(e) {
+    result.textContent = `❌ Fehler: ${e.message}`;
+  }
+  input.value = '';
+}
+
+// ═══════════════════════════════════════════════════════
+// MAINTENANCE — MASCHINENPFLEGE
+// ═══════════════════════════════════════════════════════
+
+let maintCache = { intervals: [], records: [] };
+
+function navigateTo(page) {
+  const el = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (el) navigate(el);
+}
+
+async function loadMaintenance() {
+  const [ivs, recs] = await Promise.all([
+    apiSilent('GET', '/maintenance/intervals'),
+    apiSilent('GET', '/maintenance/records?limit=100'),
+  ]);
+  if (ivs)  maintCache.intervals = ivs;
+  if (recs) maintCache.records   = recs;
+  populateMaintMachineFilter();
+  renderIntervals();
+  renderMaintenanceHistory();
+}
+
+async function refreshMaintenanceOverview() {
+  const data = await apiSilent('GET', '/maintenance/overview');
+  if (!data) return;
+  maintCache.intervals = data; // overview liefert gleiche Struktur
+  renderDashboardMaintenance(data);
+  // Badge in Navigation
+  const due = data.filter(iv => iv.status === 'due' || iv.status === 'warning').length;
+  const badge = document.getElementById('badge-maintenance');
+  if (badge) {
+    badge.textContent = due > 0 ? due : '!';
+    badge.style.display = due > 0 ? 'inline-flex' : 'none';
+  }
+}
+
+function populateMaintMachineFilter() {
+  const sel = document.getElementById('maint-filter-machine');
+  if (!sel) return;
+  const machines = [...new Map(maintCache.intervals.map(iv => [iv.machine_id, iv.machine_name])).entries()];
+  sel.innerHTML = '<option value="">Alle Maschinen</option>' +
+    machines.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+}
+
+function statusBadge(status) {
+  if (status === 'due')     return `<span style="background:rgba(239,68,68,.2);color:#ef4444;border:1px solid rgba(239,68,68,.5);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:11px;font-weight:700">⚠ FÄLLIG</span>`;
+  if (status === 'warning') return `<span style="background:rgba(244,166,34,.15);color:var(--accent);border:1px solid rgba(244,166,34,.4);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:11px">⏱ BALD FÄLLIG</span>`;
+  return `<span style="background:rgba(34,197,94,.1);color:var(--success);border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:11px">✓ OK</span>`;
+}
+
+function intervalMeta(iv) {
+  const parts = [];
+  if (iv.interval_hours) parts.push(`alle ${iv.interval_hours} h`);
+  if (iv.interval_days)  parts.push(`alle ${iv.interval_days} Tage`);
+  return parts.join(' oder ');
+}
+
+function intervalRemaining(iv) {
+  const parts = [];
+  if (iv.interval_hours != null && iv.remaining_hours != null) {
+    const h = iv.remaining_hours;
+    if (h <= 0) parts.push(`<span style="color:#ef4444">${Math.abs(h).toFixed(1)} h überfällig</span>`);
+    else        parts.push(`noch ${h.toFixed(1)} h`);
+  }
+  if (iv.interval_days != null && iv.remaining_days != null) {
+    const d = iv.remaining_days;
+    if (d <= 0) parts.push(`<span style="color:#ef4444">${Math.abs(Math.round(d))} Tage überfällig</span>`);
+    else        parts.push(`noch ${Math.round(d)} Tage`);
+  }
+  return parts.join(' / ') || '—';
+}
+
+function renderIntervals() {
+  const container = document.getElementById('maintenance-list');
+  if (!container) return;
+
+  const machineFilter = document.getElementById('maint-filter-machine')?.value;
+  const statusFilter  = document.getElementById('maint-filter-status')?.value;
+
+  let ivs = maintCache.intervals;
+  if (machineFilter) ivs = ivs.filter(iv => String(iv.machine_id) === machineFilter);
+  if (statusFilter)  ivs = ivs.filter(iv => iv.status === statusFilter);
+
+  if (!ivs.length) {
+    container.innerHTML = `<div style="color:var(--text-dim);font-size:13px;padding:16px;text-align:center">Keine Wartungsintervalle vorhanden.</div>`;
+    return;
+  }
+
+  const order = { due: 0, warning: 1, ok: 2 };
+  ivs = [...ivs].sort((a,b) => (order[a.status]||9) - (order[b.status]||9));
+
+  container.innerHTML = ivs.map(iv => `
+    <div class="card" style="padding:16px;margin-bottom:12px;border-left:3px solid ${iv.status==='due'?'#ef4444':iv.status==='warning'?'var(--accent)':'var(--border)'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            ${statusBadge(iv.status)}
+            <strong style="font-size:14px">${iv.name}</strong>
+          </div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:2px">
+            🔧 ${iv.machine_name} &nbsp;·&nbsp; ${intervalMeta(iv)}
+          </div>
+          ${iv.description ? `<div style="font-size:12px;color:var(--text-mid);margin-top:4px">${iv.description}</div>` : ''}
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text-mid);margin-top:6px">
+            Verbleibend: ${intervalRemaining(iv)}
+            &nbsp;·&nbsp; Letzter Zählerstand: ${iv.last_performed_at ? `<span style="color:var(--text)">${new Date(iv.last_performed_at).toLocaleDateString('de-CH')}</span> (${iv.last_performer_name||'—'})` : '<span style="color:var(--text-dim)">noch nie</span>'}
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px">
+            Maschinenstunden gesamt: ${iv.hours_since != null ? iv.hours_since.toFixed(1) + ' h seit letzter Wartung' : '—'}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:120px">
+          <button class="btn btn-success btn-sm" onclick="showRecordMaintenanceById(${iv.id})">✓ Durchgeführt</button>
+          <button class="btn btn-ghost btn-sm" onclick="showEditInterval(${iv.id})">✏ Bearbeiten</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteIntervalById(${iv.id})">✕</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderMaintenanceHistory() {
+  const container = document.getElementById('maintenance-history');
+  if (!container) return;
+
+  const recs = maintCache.records;
+  if (!recs.length) {
+    container.innerHTML = `<div style="color:var(--text-dim);font-size:13px;padding:16px;text-align:center">Noch keine Wartungen dokumentiert.</div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="table-wrap"><table id="maint-history-table">
+    <thead><tr><th>Datum</th><th>Maschine</th><th>Wartung</th><th>Ausgeführt von</th><th>Std.</th><th>Notizen</th></tr></thead>
+    <tbody>
+      ${recs.slice(0, 100).map(r => `<tr>
+        <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${new Date(r.performed_at).toLocaleString('de-CH',{dateStyle:'short',timeStyle:'short'})}</td>
+        <td><strong>${r.machine_name}</strong></td>
+        <td style="font-size:12px">${r.interval_name}${!r.interval_id ? '<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-left:4px">[frei]</span>' : ''}</td>
+        <td style="font-size:12px;color:var(--text-mid)">${r.performer_name}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${r.hours_at_execution != null ? r.hours_at_execution.toFixed(1)+' h' : '—'}</td>
+        <td style="font-size:11px;color:var(--text-mid);max-width:200px">${r.notes||'—'}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+function filterMaintenanceHistory() {
+  const q = document.getElementById('maint-history-search')?.value.toLowerCase() || '';
+  const rows = document.querySelectorAll('#maint-history-table tbody tr');
+  rows.forEach(r => { r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none'; });
+}
+
+function renderDashboardMaintenance(data) {
+  const section = document.getElementById('dash-maintenance-section');
+  const list    = document.getElementById('dash-maintenance-list');
+  const count   = document.getElementById('dash-maintenance-count');
+  if (!section || !list) return;
+
+  const urgent = data.filter(iv => iv.status === 'due' || iv.status === 'warning');
+  section.style.display = urgent.length ? 'block' : 'none';
+  if (!urgent.length) return;
+
+  count.textContent = `// ${urgent.filter(iv=>iv.status==='due').length} FÄLLIG, ${urgent.filter(iv=>iv.status==='warning').length} WARNUNG`;
+
+  list.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Status</th><th>Maschine</th><th>Wartung</th><th>Verbleibend</th><th>Letzter Zählerstand</th><th>Aktion</th></tr></thead>
+    <tbody>
+      ${urgent.map(iv => `<tr style="${iv.status==='due'?'background:rgba(239,68,68,.04)':''}">
+        <td>${statusBadge(iv.status)}</td>
+        <td><strong>${iv.machine_name}</strong></td>
+        <td style="font-size:12px">${iv.name}</td>
+        <td style="font-family:var(--mono);font-size:11px">${intervalRemaining(iv)}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${iv.last_performed_at ? new Date(iv.last_performed_at).toLocaleDateString('de-CH') : '—'}</td>
+        <td><button class="btn btn-success btn-sm" onclick="showRecordMaintenanceById(${iv.id})">✓ Durchgeführt</button></td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+// ── Modals ────────────────────────────────────────────────────────────────────
+
+function showAddInterval() {
+  const machineOpts = [...new Map(
+    cache.machines.map(m => [m.id, m.name])
+  ).entries()].map(([id,name]) => `<option value="${id}">${name}</option>`).join('');
+
+  openModal('Neues Wartungsintervall', `
+    <div class="form-group"><label class="form-label">Maschine *</label>
+      <select class="form-input" id="mi-machine">${machineOpts}</select></div>
+    <div class="form-group"><label class="form-label">Bezeichnung *</label>
+      <input class="form-input" id="mi-name" placeholder="z.B. Laser-Linse reinigen"></div>
+    <div class="form-group"><label class="form-label">Beschreibung</label>
+      <textarea class="form-input" id="mi-desc" rows="2" placeholder="Optionale Beschreibung / Anleitung"></textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label class="form-label">Intervall Betriebsstunden</label>
+        <input class="form-input" id="mi-hours" type="number" min="0.1" step="0.1" placeholder="z.B. 20"></div>
+      <div class="form-group"><label class="form-label">Intervall Tage</label>
+        <input class="form-input" id="mi-days" type="number" min="1" placeholder="z.B. 90"></div>
+    </div>
+    <div style="font-size:11px;color:var(--text-dim);margin:-8px 0 12px">Mindestens eines der beiden Felder muss ausgefüllt sein. Bei beiden gilt: fällig sobald ein Kriterium zutrifft.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label class="form-label">Warnung ab … h vorher</label>
+        <input class="form-input" id="mi-warn-h" type="number" min="0.1" step="0.1" placeholder="z.B. 5"></div>
+      <div class="form-group"><label class="form-label">Warnung ab … Tage vorher</label>
+        <input class="form-input" id="mi-warn-d" type="number" min="1" placeholder="z.B. 14"></div>
+    </div>
+  `, saveNewInterval);
+}
+
+async function saveNewInterval() {
+  const machine_id     = parseInt(document.getElementById('mi-machine').value);
+  const name           = document.getElementById('mi-name').value.trim();
+  const description    = document.getElementById('mi-desc').value.trim() || null;
+  const interval_hours = parseFloat(document.getElementById('mi-hours').value) || null;
+  const interval_days  = parseInt(document.getElementById('mi-days').value)    || null;
+  const warning_hours  = parseFloat(document.getElementById('mi-warn-h').value)|| null;
+  const warning_days   = parseInt(document.getElementById('mi-warn-d').value)  || null;
+
+  if (!name) { showToast('Bezeichnung erforderlich', 'error'); return; }
+  if (!interval_hours && !interval_days) { showToast('Mindestens Stunden oder Tage angeben', 'error'); return; }
+
+  const res = await api('POST', '/maintenance/intervals', {
+    machine_id, name, description, interval_hours, interval_days, warning_hours, warning_days
+  });
+  if (res) {
+    closeModal();
+    showToast('Wartungsintervall erstellt', 'success');
+    await loadMaintenance();
+    await refreshMaintenanceOverview();
+  }
+}
+
+async function showEditInterval(id) {
+  const iv = maintCache.intervals.find(i => i.id === id);
+  if (!iv) return;
+  openModal(`Wartungsintervall bearbeiten`, `
+    <div class="form-group"><label class="form-label">Bezeichnung</label>
+      <input class="form-input" id="ei-name" value="${iv.name}"></div>
+    <div class="form-group"><label class="form-label">Beschreibung</label>
+      <textarea class="form-input" id="ei-desc" rows="2">${iv.description||''}</textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label class="form-label">Intervall Stunden</label>
+        <input class="form-input" id="ei-hours" type="number" min="0.1" step="0.1" value="${iv.interval_hours||''}"></div>
+      <div class="form-group"><label class="form-label">Intervall Tage</label>
+        <input class="form-input" id="ei-days" type="number" min="1" value="${iv.interval_days||''}"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label class="form-label">Warnung ab … h vorher</label>
+        <input class="form-input" id="ei-warn-h" type="number" min="0.1" step="0.1" value="${iv.warning_hours||''}"></div>
+      <div class="form-group"><label class="form-label">Warnung ab … Tage vorher</label>
+        <input class="form-input" id="ei-warn-d" type="number" min="1" value="${iv.warning_days||''}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">
+      <input type="checkbox" id="ei-active" ${iv.is_active?"checked":""} style="margin-right:6px">Aktiv
+    </label></div>
+  `, () => saveEditInterval(id));
+}
+
+async function saveEditInterval(id) {
+  const name           = document.getElementById('ei-name').value.trim();
+  const description    = document.getElementById('ei-desc').value.trim() || null;
+  const interval_hours = parseFloat(document.getElementById('ei-hours').value) || null;
+  const interval_days  = parseInt(document.getElementById('ei-days').value)    || null;
+  const warning_hours  = parseFloat(document.getElementById('ei-warn-h').value)|| null;
+  const warning_days   = parseInt(document.getElementById('ei-warn-d').value)  || null;
+  const is_active      = document.getElementById('ei-active').checked;
+
+  if (!name) { showToast('Bezeichnung erforderlich', 'error'); return; }
+  if (!interval_hours && !interval_days) { showToast('Mindestens Stunden oder Tage angeben', 'error'); return; }
+
+  const res = await api('PATCH', `/maintenance/intervals/${id}`, {
+    name, description, interval_hours, interval_days, warning_hours, warning_days, is_active
+  });
+  if (res) {
+    closeModal();
+    showToast('Intervall aktualisiert', 'success');
+    await loadMaintenance();
+    await refreshMaintenanceOverview();
+  }
+}
+
+async function deleteInterval(id, name) {
+  if (!confirm(`Wartungsintervall «${name}» und die gesamte Wartungshistorie löschen?`)) return;
+  const res = await api('DELETE', `/maintenance/intervals/${id}`);
+  if (res) {
+    showToast('Intervall gelöscht', 'success');
+    await loadMaintenance();
+    await refreshMaintenanceOverview();
+  }
+}
+
+// Wrapper: per ID im Cache nachschlagen — vermeidet String-Escaping in onclick-Attributen
+function showRecordMaintenanceById(id) {
+  const iv = maintCache.intervals.find(i => i.id === id);
+  if (iv) showRecordMaintenance(iv.id, iv.name, iv.machine_name);
+}
+function deleteIntervalById(id) {
+  const iv = maintCache.intervals.find(i => i.id === id);
+  if (iv) deleteInterval(iv.id, iv.name);
+}
+
+function showFreeRecord() {
+  const machineOpts = [...cache.machines]
+    .sort((a,b) => a.name.localeCompare(b.name, "de"))
+    .map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  const now = new Date();
+  const localISO = new Date(now.getTime() - now.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  openModal('Freie Wartung dokumentieren', `
+    <div class="form-group"><label class="form-label">Maschine *</label>
+      <select class="form-input" id="fr-machine">${machineOpts}</select></div>
+    <div class="form-group"><label class="form-label">Bezeichnung *</label>
+      <input class="form-input" id="fr-name" placeholder="z.B. Ölwechsel, Reinigung, Kalibrierung…"></div>
+    <div class="form-group"><label class="form-label">Durchgeführt am</label>
+      <input class="form-input" id="fr-date" type="datetime-local" value="${localISO}"></div>
+    <div class="form-group"><label class="form-label">Notizen</label>
+      <textarea class="form-input" id="fr-notes" rows="3" placeholder="Optionale Bemerkungen…"></textarea></div>
+  `, saveFreeRecord);
+}
+
+async function saveFreeRecord() {
+  const machine_id  = parseInt(document.getElementById('fr-machine').value);
+  const name        = document.getElementById('fr-name').value.trim();
+  const performed_at = document.getElementById('fr-date').value;
+  const notes       = document.getElementById('fr-notes').value.trim() || null;
+  if (!name) { showToast('Bezeichnung erforderlich', 'error'); return; }
+  const res = await api('POST', '/maintenance/records', {
+    machine_id, name, notes,
+    performed_at: performed_at ? new Date(performed_at).toISOString() : null,
+  });
+  if (res) {
+    closeModal();
+    showToast('Wartung dokumentiert', 'success');
+    await loadMaintenance();
+  }
+}
+
+function showRecordMaintenance(intervalId, intervalName, machineName) {
+  const now = new Date();
+  const localISO = new Date(now.getTime() - now.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  openModal(`Wartung dokumentieren`, `
+    <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600">${intervalName}</div>
+      <div style="font-size:12px;color:var(--text-dim);margin-top:2px">🔧 ${machineName}</div>
+    </div>
+    <div class="form-group"><label class="form-label">Durchgeführt am</label>
+      <input class="form-input" id="rec-date" type="datetime-local" value="${localISO}"></div>
+    <div class="form-group"><label class="form-label">Notizen / Bemerkungen</label>
+      <textarea class="form-input" id="rec-notes" rows="3" placeholder="Optionale Bemerkungen zur Durchführung…"></textarea></div>
+  `, () => saveRecord(intervalId), '✓ Wartung bestätigen');
+}
+
+async function saveRecord(intervalId) {
+  const performed_at = document.getElementById('rec-date').value;
+  const notes        = document.getElementById('rec-notes').value.trim() || null;
+
+  const res = await api('POST', '/maintenance/records', {
+    interval_id: intervalId,
+    performed_at: performed_at ? new Date(performed_at).toISOString() : null,
+    notes,
+  });
+  if (res) {
+    closeModal();
+    showToast('Wartung dokumentiert', 'success');
+    await loadMaintenance();
+    await refreshMaintenanceOverview();
+  }
+}
+
+</script>
+</body>
+</html>

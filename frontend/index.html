@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0d0f12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>SpaceCaptain</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0f12;--surface:#151820;--surface2:#1c2030;--border:#2a2f3e;
+    --accent:#f4a622;--accent2:#22d3ee;--danger:#ef4444;--success:#22c55e;
+    --text:#e2e8f0;--text-dim:#64748b;--text-mid:#94a3b8;
+    --mono:'Share Tech Mono',monospace;--body:'Barlow',sans-serif;--display:'Barlow Condensed',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100dvh;display:flex;flex-direction:column;align-items:center}
+  .header{width:100%;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:12px;flex-shrink:0}
+  .header-logo{font-family:var(--display);font-size:18px;font-weight:900;color:var(--accent);letter-spacing:2px}
+  .header-user{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-dim)}
+  .container{width:100%;max-width:480px;padding:20px 16px;flex:1;display:flex;flex-direction:column;gap:16px}
+
+  /* MACHINE CARD */
+  .machine-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;position:relative;overflow:hidden}
+  .machine-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(to right,var(--accent),var(--accent2))}
+  .machine-icon{font-size:32px;margin-bottom:12px}
+  .machine-name{font-family:var(--display);font-size:26px;font-weight:900;letter-spacing:1px;margin-bottom:4px}
+  .machine-meta{font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;margin-bottom:12px}
+  .machine-comment{background:rgba(244,166,34,.1);border:1px solid rgba(244,166,34,.3);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--accent);margin-bottom:12px}
+  .machine-status-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .status-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:1px}
+  .s-online{background:rgba(34,197,94,.15);color:var(--success);border:1px solid rgba(34,197,94,.3)}
+  .s-offline{background:rgba(100,116,139,.15);color:var(--text-dim);border:1px solid var(--border)}
+  .s-maintenance{background:rgba(244,166,34,.15);color:var(--accent);border:1px solid rgba(244,166,34,.3)}
+  .s-plugon{background:rgba(34,197,94,.15);color:var(--success);border:1px solid rgba(34,197,94,.3)}
+  .s-plugoff{background:rgba(100,116,139,.1);color:var(--text-dim);border:1px solid var(--border)}
+  .power-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .power-on{background:var(--success);animation:pulse 2s infinite}
+  .power-off{background:var(--text-dim)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .power-watt{font-family:var(--mono);font-size:12px;color:var(--accent2);margin-left:auto}
+
+  /* CARD */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px}
+  .card-title{font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px}
+  .form-group{margin-bottom:14px}
+  .form-label{display:block;font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  .form-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;color:var(--text);font-family:var(--body);font-size:16px;outline:none;transition:border-color .15s}
+  .form-input:focus{border-color:var(--accent)}
+  .error-box{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--danger);margin-bottom:14px;display:none}
+
+  /* BUTTONS */
+  .btn-big{width:100%;padding:18px;border:none;border-radius:12px;cursor:pointer;font-family:var(--display);font-size:20px;font-weight:900;letter-spacing:2px;text-transform:uppercase;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:10px}
+  .btn-login{background:var(--accent);color:var(--bg)}.btn-login:active{transform:scale(.98)}
+  .btn-on{background:var(--success);color:var(--bg);box-shadow:0 0 30px rgba(34,197,94,.3)}.btn-on:active{transform:scale(.97)}
+  .btn-off{background:transparent;color:var(--danger);border:2px solid var(--danger)}.btn-off:active{background:var(--danger);color:#fff}
+  .btn-secondary{background:transparent;color:var(--text-dim);border:1px solid var(--border);font-size:14px;font-family:var(--body);font-weight:600;letter-spacing:0;padding:14px;border-radius:10px;width:100%;cursor:pointer;margin-top:4px}
+  .btn-big:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+
+  /* SCAN BOX */
+  .scan-box{background:var(--surface2);border:2px dashed var(--border);border-radius:12px;padding:32px 20px;text-align:center}
+  .scan-icon{font-size:56px;margin-bottom:12px}
+  .scan-title{font-family:var(--display);font-size:22px;font-weight:900;color:var(--text);margin-bottom:8px;letter-spacing:1px}
+  .scan-desc{font-size:14px;color:var(--text-dim);line-height:1.6}
+
+  /* DENIED */
+  .denied-card{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:12px;padding:24px;text-align:center}
+  .denied-icon{font-size:40px;margin-bottom:12px}
+  .denied-title{font-family:var(--display);font-size:22px;font-weight:900;color:var(--danger);margin-bottom:8px;letter-spacing:1px}
+  .denied-sub{font-size:14px;color:var(--text-mid);line-height:1.5}
+
+  .warn-card{background:rgba(244,166,34,.06);border:1px solid rgba(244,166,34,.3);border-radius:12px;padding:24px;text-align:center}
+
+  /* FLASH */
+  .flash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity .2s}
+  .flash.show{opacity:1}
+  .flash-on{background:rgba(34,197,94,.15);border:3px solid var(--success)}
+  .flash-off{background:rgba(100,116,139,.1);border:3px solid var(--border)}
+  .flash-icon{font-size:80px;margin-bottom:16px}
+  .flash-text{font-family:var(--display);font-size:28px;font-weight:900;letter-spacing:2px;text-align:center;padding:0 20px}
+  .flash-on .flash-text{color:var(--success)}
+  .flash-off .flash-text{color:var(--text-mid)}
+
+  /* LOADING */
+  .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .screen{display:none}.screen.active{display:flex;flex-direction:column;gap:16px}
+  .idle-warn-box{border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;animation:guest-idle-pulse 1.5s ease-in-out infinite}
+  .idle-warn-box.warning{background:rgba(239,68,68,.12);border:2px solid rgba(239,68,68,.5)}
+  .idle-warn-box.caution{background:rgba(244,166,34,.08);border:1px solid rgba(244,166,34,.4)}
+  @keyframes guest-idle-pulse{0%,100%{opacity:1}50%{opacity:.6}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">SpaceCaptain</div>
+  <div class="header-user" id="header-user"></div>
+</div>
+
+<div class="container">
+
+  <!-- LOADING -->
+  <div class="screen active" id="screen-loading">
+    <div style="text-align:center;padding:40px;color:var(--text-dim);font-family:var(--mono);font-size:12px">
+      <div class="spinner" style="margin-bottom:12px"></div><br>Wird geladen…
+    </div>
+  </div>
+
+  <!-- LOGIN (funktioniert mit und ohne ?m= Parameter) -->
+  <div class="screen" id="screen-login">
+    <!-- Maschinenvorschau wenn über QR aufgerufen -->
+    <div id="login-machine-preview"></div>
+    <div class="card">
+      <div class="card-title">🔑 Anmelden</div>
+      <div class="error-box" id="login-error"></div>
+      <div class="form-group">
+        <label class="form-label">Benutzername</label>
+        <input class="form-input" id="login-username" type="text" inputmode="text" autocomplete="username" placeholder="benutzername" autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Passwort</label>
+        <input class="form-input" id="login-pass" type="password" autocomplete="current-password" placeholder="••••••••">
+      </div>
+      <button class="btn-big btn-login" id="btn-login" onclick="doLogin()">→ Anmelden</button>
+    </div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:center;padding:8px">
+      Zugang zu Maschinen über QR-Code an der jeweiligen Maschine
+    </div>
+  </div>
+
+  <!-- NACH LOGIN OHNE QR — Anleitung zum Scannen -->
+  <div class="screen" id="screen-scan">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:24px">👤</div>
+      <div>
+        <div style="font-weight:600">Angemeldet als <span id="scan-username" style="color:var(--accent)"></span></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px">Session aktiv · 8h gültig</div>
+      </div>
+    </div>
+    <div class="scan-box">
+      <div class="scan-icon">▦</div>
+      <div class="scan-title">Maschine wählen</div>
+      <div class="scan-desc" style="margin-bottom:0">
+        Scanne den QR-Code an einer Maschine — du wirst automatisch zur Steuerung weitergeleitet, <strong>ohne dich erneut anmelden zu müssen</strong>.
+      </div>
+    </div>
+    <button class="btn-big btn-login" style="background:var(--accent2)" onclick="showGuestDashboard()">◈ Maschinen-Status anzeigen</button>
+    <button class="btn-secondary" onclick="showChangePassword()" style="color:var(--text-mid)">🔑 Passwort ändern</button>
+    <button class="btn-secondary" onclick="doLogout()">⎋ Abmelden</button>
+  </div>
+
+  <!-- MASCHINENSTEUERUNG -->
+  <div class="screen" id="screen-control">
+    <div class="machine-card" id="control-machine-card"></div>
+    <!-- Live-Stromverbrauch -->
+    <div id="power-live" style="display:none;background:var(--surface);border:1px solid rgba(34,211,238,.3);border-radius:10px;padding:14px 16px;display:none;align-items:center;gap:12px">
+      <div style="font-size:20px">⚡</div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:2px">STROMVERBRAUCH</div>
+        <div style="font-family:var(--display);font-size:24px;font-weight:900;color:var(--accent2)" id="power-live-value">—</div>
+      </div>
+      <div style="margin-left:auto;text-align:right">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:2px">LAUFZEIT</div>
+        <div style="font-family:var(--mono);font-size:14px;color:var(--text)" id="power-live-duration">—</div>
+      </div>
+    </div>
+
+    <!-- Leerlauf-Warnung -->
+    <div id="ctrl-idle-warning" style="display:none"></div>
+    <!-- Berechtigt -->
+    <div id="ctrl-granted" style="display:none;flex-direction:column;gap:12px">
+      <button class="btn-big btn-on"  id="btn-on"  onclick="switchMachine('on')">⚡ EINSCHALTEN</button>
+      <button class="btn-big btn-off" id="btn-off" onclick="switchMachine('off')">○ AUSSCHALTEN</button>
+    </div>
+
+    <!-- Keine Berechtigung -->
+    <div class="denied-card" id="ctrl-denied" style="display:none">
+      <div class="denied-icon">🚫</div>
+      <div class="denied-title">Kein Zugang</div>
+      <div class="denied-sub">Du hast keine Berechtigung für diese Maschine.<br>Bitte wende dich an einen Lab Manager.</div>
+    </div>
+
+    <!-- Maschine nicht verfügbar -->
+    <div class="warn-card" id="ctrl-offline" style="display:none">
+      <div style="font-size:40px;margin-bottom:12px">⚠️</div>
+      <div style="font-family:var(--display);font-size:22px;font-weight:900;color:var(--accent);margin-bottom:8px;letter-spacing:1px">Nicht verfügbar</div>
+      <div style="font-size:14px;color:var(--text-mid);line-height:1.5" id="ctrl-offline-reason">Maschine offline oder in Wartung.</div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn-secondary" style="flex:1" id="btn-back-dash" onclick="goBackToDashboard()">← Dashboard</button>
+      <button class="btn-secondary" style="flex:0;padding:14px 16px" onclick="doLogout()" title="Abmelden">⎋</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- PASSWORT ÄNDERN -->
+<div id="screen-pw" style="position:fixed;inset:0;background:var(--bg);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px">
+  <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:16px">
+    <div style="font-family:var(--display);font-size:22px;font-weight:900;color:var(--accent);letter-spacing:2px;text-align:center">PASSWORT ÄNDERN</div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:center;letter-spacing:1px" id="pw-username-label"></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;display:block;margin-bottom:6px">AKTUELLES PASSWORT</label>
+        <input type="password" id="pw-current" class="input-field" placeholder="Aktuelles Passwort" style="width:100%;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;display:block;margin-bottom:6px">NEUES PASSWORT</label>
+        <input type="password" id="pw-new" class="input-field" placeholder="Mindestens 6 Zeichen" style="width:100%;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;display:block;margin-bottom:6px">NEUES PASSWORT BESTÄTIGEN</label>
+        <input type="password" id="pw-confirm" class="input-field" placeholder="Wiederholen" style="width:100%;box-sizing:border-box">
+      </div>
+      <div id="pw-error" style="display:none;color:#ef4444;font-family:var(--mono);font-size:11px;padding:8px;background:rgba(239,68,68,.1);border-radius:6px"></div>
+      <button class="btn-primary" id="pw-btn" onclick="doChangePassword()">🔑 Passwort speichern</button>
+    </div>
+    <button class="btn-secondary" onclick="document.getElementById('screen-pw').style.display='none'">← Zurück</button>
+  </div>
+</div>
+
+<!-- GÄSTE-DASHBOARD -->
+<div class="screen" id="screen-dashboard" style="position:fixed;inset:0;background:var(--bg);overflow-y:auto;z-index:100;display:none;flex-direction:column">
+  <div class="header" style="flex-shrink:0">
+    <div class="header-logo">SpaceCaptain</div>
+    <div class="header-user" id="dash-user-label"></div>
+  </div>
+  <div style="max-width:480px;width:100%;margin:0 auto;padding:20px 16px;display:flex;flex-direction:column;gap:12px;flex:1">
+    <div style="font-family:var(--display);font-size:20px;font-weight:900;color:var(--text);letter-spacing:1px">Maschinen-Status</div>
+    <div id="gdash-content"><div style="text-align:center;padding:20px;font-family:var(--mono);font-size:12px;color:var(--text-dim)"><div class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;margin-right:6px"></div>Laden...</div></div>
+    <button class="btn-secondary" onclick="hideDashboard()">Zuruck</button>
+  </div>
+</div>
+
+<!-- FLASH -->
+<div class="flash flash-on" id="flash">
+  <div class="flash-icon" id="flash-icon">✓</div>
+  <div class="flash-text" id="flash-text">EINGESCHALTET</div>
+</div>
+
+<script>
+const API = '/api';
+const machineIcons = {Laser:'⚡',CNC:'⚙','3D-Druck':'🖨',Holz:'🪚',Metall:'🔩',Elektronik:'🔌',Sonstiges:'🔧'};
+
+let S = {
+  machineToken:  null,
+  guestToken:    null,
+  guestName:     null,
+  username:      null,
+  guestId:       null,
+  machine:       null,
+  hasPermission: false,
+  myMachineOn:   false,
+  _wasIdleWarning: false,
+};
+
+// ── Helpers ───────────────────────────────────────────
+function getParam(k) { return new URLSearchParams(window.location.search).get(k); }
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+function setHeaderUser(name) {
+  document.getElementById('header-user').textContent = name ? `@${name}` : '';
+}
+
+// ── Machine card render ───────────────────────────────
+function renderMachineCard(containerId, m) {
+  const icon = machineIcons[m.category] || '🔧';
+  const sc   = {online:'s-online', offline:'s-offline', maintenance:'s-maintenance'}[m.status] || 's-offline';
+  const sl   = {online:'● ONLINE', offline:'○ OFFLINE', maintenance:'⚠ WARTUNG'}[m.status] || m.status;
+  let plug = '';
+  if (m.plug_supported && m.plug_on !== null) {
+    plug = `<span class="status-badge ${m.plug_on?'s-plugon':'s-plugoff'}">
+              <span class="power-dot ${m.plug_on?'power-on':'power-off'}"></span>
+              ${m.plug_on ? 'LÄUFT' : 'BEREIT'}
+            </span>`;
+    // Keine Wattangabe hier — wird in der Live-Box unten angezeigt
+  }
+  let sessionInfo = '';
+  if (m.current_guest_name && m.current_guest_name !== 'null') {
+    // Laufzeit live aus session_started_at berechnen falls vorhanden
+    let liveDur = m.session_duration_min;
+    if (m.session_started_at) {
+      liveDur = Math.max(0, (Date.now() - new Date(m.session_started_at).getTime()) / 60000);
+    }
+    const dur = liveDur != null ? ` · ${formatDur(liveDur)}` : '';
+    sessionInfo = `<div style="font-family:var(--mono);font-size:11px;color:var(--accent2);margin-top:8px">◉ ${m.current_guest_name}${dur}</div>`;
+  }
+  document.getElementById(containerId).innerHTML = `
+    <div class="machine-icon">${icon}</div>
+    <div class="machine-name">${m.name}</div>
+    <div class="machine-meta">${m.category}${m.location && m.location !== '—' ? ' // ' + m.location : ''}</div>
+    ${m.comment ? `<div class="machine-comment">⚠ ${m.comment}</div>` : ''}
+    <div class="machine-status-row"><span class="status-badge ${sc}">${sl}</span>${plug}</div>
+    ${sessionInfo}`;
+}
+
+// ── Machine preview in login (compact) ───────────────
+function renderLoginPreview(m) {
+  const icon = machineIcons[m.category] || '🔧';
+  const sc   = {online:'s-online', offline:'s-offline', maintenance:'s-maintenance'}[m.status] || 's-offline';
+  const sl   = {online:'● ONLINE', offline:'○ OFFLINE', maintenance:'⚠ WARTUNG'}[m.status] || m.status;
+  document.getElementById('login-machine-preview').innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px">
+      <div style="font-size:28px">${icon}</div>
+      <div style="flex:1">
+        <div style="font-family:var(--display);font-size:18px;font-weight:700">${m.name}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px">${m.category}</div>
+        ${m.comment ? `<div style="font-size:12px;color:var(--accent);margin-top:4px">⚠ ${m.comment}</div>` : ''}
+      </div>
+      <span class="status-badge ${sc}">${sl}</span>
+    </div>`;
+}
+
+// ── API: load machine info ────────────────────────────
+async function loadMachine(token) {
+  try {
+    const r = await fetch(`${API}/guest/machine/${token}`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+// ── Login ─────────────────────────────────────────────
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const pass     = document.getElementById('login-pass').value;
+  const errEl    = document.getElementById('login-error');
+  const btn      = document.getElementById('btn-login');
+  errEl.style.display = 'none';
+
+  if (!username || !pass) {
+    errEl.textContent = 'Bitte Benutzername und Passwort eingeben.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0"></div>';
+
+  try {
+    const r = await fetch(`${API}/guest/login`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password: pass})
+    });
+    const data = await r.json();
+
+    if (!r.ok) {
+      errEl.textContent = data.detail || 'Anmeldung fehlgeschlagen';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = '→ Anmelden';
+      return;
+    }
+
+    S.guestToken = data.access_token;
+    S.guestName  = data.guest_name;
+    S.username   = data.username;
+    S.guestId    = data.guest_id;
+    sessionStorage.setItem('guest_token',    S.guestToken);
+    sessionStorage.setItem('guest_name',     S.guestName);
+    sessionStorage.setItem('guest_username', S.username);
+    sessionStorage.setItem('guest_id',       data.guest_id);
+    setHeaderUser(S.username);
+
+    if (S.machineToken) {
+      await showControlScreen();
+    } else {
+      document.getElementById('scan-username').textContent = S.username;
+      showScreen('scan');
+    }
+
+  } catch {
+    errEl.textContent = 'Verbindungsfehler. Bitte erneut versuchen.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = '→ Anmelden';
+  }
+}
+
+// ── Control screen ────────────────────────────────────
+let _liveRefreshTimer = null;
+
+async function showControlScreen() {
+  try {
+    const r = await fetch(`${API}/guest/check`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({access_token: S.guestToken, machine_token: S.machineToken})
+    });
+    if (!r.ok) { doLogout(); return; }
+    const d = await r.json();
+    S.machine = {...(S.machine || {}), ...d.machine};
+    S.hasPermission = d.has_permission;
+    S.myMachineOn = d.machine.current_guest_id === d.guest_id;  // ich habe diese Maschine eingeschaltet
+
+    renderMachineCard('control-machine-card', S.machine);
+    ['ctrl-granted','ctrl-denied','ctrl-offline'].forEach(id =>
+      document.getElementById(id).style.display = 'none');
+
+    if (S.machine.status !== 'online') {
+      const reason = S.machine.status === 'maintenance' && S.machine.comment
+        ? `In Wartung: ${S.machine.comment}` : 'Diese Maschine ist aktuell nicht verfügbar.';
+      document.getElementById('ctrl-offline-reason').textContent = reason;
+      document.getElementById('ctrl-offline').style.display = 'block';
+    } else if (!d.has_permission) {
+      document.getElementById('ctrl-denied').style.display = 'block';
+    } else {
+      document.getElementById('ctrl-granted').style.display = 'flex';
+      updateButtons(S.machine.plug_on, S.myMachineOn);
+    }
+  } catch {
+    if (S.machine) renderMachineCard('control-machine-card', S.machine);
+  }
+
+  showScreen('control');
+  startLiveRefresh();
+}
+
+function updateButtons(plugOn, myMachineOn) {
+  const btnOn  = document.getElementById('btn-on');
+  const btnOff = document.getElementById('btn-off');
+  btnOn.textContent  = '⚡ EINSCHALTEN';
+  btnOff.textContent = '○ AUSSCHALTEN';
+
+  // Bei Maschinen ohne Plug: Session-State aus session_started_at ableiten
+  const noPlug = !S.machine.plug_supported && S.machine.plug_type === 'none';
+  const isOn   = noPlug ? !!S.machine.session_started_at : plugOn === true;
+
+  // EIN: nur wenn Maschine gerade aus ist
+  btnOn.disabled = isOn;
+
+  // AUS: gesperrt wenn Manager-Session aktiv (aber nicht bei gepollt/fallback)
+  if (S.machine.session_manager_id && !noPlug) {
+    btnOff.disabled = true;
+    btnOff.textContent = '○ Manager-Session aktiv';
+    return;
+  }
+
+  // AUS: nur wenn ICH diese Maschine eingeschaltet habe
+  const canOff = isOn && (myMachineOn || !S.machine.current_guest_id);
+  btnOff.disabled = !canOff;
+  if (isOn && !canOff) {
+    btnOff.textContent = '○ Nicht deine Session';
+  }
+}
+
+// ── Live-Refresh: Stromverbrauch + Status alle 5s ────
+function startLiveRefresh() {
+  stopLiveRefresh();
+  _liveRefreshTimer = setInterval(refreshLive, 5000);
+  refreshLive(); // sofort einmal
+}
+
+function stopLiveRefresh() {
+  if (_liveRefreshTimer) { clearInterval(_liveRefreshTimer); _liveRefreshTimer = null; }
+}
+
+async function refreshLive() {
+  if (!S.machineToken) return;
+  try {
+    const r = await fetch(`${API}/guest/machine/${S.machineToken}`);
+    if (!r.ok) return;
+    const m = await r.json();
+
+    // Stromverbrauch anzeigen
+    const powerBox = document.getElementById('power-live');
+    const noPlug = !m.plug_supported && m.plug_type === 'none';
+    if (m.plug_supported && m.plug_on) {
+      powerBox.style.display = 'flex';
+      document.getElementById('power-live-value').textContent =
+        m.power_w != null ? `${Math.round(m.power_w)} W` : '— W';
+      if (m.session_started_at) {
+        const start = new Date(m.session_started_at);
+        const mins = Math.max(0, (Date.now() - start.getTime()) / 60000);
+        document.getElementById('power-live-duration').textContent = formatDur(mins);
+      }
+    } else if (noPlug && m.session_started_at) {
+      // Maschine ohne Plug: nur Laufzeit anzeigen, kein Watt
+      powerBox.style.display = 'flex';
+      document.getElementById('power-live-value').textContent = '— W';
+      const start = new Date(m.session_started_at);
+      const mins = Math.max(0, (Date.now() - start.getTime()) / 60000);
+      document.getElementById('power-live-duration').textContent = formatDur(mins);
+    } else {
+      powerBox.style.display = 'none';
+    }
+
+    // Maschinencard aktualisieren (Status, Wer nutzt sie)
+    S.machine = {...S.machine, ...m};
+    renderMachineCard('control-machine-card', S.machine);
+
+    // Leerlauf-Warnung anzeigen
+    const idleBox = document.getElementById('ctrl-idle-warning');
+    if (idleBox) {
+      if (m.idle_state === 'idle_warning') {
+        const rem = (m.idle_timeout_min != null && m.idle_since_min != null)
+          ? Math.max(0, Math.ceil(m.idle_timeout_min - m.idle_since_min)) : '?';
+        idleBox.style.display = 'block';
+        idleBox.innerHTML = `<div class="idle-warn-box warning">
+          <div style="font-size:28px">⚠️</div>
+          <div>
+            <div style="font-family:var(--display);font-size:15px;font-weight:900;color:#ef4444;letter-spacing:1px">LEERLAUF ERKANNT</div>
+            <div style="font-family:var(--mono);font-size:12px;color:var(--text-mid);margin-top:3px">Automatische Abschaltung in <strong style="color:#ef4444">${rem} Min.</strong></div>
+          </div>
+        </div>`;
+        if (!S._wasIdleWarning) { playGuestIdleBeep(); S._wasIdleWarning = true; }
+      } else if (m.idle_state === 'idle') {
+        const since = m.idle_since_min != null ? ` seit ${Math.floor(m.idle_since_min)} min` : '';
+        idleBox.style.display = 'block';
+        idleBox.innerHTML = `<div class="idle-warn-box caution">
+          <div style="font-size:20px">⏱</div>
+          <div style="font-family:var(--mono);font-size:12px;color:var(--accent)">LEERLAUF${since}</div>
+        </div>`;
+        S._wasIdleWarning = false;
+      } else {
+        idleBox.style.display = 'none';
+        idleBox.innerHTML = '';
+        S._wasIdleWarning = false;
+      }
+    }
+
+    // Buttons aktualisieren
+    const myMachineOn = S.myMachineOn;
+    if (S.hasPermission && S.machine.status === 'online') {
+      updateButtons(m.plug_on, myMachineOn);
+    }
+  } catch {}
+}
+
+// ── Akustische Warnung Gast ───────────────────────────
+function playGuestIdleBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.4, 0.8].forEach(offset => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = 660; osc.type = 'sine';
+      gain.gain.setValueAtTime(0, ctx.currentTime + offset);
+      gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + offset + 0.03);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + offset + 0.22);
+      osc.start(ctx.currentTime + offset);
+      osc.stop(ctx.currentTime + offset + 0.25);
+    });
+  } catch(e) {}
+}
+
+// ── Back to dashboard ────────────────────────────────
+function goBackToDashboard() {
+  stopLiveRefresh();
+  // machineToken aus URL entfernen damit wir sauber zurückkommen
+  S.machineToken = null;
+  document.getElementById('scan-username').textContent = S.username;
+  showScreen('scan');
+  // Dashboard direkt zeigen
+  showGuestDashboard();
+}
+
+// ── Switch ────────────────────────────────────────────
+async function switchMachine(action) {
+  const btn = document.getElementById(action === 'on' ? 'btn-on' : 'btn-off');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0"></div>';
+
+  try {
+    const r = await fetch(`${API}/guest/switch`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({access_token: S.guestToken, machine_token: S.machineToken, action})
+    });
+    const data = await r.json();
+
+    if (!r.ok) {
+      alert(data.detail || 'Fehler beim Schalten');
+      btn.disabled = false;
+      btn.textContent = action === 'on' ? '⚡ EINSCHALTEN' : '○ AUSSCHALTEN';
+      return;
+    }
+
+    if (data.ok) {
+      // Flash anzeigen
+      const flash = document.getElementById('flash');
+      flash.className = `flash ${action === 'on' ? 'flash-on' : 'flash-off'}`;
+      document.getElementById('flash-icon').textContent  = action === 'on' ? '✓' : '○';
+      document.getElementById('flash-text').textContent  = action === 'on' ? 'EINGESCHALTET' : 'AUSGESCHALTET';
+      flash.classList.add('show');
+      setTimeout(() => flash.classList.remove('show'), 1500);
+
+      // Nach Einschalten: merken dass ICH diese Session habe
+      if (action === 'on') S.myMachineOn = true;
+      if (action === 'off') S.myMachineOn = false;
+
+      // Sofort refreshen (nicht auf Timer warten)
+      await refreshLive();
+    } else {
+      alert(data.message || 'Schalten fehlgeschlagen');
+      btn.disabled = false;
+      btn.textContent = action === 'on' ? '⚡ EINSCHALTEN' : '○ AUSSCHALTEN';
+    }
+  } catch {
+    alert('Verbindungsfehler');
+    btn.disabled = false;
+    btn.textContent = action === 'on' ? '⚡ EINSCHALTEN' : '○ AUSSCHALTEN';
+  }
+}
+
+// ── Logout ────────────────────────────────────────────
+function doLogout() {
+  stopLiveRefresh();
+  sessionStorage.clear();
+  S.guestToken = null; S.guestName = null; S.username = null; S.guestId = null;
+  setHeaderUser(null);
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('btn-login').disabled = false;
+  document.getElementById('btn-login').textContent = '→ Anmelden';
+  document.getElementById('login-error').style.display = 'none';
+  if (S.machine) renderLoginPreview(S.machine);
+  showScreen('login');
+  setTimeout(() => document.getElementById('login-username').focus(), 100);
+}
+
+// ── Init ──────────────────────────────────────────────
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+function hideDashboard() {
+  document.getElementById('screen-dashboard').style.display='none';
+}
+
+async function showGuestDashboard() {
+  document.getElementById('screen-dashboard').style.display='flex'; document.getElementById('dash-user-label').textContent=S.username?'@'+S.username:'';
+  const machines = await fetch('/api/guest/dashboard').then(r=>r.json()).catch(()=>[]);
+  const icons = {Laser:'⚡',CNC:'⚙','3D-Druck':'🖨',Holz:'🪚',Metall:'🔩',Elektronik:'🔌',Sonstiges:'🔧'};
+  const el = document.getElementById('gdash-content');
+  if (!machines.length) { el.innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;text-align:center;padding:20px">Keine Maschinen.</div>'; return; }
+  el.innerHTML = machines.map(m => {
+    const icon = icons[m.category] || '🔧';
+    const inUse = m.in_use;
+    const available = m.status === 'online' && !inUse;
+    let statusHtml;
+    if (m.status !== 'online') {
+      statusHtml = `<div style="font-family:var(--mono);font-size:11px;color:var(--accent)">⚠ ${m.status === 'maintenance' ? 'In Wartung' : 'Offline'}${m.comment?' · '+m.comment:''}</div>`;
+    } else if (inUse) {
+      const dur = m.session_duration_min != null ? ` · ${formatDur(m.session_duration_min)}` : '';
+      statusHtml = `<div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">● IN BENUTZUNG · ${m.current_guest_name||'?'}${dur}</div>`;
+      if (m.power_w) statusHtml += `<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">${Math.round(m.power_w)} W</div>`;
+    } else {
+      statusHtml = `<div style="font-family:var(--mono);font-size:11px;color:var(--success)">● VERFÜGBAR</div>`;
+    }
+    return `<div style="background:var(--surface);border:1px solid ${inUse?'rgba(34,211,238,.3)':available?'rgba(34,197,94,.2)':'var(--border)'};border-radius:10px;padding:16px;display:flex;align-items:center;gap:14px">
+      <div style="font-size:24px;flex-shrink:0">${icon}</div>
+      <div style="flex:1">
+        <div style="font-family:var(--display);font-size:16px;font-weight:700">${m.name}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:4px">${m.category}${m.location&&m.location!=='—'?' · '+m.location:''}</div>
+        ${statusHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function formatDur(min) {
+  if (min == null || min < 0) return '';
+  if (min < 1) return '< 1 min';
+  if (min < 60) return `${Math.floor(min)} min`;
+  const h = Math.floor(min / 60);
+  const m = Math.floor(min % 60);
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+}
+
+// ── Passwort ändern ──────────────────────────────────
+function showChangePassword() {
+  document.getElementById('pw-username-label').textContent = `@${S.username}`;
+  document.getElementById('pw-current').value = '';
+  document.getElementById('pw-new').value = '';
+  document.getElementById('pw-confirm').value = '';
+  document.getElementById('pw-error').style.display = 'none';
+  document.getElementById('screen-pw').style.display = 'flex';
+}
+
+async function doChangePassword() {
+  const cur = document.getElementById('pw-current').value;
+  const nw  = document.getElementById('pw-new').value;
+  const cnf = document.getElementById('pw-confirm').value;
+  const err = document.getElementById('pw-error');
+  const btn = document.getElementById('pw-btn');
+
+  err.style.display = 'none';
+  if (!cur || !nw || !cnf) { err.textContent = 'Alle Felder ausfüllen'; err.style.display = 'block'; return; }
+  if (nw !== cnf) { err.textContent = 'Neue Passwörter stimmen nicht überein'; err.style.display = 'block'; return; }
+  if (nw.length < 6) { err.textContent = 'Neues Passwort muss mindestens 6 Zeichen haben'; err.style.display = 'block'; return; }
+
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const r = await fetch(`${API}/guest/change-password`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({access_token: S.guestToken, current_password: cur, new_password: nw})
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      err.textContent = data.detail || 'Fehler beim Ändern';
+      err.style.display = 'block';
+    } else {
+      document.getElementById('screen-pw').style.display = 'none';
+      // Kurze Bestätigung zeigen
+      const flash = document.getElementById('flash');
+      flash.className = 'flash flash-on';
+      document.getElementById('flash-icon').textContent = '✓';
+      document.getElementById('flash-text').textContent = 'PASSWORT GEÄNDERT';
+      flash.classList.add('show');
+      setTimeout(() => flash.classList.remove('show'), 2000);
+    }
+  } catch {
+    err.textContent = 'Verbindungsfehler';
+    err.style.display = 'block';
+  }
+  btn.disabled = false;
+  btn.textContent = '🔑 Passwort speichern';
+}
+
+
+async function init() {
+  S.machineToken = getParam('m');
+  const loginToken = getParam('lt');  // persönlicher Login-Token
+
+  // Token-Link Login: ?lt=... direkt einloggen
+  if (loginToken) {
+    try {
+      const r = await fetch(`${API}/guest/login-by-token`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({login_token: loginToken})
+      });
+      if (r.ok) {
+        const d = await r.json();
+        S.guestToken = d.access_token;
+        S.guestName  = d.guest_name;
+        S.username   = d.username;
+        S.guestId    = d.guest_id;
+        sessionStorage.setItem('guest_token',    S.guestToken);
+        sessionStorage.setItem('guest_name',     S.guestName);
+        sessionStorage.setItem('guest_username', S.username);
+        sessionStorage.setItem('guest_id',       S.guestId);
+        setHeaderUser(S.username);
+        // URL bereinigen (lt-Parameter entfernen) ohne Reload
+        const cleanUrl = window.location.pathname + (S.machineToken ? `?m=${S.machineToken}` : '');
+        window.history.replaceState({}, '', cleanUrl);
+        if (S.machineToken) {
+          const m = await loadMachine(S.machineToken);
+          if (m) { S.machine = m; }
+          await showControlScreen();
+        } else {
+          document.getElementById('scan-username').textContent = S.username;
+          showScreen('scan');
+        }
+        return;
+      }
+    } catch {}
+    // Token ungültig — normalen Login zeigen
+  }
+
+  // Session wiederherstellen
+  const savedToken    = sessionStorage.getItem('guest_token');
+  const savedName     = sessionStorage.getItem('guest_name');
+  const savedUsername = sessionStorage.getItem('guest_username');
+
+  // Maschine vorladen (falls QR-Code)
+  if (S.machineToken) {
+    const m = await loadMachine(S.machineToken);
+    if (m) { S.machine = m; renderLoginPreview(m); }
+  }
+
+  if (savedToken) {
+    S.guestToken = savedToken;
+    S.guestName  = savedName;
+    S.username   = savedUsername;
+    S.guestId    = parseInt(sessionStorage.getItem('guest_id')) || null;
+    setHeaderUser(savedUsername);
+
+    if (S.machineToken) {
+      await showControlScreen();
+    } else {
+      document.getElementById('scan-username').textContent = savedUsername;
+      showScreen('scan');
+    }
+  } else {
+    // Immer Login anzeigen — mit oder ohne ?m= Parameter
+    showScreen('login');
+    setTimeout(() => document.getElementById('login-username').focus(), 100);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
