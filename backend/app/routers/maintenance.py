@@ -285,6 +285,7 @@ async def create_record(
     record_name = iv.name if iv else payload.name
     record = MaintenanceRecord(
         interval_id=iv.id if iv else None,
+        name=record_name,
         machine_id=machine.id,
         performed_by=current.id,
         performed_at=performed_at,
@@ -338,7 +339,7 @@ async def list_records(
     return [{
         "id":                 r.id,
         "interval_id":        r.interval_id,
-        "interval_name":      intervals.get(r.interval_id, "Freie Wartung"),
+        "interval_name":      r.name or intervals.get(r.interval_id, "Freie Wartung"),
         "machine_id":         r.machine_id,
         "machine_name":       machines.get(r.machine_id, "?"),
         "performed_by":       r.performed_by,

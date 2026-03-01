@@ -177,6 +177,7 @@ class MaintenanceRecord(Base):
     __tablename__ = "maintenance_records"
     id:                   Mapped[int]             = mapped_column(Integer, primary_key=True, autoincrement=True)
     interval_id:          Mapped[Optional[int]]   = mapped_column(Integer, ForeignKey("maintenance_intervals.id", ondelete="SET NULL"), nullable=True)
+    name:                 Mapped[Optional[str]]   = mapped_column(String(200), nullable=True)
     machine_id:           Mapped[int]             = mapped_column(Integer, ForeignKey("machines.id", ondelete="CASCADE"))
     performed_by:         Mapped[int]             = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     performed_at:         Mapped[datetime]        = mapped_column(DateTime, default=datetime.utcnow)

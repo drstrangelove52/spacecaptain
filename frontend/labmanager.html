@@ -436,8 +436,8 @@
 
     <!-- MASCHINENPFLEGE -->
     <div class="page" id="page-maintenance">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
-        <!-- Linke Spalte: Fällige Wartungen + Intervall-Liste -->
+      <div style="display:flex;flex-direction:column;gap:28px">
+        <!-- Wartungsintervalle -->
         <div>
           <div class="section-header">
             <div class="section-title">Wartungsintervalle <span>// ÜBERSICHT</span></div>
@@ -459,7 +459,7 @@
           </div>
           <div id="maintenance-list"><div class="loading"><div class="spinner"></div>Laden…</div></div>
         </div>
-        <!-- Rechte Spalte: Wartungshistorie -->
+        <!-- Wartungshistorie (volle Breite) -->
         <div>
           <div class="section-header">
             <div class="section-title">Wartungshistorie <span>// PROTOKOLL</span></div>
@@ -1784,6 +1784,15 @@ function renderIntervals() {
   `).join('');
 }
 
+function _notesHtml(notes) {
+  if (!notes) return '<span style="color:var(--text-dim)">—</span>';
+  const LIMIT = 120;
+  if (notes.length <= LIMIT) return `<span style="white-space:pre-wrap">${notes}</span>`;
+  const short = notes.slice(0, LIMIT).trimEnd();
+  return `<span class="notes-short">${short}… <button style="background:none;border:none;color:var(--accent2);cursor:pointer;font-size:11px;padding:0" onclick="this.closest('td').querySelector('.notes-short').style.display='none';this.closest('td').querySelector('.notes-full').style.display='block'">mehr ▾</button></span>`
+       + `<span class="notes-full" style="display:none;white-space:pre-wrap">${notes} <button style="background:none;border:none;color:var(--accent2);cursor:pointer;font-size:11px;padding:0" onclick="this.closest('td').querySelector('.notes-full').style.display='none';this.closest('td').querySelector('.notes-short').style.display='inline'">weniger ▴</button></span>`;
+}
+
 function renderMaintenanceHistory() {
   const container = document.getElementById('maintenance-history');
   if (!container) return;
@@ -1795,7 +1804,7 @@ function renderMaintenanceHistory() {
   }
 
   container.innerHTML = `<div class="table-wrap"><table id="maint-history-table">
-    <thead><tr><th>Datum</th><th>Maschine</th><th>Wartung</th><th>Ausgeführt von</th><th>Std.</th><th>Notizen</th></tr></thead>
+    <thead><tr><th>Datum</th><th>Maschine</th><th>Bezeichnung</th><th>Ausgeführt von</th><th>Std.</th><th>Notizen</th></tr></thead>
     <tbody>
       ${recs.slice(0, 100).map(r => `<tr>
         <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${new Date(r.performed_at).toLocaleString('de-CH',{dateStyle:'short',timeStyle:'short'})}</td>
@@ -1803,7 +1812,7 @@ function renderMaintenanceHistory() {
         <td style="font-size:12px">${r.interval_name}${!r.interval_id ? '<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-left:4px">[frei]</span>' : ''}</td>
         <td style="font-size:12px;color:var(--text-mid)">${r.performer_name}</td>
         <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${r.hours_at_execution != null ? r.hours_at_execution.toFixed(1)+' h' : '—'}</td>
-        <td style="font-size:11px;color:var(--text-mid);max-width:200px">${r.notes||'—'}</td>
+        <td style="font-size:12px;color:var(--text-mid);min-width:200px">${_notesHtml(r.notes)}</td>
       </tr>`).join('')}
     </tbody>
   </table></div>`;

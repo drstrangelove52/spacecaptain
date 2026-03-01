@@ -55,6 +55,10 @@ async def run_migrations(engine: AsyncEngine) -> None:
             "maintenance_due", "maintenance_done"
         ])
 
+    # ── v1.01: name in maintenance_records speichern ─────────────────────────
+        await _add_column_if_missing(conn, "maintenance_records", "name",
+                                     "VARCHAR(200) DEFAULT NULL AFTER interval_id")
+
     # ── v2.17: login_token für Gäste ─────────────────────────────────────────
         await _add_column_if_missing(conn, "guests", "login_token",
                                      "VARCHAR(64) DEFAULT NULL UNIQUE")
