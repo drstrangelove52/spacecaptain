@@ -124,6 +124,13 @@
   .perm-machine-info{flex:1}
   .perm-machine-name{font-size:14px;font-weight:600;color:var(--text)}
   .perm-machine-sub{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:2px}
+  .perm-tab{background:transparent;border:1px solid var(--border);border-radius:4px;padding:5px 14px;font-family:var(--mono);font-size:11px;color:var(--text-dim);cursor:pointer;transition:all .15s}
+  .perm-tab.active{background:rgba(244,166,34,.1);border-color:var(--accent);color:var(--accent)}
+  .perm-tab:hover:not(.active){background:rgba(255,255,255,.03);color:var(--text)}
+  .perm-bulk-footer{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border);padding:12px 0 4px;display:flex;gap:10px;align-items:flex-start;margin-top:16px}
+  .perm-bulk-item{display:grid;grid-template-columns:20px 28px 1fr auto;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid rgba(42,47,62,.4);cursor:pointer;transition:background .1s}
+  .perm-bulk-item:last-of-type{border-bottom:none}
+  .perm-bulk-item:hover{background:rgba(255,255,255,.01)}
   /* LOG FILTERS */
   .log-filters{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr) auto;gap:12px;align-items:end}
   .log-filter-row2{grid-template-columns:repeat(3,1fr) 1fr auto}
@@ -209,7 +216,7 @@
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
-  <div class="logo"><img src="/SpaceCaptain.svg" class="logo-img" alt="SpaceCaptain"><div><div class="logo-mark">SpaceCaptain</div><div class="logo-sub">Navigating Creativity</div><div style="margin-top:4px;font-family:var(--mono);font-size:11px;color:var(--accent);opacity:.85;letter-spacing:1px">v1.01</div></div></div>
+  <div class="logo"><img src="/SpaceCaptain.svg" class="logo-img" alt="SpaceCaptain"><div><div class="logo-mark">SpaceCaptain</div><div class="logo-sub">Navigating Creativity</div><div id="app-version-sidebar" style="margin-top:4px;font-family:var(--mono);font-size:11px;color:var(--accent);opacity:.85;letter-spacing:1px"></div></div></div>
   <nav class="nav">
     <div class="nav-section">ÜBERSICHT</div>
     <div class="nav-item active" data-page="dashboard" onclick="navigate(this)"><span class="nav-icon">◈</span> Dashboard</div>
@@ -317,13 +324,21 @@
     <!-- PERMISSIONS — neue Ansicht -->
     <div class="page" id="page-permissions">
       <div class="section-header">
-        <div class="section-title">Berechtigungen <span>// GAST AUSWÄHLEN</span></div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div class="section-title">Berechtigungen</div>
+          <div style="display:flex;gap:6px">
+            <button class="perm-tab active" id="tab-perm-guest" onclick="switchPermView('guest')">👤 Gast-Ansicht</button>
+            <button class="perm-tab" id="tab-perm-machine" onclick="switchPermView('machine')">⚙ Maschinen-Ansicht</button>
+          </div>
+        </div>
         <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Änderungen werden sofort gespeichert</div>
       </div>
-      <div class="perm-panel">
+
+      <!-- Gast-Ansicht -->
+      <div class="perm-panel" id="perm-panel-guest">
         <div class="perm-guest-list">
           <div class="perm-guest-list-header">GÄSTE</div>
-          <div style="padding:8px"><input class="filter-input" placeholder="Suchen…" oninput="filterPermGuests(this.value)" style="width:100%"></div>
+          <div style="padding:8px"><input id="perm-guest-search" class="filter-input" placeholder="Suchen…" oninput="filterPermGuests(this.value)" style="width:100%"></div>
           <div id="perm-guest-list" style="flex:1;overflow-y:auto">
             <div class="loading"><div class="spinner"></div>Laden…</div>
           </div>
@@ -335,6 +350,26 @@
           </div>
           <div class="perm-detail-body" id="perm-detail-body">
             <div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px;text-align:center">Wähle einen Gast aus der Liste um seine Berechtigungen zu verwalten.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Maschinen-Ansicht -->
+      <div class="perm-panel" id="perm-panel-machine" style="display:none">
+        <div class="perm-guest-list">
+          <div class="perm-guest-list-header">MASCHINEN</div>
+          <div style="padding:8px"><input id="perm-machine-search" class="filter-input" placeholder="Suchen…" oninput="filterPermMachines(this.value)" style="width:100%"></div>
+          <div id="perm-machine-list" style="flex:1;overflow-y:auto">
+            <div class="loading"><div class="spinner"></div>Laden…</div>
+          </div>
+        </div>
+        <div class="perm-detail" id="perm-detail-machine">
+          <div class="perm-detail-header">
+            <div class="perm-detail-title" id="perm-detail-machine-title">← Maschine auswählen</div>
+            <div id="perm-detail-machine-stats" style="font-family:var(--mono);font-size:11px;color:var(--text-dim)"></div>
+          </div>
+          <div class="perm-detail-body" id="perm-detail-machine-body">
+            <div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px;text-align:center">Wähle eine Maschine aus der Liste um Berechtigungen zu verwalten.</div>
           </div>
         </div>
       </div>
@@ -509,7 +544,7 @@
           <img src="/SpaceCaptain.svg" alt="SpaceCaptain" style="height:64px;width:auto;flex-shrink:0">
           <div>
             <div style="font-family:var(--display);font-size:24px;font-weight:900;color:var(--accent);letter-spacing:2px">SpaceCaptain</div>
-            <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px;margin-top:4px">Version 1.01</div>
+            <div id="app-version-login" style="font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px;margin-top:4px"></div>
             <div style="font-size:13px;color:var(--text-mid);margin-top:8px;line-height:1.6">Webbasiertes Verwaltungssystem für Makerspaces mit Smart-Plug-Anbindung und QR-Code-Workflow.</div>
           </div>
         </div>
@@ -596,7 +631,11 @@ let token = localStorage.getItem('ms_token') || '';
 let currentUser = null;
 let cache = { guests:[], machines:[], users:[], permissions:[] };
 let selectedPermGuestId = null;
-let permHistory = {}; // machine_id (string) → {type, comment, user_name}
+let selectedPermMachineId = null;
+let currentPermView = 'guest';
+let permHistory = {};        // machine_id (string) → {type, comment, user_name, created_at}
+let permHistoryMachine = {}; // guest_id   (string) → {type, comment, user_name, created_at}
+let permBulkMachineId = null;
 let selectedMachineIdForQR = null;
 
 // ═══════════════════════════════════════════════════════
@@ -711,7 +750,7 @@ async function loadAll() {
     document.getElementById('badge-machines').textContent = stats.total_machines;
   }
   // Sofort rendern — Dashboard und Log sind damit schon sichtbar
-  renderGuests(); renderLM(); renderMachines(); renderPermGuestList(); renderDashboard();
+  renderGuests(); renderLM(); renderMachines(); renderPermGuestList(); renderPermMachineList(); renderDashboard();
   populateQRSelects(); loadLog();
 
   // Live-Daten (Plug-Status, Session-Info) im Hintergrund nachladen
@@ -1249,6 +1288,179 @@ function renderPermGuestList(filter='') {
 
 function filterPermGuests(val) { renderPermGuestList(val); }
 
+function switchPermView(view) {
+  currentPermView = view;
+  document.getElementById('perm-panel-guest').style.display    = view==='guest'   ? '' : 'none';
+  document.getElementById('perm-panel-machine').style.display  = view==='machine' ? '' : 'none';
+  document.getElementById('tab-perm-guest').classList.toggle('active',   view==='guest');
+  document.getElementById('tab-perm-machine').classList.toggle('active', view==='machine');
+  if (view==='machine') renderPermMachineList();
+}
+
+function renderPermMachineList(filter='') {
+  const el = document.getElementById('perm-machine-list');
+  if (!el) return;
+  const sorted = [...cache.machines].sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  const filtered = sorted.filter(m=>!filter||m.name.toLowerCase().includes(filter.toLowerCase())||m.category.toLowerCase().includes(filter.toLowerCase()));
+  if (!filtered.length) { el.innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:11px;padding:16px">Keine Maschinen gefunden</div>'; return; }
+  const statusColor = m => m.status==='online'?'var(--success)':m.status==='maintenance'?'var(--accent)':'var(--text-dim)';
+  el.innerHTML = filtered.map(m=>{
+    const icon = machineIcons[m.category]||'🔧';
+    const permCount = cache.permissions.filter(p=>p.machine_id===m.id).length;
+    return `<div class="perm-guest-item ${selectedPermMachineId===m.id?'active':''}" onclick="selectPermMachine(${m.id})">
+      <div style="font-size:18px">${icon}</div>
+      <div style="flex:1">
+        <div style="font-weight:600;color:var(--text)">${m.name}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:${statusColor(m)}">${m.category} · ${m.status}</div>
+      </div>
+      <span class="perm-count">${permCount} ✓</span>
+    </div>`;
+  }).join('');
+}
+
+function filterPermMachines(val) { renderPermMachineList(val); }
+
+async function selectPermMachine(machineId) {
+  selectedPermMachineId = machineId;
+  renderPermMachineList(document.getElementById('perm-machine-search')?.value||'');
+  const machine = cache.machines.find(m=>m.id===machineId);
+  if (!machine) return;
+  const machinePerms = new Set(cache.permissions.filter(p=>p.machine_id===machineId).map(p=>p.guest_id));
+  document.getElementById('perm-detail-machine-title').textContent = machine.name;
+  document.getElementById('perm-detail-machine-stats').innerHTML =
+    `<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${machinePerms.size} von ${cache.guests.length} Gästen berechtigt</span>
+     <button class="btn btn-ghost btn-sm" style="margin-left:10px" onclick="enterPermBulkMode(${machineId})">☑ Mehrfachauswahl</button>`;
+  if (!cache.guests.length) {
+    document.getElementById('perm-detail-machine-body').innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px;text-align:center">Keine Gäste vorhanden.</div>';
+    return;
+  }
+  permHistoryMachine = await GET(`/permissions/history?machine_id=${machineId}`) || {};
+  const sortedGuests = [...cache.guests].sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  document.getElementById('perm-detail-machine-body').innerHTML = sortedGuests.map(g=>{
+    const granted = machinePerms.has(g.id);
+    const hist = permHistoryMachine[String(g.id)];
+    const commentHtml = hist?.comment ? `<span style="color:var(--text-mid)">${hist.comment}</span>` : `<span style="color:var(--text-dim)">—</span>`;
+    const userHtml    = hist?.user_name ? `<span style="color:var(--text-dim)">◈ ${hist.user_name}</span>` : `<span style="color:var(--text-dim)">—</span>`;
+    return `<div class="perm-machine-item" onclick="togglePerm(${g.id},${machineId})">
+      <button class="perm-toggle ${granted?'on':'off'}" id="toggle-${g.id}-${machineId}"></button>
+      <div style="font-size:18px;text-align:center">👤</div>
+      <div>
+        <div class="perm-machine-name">${g.name}</div>
+        <div class="perm-machine-sub">@${g.username}</div>
+      </div>
+      <div style="font-family:var(--mono);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="perm-mhist-comment-${g.id}">${commentHtml}</div>
+      <div style="font-family:var(--mono);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="perm-mhist-user-${g.id}">${userHtml}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);white-space:nowrap" id="perm-mhist-ts-${g.id}">${hist?.created_at?fmtDate(hist.created_at):'—'}</div>
+      <span class="badge ${granted?'badge-green':'badge-gray'}" id="perm-badge-${g.id}-${machineId}" style="justify-self:end">${granted?'Berechtigt':'Gesperrt'}</span>
+    </div>`;
+  }).join('');
+}
+
+function enterPermBulkMode(machineId) {
+  permBulkMachineId = machineId;
+  const machinePerms = new Set(cache.permissions.filter(p=>p.machine_id===machineId).map(p=>p.guest_id));
+  const sortedGuests = [...cache.guests].sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  // Header umschalten
+  document.getElementById('perm-detail-machine-stats').innerHTML =
+    `<button class="btn btn-ghost btn-sm" onclick="exitPermBulkMode()">✕ Abbrechen</button>`;
+  // Checkbox-Liste rendern
+  document.getElementById('perm-detail-machine-body').innerHTML =
+    `<div style="display:flex;gap:6px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:4px">
+       <button class="btn btn-ghost btn-sm" onclick="bulkSelectAll(true)">Alle auswählen</button>
+       <button class="btn btn-ghost btn-sm" onclick="bulkSelectAll(false)">Keine</button>
+       <button class="btn btn-ghost btn-sm" onclick="bulkSelectPermitted()">Aktuell Berechtigte</button>
+     </div>
+     ${sortedGuests.map(g=>{
+       const checked = machinePerms.has(g.id);
+       return `<div class="perm-bulk-item" onclick="toggleBulkCheck(${g.id})">
+         <input type="checkbox" id="bulk-check-${g.id}" ${checked?'checked':''} onclick="event.stopPropagation()" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent2)">
+         <div style="font-size:17px;text-align:center">👤</div>
+         <div>
+           <div class="perm-machine-name">${g.name}</div>
+           <div class="perm-machine-sub">@${g.username}</div>
+         </div>
+         <span class="badge ${checked?'badge-green':'badge-gray'}" id="bulk-badge-${g.id}">${checked?'Berechtigt':'Gesperrt'}</span>
+       </div>`;
+     }).join('')}
+     <div class="perm-bulk-footer">
+       <textarea class="form-input" id="perm-bulk-comment" rows="2"
+         placeholder="Begründung für alle Änderungen (Pflicht) …"
+         style="resize:none;flex:1;font-size:12px"></textarea>
+       <button class="btn btn-primary" onclick="savePermBulk()">Speichern</button>
+     </div>`;
+}
+
+function exitPermBulkMode() {
+  permBulkMachineId = null;
+  selectPermMachine(selectedPermMachineId);
+}
+
+function toggleBulkCheck(guestId) {
+  const cb = document.getElementById(`bulk-check-${guestId}`);
+  if (!cb) return;
+  cb.checked = !cb.checked;
+  const badge = document.getElementById(`bulk-badge-${guestId}`);
+  if (badge) {
+    badge.className = `badge ${cb.checked?'badge-green':'badge-gray'}`;
+    badge.textContent = cb.checked ? 'Berechtigt' : 'Gesperrt';
+  }
+}
+
+function bulkSelectAll(checked) {
+  cache.guests.forEach(g=>{
+    const cb = document.getElementById(`bulk-check-${g.id}`);
+    if (!cb) return;
+    cb.checked = checked;
+    const badge = document.getElementById(`bulk-badge-${g.id}`);
+    if (badge) { badge.className=`badge ${checked?'badge-green':'badge-gray'}`; badge.textContent=checked?'Berechtigt':'Gesperrt'; }
+  });
+}
+
+function bulkSelectPermitted() {
+  const machinePerms = new Set(cache.permissions.filter(p=>p.machine_id===permBulkMachineId).map(p=>p.guest_id));
+  cache.guests.forEach(g=>{
+    const cb = document.getElementById(`bulk-check-${g.id}`);
+    if (!cb) return;
+    cb.checked = machinePerms.has(g.id);
+    const badge = document.getElementById(`bulk-badge-${g.id}`);
+    if (badge) { badge.className=`badge ${cb.checked?'badge-green':'badge-gray'}`; badge.textContent=cb.checked?'Berechtigt':'Gesperrt'; }
+  });
+}
+
+async function savePermBulk() {
+  const machineId = permBulkMachineId;
+  const comment = document.getElementById('perm-bulk-comment')?.value.trim();
+  if (!comment) { showToast('Bitte eine Begründung eingeben', 'error'); return; }
+
+  const original = new Set(cache.permissions.filter(p=>p.machine_id===machineId).map(p=>p.guest_id));
+  const selected = new Set(cache.guests.filter(g=>document.getElementById(`bulk-check-${g.id}`)?.checked).map(g=>g.id));
+  const toGrant  = [...selected].filter(id=>!original.has(id));
+  const toRevoke = [...original].filter(id=>!selected.has(id));
+
+  if (!toGrant.length && !toRevoke.length) {
+    showToast('Keine Änderungen', 'warn');
+    exitPermBulkMode(); return;
+  }
+
+  const btn = document.querySelector('.perm-bulk-footer .btn-primary');
+  if (btn) { btn.disabled=true; btn.textContent='…'; }
+
+  const enc = encodeURIComponent(comment);
+  await Promise.all([
+    ...toGrant.map(gid  => POST(`/permissions/grant?guest_id=${gid}&machine_id=${machineId}&comment=${enc}`)),
+    ...toRevoke.map(gid => POST(`/permissions/revoke?guest_id=${gid}&machine_id=${machineId}&comment=${enc}`)),
+  ]);
+
+  // Cache aktualisieren
+  cache.permissions = cache.permissions.filter(p=>p.machine_id!==machineId);
+  for (const gid of selected)
+    cache.permissions.push({guest_id:gid, machine_id:machineId, granted_at:new Date().toISOString()});
+
+  showToast(`${toGrant.length} erteilt, ${toRevoke.length} entzogen`, 'success');
+  exitPermBulkMode();
+  renderStats();
+}
+
 async function selectPermGuest(guestId) {
   selectedPermGuestId=guestId;
   renderPermGuestList(document.querySelector('.perm-guest-list input')?.value||'');
@@ -1331,19 +1543,36 @@ async function togglePerm(guestId,machineId) {
     badge.textContent=isGranted?'Berechtigt':'Gesperrt';
     return;
   }
-  // Cache & History aktualisieren
+  // Cache aktualisieren
   if(isGranted) cache.permissions=cache.permissions.filter(p=>!(p.guest_id===guestId&&p.machine_id===machineId));
   else cache.permissions.push({guest_id:guestId,machine_id:machineId,granted_at:new Date().toISOString()});
   const now=new Date().toISOString();
-  permHistory[String(machineId)]={type:isGranted?'permission_revoked':'permission_granted',comment,user_name:currentUser?.name,created_at:now};
-  const commentEl=document.getElementById(`perm-hist-comment-${machineId}`);
-  const userEl=document.getElementById(`perm-hist-user-${machineId}`);
-  const tsEl=document.getElementById(`perm-hist-ts-${machineId}`);
-  if(commentEl) commentEl.innerHTML=`<span style="color:var(--text-mid)">${comment}</span>`;
-  if(userEl) userEl.innerHTML=`<span style="color:var(--text-dim)">◈ ${currentUser?.name||'—'}</span>`;
-  if(tsEl) tsEl.textContent=fmtDate(now);
-  document.getElementById('perm-detail-stats').textContent=`@${cache.guests.find(g=>g.id===guestId)?.username} — ${cache.permissions.filter(p=>p.guest_id===guestId).length} von ${cache.machines.length} Maschinen`;
-  renderPermGuestList(document.querySelector('.perm-guest-list input')?.value||'');
+  const histEntry={type:isGranted?'permission_revoked':'permission_granted',comment,user_name:currentUser?.name,created_at:now};
+  permHistory[String(machineId)]=histEntry;
+  permHistoryMachine[String(guestId)]=histEntry;
+  // Gast-Ansicht: History-Zellen aktualisieren (no-op wenn nicht sichtbar)
+  const gCom=document.getElementById(`perm-hist-comment-${machineId}`);
+  const gUsr=document.getElementById(`perm-hist-user-${machineId}`);
+  const gTs=document.getElementById(`perm-hist-ts-${machineId}`);
+  if(gCom) gCom.innerHTML=`<span style="color:var(--text-mid)">${comment}</span>`;
+  if(gUsr) gUsr.innerHTML=`<span style="color:var(--text-dim)">◈ ${currentUser?.name||'—'}</span>`;
+  if(gTs) gTs.textContent=fmtDate(now);
+  // Maschinen-Ansicht: History-Zellen aktualisieren (no-op wenn nicht sichtbar)
+  const mCom=document.getElementById(`perm-mhist-comment-${guestId}`);
+  const mUsr=document.getElementById(`perm-mhist-user-${guestId}`);
+  const mTs=document.getElementById(`perm-mhist-ts-${guestId}`);
+  if(mCom) mCom.innerHTML=`<span style="color:var(--text-mid)">${comment}</span>`;
+  if(mUsr) mUsr.innerHTML=`<span style="color:var(--text-dim)">◈ ${currentUser?.name||'—'}</span>`;
+  if(mTs) mTs.textContent=fmtDate(now);
+  // Stats + Listen je nach aktiver Ansicht
+  if(currentPermView==='guest') {
+    document.getElementById('perm-detail-stats').textContent=`@${cache.guests.find(g=>g.id===guestId)?.username} — ${cache.permissions.filter(p=>p.guest_id===guestId).length} von ${cache.machines.length} Maschinen`;
+    renderPermGuestList(document.getElementById('perm-guest-search')?.value||'');
+  } else {
+    const mp=cache.permissions.filter(p=>p.machine_id===machineId).length;
+    document.getElementById('perm-detail-machine-stats').textContent=`${mp} von ${cache.guests.length} Gästen berechtigt`;
+    renderPermMachineList(document.getElementById('perm-machine-search')?.value||'');
+  }
   document.getElementById('badge-guests')&&renderStats();
 }
 
@@ -1507,6 +1736,14 @@ function filterTable(input,tableId) {
 // ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
+fetch('/api/version').then(r=>r.json()).then(d=>{
+  const v = `v${d.version}`;
+  const s = document.getElementById('app-version-sidebar');
+  const l = document.getElementById('app-version-login');
+  if (s) s.textContent = v;
+  if (l) l.textContent = `Version ${d.version}`;
+}).catch(()=>{});
+
 if (token) {
   GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
 }

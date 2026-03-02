@@ -118,30 +118,34 @@ async def bulk_set_permissions(
 
 @router.get("/history")
 async def permission_history(
-    guest_id: int,
+    guest_id:   Optional[int] = Query(None),
+    machine_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    """Letzter Berechtigungs-Logeintrag pro Maschine für einen Gast."""
-    logs_res = await db.execute(
-        select(ActivityLog)
-        .where(
-            ActivityLog.guest_id == guest_id,
-            ActivityLog.type.in_([LogType.permission_granted, LogType.permission_revoked]),
-        )
-        .order_by(ActivityLog.created_at.desc())
+    """Letzter Berechtigungs-Logeintrag pro Maschine (Gast-Ansicht) oder pro Gast (Maschinen-Ansicht)."""
+    if guest_id is None and machine_id is None:
+        raise HTTPException(400, "guest_id oder machine_id erforderlich")
+
+    q = select(ActivityLog).where(
+        ActivityLog.type.in_([LogType.permission_granted, LogType.permission_revoked])
     )
-    entries = logs_res.scalars().all()
+    if guest_id   is not None: q = q.where(ActivityLog.guest_id   == guest_id)
+    if machine_id is not None: q = q.where(ActivityLog.machine_id == machine_id)
+    q = q.order_by(ActivityLog.created_at.desc())
 
-    users = {u.id: u.name for u in (await db.execute(select(User))).scalars().all()}
+    entries = (await db.execute(q)).scalars().all()
+    users   = {u.id: u.name for u in (await db.execute(select(User))).scalars().all()}
 
-    # Nur den jeweils neuesten Eintrag pro Maschine behalten
+    # Neuesten Eintrag pro Gegenseite behalten
+    group_attr = "machine_id" if guest_id is not None else "guest_id"
     seen: set = set()
-    result = {}
+    result: dict = {}
     for e in entries:
-        if e.machine_id not in seen:
-            seen.add(e.machine_id)
-            result[str(e.machine_id)] = {
+        key = getattr(e, group_attr)
+        if key not in seen:
+            seen.add(key)
+            result[str(key)] = {
                 "type":       e.type,
                 "comment":    e.meta.get("comment") if e.meta else None,
                 "user_name":  users.get(e.user_id),

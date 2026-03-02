@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
 
-from app.config import get_settings
+from app.config import get_settings, APP_VERSION
 from app.database import engine, Base
 from app.services.migrate import run_migrations
 from app.routers import auth, users, guests, machines, permissions, qr, dashboard, guest_auth, backup, maintenance
@@ -31,14 +31,14 @@ async def lifespan(app: FastAPI):
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.openapi.utils import get_openapi
 
-app = FastAPI(title="SpaceCaptain API", version="1.01", lifespan=lifespan)
+app = FastAPI(title="SpaceCaptain API", version=APP_VERSION, lifespan=lifespan)
 
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
     schema = get_openapi(
         title="SpaceCaptain API",
-        version="1.01",
+        version=APP_VERSION,
         description="SpaceCaptain Management API — Authorize mit E-Mail als Username",
         routes=app.routes,
     )
@@ -66,6 +66,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/api/version")
+async def get_version():
+    return {"version": APP_VERSION}
 
 app.include_router(auth.router,         prefix="/api")
 app.include_router(users.router,        prefix="/api")
