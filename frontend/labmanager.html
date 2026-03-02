@@ -113,7 +113,7 @@
   .perm-detail-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
   .perm-detail-title{font-family:var(--display);font-size:18px;font-weight:700;letter-spacing:1px}
   .perm-detail-body{padding:16px 20px;flex:1;overflow-y:auto}
-  .perm-machine-item{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid rgba(42,47,62,.4);cursor:pointer;transition:all .15s}
+  .perm-machine-item{display:grid;grid-template-columns:40px 28px minmax(120px,180px) 1fr minmax(100px,140px) 110px 90px;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(42,47,62,.4);cursor:pointer;transition:all .15s}
   .perm-machine-item:last-child{border-bottom:none}
   .perm-machine-item:hover{background:rgba(255,255,255,.01)}
   .perm-toggle{width:40px;height:22px;border-radius:11px;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;position:relative}
@@ -270,7 +270,7 @@
         <div id="dash-maintenance-list"></div>
       </div>
       <div class="section-header"><div class="section-title">Alle Maschinen <span>// STATUS</span></div></div>
-      <div class="table-wrap"><table><thead><tr><th>Maschine</th><th>Kategorie</th><th>Status</th><th>Nutzer</th></tr></thead><tbody id="dash-machine-status"><tr><td colspan="4"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>Maschine</th><th>Kategorie</th><th>Status</th><th>Adapter</th><th>Nutzer</th></tr></thead><tbody id="dash-machine-status"><tr><td colspan="5"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody></table></div>
       <div class="section-header"><div class="section-title">Aktivitätslog <span>// RECENT</span></div></div>
       <div class="table-wrap" style="padding:0 16px" id="dash-log"><div class="loading"><div class="spinner"></div>Laden…</div></div>
     </div>
@@ -596,6 +596,7 @@ let token = localStorage.getItem('ms_token') || '';
 let currentUser = null;
 let cache = { guests:[], machines:[], users:[], permissions:[] };
 let selectedPermGuestId = null;
+let permHistory = {}; // machine_id (string) → {type, comment, user_name}
 let selectedMachineIdForQR = null;
 
 // ═══════════════════════════════════════════════════════
@@ -718,43 +719,9 @@ async function loadAll() {
 }
 
 async function refreshLiveData() {
-  // Aktive Maschinen per Einzelaufruf live updaten (Watt, Laufzeit, Gastname)
-  const activeMachines = cache.machines.filter(m => m.session_started_at);
-
-  if (activeMachines.length) {
-    const liveResults = await Promise.all(
-      activeMachines.map(m =>
-        fetch(`/api/guest/machine/${m.qr_token}`)
-          .then(r => r.ok ? r.json() : null)
-          .catch(() => null)
-      )
-    );
-    liveResults.forEach((live, i) => {
-      if (!live) return;
-      const cached = cache.machines.find(m => m.id === activeMachines[i].id);
-      if (!cached) return;
-      cached.power_w              = live.power_w ?? null;
-      cached.plug_on              = live.plug_on ?? null;
-      cached.plug_supported       = live.plug_supported ?? false;
-      cached.current_guest_name   = live.current_guest_name ?? null;
-      cached.session_duration_min = live.session_duration_min ?? null;
-      cached.session_manager_id   = live.session_manager_id ?? null;
-      cached.idle_state           = live.idle_state ?? null;
-      cached.idle_since_min       = live.idle_since_min ?? null;
-    });
-  }
-
-  // Session-Änderungen erkennen (Gast schaltet ein/aus ohne Manager-Aktion)
-  // Nur wenn keine Manager-Aktion gerade läuft
-  const fresh = await apiSilent('GET', '/machines');
-  if (fresh) {
-    // Sessions-IDs vergleichen
-    const cacheKey = m => `${m.id}:${m.session_started_at||''}`;
-    const prev = cache.machines.map(cacheKey).sort().join('|');
-    const next = fresh.map(cacheKey).sort().join('|');
-    if (prev !== next) cache.machines = fresh;
-  }
-
+  // Live-Daten inkl. Plug-Status, Session-Info und Adapter-Erreichbarkeit
+  const fresh = await apiSilent('GET', '/machines/live');
+  if (fresh) cache.machines = fresh;
   _checkIdleAlarm(cache.machines);
   renderMachines();
   renderDashboard();
@@ -828,7 +795,7 @@ function renderDashboard() {
   const mTbody=document.getElementById('dash-machine-status');
   const sortedM=[...cache.machines].sort((a,b)=>a.name.localeCompare(b.name,'de'));
   mTbody.innerHTML=!sortedM.length
-    ?'<tr><td colspan="4" style="color:var(--text-dim);text-align:center;padding:16px">Keine Maschinen</td></tr>'
+    ?'<tr><td colspan="5" style="color:var(--text-dim);text-align:center;padding:16px">Keine Maschinen</td></tr>'
     :sortedM.map(m=>{
       const inUse = m.current_guest_name || m.in_use;
       const userCell = inUse
@@ -841,7 +808,16 @@ function renderDashboard() {
       } else if (m.idle_state==='idle'){
         idleCell=`<span style="background:rgba(244,166,34,.12);color:var(--accent);border:1px solid rgba(244,166,34,.3);border-radius:4px;padding:2px 6px;font-family:var(--mono);font-size:10px">⏱ Leerlauf</span>`;
       }
-      return `<tr style="${m.idle_state==='idle_warning'?'background:rgba(239,68,68,.04)':''}"><td><strong>${m.name}</strong>${m.comment?` <span style="font-size:10px;color:var(--accent)">⚠</span>`:''} ${idleCell}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${m.category}</td><td><span class="badge ${m.status==='online'?'badge-green':m.status==='maintenance'?'badge-orange':'badge-gray'}">${m.status}</span></td><td>${userCell}</td></tr>`;
+      let adapterCell='<span style="color:var(--text-dim);font-size:12px">—</span>';
+      if (m.plug_type!=='none') {
+        if (m.plug_error==='unreachable')
+          adapterCell=`<span style="color:var(--accent);font-family:var(--mono);font-size:11px">⚠ OFFLINE</span>`;
+        else if (m.plug_on===true)
+          adapterCell=`<span style="color:var(--success);font-family:var(--mono);font-size:11px">● EIN</span>`;
+        else if (m.plug_on===false)
+          adapterCell=`<span style="color:var(--text-dim);font-family:var(--mono);font-size:11px">○ AUS</span>`;
+      }
+      return `<tr style="${m.idle_state==='idle_warning'?'background:rgba(239,68,68,.04)':''}"><td><strong>${m.name}</strong>${m.comment?` <span style="font-size:10px;color:var(--accent)">⚠</span>`:''} ${idleCell}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${m.category}</td><td><span class="badge ${m.status==='online'?'badge-green':m.status==='maintenance'?'badge-orange':'badge-gray'}">${m.status}</span></td><td>${adapterCell}</td><td>${userCell}</td></tr>`;
     }).join('');
 }
 
@@ -1040,8 +1016,12 @@ function renderMachinesFiltered(machines) {
         <span style="color:var(--accent2)">● IN BENUTZUNG</span>
         <span style="color:var(--text-mid);margin-left:8px">${m.current_guest_name}${dur}</span>
       </div>`;
-    } else if (m.status==='online' && m.plug_type!=='none') {
-      sessionHtml=`<div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--success)">● VERFÜGBAR</div>`;
+    } else if (m.status==='online') {
+      if (m.plug_type!=='none' && m.plug_error==='unreachable') {
+        sessionHtml=`<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--accent)">⚠ ADAPTER NICHT ERREICHBAR</div>`;
+      } else {
+        sessionHtml=`<div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--success)">● VERFÜGBAR</div>`;
+      }
     }
     // Leerlauf-Badge
     let idleBadge=''; let idleClass='';
@@ -1253,7 +1233,7 @@ async function deleteMachine(id,name) {
 // ═══════════════════════════════════════════════════════
 function renderPermGuestList(filter='') {
   const el=document.getElementById('perm-guest-list');
-  const filtered=cache.guests.filter(g=>!filter||g.name.toLowerCase().includes(filter.toLowerCase())||g.username.toLowerCase().includes(filter.toLowerCase()));
+  const filtered=cache.guests.filter(g=>!filter||g.name.toLowerCase().includes(filter.toLowerCase())||g.username.toLowerCase().includes(filter.toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name,'de'));
   if (!filtered.length) { el.innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:11px;padding:16px">Keine Gäste gefunden</div>'; return; }
   el.innerHTML=filtered.map(g=>{
     const permCount=cache.permissions.filter(p=>p.guest_id===g.id).length;
@@ -1281,46 +1261,90 @@ async function selectPermGuest(guestId) {
     document.getElementById('perm-detail-body').innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px;text-align:center">Keine Maschinen vorhanden.</div>';
     return;
   }
+  permHistory = await GET(`/permissions/history?guest_id=${guestId}`) || {};
   const icon=m=>machineIcons[m.category]||'🔧';
-  document.getElementById('perm-detail-body').innerHTML=cache.machines.map(m=>{
+  const sortedMachines=[...cache.machines].sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  document.getElementById('perm-detail-body').innerHTML=sortedMachines.map(m=>{
     const granted=guestPerms.has(m.id);
-    const statusColor=m.status==='online'?'var(--success)':m.status==='maintenance'?'var(--accent)':'var(--text-dim)';
-    return `<div class="perm-machine-item" onclick="togglePerm(${guestId},${m.id},this)">
+    const hist=permHistory[String(m.id)];
+    const commentHtml=hist?.comment
+      ?`<span style="color:var(--text-mid)">${hist.comment}</span>`
+      :`<span style="color:var(--text-dim)">—</span>`;
+    const userHtml=hist?.user_name
+      ?`<span style="color:var(--text-dim)">◈ ${hist.user_name}</span>`
+      :`<span style="color:var(--text-dim)">—</span>`;
+    return `<div class="perm-machine-item" onclick="togglePerm(${guestId},${m.id})">
       <button class="perm-toggle ${granted?'on':'off'}" id="toggle-${guestId}-${m.id}"></button>
-      <div style="font-size:20px">${icon(m)}</div>
-      <div class="perm-machine-info">
-        <div class="perm-machine-name">${m.name}${m.comment?` <span style="font-size:11px;color:var(--accent)">⚠ ${m.comment}</span>`:''}</div>
-        <div class="perm-machine-sub">${m.category}${m.location?' · '+m.location:''} · <span style="color:${statusColor}">${m.status}</span></div>
+      <div style="font-size:18px;text-align:center">${icon(m)}</div>
+      <div>
+        <div class="perm-machine-name">${m.name}</div>
+        <div class="perm-machine-sub">${m.category}${m.location?' · '+m.location:''}</div>
       </div>
-      <span class="badge ${granted?'badge-green':'badge-gray'}" id="perm-badge-${guestId}-${m.id}">${granted?'Berechtigt':'Gesperrt'}</span>
+      <div style="font-family:var(--mono);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="perm-hist-comment-${m.id}">${commentHtml}</div>
+      <div style="font-family:var(--mono);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="perm-hist-user-${m.id}">${userHtml}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);white-space:nowrap" id="perm-hist-ts-${m.id}">${hist?.created_at?fmtDate(hist.created_at):'—'}</div>
+      <span class="badge ${granted?'badge-green':'badge-gray'}" id="perm-badge-${guestId}-${m.id}" style="justify-self:end">${granted?'Berechtigt':'Gesperrt'}</span>
     </div>`;
   }).join('');
 }
 
-async function togglePerm(guestId,machineId,row) {
+async function togglePerm(guestId,machineId) {
   const toggle=document.getElementById(`toggle-${guestId}-${machineId}`);
   const badge=document.getElementById(`perm-badge-${guestId}-${machineId}`);
   const isGranted=toggle.classList.contains('on');
+  const guest=cache.guests.find(g=>g.id===guestId);
+  const machine=cache.machines.find(m=>m.id===machineId);
+  const actionLabel=isGranted?'Berechtigung entziehen':'Berechtigung erteilen';
+
+  // Pflichtkommentar abfragen
+  const comment = await new Promise(resolve=>{
+    openModal(actionLabel,`
+      <div style="margin-bottom:12px;font-family:var(--mono);font-size:12px;color:var(--text-dim)">
+        <strong style="color:var(--text)">${guest?.name}</strong> <span style="color:var(--accent)">→</span> <strong style="color:var(--text)">${machine?.name}</strong>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Begründung <span style="color:var(--accent)">*</span></label>
+        <textarea class="form-input" id="perm-comment-ta" rows="3" placeholder="z.B. Einweisung abgeschlossen, Zugang nicht mehr benötigt …" style="resize:vertical"></textarea>
+        <div id="perm-comment-err" style="display:none;color:var(--danger);font-size:12px;margin-top:4px">Bitte eine Begründung angeben.</div>
+      </div>`,
+    ()=>{
+      const val=document.getElementById('perm-comment-ta')?.value.trim();
+      if(!val){document.getElementById('perm-comment-err').style.display='block';return;}
+      closeModal(); resolve(val);
+    },'Bestätigen',()=>resolve(null));
+  });
+  if(comment===null) return;
+
   // Optimistic UI
   toggle.className=`perm-toggle ${isGranted?'off':'on'}`;
   badge.className=`badge ${isGranted?'badge-gray':'badge-green'}`;
   badge.textContent=isGranted?'Gesperrt':'Berechtigt';
 
-  const endpoint=isGranted?`/permissions/revoke?guest_id=${guestId}&machine_id=${machineId}`:`/permissions/grant?guest_id=${guestId}&machine_id=${machineId}`;
+  const endpoint=isGranted
+    ?`/permissions/revoke?guest_id=${guestId}&machine_id=${machineId}&comment=${encodeURIComponent(comment)}`
+    :`/permissions/grant?guest_id=${guestId}&machine_id=${machineId}&comment=${encodeURIComponent(comment)}`;
   const res=await POST(endpoint);
-  if (!res) {
+  if(!res){
     // Rollback
     toggle.className=`perm-toggle ${isGranted?'on':'off'}`;
     badge.className=`badge ${isGranted?'badge-green':'badge-gray'}`;
     badge.textContent=isGranted?'Berechtigt':'Gesperrt';
     return;
   }
-  // Update cache
-  if (isGranted) cache.permissions=cache.permissions.filter(p=>!(p.guest_id===guestId&&p.machine_id===machineId));
+  // Cache & History aktualisieren
+  if(isGranted) cache.permissions=cache.permissions.filter(p=>!(p.guest_id===guestId&&p.machine_id===machineId));
   else cache.permissions.push({guest_id:guestId,machine_id:machineId,granted_at:new Date().toISOString()});
+  const now=new Date().toISOString();
+  permHistory[String(machineId)]={type:isGranted?'permission_revoked':'permission_granted',comment,user_name:currentUser?.name,created_at:now};
+  const commentEl=document.getElementById(`perm-hist-comment-${machineId}`);
+  const userEl=document.getElementById(`perm-hist-user-${machineId}`);
+  const tsEl=document.getElementById(`perm-hist-ts-${machineId}`);
+  if(commentEl) commentEl.innerHTML=`<span style="color:var(--text-mid)">${comment}</span>`;
+  if(userEl) userEl.innerHTML=`<span style="color:var(--text-dim)">◈ ${currentUser?.name||'—'}</span>`;
+  if(tsEl) tsEl.textContent=fmtDate(now);
   document.getElementById('perm-detail-stats').textContent=`@${cache.guests.find(g=>g.id===guestId)?.username} — ${cache.permissions.filter(p=>p.guest_id===guestId).length} von ${cache.machines.length} Maschinen`;
   renderPermGuestList(document.querySelector('.perm-guest-list input')?.value||'');
-  document.getElementById('badge-guests') && renderStats();
+  document.getElementById('badge-guests')&&renderStats();
 }
 
 function renderStats() {
@@ -1450,16 +1474,18 @@ function resetLogFilters() {
 // ═══════════════════════════════════════════════════════
 // MODAL
 // ═══════════════════════════════════════════════════════
-function openModal(title,bodyHTML,onConfirm,confirmLabel) {
+function openModal(title,bodyHTML,onConfirm,confirmLabel,onCancel) {
   document.getElementById('modal-title').textContent=title;
   document.getElementById('modal-body').innerHTML=bodyHTML;
   const lbl = confirmLabel || 'Speichern';
-  document.getElementById('modal-footer').innerHTML=`<button class="btn btn-ghost" onclick="closeModal()">Abbrechen</button><button class="btn btn-primary" onclick="window._mc&&window._mc()">${lbl}</button>`;
+  document.getElementById('modal-footer').innerHTML=`<button class="btn btn-ghost" onclick="_modalCancel()">Abbrechen</button><button class="btn btn-primary" onclick="window._mc&&window._mc()">${lbl}</button>`;
   window._mc=onConfirm;
+  window._mcc=onCancel||null;
   document.getElementById('modal-overlay').classList.add('open');
 }
-function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); window._mc=null; }
-document.getElementById('modal-overlay').addEventListener('click',e=>{ if (e.target.id==='modal-overlay') closeModal(); });
+function _modalCancel() { const fn=window._mcc; closeModal(); if(fn) fn(); }
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); window._mc=null; window._mcc=null; }
+document.getElementById('modal-overlay').addEventListener('click',e=>{ if (e.target.id==='modal-overlay') _modalCancel(); });
 
 // ═══════════════════════════════════════════════════════
 // TOAST

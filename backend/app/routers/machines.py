@@ -140,6 +140,7 @@ async def list_machines_live(
                 "plug_on": plug_info.get("on"),
                 "power_w": power_w,
                 "plug_supported": plug_info.get("supported", False),
+                "plug_error": plug_info.get("error"),
                 # Leerlauf
                 "idle_state": idle_state,
                 "idle_since_min": idle_since_min,
@@ -162,7 +163,8 @@ async def list_machines_live(
                 "session_started_at": _local_iso(m.session_started_at),
                 "session_duration_min": None,
                 "plug_on": None, "power_w": None,
-                "plug_supported": True, "idle_state": None, "idle_since_min": None,
+                "plug_supported": True, "plug_error": "unreachable",
+                "idle_state": None, "idle_since_min": None,
             })
     return out
 

@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.database import get_db
-from app.models import Guest, Machine, Permission, LogType
+from app.models import Guest, Machine, Permission, LogType, ActivityLog
 from app.config import get_settings
 from app.services import logger as log_svc
 from app.config import APP_TIMEZONE
@@ -208,7 +208,25 @@ async def check_access(payload: CheckRequest, db: AsyncSession = Depends(get_db)
     # is_my_session: diese Maschine gehört dem anfragenden Gast
     detail["is_my_session"] = (machine.current_guest_id == guest.id) if machine.current_guest_id else False
 
-    return {"guest_name": guest.name, "guest_id": guest.id, "has_permission": has_permission, "machine": detail}
+    # Begründung des letzten Entzugs anzeigen (wenn keine Berechtigung)
+    denial_reason = None
+    if not has_permission:
+        log_res = await db.execute(
+            select(ActivityLog)
+            .where(
+                ActivityLog.guest_id == guest.id,
+                ActivityLog.machine_id == machine.id,
+                ActivityLog.type == LogType.permission_revoked,
+            )
+            .order_by(ActivityLog.created_at.desc())
+            .limit(1)
+        )
+        log_entry = log_res.scalar_one_or_none()
+        if log_entry and log_entry.meta and log_entry.meta.get("comment"):
+            denial_reason = log_entry.meta["comment"]
+
+    return {"guest_name": guest.name, "guest_id": guest.id, "has_permission": has_permission,
+            "denial_reason": denial_reason, "machine": detail}
 
 
 # ── Schalten ──────────────────────────────────────────
@@ -314,6 +332,7 @@ async def guest_dashboard(db: AsyncSession = Depends(get_db)):
             "comment":              m.comment,
             "plug_on":              plug_state.get("on"),
             "plug_supported":       plug_state.get("supported", False),
+            "plug_error":           plug_state.get("error"),
             "power_w":              plug_state.get("power_w"),
             "in_use":               m.current_guest_id is not None,
             "current_guest_name":   current_guest_name,
