@@ -6,7 +6,7 @@ import asyncio
 from app.config import get_settings, APP_VERSION
 from app.database import engine, Base
 from app.services.migrate import run_migrations
-from app.routers import auth, users, guests, machines, permissions, qr, dashboard, guest_auth, backup, maintenance
+from app.routers import auth, users, guests, machines, permissions, qr, dashboard, guest_auth, backup, maintenance, nfc
 from app.services.session import idle_watcher, plug_watcher
 
 settings = get_settings()
@@ -81,3 +81,4 @@ app.include_router(dashboard.router,    prefix="/api")
 app.include_router(guest_auth.router,   prefix="/api")
 app.include_router(backup.router,       prefix="/api")
 app.include_router(maintenance.router,  prefix="/api")
+app.include_router(nfc.router,          prefix="/api")

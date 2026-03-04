@@ -383,10 +383,13 @@
       </div>
       <div class="grid-2">
         <div>
-          <div class="section-header"><div class="section-title">Maschinen-QR drucken</div></div>
+          <div class="section-header"><div class="section-title">Maschinen-QR / NFC</div></div>
           <div class="table-wrap" style="padding:16px">
             <div class="form-group"><label class="form-label">Maschine</label><select class="form-input" id="qr-machine-select"><option value="">— Maschine wählen —</option></select></div>
-            <button class="btn btn-primary" onclick="showMachineQR()">▦ QR-Code anzeigen</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary" onclick="showMachineQR()">▦ QR-Code anzeigen</button>
+              <button class="btn btn-ghost" onclick="writeNfcTag()" id="nfc-write-btn">📡 NFC-Tag beschreiben</button>
+            </div>
             <div id="qr-machine-display" style="margin-top:16px;text-align:center;display:none">
               <div class="qr-img-box"><img id="qr-machine-img" src="" alt="QR Code"></div>
               <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:8px" id="qr-machine-label"></div>
@@ -398,6 +401,7 @@
                 <button class="btn btn-danger btn-sm" onclick="regenMachineQR()">↺ QR neu generieren</button>
               </div>
             </div>
+            <div id="nfc-status-box" style="display:none;margin-top:16px;border-radius:6px;padding:12px 14px;font-size:13px"></div>
           </div>
         </div>
       </div>
@@ -1665,6 +1669,53 @@ async function showMachineQR() {
   document.getElementById('qr-machine-label').textContent=`Maschine: ${m?.name}`;
   document.getElementById('qr-machine-url').textContent=guestUrl;
   document.getElementById('qr-machine-url-box').style.display='block';
+}
+
+async function writeNfcTag() {
+  const mid = document.getElementById('qr-machine-select').value;
+  if (!mid) { showToast('Bitte Maschine wählen', 'warn'); return; }
+  const fresh = await GET(`/machines/${mid}`);
+  const m = fresh || cache.machines.find(x => x.id == mid);
+  if (!m?.qr_token) { showToast('QR-Token nicht verfügbar', 'error'); return; }
+
+  const url = `${window.location.origin}/?m=${m.qr_token}`;
+  const box = document.getElementById('nfc-status-box');
+  const btn = document.getElementById('nfc-write-btn');
+
+  function setStatus(state, msg) {
+    box.style.display = 'block';
+    const styles = {
+      waiting: 'background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);color:#ca8a04',
+      success: 'background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--success)',
+      error:   'background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--danger)',
+    };
+    box.style.cssText += ';' + styles[state];
+    box.innerHTML = msg;
+  }
+
+  btn.disabled = true;
+  setStatus('waiting', '📡 Verbinde mit NFC-Schreibgerät…');
+
+  const res = await api('POST', '/nfc/write', { url, label: m.name });
+  if (!res) { btn.disabled = false; setStatus('error', '✗ NFC-Schreibgerät nicht erreichbar'); return; }
+
+  setStatus('waiting', `📡 <strong>Tag ans Gerät halten</strong> — warte auf NFC-Tag… (max. 30 s)`);
+
+  // Polling alle 1.5 Sekunden
+  const poll = setInterval(async () => {
+    const result = await apiSilent('GET', '/nfc/result');
+    if (!result) return;
+    if (result.status === 'success') {
+      clearInterval(poll);
+      btn.disabled = false;
+      setStatus('success', `✓ NFC-Tag erfolgreich beschrieben: <strong>${m.name}</strong>`);
+      showToast('NFC-Tag beschrieben', 'success');
+    } else if (result.status === 'error') {
+      clearInterval(poll);
+      btn.disabled = false;
+      setStatus('error', `✗ ${result.message || 'Fehler beim Schreiben'}`);
+    }
+  }, 1500);
 }
 
 async function regenMachineQR() {

@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     # CORS
     allowed_origins: str = "http://localhost"
 
+    # NFC-Schreibgerät (ESP32)
+    nfc_writer_url: str = ""  # z.B. http://10.10.1.59 — leer = deaktiviert
+
     @property
     def database_url(self) -> str:
         return (
