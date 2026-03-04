@@ -71,8 +71,11 @@ async def generate_guest_login(
     if not guest:
         raise HTTPException(404, "Gast nicht gefunden")
 
+    from app.services.system_settings import get_system_settings
+    sysset = await get_system_settings(db)
+
     token = secrets.token_urlsafe(32)
-    expires = datetime.utcnow() + timedelta(days=365)  # Gast-Token langlebig (1 Jahr)
+    expires = datetime.utcnow() + timedelta(days=sysset.guest_token_days)
 
     gt = GuestToken(guest_id=guest_id, token=token, expires_at=expires)
     db.add(gt)

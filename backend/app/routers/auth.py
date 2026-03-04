@@ -9,6 +9,7 @@ from app.models import User
 from app.schemas import LoginRequest, Token, UserOut
 from app.services.auth import verify_password, create_access_token, get_current_user
 from app.services import logger as log_svc
+from app.services.system_settings import get_system_settings
 from app.models import LogType
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -27,7 +28,8 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
             detail="Ungültige Email oder Passwort",
         )
 
-    token = create_access_token(user.id, user.role)
+    s = await get_system_settings(db)
+    token = create_access_token(user.id, user.role, expire_minutes=s.jwt_expire_minutes)
     await log_svc.log(db, LogType.login, f"Login: {user.name} ({user.email})", user_id=user.id)
     return Token(access_token=token)
 
@@ -48,7 +50,8 @@ async def token_form(
             detail="Ungültige Email oder Passwort",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    token = create_access_token(user.id, user.role)
+    s = await get_system_settings(db)
+    token = create_access_token(user.id, user.role, expire_minutes=s.jwt_expire_minutes)
     await log_svc.log(db, LogType.login, f"Login (Swagger): {user.name} ({user.email})", user_id=user.id)
     return Token(access_token=token)
 
@@ -70,6 +73,7 @@ async def login_by_token(payload: LoginByTokenRequest, db: AsyncSession = Depend
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Ungültiger oder abgelaufener Token-Link")
-    token = create_access_token(user.id, user.role)
+    s = await get_system_settings(db)
+    token = create_access_token(user.id, user.role, expire_minutes=s.jwt_expire_minutes)
     await log_svc.log(db, LogType.login, f"Login per Token-Link: {user.name} ({user.email})", user_id=user.id)
     return Token(access_token=token)

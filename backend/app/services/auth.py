@@ -22,8 +22,9 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt(12)).decode()
 
 
-def create_access_token(user_id: int, role: str) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=settings.jwt_expire_minutes)
+def create_access_token(user_id: int, role: str, expire_minutes: int | None = None) -> str:
+    mins = expire_minutes if expire_minutes is not None else settings.jwt_expire_minutes
+    expire = datetime.utcnow() + timedelta(minutes=mins)
     payload = {"sub": str(user_id), "role": role, "exp": expire}
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 

@@ -68,6 +68,22 @@ async def run_migrations(engine: AsyncEngine) -> None:
             "ALTER TABLE maintenance_records MODIFY COLUMN interval_id INT UNSIGNED DEFAULT NULL"
         ))
 
+        # ── v1.03: system_settings ────────────────────────────────────────────
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS system_settings (
+                id                  INT UNSIGNED PRIMARY KEY DEFAULT 1,
+                nfc_writer_url      VARCHAR(255) NOT NULL DEFAULT '',
+                jwt_expire_minutes  INT NOT NULL DEFAULT 480,
+                guest_token_days    INT NOT NULL DEFAULT 365
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
+        from app.config import get_settings as _get_settings
+        _env = _get_settings()
+        await conn.execute(text(
+            "INSERT IGNORE INTO system_settings (id, nfc_writer_url, jwt_expire_minutes, guest_token_days) "
+            "VALUES (1, :url, :jwt, 365)"
+        ).bindparams(url=_env.nfc_writer_url, jwt=_env.jwt_expire_minutes))
+
     log.info("Migrationen abgeschlossen")
 
 

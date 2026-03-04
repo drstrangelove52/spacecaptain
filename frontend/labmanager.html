@@ -231,6 +231,7 @@
     <div class="nav-item" data-page="stats" onclick="navigate(this)"><span class="nav-icon">📈</span> Statistiken</div>
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
     <div class="nav-item" data-page="backup" onclick="navigate(this)"><span class="nav-icon">💾</span> Backup</div>
+    <div class="nav-item" data-page="settings" onclick="navigate(this)" id="nav-settings" style="display:none"><span class="nav-icon">⚙️</span> Einstellungen</div>
     <div class="nav-item" data-page="info" onclick="navigate(this)"><span class="nav-icon">ℹ️</span> Info</div>
   </nav>
   <div class="sidebar-footer">
@@ -534,6 +535,39 @@
       </div>
     </div>
 
+    <!-- EINSTELLUNGEN (Admin only) -->
+    <div class="page" id="page-settings">
+      <div class="section-header">
+        <div class="section-title">Einstellungen <span>// ADMIN</span></div>
+      </div>
+      <div style="max-width:560px">
+        <div class="table-wrap" style="padding:20px;margin-bottom:16px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">NFC-SCHREIBGERÄT</div>
+          <div class="form-group">
+            <label class="form-label">ESP32-URL <span style="color:var(--text-dim);font-weight:400">(leer = NFC deaktiviert)</span></label>
+            <input class="form-input" id="cfg-nfc-url" placeholder="http://10.10.1.59">
+          </div>
+        </div>
+        <div class="table-wrap" style="padding:20px;margin-bottom:16px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">SITZUNGEN</div>
+          <div class="form-group">
+            <label class="form-label">Lab-Manager-Session Dauer <span style="color:var(--text-dim);font-weight:400">(Minuten)</span></label>
+            <input class="form-input" id="cfg-jwt-min" type="number" min="5" max="1440" placeholder="480">
+            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Aktuell: <span id="cfg-jwt-human">—</span> — gilt ab dem nächsten Login</div>
+          </div>
+        </div>
+        <div class="table-wrap" style="padding:20px;margin-bottom:20px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">GAST-TOKENS</div>
+          <div class="form-group">
+            <label class="form-label">Login-Link Gültigkeit <span style="color:var(--text-dim);font-weight:400">(Tage)</span></label>
+            <input class="form-input" id="cfg-token-days" type="number" min="1" max="3650" placeholder="365">
+            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Gilt für neu generierte Links. Bestehende Links behalten ihre Laufzeit.</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveSettings()">Einstellungen speichern</button>
+      </div>
+    </div>
+
     <div class="page" id="page-info">
       <div class="section-header">
         <div class="section-title">Info <span>// RECHTLICHE ANGABEN</span></div>
@@ -682,7 +716,10 @@ async function doLogin() {
   localStorage.setItem('ms_token',token);
   document.getElementById('login-overlay').style.display='none';
   currentUser = await GET('/auth/me');
-  if (currentUser) document.getElementById('current-user-label').textContent=currentUser.name;
+  if (currentUser) {
+    document.getElementById('current-user-label').textContent=currentUser.name;
+    document.getElementById('nav-settings').style.display = currentUser.role==='admin' ? '' : 'none';
+  }
   loadAll();
 }
 function doLogout() {
@@ -693,7 +730,7 @@ function doLogout() {
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',permissions:'Berechtigungen',qr:'QR-Code System',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',backup:'Backup & Restore',info:'Info'};
+const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',permissions:'Berechtigungen',qr:'QR-Code System',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',backup:'Backup & Restore',settings:'Einstellungen',info:'Info'};
 const pageActions={
   guests:()=>`<button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`,
@@ -713,6 +750,7 @@ function navigate(el) {
   if (page==='maintenance') loadMaintenance();
   if (page==='dashboard' || page==='machines') refreshLiveData();
   if (page==='dashboard') refreshMaintenanceOverview();
+  if (page==='settings') loadSettings();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1867,17 +1905,42 @@ if (_ltParam) {
       token = res.access_token;
       localStorage.setItem('ms_token', token);
       history.replaceState(null, '', window.location.pathname);
-      GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('login-overlay').style.display='none'; loadAll(); } });
+      GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=u.role==='admin'?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } });
     } else {
       document.getElementById('login-error').textContent='Ungültiger Login-Link.';
       document.getElementById('login-error').style.display='block';
     }
   });
 } else if (token) {
-  GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
+  GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=u.role==='admin'?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
 }
 document.getElementById('login-pass').addEventListener('keydown',e=>{ if (e.key==='Enter') doLogin(); });
 setInterval(()=>{ if(document.querySelector('.nav-item.active')?.dataset.page==='log') loadLog(); },30000);
+// ═══════════════════════════════════════════════════════
+// EINSTELLUNGEN
+// ═══════════════════════════════════════════════════════
+async function loadSettings() {
+  const s = await GET('/settings');
+  if (!s) return;
+  document.getElementById('cfg-nfc-url').value = s.nfc_writer_url || '';
+  document.getElementById('cfg-jwt-min').value = s.jwt_expire_minutes;
+  document.getElementById('cfg-token-days').value = s.guest_token_days;
+  const h = s.jwt_expire_minutes >= 60
+    ? `${Math.floor(s.jwt_expire_minutes/60)} h ${s.jwt_expire_minutes%60>0 ? s.jwt_expire_minutes%60+' min' : ''}`.trim()
+    : `${s.jwt_expire_minutes} min`;
+  document.getElementById('cfg-jwt-human').textContent = h;
+}
+
+async function saveSettings() {
+  const payload = {
+    nfc_writer_url:     document.getElementById('cfg-nfc-url').value.trim(),
+    jwt_expire_minutes: parseInt(document.getElementById('cfg-jwt-min').value) || 480,
+    guest_token_days:   parseInt(document.getElementById('cfg-token-days').value) || 365,
+  };
+  const res = await PATCH('/settings', payload);
+  if (res) { await loadSettings(); showToast('Einstellungen gespeichert', 'success'); }
+}
+
 // ── Audio-Warnung für Leerlauf ───────────────────────
 let _audioCtx = null;
 function _getAudio() {
