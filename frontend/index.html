@@ -647,11 +647,10 @@ function hideDashboard() {
 async function showGuestDashboard() {
   document.getElementById('screen-dashboard').style.display='flex'; document.getElementById('dash-user-label').textContent=S.username?'@'+S.username:'';
   const machines = await fetch('/api/guest/dashboard').then(r=>r.json()).catch(()=>[]);
-  const icons = {Laser:'⚡',CNC:'⚙','3D-Druck':'🖨',Holz:'🪚',Metall:'🔩',Elektronik:'🔌',Textil:'🧵',Sonstiges:'🔧'};
   const el = document.getElementById('gdash-content');
   if (!machines.length) { el.innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;text-align:center;padding:20px">Keine Maschinen.</div>'; return; }
   el.innerHTML = machines.map(m => {
-    const icon = icons[m.category] || '🔧';
+    const icon = machineIcons[m.category] || '🔧';
     const inUse = m.in_use;
     const available = m.status === 'online' && !inUse;
     let statusHtml;

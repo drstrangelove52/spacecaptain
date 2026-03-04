@@ -304,8 +304,6 @@
         <div class="search-wrap" style="flex:1;min-width:200px"><span class="search-icon">🔍</span><input class="search-input" id="machine-search" placeholder="Maschine suchen…" oninput="filterMachines()"></div>
         <select class="filter-input" id="machine-filter-cat" onchange="filterMachines()" style="width:160px">
           <option value="">Alle Kategorien</option>
-          <option>Laser</option><option>CNC</option><option>3D-Druck</option>
-          <option>Holz</option><option>Metall</option><option>Elektronik</option><option>Textil</option><option>Sonstiges</option>
         </select>
         <select class="filter-input" id="machine-filter-status" onchange="filterMachines()" style="width:140px">
           <option value="">Alle Status</option>
@@ -1021,6 +1019,8 @@ async function deleteLM(id,name) {
 // MACHINES
 // ═══════════════════════════════════════════════════════
 const machineIcons={Laser:'⚡',CNC:'⚙','3D-Druck':'🖨',Holz:'🪚',Metall:'🔩',Elektronik:'🔌',Textil:'🧵',Sonstiges:'🔧'};
+const MACHINE_CATEGORIES=Object.keys(machineIcons);
+(()=>{const s=document.getElementById('machine-filter-cat');MACHINE_CATEGORIES.forEach(c=>{const o=document.createElement('option');o.textContent=c;s.appendChild(o);});})();
 
 function filterMachines() {
   const q=(document.getElementById('machine-search')?.value||'').toLowerCase();
@@ -1114,7 +1114,7 @@ function showAddMachine() {
   openModal('Maschine hinzufügen',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="mc-name" placeholder="Lasercutter XL-40"></div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="mc-cat"><option>Laser</option><option>CNC</option><option>3D-Druck</option><option>Holz</option><option>Metall</option><option>Elektronik</option><option>Textil</option><option>Sonstiges</option></select></div>
+      <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="mc-cat">${MACHINE_CATEGORIES.map(c=>`<option>${c}</option>`).join('')}</select></div>
       <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="mc-status"><option value="online">online</option><option value="offline">offline</option><option value="maintenance">maintenance</option></select></div>
     </div>
     <div class="form-row">
@@ -1172,7 +1172,7 @@ function editMachine(id) {
   openModal('Maschine bearbeiten',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${m.name}"></div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="e-cat">${['Laser','CNC','3D-Druck','Holz','Metall','Elektronik','Textil','Sonstiges'].map(c=>`<option ${m.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="e-cat">${MACHINE_CATEGORIES.map(c=>`<option ${m.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
       <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-status"><option value="online" ${m.status==='online'?'selected':''}>online</option><option value="offline" ${m.status==='offline'?'selected':''}>offline</option><option value="maintenance" ${m.status==='maintenance'?'selected':''}>maintenance</option></select></div>
     </div>
     <div class="form-group"><label class="form-label">Standort</label><input class="form-input" id="e-loc" value="${m.location||''}"></div>
