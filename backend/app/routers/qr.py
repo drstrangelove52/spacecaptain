@@ -13,11 +13,15 @@ Ablauf:
   3. Gast scannt "Fertig"-QR oder drückt Button  →  POST /api/qr/release
      → Smart Plug AUS, Nutzung endet
 """
+import io
 import secrets
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+import qrcode
 
 from app.database import get_db
 from app.models import User, Guest, Machine, Permission, GuestToken, LogType
@@ -27,6 +31,25 @@ from app.services import logger as log_svc
 from app.services.plug import switch_plug
 
 router = APIRouter(prefix="/qr", tags=["qr"])
+
+
+class RenderRequest(BaseModel):
+    data: str
+
+@router.post("/render")
+async def render_qr(
+    payload: RenderRequest,
+    _: User = Depends(get_current_user),
+):
+    """Generiert einen QR-Code als PNG für einen beliebigen Inhalt (nur für eingeloggte Manager)."""
+    qr = qrcode.QRCode(version=1, box_size=10, border=4)
+    qr.add_data(payload.data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="image/png")
 
 GUEST_TOKEN_MINUTES = 15
 

@@ -935,13 +935,25 @@ function editGuest(id) {
 function _showTokenOnce(url, inputId) {
   openModal('Login-Link — einmalige Anzeige',`
     <div style="background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);border-radius:6px;padding:10px 12px;font-size:13px;color:#ca8a04;margin-bottom:14px">
-      ⚠ Dieser Link wird nur jetzt angezeigt und kann danach nicht mehr abgerufen werden. Bitte sofort kopieren.
+      ⚠ Dieser Link wird nur jetzt angezeigt und kann danach nicht mehr abgerufen werden. Bitte sofort kopieren oder QR-Code scannen.
     </div>
-    <div style="display:flex;gap:6px;align-items:center">
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:14px">
       <input class="form-input" style="font-size:11px;font-family:var(--mono)" id="${inputId}" value="${url}" readonly>
       <button class="btn btn-ghost btn-sm" onclick="copyLoginLink('${inputId}')" type="button">📋</button>
     </div>
+    <div style="text-align:center">
+      <img id="token-qr-img" src="" alt="QR-Code" style="width:200px;height:200px;border:1px solid var(--border);border-radius:6px;background:var(--surface2)">
+    </div>
   `, ()=>closeModal(), 'Verstanden');
+  // QR-Code asynchron laden
+  fetch('/api/qr/render', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json', ...(token ? {Authorization:`Bearer ${token}`} : {})},
+    body: JSON.stringify({data: url}),
+  }).then(r => r.blob()).then(blob => {
+    const img = document.getElementById('token-qr-img');
+    if (img) img.src = URL.createObjectURL(blob);
+  });
 }
 
 async function genLoginToken(guestId) {
