@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <FastLED.h>
 #include "config.h"
 #include "nfc_writer.h"
 #include "web_server.h"
@@ -10,16 +11,17 @@ AppState  appState;
 NfcWriter nfcWriter(PN532_SDA, PN532_SCL);
 WebServer httpServer(appState, 80);
 
-// ─── LED-Hilfsfunktionen ──────────────────────────────────────────────────────
+// ─── WS2812B LED ──────────────────────────────────────────────────────────────
 
-static void ledsOff() {
-    if (LED_BLUE)  digitalWrite(LED_BLUE,  LOW);
-    if (LED_GREEN) digitalWrite(LED_GREEN, LOW);
-    if (LED_RED)   digitalWrite(LED_RED,   LOW);
+static CRGB _led[1];
+
+static void ledColor(CRGB color) {
+    _led[0] = color;
+    FastLED.show();
 }
 
-static void ledSet(uint8_t pin, bool on) {
-    if (pin) digitalWrite(pin, on ? HIGH : LOW);
+static void ledsOff() {
+    ledColor(CRGB::Black);
 }
 
 // Zustandsabhängige LED-Anzeige (wird aus dem Haupt-Loop aufgerufen)
@@ -35,31 +37,24 @@ static void updateLeds() {
             if (now - _lastBlink >= BLINK_SLOW) {
                 _lastBlink = now;
                 _blinkOn   = !_blinkOn;
-                ledsOff();
-                ledSet(LED_BLUE, _blinkOn);
+                ledColor(_blinkOn ? CRGB::Blue : CRGB::Black);
             }
             break;
         }
         case DeviceState::WAITING: {
-            // Gelb = Rot + Grün, schnell blinkend
+            // Gelb, schnell blinkend
             if (now - _lastBlink >= BLINK_FAST) {
                 _lastBlink = now;
                 _blinkOn   = !_blinkOn;
-                ledsOff();
-                if (_blinkOn) {
-                    ledSet(LED_RED,   true);
-                    ledSet(LED_GREEN, true);
-                }
+                ledColor(_blinkOn ? CRGB::Yellow : CRGB::Black);
             }
             break;
         }
         case DeviceState::SUCCESS:
-            ledsOff();
-            ledSet(LED_GREEN, true);
+            ledColor(CRGB::Green);
             break;
         case DeviceState::ERROR:
-            ledsOff();
-            ledSet(LED_RED, true);
+            ledColor(CRGB::Red);
             break;
     }
 }
@@ -74,8 +69,7 @@ static void connectWifi() {
     uint32_t start = millis();
     while (WiFi.status() != WL_CONNECTED) {
         // Blaue LED blinken während Verbindungsaufbau
-        ledsOff();
-        ledSet(LED_BLUE, true);
+        ledColor(CRGB::Blue);
         delay(250);
         ledsOff();
         delay(250);
@@ -94,16 +88,16 @@ void setup() {
     Serial.begin(115200);
     Serial.println("\n[Boot] SpaceCaptain NFC Writer startet...");
 
-    // LED-Pins initialisieren
-    if (LED_BLUE)  { pinMode(LED_BLUE,  OUTPUT); digitalWrite(LED_BLUE,  LOW); }
-    if (LED_GREEN) { pinMode(LED_GREEN, OUTPUT); digitalWrite(LED_GREEN, LOW); }
-    if (LED_RED)   { pinMode(LED_RED,   OUTPUT); digitalWrite(LED_RED,   LOW); }
+    // WS2812B initialisieren
+    FastLED.addLeds<WS2812B, LED_PIN, GRB>(_led, 1);
+    FastLED.setBrightness(LED_BRIGHTNESS);
+    ledsOff();
 
     connectWifi();
 
     if (!nfcWriter.begin()) {
         Serial.println("[Boot] PN532 nicht gefunden – Neustart in 5s");
-        ledSet(LED_RED, true);
+        ledColor(CRGB::Red);
         delay(5000);
         ESP.restart();
     }

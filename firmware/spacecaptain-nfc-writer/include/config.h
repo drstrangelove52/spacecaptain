@@ -9,11 +9,9 @@
 #define PN532_SCL     22
 #define WRITE_TIMEOUT 30000  // ms — wie lange auf NFC-Tag warten
 
-// ─── LED-Pins ────────────────────────────────────────────────────────────────
-// Auf 0 setzen, wenn die jeweilige LED nicht bestückt ist
-#define LED_BLUE      2
-#define LED_GREEN     4
-#define LED_RED       5
+// ─── WS2812B RGB-LED ─────────────────────────────────────────────────────────
+#define LED_PIN        2    // Datenpin der WS2812B-LED
+#define LED_BRIGHTNESS 50   // Helligkeit 0–255 (50 ≈ augenschonend)
 
 // ─── Blink-Intervalle (ms) ────────────────────────────────────────────────────
 #define BLINK_SLOW    1000   // Bereit (blau, langsam)
