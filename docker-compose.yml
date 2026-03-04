@@ -37,6 +37,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-changeme_use_long_random_string_in_production}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost}
+      NFC_WRITER_URL: ${NFC_WRITER_URL:-}
     depends_on:
       db:
         condition: service_healthy
