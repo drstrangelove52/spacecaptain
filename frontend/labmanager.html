@@ -936,7 +936,7 @@ function editGuest(id) {
   });
 }
 
-function _showTokenOnce(url, inputId) {
+function _showTokenOnce(url, inputId, label) {
   openModal('Login-Link — einmalige Anzeige',`
     <div style="background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);border-radius:6px;padding:10px 12px;font-size:13px;color:#ca8a04;margin-bottom:14px">
       ⚠ Dieser Link wird nur jetzt angezeigt und kann danach nicht mehr abgerufen werden. Bitte sofort kopieren oder QR-Code scannen.
@@ -947,6 +947,10 @@ function _showTokenOnce(url, inputId) {
     </div>
     <div style="text-align:center">
       <img id="token-qr-img" src="" alt="QR-Code" style="width:200px;height:200px;border:1px solid var(--border);border-radius:6px;background:var(--surface2)">
+    </div>
+    <div style="margin-top:14px">
+      <button class="btn btn-ghost btn-sm" id="token-nfc-btn" onclick="_writeNfcFromModal(this.dataset.url,this.dataset.label)" data-url="${url}" data-label="${(label||'Login-Link').replace(/"/g,'&quot;')}" type="button">📡 NFC-Tag beschreiben</button>
+      <div id="token-nfc-status" style="display:none;margin-top:8px;border-radius:6px;padding:10px 12px;font-size:13px"></div>
     </div>
   `, ()=>closeModal(), 'Verstanden');
   // QR-Code asynchron laden
@@ -962,13 +966,13 @@ function _showTokenOnce(url, inputId) {
 
 async function genLoginToken(guestId) {
   const res = await POST(`/guests/${guestId}/login-token`, {});
-  if (res) { await loadAll(); _showTokenOnce(`${window.location.origin}/?lt=${res.login_token}`, 'gt-url'); showToast('Login-Link generiert', 'success'); }
+  if (res) { await loadAll(); const g=cache.guests.find(x=>x.id===guestId); _showTokenOnce(`${window.location.origin}/?lt=${res.login_token}`, 'gt-url', g?.name||'Gast-Login'); showToast('Login-Link generiert', 'success'); }
 }
 
 async function regenLoginToken(guestId) {
   if (!confirm('Neuen Login-Link generieren? Der bisherige Link wird sofort ungültig.')) return;
   const res = await POST(`/guests/${guestId}/login-token`, {});
-  if (res) { await loadAll(); _showTokenOnce(`${window.location.origin}/?lt=${res.login_token}`, 'gt-url'); showToast('Login-Link neu generiert', 'success'); }
+  if (res) { await loadAll(); const g=cache.guests.find(x=>x.id===guestId); _showTokenOnce(`${window.location.origin}/?lt=${res.login_token}`, 'gt-url', g?.name||'Gast-Login'); showToast('Login-Link neu generiert', 'success'); }
 }
 
 async function revokeLoginToken(guestId) {
@@ -1060,13 +1064,13 @@ function editLM(id) {
 
 async function genLMLoginToken(userId) {
   const res = await POST(`/users/${userId}/login-token`, {});
-  if (res) { await loadAll(); _showTokenOnce(`${window.location.origin}/labmanager.html?lt=${res.login_token}`, 'lm-lt-url'); showToast('Login-Link generiert', 'success'); }
+  if (res) { await loadAll(); const u=cache.users.find(x=>x.id===userId); _showTokenOnce(`${window.location.origin}/labmanager.html?lt=${res.login_token}`, 'lm-lt-url', u?.name||'Lab Manager'); showToast('Login-Link generiert', 'success'); }
 }
 
 async function regenLMLoginToken(userId) {
   if (!confirm('Neuen Login-Link generieren? Der bisherige Link wird sofort ungültig.')) return;
   const res = await POST(`/users/${userId}/login-token`, {});
-  if (res) { await loadAll(); _showTokenOnce(`${window.location.origin}/labmanager.html?lt=${res.login_token}`, 'lm-lt-url'); showToast('Login-Link neu generiert', 'success'); }
+  if (res) { await loadAll(); const u=cache.users.find(x=>x.id===userId); _showTokenOnce(`${window.location.origin}/labmanager.html?lt=${res.login_token}`, 'lm-lt-url', u?.name||'Lab Manager'); showToast('Login-Link neu generiert', 'success'); }
 }
 
 async function revokeLMLoginToken(userId) {
@@ -1671,51 +1675,52 @@ async function showMachineQR() {
   document.getElementById('qr-machine-url-box').style.display='block';
 }
 
+async function _writeNfcTagUrl(url, label, boxEl, onDone) {
+  const styles = {
+    waiting: 'background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);color:#ca8a04',
+    success: 'background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--success)',
+    error:   'background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--danger)',
+  };
+  function setStatus(state, msg) {
+    boxEl.style.cssText = 'display:block;border-radius:6px;padding:10px 12px;font-size:13px;' + styles[state];
+    boxEl.innerHTML = msg;
+  }
+  setStatus('waiting', '📡 Verbinde mit NFC-Schreibgerät…');
+  const res = await api('POST', '/nfc/write', { url, label });
+  if (!res) { setStatus('error', '✗ NFC-Schreibgerät nicht erreichbar'); if (onDone) onDone(false); return; }
+  setStatus('waiting', '📡 <strong>Tag ans Gerät halten</strong> — warte auf NFC-Tag… (max. 30 s)');
+  const poll = setInterval(async () => {
+    const result = await apiSilent('GET', '/nfc/result');
+    if (!result) return;
+    if (result.status === 'success') {
+      clearInterval(poll);
+      setStatus('success', `✓ NFC-Tag erfolgreich beschrieben: <strong>${label}</strong>`);
+      showToast('NFC-Tag beschrieben', 'success');
+      if (onDone) onDone(true);
+    } else if (result.status === 'error') {
+      clearInterval(poll);
+      setStatus('error', `✗ ${result.message || 'Fehler beim Schreiben'}`);
+      if (onDone) onDone(false);
+    }
+  }, 1500);
+}
+
+async function _writeNfcFromModal(url, label) {
+  const btn = document.getElementById('token-nfc-btn');
+  const box = document.getElementById('token-nfc-status');
+  if (btn) btn.disabled = true;
+  await _writeNfcTagUrl(url, label, box, () => { if (btn) btn.disabled = false; });
+}
+
 async function writeNfcTag() {
   const mid = document.getElementById('qr-machine-select').value;
   if (!mid) { showToast('Bitte Maschine wählen', 'warn'); return; }
   const fresh = await GET(`/machines/${mid}`);
   const m = fresh || cache.machines.find(x => x.id == mid);
   if (!m?.qr_token) { showToast('QR-Token nicht verfügbar', 'error'); return; }
-
-  const url = `${window.location.origin}/?m=${m.qr_token}`;
-  const box = document.getElementById('nfc-status-box');
   const btn = document.getElementById('nfc-write-btn');
-
-  function setStatus(state, msg) {
-    box.style.display = 'block';
-    const styles = {
-      waiting: 'background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);color:#ca8a04',
-      success: 'background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--success)',
-      error:   'background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--danger)',
-    };
-    box.style.cssText += ';' + styles[state];
-    box.innerHTML = msg;
-  }
-
   btn.disabled = true;
-  setStatus('waiting', '📡 Verbinde mit NFC-Schreibgerät…');
-
-  const res = await api('POST', '/nfc/write', { url, label: m.name });
-  if (!res) { btn.disabled = false; setStatus('error', '✗ NFC-Schreibgerät nicht erreichbar'); return; }
-
-  setStatus('waiting', `📡 <strong>Tag ans Gerät halten</strong> — warte auf NFC-Tag… (max. 30 s)`);
-
-  // Polling alle 1.5 Sekunden
-  const poll = setInterval(async () => {
-    const result = await apiSilent('GET', '/nfc/result');
-    if (!result) return;
-    if (result.status === 'success') {
-      clearInterval(poll);
-      btn.disabled = false;
-      setStatus('success', `✓ NFC-Tag erfolgreich beschrieben: <strong>${m.name}</strong>`);
-      showToast('NFC-Tag beschrieben', 'success');
-    } else if (result.status === 'error') {
-      clearInterval(poll);
-      btn.disabled = false;
-      setStatus('error', `✗ ${result.message || 'Fehler beim Schreiben'}`);
-    }
-  }, 1500);
+  await _writeNfcTagUrl(`${window.location.origin}/?m=${m.qr_token}`, m.name, document.getElementById('nfc-status-box'), () => { btn.disabled = false; });
 }
 
 async function regenMachineQR() {
