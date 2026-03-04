@@ -77,6 +77,10 @@ async def run_migrations(engine: AsyncEngine) -> None:
                 guest_token_days    INT NOT NULL DEFAULT 365
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """))
+        await _add_column_if_missing(conn, "system_settings", "modal_backdrop_input",
+                                     "TINYINT(1) NOT NULL DEFAULT 1")
+        await _add_column_if_missing(conn, "system_settings", "modal_backdrop_display",
+                                     "TINYINT(1) NOT NULL DEFAULT 1")
         from app.config import get_settings as _get_settings
         _env = _get_settings()
         await conn.execute(text(

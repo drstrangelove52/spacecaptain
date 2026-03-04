@@ -177,9 +177,11 @@ class MaintenanceInterval(Base):
 class SystemSettings(Base):
     __tablename__ = "system_settings"
     id:                 Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
-    nfc_writer_url:     Mapped[str] = mapped_column(String(255), default="")
-    jwt_expire_minutes: Mapped[int] = mapped_column(Integer, default=480)
-    guest_token_days:   Mapped[int] = mapped_column(Integer, default=365)
+    nfc_writer_url:          Mapped[str]  = mapped_column(String(255), default="")
+    jwt_expire_minutes:      Mapped[int]  = mapped_column(Integer, default=480)
+    guest_token_days:        Mapped[int]  = mapped_column(Integer, default=365)
+    modal_backdrop_input:    Mapped[bool] = mapped_column(Boolean, default=True)
+    modal_backdrop_display:  Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class MaintenanceRecord(Base):

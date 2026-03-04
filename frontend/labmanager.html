@@ -556,12 +556,26 @@
             <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Aktuell: <span id="cfg-jwt-human">—</span> — gilt ab dem nächsten Login</div>
           </div>
         </div>
-        <div class="table-wrap" style="padding:20px;margin-bottom:20px">
+        <div class="table-wrap" style="padding:20px;margin-bottom:16px">
           <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">GAST-TOKENS</div>
           <div class="form-group">
             <label class="form-label">Login-Link Gültigkeit <span style="color:var(--text-dim);font-weight:400">(Tage)</span></label>
             <input class="form-input" id="cfg-token-days" type="number" min="1" max="3650" placeholder="365">
             <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Gilt für neu generierte Links. Bestehende Links behalten ihre Laufzeit.</div>
+          </div>
+        </div>
+        <div class="table-wrap" style="padding:20px;margin-bottom:20px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">MODAL-VERHALTEN</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input type="checkbox" id="cfg-backdrop-input" style="width:16px;height:16px;accent-color:var(--accent)">
+              <span style="font-size:14px">Eingabe-Modals bei Klick ausserhalb schliessen</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input type="checkbox" id="cfg-backdrop-display" style="width:16px;height:16px;accent-color:var(--accent)">
+              <span style="font-size:14px">Anzeige-Modals bei Klick ausserhalb schliessen</span>
+            </label>
+            <div style="font-size:12px;color:var(--text-dim)">Anzeige-Modals: Login-Link, QR-Code. Eingabe-Modals: Formulare zum Bearbeiten.</div>
           </div>
         </div>
         <button class="btn btn-primary" onclick="saveSettings()">Einstellungen speichern</button>
@@ -665,6 +679,7 @@ const API = '/api';
 let token = localStorage.getItem('ms_token') || '';
 let currentUser = null;
 let cache = { guests:[], machines:[], users:[], permissions:[] };
+let clientSettings = { modal_backdrop_input: true, modal_backdrop_display: true };
 let selectedPermGuestId = null;
 let selectedPermMachineId = null;
 let currentPermView = 'guest';
@@ -990,7 +1005,7 @@ function _showTokenOnce(url, inputId, label) {
       <button class="btn btn-ghost btn-sm" id="token-nfc-btn" onclick="_writeNfcFromModal(this.dataset.url,this.dataset.label)" data-url="${url}" data-label="${(label||'Login-Link').replace(/"/g,'&quot;')}" type="button">📡 NFC-Tag beschreiben</button>
       <div id="token-nfc-status" style="display:none;margin-top:8px;border-radius:6px;padding:10px 12px;font-size:13px"></div>
     </div>
-  `, ()=>closeModal(), 'Verstanden');
+  `, ()=>closeModal(), 'Verstanden', null, 'display');
   // QR-Code asynchron laden
   fetch('/api/qr/render', {
     method: 'POST',
@@ -1857,18 +1872,24 @@ function resetLogFilters() {
 // ═══════════════════════════════════════════════════════
 // MODAL
 // ═══════════════════════════════════════════════════════
-function openModal(title,bodyHTML,onConfirm,confirmLabel,onCancel) {
+function openModal(title,bodyHTML,onConfirm,confirmLabel,onCancel,modalType='input') {
   document.getElementById('modal-title').textContent=title;
   document.getElementById('modal-body').innerHTML=bodyHTML;
   const lbl = confirmLabel || 'Speichern';
   document.getElementById('modal-footer').innerHTML=`<button class="btn btn-ghost" onclick="_modalCancel()">Abbrechen</button><button class="btn btn-primary" onclick="window._mc&&window._mc()">${lbl}</button>`;
   window._mc=onConfirm;
   window._mcc=onCancel||null;
+  window._modalType=modalType;
   document.getElementById('modal-overlay').classList.add('open');
 }
 function _modalCancel() { const fn=window._mcc; closeModal(); if(fn) fn(); }
-function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); window._mc=null; window._mcc=null; }
-document.getElementById('modal-overlay').addEventListener('click',e=>{ if (e.target.id==='modal-overlay') _modalCancel(); });
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); window._mc=null; window._mcc=null; window._modalType=null; }
+document.getElementById('modal-overlay').addEventListener('click',e=>{
+  if (e.target.id!=='modal-overlay') return;
+  const type=window._modalType||'input';
+  const allow=(type==='display')?clientSettings.modal_backdrop_display:clientSettings.modal_backdrop_input;
+  if (allow) _modalCancel();
+});
 
 // ═══════════════════════════════════════════════════════
 // TOAST
@@ -1922,9 +1943,13 @@ setInterval(()=>{ if(document.querySelector('.nav-item.active')?.dataset.page===
 async function loadSettings() {
   const s = await GET('/settings');
   if (!s) return;
+  clientSettings.modal_backdrop_input   = s.modal_backdrop_input;
+  clientSettings.modal_backdrop_display = s.modal_backdrop_display;
   document.getElementById('cfg-nfc-url').value = s.nfc_writer_url || '';
   document.getElementById('cfg-jwt-min').value = s.jwt_expire_minutes;
   document.getElementById('cfg-token-days').value = s.guest_token_days;
+  document.getElementById('cfg-backdrop-input').checked   = s.modal_backdrop_input;
+  document.getElementById('cfg-backdrop-display').checked = s.modal_backdrop_display;
   const h = s.jwt_expire_minutes >= 60
     ? `${Math.floor(s.jwt_expire_minutes/60)} h ${s.jwt_expire_minutes%60>0 ? s.jwt_expire_minutes%60+' min' : ''}`.trim()
     : `${s.jwt_expire_minutes} min`;
@@ -1933,9 +1958,11 @@ async function loadSettings() {
 
 async function saveSettings() {
   const payload = {
-    nfc_writer_url:     document.getElementById('cfg-nfc-url').value.trim(),
-    jwt_expire_minutes: parseInt(document.getElementById('cfg-jwt-min').value) || 480,
-    guest_token_days:   parseInt(document.getElementById('cfg-token-days').value) || 365,
+    nfc_writer_url:          document.getElementById('cfg-nfc-url').value.trim(),
+    jwt_expire_minutes:      parseInt(document.getElementById('cfg-jwt-min').value) || 480,
+    guest_token_days:        parseInt(document.getElementById('cfg-token-days').value) || 365,
+    modal_backdrop_input:    document.getElementById('cfg-backdrop-input').checked,
+    modal_backdrop_display:  document.getElementById('cfg-backdrop-display').checked,
   };
   const res = await PATCH('/settings', payload);
   if (res) { await loadSettings(); showToast('Einstellungen gespeichert', 'success'); }
