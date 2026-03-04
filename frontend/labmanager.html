@@ -902,7 +902,6 @@ function showAddGuest() {
 
 function editGuest(id) {
   const g=cache.guests.find(x=>x.id===id); if (!g) return;
-  const loginUrl = g.login_token ? `${window.location.origin}/?lt=${g.login_token}` : null;
   openModal('Gast bearbeiten',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${g.name}"></div>
     <div class="form-row">
@@ -914,12 +913,14 @@ function editGuest(id) {
     <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-active"><option value="true" ${g.is_active?'selected':''}>aktiv</option><option value="false" ${!g.is_active?'selected':''}>inaktiv</option></select></div>
     <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">LOGIN-LINK (OHNE PASSWORT)</div>
-      ${loginUrl
-        ? `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-             <input class="form-input" style="font-size:11px;font-family:var(--mono)" id="e-lt-url" value="${loginUrl}" readonly>
-             <button class="btn btn-ghost btn-sm" onclick="copyLoginLink('e-lt-url')" type="button">📋</button>
+      ${g.has_login_token
+        ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+             <span style="color:var(--success);font-size:13px">✓ Link aktiv</span>
            </div>
-           <button class="btn btn-danger btn-sm" onclick="revokeLoginToken(${g.id})" type="button">✕ Link widerrufen</button>`
+           <div style="display:flex;gap:6px">
+             <button class="btn btn-ghost btn-sm" onclick="regenLoginToken(${g.id})" type="button">↺ Neu generieren</button>
+             <button class="btn btn-danger btn-sm" onclick="revokeLoginToken(${g.id})" type="button">✕ Widerrufen</button>
+           </div>`
         : `<button class="btn btn-ghost btn-sm" onclick="genLoginToken(${g.id})" type="button">🔗 Login-Link generieren</button>`
       }
     </div>
@@ -931,9 +932,27 @@ function editGuest(id) {
   });
 }
 
+function _showTokenOnce(url, inputId) {
+  openModal('Login-Link — einmalige Anzeige',`
+    <div style="background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);border-radius:6px;padding:10px 12px;font-size:13px;color:#ca8a04;margin-bottom:14px">
+      ⚠ Dieser Link wird nur jetzt angezeigt und kann danach nicht mehr abgerufen werden. Bitte sofort kopieren.
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <input class="form-input" style="font-size:11px;font-family:var(--mono)" id="${inputId}" value="${url}" readonly>
+      <button class="btn btn-ghost btn-sm" onclick="copyLoginLink('${inputId}')" type="button">📋</button>
+    </div>
+  `, ()=>closeModal(), 'Verstanden');
+}
+
 async function genLoginToken(guestId) {
   const res = await POST(`/guests/${guestId}/login-token`, {});
-  if (res) { closeModal(); await loadAll(); editGuest(guestId); showToast('Login-Link generiert', 'success'); }
+  if (res) { await loadAll(); _showTokenOnce(`${window.location.origin}/?lt=${res.login_token}`, 'gt-url'); showToast('Login-Link generiert', 'success'); }
+}
+
+async function regenLoginToken(guestId) {
+  if (!confirm('Neuen Login-Link generieren? Der bisherige Link wird sofort ungültig.')) return;
+  const res = await POST(`/guests/${guestId}/login-token`, {});
+  if (res) { await loadAll(); _showTokenOnce(`${window.location.origin}/?lt=${res.login_token}`, 'gt-url'); showToast('Login-Link neu generiert', 'success'); }
 }
 
 async function revokeLoginToken(guestId) {
@@ -994,7 +1013,6 @@ function showAddLM() {
 function editLM(id) {
   const u=cache.users.find(x=>x.id===id); if (!u) return;
   const isAdmin=currentUser&&currentUser.role==='admin';
-  const loginUrl=u.login_token?`${window.location.origin}/labmanager.html?lt=${u.login_token}`:null;
   openModal('Lab Manager bearbeiten',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${u.name}"></div>
     <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="e-email" value="${u.email}"></div>
@@ -1004,12 +1022,14 @@ function editLM(id) {
     ${isAdmin?`<div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-lm-active"><option value="true" ${u.is_active?'selected':''}>Aktiv</option><option value="false" ${!u.is_active?'selected':''}>Inaktiv</option></select></div>`:''}
     ${isAdmin?`<div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">LOGIN-LINK (OHNE PASSWORT)</div>
-      ${loginUrl
-        ?`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-             <input class="form-input" style="font-size:11px;font-family:var(--mono)" id="e-lm-lt-url" value="${loginUrl}" readonly>
-             <button class="btn btn-ghost btn-sm" onclick="copyLoginLink('e-lm-lt-url')" type="button">📋</button>
+      ${u.has_login_token
+        ?`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+             <span style="color:var(--success);font-size:13px">✓ Link aktiv</span>
            </div>
-           <button class="btn btn-danger btn-sm" onclick="revokeLMLoginToken(${u.id})" type="button">✕ Link widerrufen</button>`
+           <div style="display:flex;gap:6px">
+             <button class="btn btn-ghost btn-sm" onclick="regenLMLoginToken(${u.id})" type="button">↺ Neu generieren</button>
+             <button class="btn btn-danger btn-sm" onclick="revokeLMLoginToken(${u.id})" type="button">✕ Widerrufen</button>
+           </div>`
         :`<button class="btn btn-ghost btn-sm" onclick="genLMLoginToken(${u.id})" type="button">🔗 Login-Link generieren</button>`
       }
     </div>`:''}
@@ -1024,7 +1044,13 @@ function editLM(id) {
 
 async function genLMLoginToken(userId) {
   const res = await POST(`/users/${userId}/login-token`, {});
-  if (res) { closeModal(); await loadAll(); editLM(userId); showToast('Login-Link generiert', 'success'); }
+  if (res) { await loadAll(); _showTokenOnce(`${window.location.origin}/labmanager.html?lt=${res.login_token}`, 'lm-lt-url'); showToast('Login-Link generiert', 'success'); }
+}
+
+async function regenLMLoginToken(userId) {
+  if (!confirm('Neuen Login-Link generieren? Der bisherige Link wird sofort ungültig.')) return;
+  const res = await POST(`/users/${userId}/login-token`, {});
+  if (res) { await loadAll(); _showTokenOnce(`${window.location.origin}/labmanager.html?lt=${res.login_token}`, 'lm-lt-url'); showToast('Login-Link neu generiert', 'success'); }
 }
 
 async function revokeLMLoginToken(userId) {

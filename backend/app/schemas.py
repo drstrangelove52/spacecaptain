@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, Field, model_validator
 from typing import Optional
 from app.models import UserRole, MachineStatus, PlugType, LogType
 
@@ -41,8 +41,15 @@ class UserUpdate(BaseModel):
 class UserOut(UserBase):
     id: int
     is_active: bool
-    login_token: Optional[str] = None
+    has_login_token: bool = False
     created_at: datetime
+    # Included for validation only — never serialized
+    login_token: Optional[str] = Field(default=None, exclude=True)
+
+    @model_validator(mode='after')
+    def compute_has_login_token(self) -> 'UserOut':
+        self.has_login_token = self.login_token is not None
+        return self
 
     class Config:
         from_attributes = True
@@ -74,8 +81,14 @@ class GuestOut(GuestBase):
     created_at: datetime
     permission_count: int = 0
     username: str = ""
-    login_token: Optional[str] = None
+    has_login_token: bool = False
+    # Included for validation only — never serialized
+    login_token: Optional[str] = Field(default=None, exclude=True)
 
+    @model_validator(mode='after')
+    def compute_has_login_token(self) -> 'GuestOut':
+        self.has_login_token = self.login_token is not None
+        return self
 
     class Config:
         from_attributes = True
