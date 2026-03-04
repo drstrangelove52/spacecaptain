@@ -1,3 +1,4 @@
+import secrets
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -92,5 +93,38 @@ async def delete_user(
     if not user:
         raise HTTPException(404, "Nicht gefunden")
     await db.delete(user)
+    await db.commit()
+    return {"ok": True}
+
+
+@router.post("/{user_id}/login-token")
+async def generate_login_token(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(require_admin),
+):
+    """Generiert einen neuen persönlichen Login-Token für den Lab Manager (Admin only)."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(404, "Benutzer nicht gefunden")
+    user.login_token = secrets.token_urlsafe(32)
+    await db.commit()
+    await db.refresh(user)
+    return {"login_token": user.login_token}
+
+
+@router.delete("/{user_id}/login-token")
+async def revoke_login_token(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(require_admin),
+):
+    """Widerruft den Login-Token des Lab Managers."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(404, "Benutzer nicht gefunden")
+    user.login_token = None
     await db.commit()
     return {"ok": True}

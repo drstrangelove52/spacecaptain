@@ -41,6 +41,7 @@ class UserUpdate(BaseModel):
 class UserOut(UserBase):
     id: int
     is_active: bool
+    login_token: Optional[str] = None
     created_at: datetime
 
     class Config:

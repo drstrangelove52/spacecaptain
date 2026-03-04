@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Form
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -55,3 +56,20 @@ async def token_form(
 @router.get("/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+class LoginByTokenRequest(BaseModel):
+    login_token: str
+
+@router.post("/login-by-token", response_model=Token)
+async def login_by_token(payload: LoginByTokenRequest, db: AsyncSession = Depends(get_db)):
+    """Lab-Manager-Login per persönlichem Token-Link — kein Passwort nötig."""
+    result = await db.execute(
+        select(User).where(User.login_token == payload.login_token, User.is_active == True)
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Ungültiger oder abgelaufener Token-Link")
+    token = create_access_token(user.id, user.role)
+    await log_svc.log(db, LogType.login, f"Login per Token-Link: {user.name} ({user.email})", user_id=user.id)
+    return Token(access_token=token)

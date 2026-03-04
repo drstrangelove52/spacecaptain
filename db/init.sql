@@ -200,3 +200,6 @@ ALTER TABLE activity_log MODIFY COLUMN type ENUM(
     'permission_granted','permission_revoked','login','guest_login',
     'error','idle_off','session_started','maintenance_due','maintenance_done'
 ) NOT NULL;
+
+-- Login-Token für Lab Manager
+ALTER TABLE users ADD COLUMN IF NOT EXISTS login_token VARCHAR(64) UNIQUE DEFAULT NULL;

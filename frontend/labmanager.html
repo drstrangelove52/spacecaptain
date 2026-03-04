@@ -994,6 +994,7 @@ function showAddLM() {
 function editLM(id) {
   const u=cache.users.find(x=>x.id===id); if (!u) return;
   const isAdmin=currentUser&&currentUser.role==='admin';
+  const loginUrl=u.login_token?`${window.location.origin}/labmanager.html?lt=${u.login_token}`:null;
   openModal('Lab Manager bearbeiten',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${u.name}"></div>
     <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="e-email" value="${u.email}"></div>
@@ -1001,6 +1002,17 @@ function editLM(id) {
     ${isAdmin?`<div class="form-group"><label class="form-label">Rolle</label><select class="form-input" id="e-role"><option value="manager" ${u.role==='manager'?'selected':''}>Manager</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></div>`:''}
     <div class="form-group"><label class="form-label">Bereich</label><input class="form-input" id="e-area" value="${u.area||''}"></div>
     ${isAdmin?`<div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-lm-active"><option value="true" ${u.is_active?'selected':''}>Aktiv</option><option value="false" ${!u.is_active?'selected':''}>Inaktiv</option></select></div>`:''}
+    ${isAdmin?`<div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">LOGIN-LINK (OHNE PASSWORT)</div>
+      ${loginUrl
+        ?`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+             <input class="form-input" style="font-size:11px;font-family:var(--mono)" id="e-lm-lt-url" value="${loginUrl}" readonly>
+             <button class="btn btn-ghost btn-sm" onclick="copyLoginLink('e-lm-lt-url')" type="button">📋</button>
+           </div>
+           <button class="btn btn-danger btn-sm" onclick="revokeLMLoginToken(${u.id})" type="button">✕ Link widerrufen</button>`
+        :`<button class="btn btn-ghost btn-sm" onclick="genLMLoginToken(${u.id})" type="button">🔗 Login-Link generieren</button>`
+      }
+    </div>`:''}
   `, async()=>{
     const upd={name:document.getElementById('e-name').value.trim(),email:document.getElementById('e-email').value.trim(),area:document.getElementById('e-area').value.trim()};
     if (isAdmin) { upd.role=document.getElementById('e-role').value; upd.is_active=document.getElementById('e-lm-active').value==='true'; }
@@ -1008,6 +1020,17 @@ function editLM(id) {
     const res=await PATCH(`/users/${id}`,upd);
     if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
   });
+}
+
+async function genLMLoginToken(userId) {
+  const res = await POST(`/users/${userId}/login-token`, {});
+  if (res) { closeModal(); await loadAll(); editLM(userId); showToast('Login-Link generiert', 'success'); }
+}
+
+async function revokeLMLoginToken(userId) {
+  if (!confirm('Login-Link widerrufen? Der Lab Manager muss danach wieder mit Passwort einloggen.')) return;
+  await DELETE(`/users/${userId}/login-token`);
+  closeModal(); await loadAll(); editLM(userId); showToast('Login-Link widerrufen', 'warn');
 }
 
 async function deleteLM(id,name) {
@@ -1743,7 +1766,20 @@ fetch('/api/version').then(r=>r.json()).then(d=>{
   if (l) l.textContent = `Version ${d.version}`;
 }).catch(()=>{});
 
-if (token) {
+const _ltParam = new URLSearchParams(window.location.search).get('lt');
+if (_ltParam) {
+  POST('/auth/login-by-token', {login_token: _ltParam}).then(res => {
+    if (res) {
+      token = res.access_token;
+      localStorage.setItem('ms_token', token);
+      history.replaceState(null, '', window.location.pathname);
+      GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('login-overlay').style.display='none'; loadAll(); } });
+    } else {
+      document.getElementById('login-error').textContent='Ungültiger Login-Link.';
+      document.getElementById('login-error').style.display='block';
+    }
+  });
+} else if (token) {
   GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
 }
 document.getElementById('login-pass').addEventListener('keydown',e=>{ if (e.key==='Enter') doLogin(); });
