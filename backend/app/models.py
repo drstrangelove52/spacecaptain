@@ -105,6 +105,7 @@ class Machine(Base):
     idle_power_w:       Mapped[Optional[float]] = mapped_column(Float, default=None)
     idle_timeout_min:   Mapped[Optional[int]]   = mapped_column(Integer, default=None)
     plug_poll_interval_sec: Mapped[Optional[int]] = mapped_column(Integer, default=60)
+    training_required:      Mapped[bool]           = mapped_column(Boolean, default=True)
     current_guest_id:   Mapped[Optional[int]]   = mapped_column(Integer, ForeignKey("guests.id", ondelete="SET NULL"), default=None)
     session_manager_id: Mapped[Optional[int]]   = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), default=None)
     session_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
@@ -139,6 +140,7 @@ class Permission(Base):
     machine_id: Mapped[int]           = mapped_column(Integer, ForeignKey("machines.id", ondelete="CASCADE"))
     granted_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     granted_at: Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
+    is_blocked: Mapped[bool]          = mapped_column(Boolean, default=False)
     guest:      Mapped["Guest"]       = relationship("Guest", back_populates="permissions")
     machine:    Mapped["Machine"]     = relationship("Machine", back_populates="permissions")
 

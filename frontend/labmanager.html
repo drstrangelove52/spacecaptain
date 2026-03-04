@@ -1206,7 +1206,7 @@ function renderMachinesFiltered(machines) {
     }
     return `<div class="machine-card ${m.status} ${idleClass}" id="mc-${m.id}">
       <div class="machine-icon">${icon}</div>
-      <div class="machine-name">${m.name}</div>
+      <div class="machine-name">${m.name}${m.training_required===false?'<span style="font-family:var(--mono);font-size:9px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3);border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle">OFFEN</span>':''}</div>
       <div class="machine-cat">${m.category}${m.location?' // '+m.location:''}</div>
       ${m.comment?`<div class="machine-comment" style="display:block">⚠ ${m.comment}</div>`:''}
       ${sessionHtml}
@@ -1281,6 +1281,14 @@ function showAddMachine() {
         <div class="form-group"><label class="form-label">Timeout (Minuten)</label><input class="form-input" id="mc-idlet" type="number" placeholder="z.B. 10"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Nach dieser Leerlaufdauer wird automatisch abgeschaltet</div></div>
       </div>
     </div>
+    <hr style="border-color:var(--border);margin:16px 0">
+    <div style="display:flex;align-items:flex-start;gap:12px">
+      <input type="checkbox" id="mc-training" checked style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent2);margin-top:2px;flex-shrink:0">
+      <div>
+        <label class="form-label" style="margin-bottom:2px;cursor:pointer" for="mc-training">Schulung erforderlich</label>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Wenn deaktiviert: alle Gäste haben automatisch Zugang, einzelne können gesperrt werden.</div>
+      </div>
+    </div>
   `, async()=>{
     const name=document.getElementById('mc-name').value.trim();
     if (!name) { showToast('Name erforderlich','error'); return; }
@@ -1291,7 +1299,8 @@ function showAddMachine() {
     const plug_token=rawToken?(plugSel==='shelly'?`admin:${rawToken}`:rawToken):null;
     const idle_w=document.getElementById('mc-idlew')?.value;
     const idle_t=document.getElementById('mc-idlet')?.value;
-    const res=await POST('/machines',{name,category:document.getElementById('mc-cat').value,status:document.getElementById('mc-status').value,manufacturer:document.getElementById('mc-mfr').value.trim(),model:document.getElementById('mc-model').value.trim(),location:document.getElementById('mc-loc').value.trim(),comment:document.getElementById('mc-comment').value.trim()||null,plug_type,plug_ip:document.getElementById('mc-plugip')?.value.trim()||null,plug_extra,plug_token,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null});
+    const training_required=document.getElementById('mc-training')?.checked??true;
+    const res=await POST('/machines',{name,category:document.getElementById('mc-cat').value,status:document.getElementById('mc-status').value,manufacturer:document.getElementById('mc-mfr').value.trim(),model:document.getElementById('mc-model').value.trim(),location:document.getElementById('mc-loc').value.trim(),comment:document.getElementById('mc-comment').value.trim()||null,plug_type,plug_ip:document.getElementById('mc-plugip')?.value.trim()||null,plug_extra,plug_token,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,training_required});
     if (res) { closeModal(); await loadAll(); showToast(`${res.name} hinzugefügt!`,'success'); }
   });
 }
@@ -1335,6 +1344,14 @@ function editMachine(id) {
         <div class="form-group"><label class="form-label">Poll-Intervall (Sekunden)</label><input class="form-input" id="e-poll" type="number" min="10" value="${m.plug_poll_interval_sec??60}" placeholder="60"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Wie oft der Schaltzustand geprüft wird (min. 10s)</div></div>
       </div>
     </div>
+    <hr style="border-color:var(--border);margin:16px 0">
+    <div style="display:flex;align-items:flex-start;gap:12px">
+      <input type="checkbox" id="e-training" ${m.training_required!==false?'checked':''} style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent2);margin-top:2px;flex-shrink:0">
+      <div>
+        <label class="form-label" style="margin-bottom:2px;cursor:pointer" for="e-training">Schulung erforderlich</label>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Wenn deaktiviert: alle Gäste haben automatisch Zugang, einzelne können gesperrt werden.</div>
+      </div>
+    </div>
   `, async()=>{
     const plugSel=document.getElementById('e-plug').value;
     const plug_type=plugSel;
@@ -1344,7 +1361,8 @@ function editMachine(id) {
     const idle_w=document.getElementById('e-idlew')?.value;
     const idle_t=document.getElementById('e-idlet')?.value;
     const poll_s=document.getElementById('e-poll')?.value;
-    const res=await PATCH(`/machines/${id}`,{name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,plug_type,plug_ip:document.getElementById('e-plugip')?.value.trim()||null,plug_extra,plug_token,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60});
+    const training_required=document.getElementById('e-training')?.checked??true;
+    const res=await PATCH(`/machines/${id}`,{name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,plug_type,plug_ip:document.getElementById('e-plugip')?.value.trim()||null,plug_extra,plug_token,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required});
     if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
   });
 }
@@ -1405,7 +1423,7 @@ function renderPermGuestList(filter='') {
   const filtered=cache.guests.filter(g=>!filter||g.name.toLowerCase().includes(filter.toLowerCase())||g.username.toLowerCase().includes(filter.toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name,'de'));
   if (!filtered.length) { el.innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:11px;padding:16px">Keine Gäste gefunden</div>'; return; }
   el.innerHTML=filtered.map(g=>{
-    const permCount=cache.permissions.filter(p=>p.guest_id===g.id).length;
+    const permCount=cache.permissions.filter(p=>p.guest_id===g.id&&!p.is_blocked).length;
     return `<div class="perm-guest-item ${selectedPermGuestId===g.id?'active':''}" onclick="selectPermGuest(${g.id})">
       <div>
         <div style="font-weight:600;color:var(--text)">${g.name}</div>
@@ -1436,14 +1454,18 @@ function renderPermMachineList(filter='') {
   const statusColor = m => m.status==='online'?'var(--success)':m.status==='maintenance'?'var(--accent)':'var(--text-dim)';
   el.innerHTML = filtered.map(m=>{
     const icon = machineIcons[m.category]||'🔧';
-    const permCount = cache.permissions.filter(p=>p.machine_id===m.id).length;
+    const isOpen = m.training_required === false;
+    const permCount = isOpen
+      ? cache.permissions.filter(p=>p.machine_id===m.id&&p.is_blocked).length
+      : cache.permissions.filter(p=>p.machine_id===m.id&&!p.is_blocked).length;
+    const countLabel = isOpen ? (permCount?`${permCount} ✗`:'✓') : `${permCount} ✓`;
     return `<div class="perm-guest-item ${selectedPermMachineId===m.id?'active':''}" onclick="selectPermMachine(${m.id})">
       <div style="font-size:18px">${icon}</div>
       <div style="flex:1">
-        <div style="font-weight:600;color:var(--text)">${m.name}</div>
+        <div style="font-weight:600;color:var(--text)">${m.name}${isOpen?'<span style="font-family:var(--mono);font-size:9px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3);border-radius:3px;padding:1px 4px;margin-left:5px">OFFEN</span>':''}</div>
         <div style="font-family:var(--mono);font-size:10px;color:${statusColor(m)}">${m.category} · ${m.status}</div>
       </div>
-      <span class="perm-count">${permCount} ✓</span>
+      <span class="perm-count">${countLabel}</span>
     </div>`;
   }).join('');
 }
@@ -1455,10 +1477,15 @@ async function selectPermMachine(machineId) {
   renderPermMachineList(document.getElementById('perm-machine-search')?.value||'');
   const machine = cache.machines.find(m=>m.id===machineId);
   if (!machine) return;
-  const machinePerms = new Set(cache.permissions.filter(p=>p.machine_id===machineId).map(p=>p.guest_id));
+  const isOpen = machine.training_required === false;
+  const machineGranted = new Set(cache.permissions.filter(p=>p.machine_id===machineId&&!p.is_blocked).map(p=>p.guest_id));
+  const machineBlocked = new Set(cache.permissions.filter(p=>p.machine_id===machineId&&p.is_blocked).map(p=>p.guest_id));
+  const statsText = isOpen
+    ? `Offene Maschine — ${machineBlocked.size} von ${cache.guests.length} Gästen gesperrt`
+    : `${machineGranted.size} von ${cache.guests.length} Gästen berechtigt`;
   document.getElementById('perm-detail-machine-title').textContent = machine.name;
   document.getElementById('perm-detail-machine-stats').innerHTML =
-    `<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${machinePerms.size} von ${cache.guests.length} Gästen berechtigt</span>
+    `<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${statsText}</span>
      <button class="btn btn-ghost btn-sm" style="margin-left:10px" onclick="enterPermBulkMode(${machineId})">☑ Mehrfachauswahl</button>`;
   if (!cache.guests.length) {
     document.getElementById('perm-detail-machine-body').innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px;text-align:center">Keine Gäste vorhanden.</div>';
@@ -1467,7 +1494,8 @@ async function selectPermMachine(machineId) {
   permHistoryMachine = await GET(`/permissions/history?machine_id=${machineId}`) || {};
   const sortedGuests = [...cache.guests].sort((a,b)=>a.name.localeCompare(b.name,'de'));
   document.getElementById('perm-detail-machine-body').innerHTML = sortedGuests.map(g=>{
-    const granted = machinePerms.has(g.id);
+    const granted = isOpen ? !machineBlocked.has(g.id) : machineGranted.has(g.id);
+    const badgeText = isOpen ? (granted?'Offen':'Gesperrt') : (granted?'Berechtigt':'Gesperrt');
     const hist = permHistoryMachine[String(g.id)];
     const commentHtml = hist?.comment ? `<span style="color:var(--text-mid)">${hist.comment}</span>` : `<span style="color:var(--text-dim)">—</span>`;
     const userHtml    = hist?.user_name ? `<span style="color:var(--text-dim)">◈ ${hist.user_name}</span>` : `<span style="color:var(--text-dim)">—</span>`;
@@ -1481,27 +1509,31 @@ async function selectPermMachine(machineId) {
       <div style="font-family:var(--mono);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="perm-mhist-comment-${g.id}">${commentHtml}</div>
       <div style="font-family:var(--mono);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="perm-mhist-user-${g.id}">${userHtml}</div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);white-space:nowrap" id="perm-mhist-ts-${g.id}">${hist?.created_at?fmtDate(hist.created_at):'—'}</div>
-      <span class="badge ${granted?'badge-green':'badge-gray'}" id="perm-badge-${g.id}-${machineId}" style="justify-self:end">${granted?'Berechtigt':'Gesperrt'}</span>
+      <span class="badge ${granted?'badge-green':'badge-gray'}" id="perm-badge-${g.id}-${machineId}" style="justify-self:end">${badgeText}</span>
     </div>`;
   }).join('');
 }
 
 function enterPermBulkMode(machineId) {
   permBulkMachineId = machineId;
-  const machinePerms = new Set(cache.permissions.filter(p=>p.machine_id===machineId).map(p=>p.guest_id));
+  const machine = cache.machines.find(m=>m.id===machineId);
+  const isOpen = machine?.training_required === false;
+  // checked = "has access": for training_required: has grant; for open: not blocked
+  const machineBlocked = new Set(cache.permissions.filter(p=>p.machine_id===machineId&&p.is_blocked).map(p=>p.guest_id));
+  const machineGranted = new Set(cache.permissions.filter(p=>p.machine_id===machineId&&!p.is_blocked).map(p=>p.guest_id));
   const sortedGuests = [...cache.guests].sort((a,b)=>a.name.localeCompare(b.name,'de'));
-  // Header umschalten
   document.getElementById('perm-detail-machine-stats').innerHTML =
     `<button class="btn btn-ghost btn-sm" onclick="exitPermBulkMode()">✕ Abbrechen</button>`;
-  // Checkbox-Liste rendern
+  const accessLabel = isOpen ? 'Offen' : 'Berechtigt';
+  const noAccessLabel = 'Gesperrt';
   document.getElementById('perm-detail-machine-body').innerHTML =
     `<div style="display:flex;gap:6px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:4px">
        <button class="btn btn-ghost btn-sm" onclick="bulkSelectAll(true)">Alle auswählen</button>
        <button class="btn btn-ghost btn-sm" onclick="bulkSelectAll(false)">Keine</button>
-       <button class="btn btn-ghost btn-sm" onclick="bulkSelectPermitted()">Aktuell Berechtigte</button>
+       <button class="btn btn-ghost btn-sm" onclick="bulkSelectPermitted()">Aktuell ${isOpen?'Offene':'Berechtigte'}</button>
      </div>
      ${sortedGuests.map(g=>{
-       const checked = machinePerms.has(g.id);
+       const checked = isOpen ? !machineBlocked.has(g.id) : machineGranted.has(g.id);
        return `<div class="perm-bulk-item" onclick="toggleBulkCheck(${g.id})">
          <input type="checkbox" id="bulk-check-${g.id}" ${checked?'checked':''} onclick="event.stopPropagation()" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent2)">
          <div style="font-size:17px;text-align:center">👤</div>
@@ -1509,7 +1541,7 @@ function enterPermBulkMode(machineId) {
            <div class="perm-machine-name">${g.name}</div>
            <div class="perm-machine-sub">@${g.username}</div>
          </div>
-         <span class="badge ${checked?'badge-green':'badge-gray'}" id="bulk-badge-${g.id}">${checked?'Berechtigt':'Gesperrt'}</span>
+         <span class="badge ${checked?'badge-green':'badge-gray'}" id="bulk-badge-${g.id}">${checked?accessLabel:noAccessLabel}</span>
        </div>`;
      }).join('')}
      <div class="perm-bulk-footer">
@@ -1525,6 +1557,10 @@ function exitPermBulkMode() {
   selectPermMachine(selectedPermMachineId);
 }
 
+function _bulkAccessLabel() {
+  const machine = cache.machines.find(m=>m.id===permBulkMachineId);
+  return machine?.training_required === false ? 'Offen' : 'Berechtigt';
+}
 function toggleBulkCheck(guestId) {
   const cb = document.getElementById(`bulk-check-${guestId}`);
   if (!cb) return;
@@ -1532,7 +1568,7 @@ function toggleBulkCheck(guestId) {
   const badge = document.getElementById(`bulk-badge-${guestId}`);
   if (badge) {
     badge.className = `badge ${cb.checked?'badge-green':'badge-gray'}`;
-    badge.textContent = cb.checked ? 'Berechtigt' : 'Gesperrt';
+    badge.textContent = cb.checked ? _bulkAccessLabel() : 'Gesperrt';
   }
 }
 
@@ -1542,18 +1578,21 @@ function bulkSelectAll(checked) {
     if (!cb) return;
     cb.checked = checked;
     const badge = document.getElementById(`bulk-badge-${g.id}`);
-    if (badge) { badge.className=`badge ${checked?'badge-green':'badge-gray'}`; badge.textContent=checked?'Berechtigt':'Gesperrt'; }
+    if (badge) { badge.className=`badge ${checked?'badge-green':'badge-gray'}`; badge.textContent=checked?_bulkAccessLabel():'Gesperrt'; }
   });
 }
 
 function bulkSelectPermitted() {
-  const machinePerms = new Set(cache.permissions.filter(p=>p.machine_id===permBulkMachineId).map(p=>p.guest_id));
+  const machine = cache.machines.find(m=>m.id===permBulkMachineId);
+  const isOpen = machine?.training_required === false;
+  const machineBlocked = new Set(cache.permissions.filter(p=>p.machine_id===permBulkMachineId&&p.is_blocked).map(p=>p.guest_id));
+  const machineGranted = new Set(cache.permissions.filter(p=>p.machine_id===permBulkMachineId&&!p.is_blocked).map(p=>p.guest_id));
   cache.guests.forEach(g=>{
     const cb = document.getElementById(`bulk-check-${g.id}`);
     if (!cb) return;
-    cb.checked = machinePerms.has(g.id);
+    cb.checked = isOpen ? !machineBlocked.has(g.id) : machineGranted.has(g.id);
     const badge = document.getElementById(`bulk-badge-${g.id}`);
-    if (badge) { badge.className=`badge ${cb.checked?'badge-green':'badge-gray'}`; badge.textContent=cb.checked?'Berechtigt':'Gesperrt'; }
+    if (badge) { badge.className=`badge ${cb.checked?'badge-green':'badge-gray'}`; badge.textContent=cb.checked?_bulkAccessLabel():'Gesperrt'; }
   });
 }
 
@@ -1562,31 +1601,48 @@ async function savePermBulk() {
   const comment = document.getElementById('perm-bulk-comment')?.value.trim();
   if (!comment) { showToast('Bitte eine Begründung eingeben', 'error'); return; }
 
-  const original = new Set(cache.permissions.filter(p=>p.machine_id===machineId).map(p=>p.guest_id));
-  const selected = new Set(cache.guests.filter(g=>document.getElementById(`bulk-check-${g.id}`)?.checked).map(g=>g.id));
-  const toGrant  = [...selected].filter(id=>!original.has(id));
-  const toRevoke = [...original].filter(id=>!selected.has(id));
+  const machine = cache.machines.find(m=>m.id===machineId);
+  const isOpen = machine?.training_required === false;
+  const enc = encodeURIComponent(comment);
+  const btn = document.querySelector('.perm-bulk-footer .btn-primary');
 
-  if (!toGrant.length && !toRevoke.length) {
-    showToast('Keine Änderungen', 'warn');
-    exitPermBulkMode(); return;
+  // checked = "has access" for both types
+  const selected = new Set(cache.guests.filter(g=>document.getElementById(`bulk-check-${g.id}`)?.checked).map(g=>g.id));
+
+  if (isOpen) {
+    // open machine: not-selected → block; blocked-and-now-selected → revoke
+    const currentlyBlocked = new Set(cache.permissions.filter(p=>p.machine_id===machineId&&p.is_blocked).map(p=>p.guest_id));
+    const toBlock   = cache.guests.map(g=>g.id).filter(id=>!selected.has(id)&&!currentlyBlocked.has(id));
+    const toUnblock = [...currentlyBlocked].filter(id=>selected.has(id));
+    if (!toBlock.length && !toUnblock.length) { showToast('Keine Änderungen','warn'); exitPermBulkMode(); return; }
+    if (btn) { btn.disabled=true; btn.textContent='…'; }
+    await Promise.all([
+      ...toBlock.map(gid   => POST(`/permissions/block?guest_id=${gid}&machine_id=${machineId}&comment=${enc}`)),
+      ...toUnblock.map(gid => POST(`/permissions/revoke?guest_id=${gid}&machine_id=${machineId}&comment=${enc}`)),
+    ]);
+    // Cache aktualisieren
+    cache.permissions = cache.permissions.filter(p=>p.machine_id!==machineId);
+    for (const gid of toBlock)
+      cache.permissions.push({guest_id:gid, machine_id:machineId, is_blocked:true, granted_at:new Date().toISOString()});
+    showToast(`${toBlock.length} gesperrt, ${toUnblock.length} entsperrt`,'success');
+  } else {
+    // training_required: grant newly checked, revoke unchecked
+    const original = new Set(cache.permissions.filter(p=>p.machine_id===machineId&&!p.is_blocked).map(p=>p.guest_id));
+    const toGrant  = [...selected].filter(id=>!original.has(id));
+    const toRevoke = [...original].filter(id=>!selected.has(id));
+    if (!toGrant.length && !toRevoke.length) { showToast('Keine Änderungen','warn'); exitPermBulkMode(); return; }
+    if (btn) { btn.disabled=true; btn.textContent='…'; }
+    await Promise.all([
+      ...toGrant.map(gid  => POST(`/permissions/grant?guest_id=${gid}&machine_id=${machineId}&comment=${enc}`)),
+      ...toRevoke.map(gid => POST(`/permissions/revoke?guest_id=${gid}&machine_id=${machineId}&comment=${enc}`)),
+    ]);
+    // Cache aktualisieren
+    cache.permissions = cache.permissions.filter(p=>p.machine_id!==machineId);
+    for (const gid of selected)
+      cache.permissions.push({guest_id:gid, machine_id:machineId, is_blocked:false, granted_at:new Date().toISOString()});
+    showToast(`${toGrant.length} erteilt, ${toRevoke.length} entzogen`,'success');
   }
 
-  const btn = document.querySelector('.perm-bulk-footer .btn-primary');
-  if (btn) { btn.disabled=true; btn.textContent='…'; }
-
-  const enc = encodeURIComponent(comment);
-  await Promise.all([
-    ...toGrant.map(gid  => POST(`/permissions/grant?guest_id=${gid}&machine_id=${machineId}&comment=${enc}`)),
-    ...toRevoke.map(gid => POST(`/permissions/revoke?guest_id=${gid}&machine_id=${machineId}&comment=${enc}`)),
-  ]);
-
-  // Cache aktualisieren
-  cache.permissions = cache.permissions.filter(p=>p.machine_id!==machineId);
-  for (const gid of selected)
-    cache.permissions.push({guest_id:gid, machine_id:machineId, granted_at:new Date().toISOString()});
-
-  showToast(`${toGrant.length} erteilt, ${toRevoke.length} entzogen`, 'success');
   exitPermBulkMode();
   renderStats();
 }
@@ -1596,9 +1652,10 @@ async function selectPermGuest(guestId) {
   renderPermGuestList(document.querySelector('.perm-guest-list input')?.value||'');
   const guest=cache.guests.find(g=>g.id===guestId);
   if (!guest) return;
-  const guestPerms=new Set(cache.permissions.filter(p=>p.guest_id===guestId).map(p=>p.machine_id));
+  const grantedPerms=new Set(cache.permissions.filter(p=>p.guest_id===guestId&&!p.is_blocked).map(p=>p.machine_id));
+  const blockedPerms=new Set(cache.permissions.filter(p=>p.guest_id===guestId&&p.is_blocked).map(p=>p.machine_id));
   document.getElementById('perm-detail-title').textContent=guest.name;
-  document.getElementById('perm-detail-stats').textContent=`@${guest.username} — ${guestPerms.size} von ${cache.machines.length} Maschinen`;
+  document.getElementById('perm-detail-stats').textContent=`@${guest.username} — ${grantedPerms.size} von ${cache.machines.length} Maschinen berechtigt`;
   if (!cache.machines.length) {
     document.getElementById('perm-detail-body').innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px;text-align:center">Keine Maschinen vorhanden.</div>';
     return;
@@ -1607,7 +1664,9 @@ async function selectPermGuest(guestId) {
   const icon=m=>machineIcons[m.category]||'🔧';
   const sortedMachines=[...cache.machines].sort((a,b)=>a.name.localeCompare(b.name,'de'));
   document.getElementById('perm-detail-body').innerHTML=sortedMachines.map(m=>{
-    const granted=guestPerms.has(m.id);
+    const isOpen = m.training_required === false;
+    const granted = isOpen ? !blockedPerms.has(m.id) : grantedPerms.has(m.id);
+    const badgeText = isOpen ? (granted?'Offen':'Gesperrt') : (granted?'Berechtigt':'Gesperrt');
     const hist=permHistory[String(m.id)];
     const commentHtml=hist?.comment
       ?`<span style="color:var(--text-mid)">${hist.comment}</span>`
@@ -1619,13 +1678,13 @@ async function selectPermGuest(guestId) {
       <button class="perm-toggle ${granted?'on':'off'}" id="toggle-${guestId}-${m.id}"></button>
       <div style="font-size:18px;text-align:center">${icon(m)}</div>
       <div>
-        <div class="perm-machine-name">${m.name}</div>
+        <div class="perm-machine-name">${m.name}${isOpen?'<span style="font-family:var(--mono);font-size:9px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3);border-radius:3px;padding:1px 4px;margin-left:5px">OFFEN</span>':''}</div>
         <div class="perm-machine-sub">${m.category}${m.location?' · '+m.location:''}</div>
       </div>
       <div style="font-family:var(--mono);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="perm-hist-comment-${m.id}">${commentHtml}</div>
       <div style="font-family:var(--mono);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="perm-hist-user-${m.id}">${userHtml}</div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);white-space:nowrap" id="perm-hist-ts-${m.id}">${hist?.created_at?fmtDate(hist.created_at):'—'}</div>
-      <span class="badge ${granted?'badge-green':'badge-gray'}" id="perm-badge-${guestId}-${m.id}" style="justify-self:end">${granted?'Berechtigt':'Gesperrt'}</span>
+      <span class="badge ${granted?'badge-green':'badge-gray'}" id="perm-badge-${guestId}-${m.id}" style="justify-self:end">${badgeText}</span>
     </div>`;
   }).join('');
 }
@@ -1636,9 +1695,13 @@ async function togglePerm(guestId,machineId) {
   const isGranted=toggle.classList.contains('on');
   const guest=cache.guests.find(g=>g.id===guestId);
   const machine=cache.machines.find(m=>m.id===machineId);
-  const actionLabel=isGranted?'Berechtigung entziehen':'Berechtigung erteilen';
+  const isOpen = machine?.training_required === false;
+  // isGranted: for training_required = has grant; for open = not blocked
+  // action: training_required: grant/revoke; open: block/revoke(unblock)
+  const actionLabel = isOpen
+    ? (isGranted ? 'Zugang sperren' : 'Sperre aufheben')
+    : (isGranted ? 'Berechtigung entziehen' : 'Berechtigung erteilen');
 
-  // Pflichtkommentar abfragen
   const comment = await new Promise(resolve=>{
     openModal(actionLabel,`
       <div style="margin-bottom:12px;font-family:var(--mono);font-size:12px;color:var(--text-dim)">
@@ -1657,57 +1720,94 @@ async function togglePerm(guestId,machineId) {
   });
   if(comment===null) return;
 
-  // Optimistic UI
-  toggle.className=`perm-toggle ${isGranted?'off':'on'}`;
-  badge.className=`badge ${isGranted?'badge-gray':'badge-green'}`;
-  badge.textContent=isGranted?'Gesperrt':'Berechtigt';
+  // Determine labels after toggle
+  const newGranted = !isGranted;
+  const newBadgeText = isOpen ? (newGranted?'Offen':'Gesperrt') : (newGranted?'Berechtigt':'Gesperrt');
 
-  const endpoint=isGranted
-    ?`/permissions/revoke?guest_id=${guestId}&machine_id=${machineId}&comment=${encodeURIComponent(comment)}`
-    :`/permissions/grant?guest_id=${guestId}&machine_id=${machineId}&comment=${encodeURIComponent(comment)}`;
+  // Optimistic UI
+  toggle.className=`perm-toggle ${newGranted?'on':'off'}`;
+  badge.className=`badge ${newGranted?'badge-green':'badge-gray'}`;
+  badge.textContent=newBadgeText;
+
+  // Determine endpoint
+  let endpoint;
+  if(isOpen) {
+    // currently open (isGranted=true) → block; currently blocked (isGranted=false) → revoke (unblock)
+    endpoint = isGranted
+      ? `/permissions/block?guest_id=${guestId}&machine_id=${machineId}&comment=${encodeURIComponent(comment)}`
+      : `/permissions/revoke?guest_id=${guestId}&machine_id=${machineId}&comment=${encodeURIComponent(comment)}`;
+  } else {
+    endpoint = isGranted
+      ? `/permissions/revoke?guest_id=${guestId}&machine_id=${machineId}&comment=${encodeURIComponent(comment)}`
+      : `/permissions/grant?guest_id=${guestId}&machine_id=${machineId}&comment=${encodeURIComponent(comment)}`;
+  }
+
   const res=await POST(endpoint);
   if(!res){
     // Rollback
+    const oldBadgeText = isOpen ? (isGranted?'Offen':'Gesperrt') : (isGranted?'Berechtigt':'Gesperrt');
     toggle.className=`perm-toggle ${isGranted?'on':'off'}`;
     badge.className=`badge ${isGranted?'badge-green':'badge-gray'}`;
-    badge.textContent=isGranted?'Berechtigt':'Gesperrt';
+    badge.textContent=oldBadgeText;
     return;
   }
+
   // Cache aktualisieren
-  if(isGranted) cache.permissions=cache.permissions.filter(p=>!(p.guest_id===guestId&&p.machine_id===machineId));
-  else cache.permissions.push({guest_id:guestId,machine_id:machineId,granted_at:new Date().toISOString()});
+  if(isOpen) {
+    if(isGranted) {
+      // blocked → add/update with is_blocked=true
+      const ex=cache.permissions.find(p=>p.guest_id===guestId&&p.machine_id===machineId);
+      if(ex) ex.is_blocked=true;
+      else cache.permissions.push({guest_id:guestId,machine_id:machineId,is_blocked:true,granted_at:new Date().toISOString()});
+    } else {
+      // unblocked → remove record
+      cache.permissions=cache.permissions.filter(p=>!(p.guest_id===guestId&&p.machine_id===machineId));
+    }
+  } else {
+    if(isGranted) {
+      // revoked → remove record
+      cache.permissions=cache.permissions.filter(p=>!(p.guest_id===guestId&&p.machine_id===machineId));
+    } else {
+      // granted → add record
+      cache.permissions.push({guest_id:guestId,machine_id:machineId,is_blocked:false,granted_at:new Date().toISOString()});
+    }
+  }
+
   const now=new Date().toISOString();
   const histEntry={type:isGranted?'permission_revoked':'permission_granted',comment,user_name:currentUser?.name,created_at:now};
   permHistory[String(machineId)]=histEntry;
   permHistoryMachine[String(guestId)]=histEntry;
-  // Gast-Ansicht: History-Zellen aktualisieren (no-op wenn nicht sichtbar)
+  // History-Zellen aktualisieren
   const gCom=document.getElementById(`perm-hist-comment-${machineId}`);
   const gUsr=document.getElementById(`perm-hist-user-${machineId}`);
   const gTs=document.getElementById(`perm-hist-ts-${machineId}`);
   if(gCom) gCom.innerHTML=`<span style="color:var(--text-mid)">${comment}</span>`;
   if(gUsr) gUsr.innerHTML=`<span style="color:var(--text-dim)">◈ ${currentUser?.name||'—'}</span>`;
   if(gTs) gTs.textContent=fmtDate(now);
-  // Maschinen-Ansicht: History-Zellen aktualisieren (no-op wenn nicht sichtbar)
   const mCom=document.getElementById(`perm-mhist-comment-${guestId}`);
   const mUsr=document.getElementById(`perm-mhist-user-${guestId}`);
   const mTs=document.getElementById(`perm-mhist-ts-${guestId}`);
   if(mCom) mCom.innerHTML=`<span style="color:var(--text-mid)">${comment}</span>`;
   if(mUsr) mUsr.innerHTML=`<span style="color:var(--text-dim)">◈ ${currentUser?.name||'—'}</span>`;
   if(mTs) mTs.textContent=fmtDate(now);
-  // Stats + Listen je nach aktiver Ansicht
+
+  // Stats + Listen aktualisieren
   if(currentPermView==='guest') {
-    document.getElementById('perm-detail-stats').textContent=`@${cache.guests.find(g=>g.id===guestId)?.username} — ${cache.permissions.filter(p=>p.guest_id===guestId).length} von ${cache.machines.length} Maschinen`;
+    const gc=cache.permissions.filter(p=>p.guest_id===guestId&&!p.is_blocked).length;
+    document.getElementById('perm-detail-stats').textContent=`@${cache.guests.find(g=>g.id===guestId)?.username} — ${gc} von ${cache.machines.length} Maschinen berechtigt`;
     renderPermGuestList(document.getElementById('perm-guest-search')?.value||'');
   } else {
-    const mp=cache.permissions.filter(p=>p.machine_id===machineId).length;
-    document.getElementById('perm-detail-machine-stats').textContent=`${mp} von ${cache.guests.length} Gästen berechtigt`;
+    const mGranted=cache.permissions.filter(p=>p.machine_id===machineId&&!p.is_blocked).length;
+    const mBlocked=cache.permissions.filter(p=>p.machine_id===machineId&&p.is_blocked).length;
+    const st=isOpen?`Offene Maschine — ${mBlocked} von ${cache.guests.length} Gästen gesperrt`:`${mGranted} von ${cache.guests.length} Gästen berechtigt`;
+    document.getElementById('perm-detail-machine-stats').innerHTML=`<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${st}</span><button class="btn btn-ghost btn-sm" style="margin-left:10px" onclick="enterPermBulkMode(${machineId})">☑ Mehrfachauswahl</button>`;
     renderPermMachineList(document.getElementById('perm-machine-search')?.value||'');
   }
   document.getElementById('badge-guests')&&renderStats();
 }
 
 function renderStats() {
-  document.getElementById('stat-perms').textContent=cache.permissions.length;
+  document.getElementById('stat-perms').textContent=cache.permissions.filter(p=>!p.is_blocked).length;
 }
 
 // ═══════════════════════════════════════════════════════

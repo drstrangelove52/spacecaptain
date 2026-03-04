@@ -29,27 +29,69 @@ async def grant_permission(
     db: AsyncSession = Depends(get_db),
     current: User = Depends(get_current_user),
 ):
-    # Prüfen ob Gast und Maschine existieren
     guest = (await db.execute(select(Guest).where(Guest.id == guest_id))).scalar_one_or_none()
     machine = (await db.execute(select(Machine).where(Machine.id == machine_id))).scalar_one_or_none()
     if not guest or not machine:
         raise HTTPException(404, "Gast oder Maschine nicht gefunden")
 
-    # Bereits vorhanden?
     existing = (await db.execute(
         select(Permission).where(Permission.guest_id == guest_id, Permission.machine_id == machine_id)
     )).scalar_one_or_none()
     if existing:
-        return {"ok": True, "message": "Berechtigung bereits vorhanden"}
+        if not existing.is_blocked:
+            return {"ok": True, "message": "Berechtigung bereits vorhanden"}
+        existing.is_blocked = False
+        existing.granted_by = current.id
+        await db.commit()
+    else:
+        perm = Permission(guest_id=guest_id, machine_id=machine_id, granted_by=current.id, is_blocked=False)
+        db.add(perm)
+        await db.commit()
 
-    perm = Permission(guest_id=guest_id, machine_id=machine_id, granted_by=current.id)
-    db.add(perm)
-    await db.commit()
     msg = f"Berechtigung erteilt: {guest.name} → {machine.name}"
     if comment:
         msg += f" — {comment}"
     await log_svc.log(
         db, LogType.permission_granted, msg,
+        guest_id=guest_id, machine_id=machine_id, user_id=current.id,
+        meta={"comment": comment} if comment else None,
+    )
+    return {"ok": True}
+
+
+@router.post("/block")
+async def block_permission(
+    guest_id: int,
+    machine_id: int,
+    comment: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    """Sperrt einen Gast explizit von einer offenen Maschine."""
+    guest = (await db.execute(select(Guest).where(Guest.id == guest_id))).scalar_one_or_none()
+    machine = (await db.execute(select(Machine).where(Machine.id == machine_id))).scalar_one_or_none()
+    if not guest or not machine:
+        raise HTTPException(404, "Gast oder Maschine nicht gefunden")
+
+    existing = (await db.execute(
+        select(Permission).where(Permission.guest_id == guest_id, Permission.machine_id == machine_id)
+    )).scalar_one_or_none()
+    if existing:
+        if existing.is_blocked:
+            return {"ok": True, "message": "Bereits gesperrt"}
+        existing.is_blocked = True
+        existing.granted_by = current.id
+        await db.commit()
+    else:
+        perm = Permission(guest_id=guest_id, machine_id=machine_id, granted_by=current.id, is_blocked=True)
+        db.add(perm)
+        await db.commit()
+
+    msg = f"Zugang gesperrt: {guest.name} → {machine.name}"
+    if comment:
+        msg += f" — {comment}"
+    await log_svc.log(
+        db, LogType.permission_revoked, msg,
         guest_id=guest_id, machine_id=machine_id, user_id=current.id,
         meta={"comment": comment} if comment else None,
     )
@@ -69,7 +111,7 @@ async def revoke_permission(
     )
     perm = result.scalar_one_or_none()
     if not perm:
-        raise HTTPException(404, "Berechtigung nicht gefunden")
+        return {"ok": True, "message": "Berechtigung bereits entfernt"}
 
     guest = (await db.execute(select(Guest).where(Guest.id == guest_id))).scalar_one_or_none()
     machine = (await db.execute(select(Machine).where(Machine.id == machine_id))).scalar_one_or_none()

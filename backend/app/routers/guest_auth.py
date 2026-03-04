@@ -188,10 +188,15 @@ async def check_access(payload: CheckRequest, db: AsyncSession = Depends(get_db)
     if not machine:
         raise HTTPException(404, "Maschine nicht gefunden")
 
-    perm = await db.execute(
+    perm_res = await db.execute(
         select(Permission).where(Permission.guest_id == guest.id, Permission.machine_id == machine.id)
     )
-    has_permission = perm.scalar_one_or_none() is not None
+    perm = perm_res.scalar_one_or_none()
+    if machine.training_required:
+        has_permission = perm is not None and not perm.is_blocked
+    else:
+        has_permission = perm is None or not perm.is_blocked
+
     detail = await _machine_detail(machine)
 
     if machine.current_guest_id:
@@ -251,10 +256,15 @@ async def guest_switch(payload: SwitchRequest, db: AsyncSession = Depends(get_db
     if machine.status != "online":
         raise HTTPException(503, f"Maschine '{machine.name}' nicht verfügbar")
 
-    perm = await db.execute(
+    perm_res = await db.execute(
         select(Permission).where(Permission.guest_id == guest.id, Permission.machine_id == machine.id)
     )
-    if not perm.scalar_one_or_none():
+    perm_row = perm_res.scalar_one_or_none()
+    if machine.training_required:
+        has_access = perm_row is not None and not perm_row.is_blocked
+    else:
+        has_access = perm_row is None or not perm_row.is_blocked
+    if not has_access:
         await log_svc.log(db, LogType.access_denied,
             f"Zugang verweigert: {guest.name} → {machine.name}",
             guest_id=guest.id, machine_id=machine.id)

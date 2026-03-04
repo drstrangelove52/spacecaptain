@@ -19,7 +19,7 @@ router = APIRouter(prefix="/guests", tags=["guests"])
 
 async def _guest_out(guest: Guest, db: AsyncSession) -> GuestOut:
     perm_count = await db.execute(
-        select(func.count()).where(Permission.guest_id == guest.id)
+        select(func.count()).where(Permission.guest_id == guest.id, Permission.is_blocked == False)
     )
     count = perm_count.scalar() or 0
     out = GuestOut.model_validate(guest)

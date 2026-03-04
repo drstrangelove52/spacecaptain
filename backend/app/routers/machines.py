@@ -129,6 +129,7 @@ async def list_machines_live(
                 "user_count": user_count,
                 "idle_power_w": m.idle_power_w,
                 "idle_timeout_min": m.idle_timeout_min,
+                "training_required": m.training_required,
                 # Session
                 "in_use": m.session_started_at is not None,
                 "current_guest_id": m.current_guest_id,
@@ -156,6 +157,7 @@ async def list_machines_live(
                 "user_count": 0,
                 "idle_power_w": m.idle_power_w,
                 "idle_timeout_min": m.idle_timeout_min,
+                "training_required": m.training_required,
                 "in_use": m.session_started_at is not None,
                 "current_guest_id": m.current_guest_id,
                 "current_guest_name": None,

@@ -63,6 +63,14 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "guests", "login_token",
                                      "VARCHAR(64) DEFAULT NULL UNIQUE")
 
+    # ── v1.04: training_required auf machines ────────────────────────────────
+        await _add_column_if_missing(conn, "machines", "training_required",
+                                     "TINYINT(1) NOT NULL DEFAULT 1")
+
+    # ── v1.04: is_blocked auf permissions ────────────────────────────────────
+        await _add_column_if_missing(conn, "permissions", "is_blocked",
+                                     "TINYINT(1) NOT NULL DEFAULT 0")
+
     # ── v2.16: interval_id in maintenance_records optional ───────────────────
         await conn.execute(text(
             "ALTER TABLE maintenance_records MODIFY COLUMN interval_id INT UNSIGNED DEFAULT NULL"

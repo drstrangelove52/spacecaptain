@@ -109,6 +109,7 @@ class MachineBase(BaseModel):
     idle_power_w: Optional[float] = None
     idle_timeout_min: Optional[int] = None
     plug_poll_interval_sec: Optional[int] = 60
+    training_required: bool = True
     comment: Optional[str] = None
 
 class MachineCreate(MachineBase):
@@ -128,6 +129,7 @@ class MachineUpdate(BaseModel):
     idle_power_w: Optional[float] = None
     idle_timeout_min: Optional[int] = None
     plug_poll_interval_sec: Optional[int] = None
+    training_required: Optional[bool] = None
     comment: Optional[str] = None
 
 class MachineOut(MachineBase):
@@ -150,6 +152,7 @@ class PermissionOut(BaseModel):
     machine_id: int
     granted_by: Optional[int]
     granted_at: datetime
+    is_blocked: bool = False
 
     class Config:
         from_attributes = True
