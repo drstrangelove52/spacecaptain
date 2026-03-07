@@ -186,6 +186,11 @@
   .loading{display:flex;align-items:center;gap:8px;color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:24px;justify-content:center}
   .spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
+  /* AUTOCOMPLETE */
+  .ac-wrap{position:relative}
+  .ac-list{position:absolute;top:calc(100% + 2px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:4px;max-height:220px;overflow-y:auto;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .ac-item{padding:9px 12px;cursor:pointer;font-size:14px;color:var(--text)}
+  .ac-item:hover,.ac-item.ac-focused{background:rgba(255,255,255,.07)}
   /* TOAST */
   .toast-container{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px}
   .toast{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:13px;animation:slideIn .2s ease;border-left:3px solid var(--success);max-width:300px}
@@ -270,6 +275,7 @@
       <div id="dash-queue-section" style="margin-bottom:24px;display:none">
         <div class="section-header">
           <div class="section-title">Warteliste <span id="dash-queue-count"></span></div>
+          <button class="btn btn-ghost btn-sm" onclick="openQueueModal()">+ Neuer Eintrag</button>
         </div>
         <div id="dash-queue-list"></div>
       </div>
@@ -2402,32 +2408,32 @@ async function loadAdminQueues() {
   section.style.display = 'block';
   count.textContent = data.length ? `(${data.length})` : '';
 
-  const guests = (cache.guests || []).filter(g => g.is_active).sort((a,b) => a.name.localeCompare(b.name, 'de'));
-  const onlineMachines = (cache.machines || []).filter(m => m.status === 'online').sort((a,b) => a.name.localeCompare(b.name, 'de'));
+  if (!data.length) {
+    list.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:4px 0 12px">Keine aktiven Einträge.</div>';
+    return;
+  }
 
   // Gruppieren nach Maschine
   const byMachine = {};
   for (const e of data) {
-    if (!byMachine[e.machine_id]) byMachine[e.machine_id] = { name: e.machine_name, entries: [] };
+    if (!byMachine[e.machine_id]) byMachine[e.machine_id] = { id: e.machine_id, name: e.machine_name, entries: [] };
     byMachine[e.machine_id].entries.push(e);
   }
 
-  // Bestehende Einträge — eine gemeinsame Tabelle, gruppiert nach Maschine
   const thStyle = `font-family:var(--mono);font-size:10px;color:var(--text-dim);font-weight:400;text-align:left;padding-bottom:6px`;
-  const groups = Object.entries(byMachine).sort((a, b) => a[1].name.localeCompare(b[1].name, 'de'));
-  const allRows = groups.map(([, grp], gi) => {
-    return grp.entries.map((e, i) => {
+  const groups = Object.values(byMachine).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  const allRows = groups.map((grp, gi) => {
+    const rows = grp.entries.map((e, i) => {
       const sep = (i === 0 && gi > 0) ? 'border-top:2px solid rgba(255,255,255,0.15);padding-top:10px' : '';
       const machineName = i === 0
-        ? `<td style="${sep}" rowspan="${grp.entries.length}">${grp.name}</td>`
+        ? `<td style="${sep}" rowspan="${grp.entries.length + 1}">${grp.name}</td>`
         : '';
       let statusCell;
       if (e.status === 'notified' && e.expires_at) {
         const remSec = Math.max(0, Math.round((new Date(e.expires_at) - Date.now()) / 1000));
         const remMin = Math.floor(remSec / 60);
         const remS   = remSec % 60;
-        const remStr = `${remMin}:${String(remS).padStart(2,'0')}`;
-        statusCell = `<span class="badge badge-cyan">BEREIT · ${remStr}</span>`;
+        statusCell = `<span class="badge badge-cyan">BEREIT · ${remMin}:${String(remS).padStart(2,'0')}</span>`;
       } else {
         statusCell = `<span class="badge badge-gray">WARTEND</span>`;
       }
@@ -2436,13 +2442,19 @@ async function loadAdminQueues() {
         <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);width:28px;${sep}">${i+1}.</td>
         <td style="${sep}">${e.guest_name}</td>
         <td style="${sep}">${statusCell}</td>
-        <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);${sep}">${e.joined_at ? new Date(e.joined_at).toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'}) : '—'}</td>
-        <td style="${sep}"><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="adminRemoveQueue(${e.id})">✕ Entfernen</button></td>
+        <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);${sep}">${e.joined_at ? new Date(e.joined_at+'Z').toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'}) : '—'}</td>
+        <td style="${sep}"><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="adminRemoveQueue(${e.id})">✕</button></td>
       </tr>`;
     }).join('');
+    // "+ Gast" Zeile am Ende jeder Maschinengruppe
+    const addRow = `<tr>
+      <td style="padding-bottom:6px"><button class="btn btn-ghost btn-sm" style="color:var(--accent);opacity:.8" onclick="openQueueModal(${grp.id},'${grp.name.replace(/'/g,"\\'")}')">+ Gast</button></td>
+      <td></td><td></td><td></td><td></td>
+    </tr>`;
+    return rows + addRow;
   }).join('');
 
-  const entriesHtml = allRows ? `<div class="table-wrap" style="padding:16px;margin-bottom:12px">
+  list.innerHTML = `<div class="table-wrap" style="padding:16px">
     <table style="width:100%">
       <thead><tr>
         <th style="${thStyle}">Maschine</th>
@@ -2454,32 +2466,7 @@ async function loadAdminQueues() {
       </tr></thead>
       <tbody>${allRows}</tbody>
     </table>
-  </div>` : '';
-
-  // Formular "Gast zu Maschine hinzufügen" (immer sichtbar)
-  const addFormHtml = `<div class="table-wrap" style="padding:16px">
-    <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:12px">GAST HINZUFÜGEN</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <select id="queue-new-machine" class="filter-input" style="flex:1;min-width:160px">
-        <option value="">Maschine wählen…</option>
-        ${onlineMachines.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
-      </select>
-      <select id="queue-new-guest" class="filter-input" style="flex:1;min-width:160px">
-        <option value="">Gast wählen…</option>
-        ${guests.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
-      </select>
-      <button class="btn btn-ghost btn-sm" onclick="adminAddToQueueNew()">+ Hinzufügen</button>
-    </div>
   </div>`;
-
-  // Aktuelle Auswahl merken, damit ein periodischer Refresh sie nicht zurücksetzt
-  const savedMachine = document.getElementById('queue-new-machine')?.value || '';
-  const savedGuest   = document.getElementById('queue-new-guest')?.value   || '';
-
-  list.innerHTML = (entriesHtml || '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:4px 0 12px">Keine aktiven Einträge.</div>') + addFormHtml;
-
-  if (savedMachine) document.getElementById('queue-new-machine').value = savedMachine;
-  if (savedGuest)   document.getElementById('queue-new-guest').value   = savedGuest;
 }
 
 async function adminRemoveQueue(entryId) {
@@ -2487,20 +2474,74 @@ async function adminRemoveQueue(entryId) {
   if (ok !== null) { showToast('Eintrag entfernt', 'success'); await loadAdminQueues(); }
 }
 
-async function adminAddToQueue(machineId) {
-  const sel = document.getElementById(`queue-add-select-${machineId}`);
-  const guestId = parseInt(sel?.value);
-  if (!guestId) return;
-  const res = await api('POST', `/queue/admin/${machineId}/${guestId}`);
-  if (res !== null) { showToast('Gast zur Warteliste hinzugefügt', 'success'); await loadAdminQueues(); }
+// ── Queue-Modal mit Autocomplete ─────────────────────────────────────────────
+function openQueueModal(machineId = null, machineName = null) {
+  const guests = (cache.guests || []).filter(g => g.is_active).sort((a,b) => a.name.localeCompare(b.name, 'de'));
+  const onlineMachines = (cache.machines || []).filter(m => m.status === 'online').sort((a,b) => a.name.localeCompare(b.name, 'de'));
+
+  const machineField = machineId
+    ? `<div class="form-group">
+        <label class="form-label">Maschine</label>
+        <div style="padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-dim)">${machineName}</div>
+        <input type="hidden" id="qm-machine-id" value="${machineId}">
+      </div>`
+    : `<div class="form-group">
+        <label class="form-label">Maschine</label>
+        <div class="ac-wrap">
+          <input class="form-input" id="qm-machine-input" placeholder="Maschine suchen…" autocomplete="off">
+          <input type="hidden" id="qm-machine-id">
+          <div class="ac-list" id="qm-machine-list"></div>
+        </div>
+      </div>`;
+
+  const body = `${machineField}
+    <div class="form-group">
+      <label class="form-label">Gast</label>
+      <div class="ac-wrap">
+        <input class="form-input" id="qm-guest-input" placeholder="Gast suchen…" autocomplete="off">
+        <input type="hidden" id="qm-guest-id">
+        <div class="ac-list" id="qm-guest-list"></div>
+      </div>
+    </div>`;
+
+  openModal(machineName ? `Gast für ${machineName}` : 'Neuer Eintrag', body,
+    () => adminAddToQueueSubmit(), 'Hinzufügen');
+
+  if (!machineId) setupAc('qm-machine-input', 'qm-machine-list', 'qm-machine-id', onlineMachines);
+  setupAc('qm-guest-input', 'qm-guest-list', 'qm-guest-id', guests);
 }
 
-async function adminAddToQueueNew() {
-  const machineId = parseInt(document.getElementById('queue-new-machine')?.value);
-  const guestId   = parseInt(document.getElementById('queue-new-guest')?.value);
+function setupAc(inputId, listId, hiddenId, items) {
+  const input  = document.getElementById(inputId);
+  const list   = document.getElementById(listId);
+  const hidden = document.getElementById(hiddenId);
+  if (!input || !list || !hidden) return;
+
+  function render(q) {
+    const matches = q ? items.filter(i => i.name.toLowerCase().includes(q.toLowerCase())) : items;
+    if (!matches.length) { list.style.display = 'none'; return; }
+    list.innerHTML = matches.map(i => `<div class="ac-item" data-id="${i.id}" data-name="${i.name}">${i.name}</div>`).join('');
+    list.style.display = 'block';
+  }
+
+  input.addEventListener('focus', () => render(input.value));
+  input.addEventListener('input', () => { hidden.value = ''; render(input.value); });
+  list.addEventListener('mousedown', e => {
+    const item = e.target.closest('.ac-item');
+    if (!item) return;
+    input.value  = item.dataset.name;
+    hidden.value = item.dataset.id;
+    list.style.display = 'none';
+  });
+  input.addEventListener('blur', () => setTimeout(() => { list.style.display = 'none'; }, 150));
+}
+
+async function adminAddToQueueSubmit() {
+  const machineId = parseInt(document.getElementById('qm-machine-id')?.value);
+  const guestId   = parseInt(document.getElementById('qm-guest-id')?.value);
   if (!machineId || !guestId) { showToast('Bitte Maschine und Gast auswählen', 'warn'); return; }
   const res = await api('POST', `/queue/admin/${machineId}/${guestId}`);
-  if (res !== null) { showToast('Gast zur Warteliste hinzugefügt', 'success'); await loadAdminQueues(); }
+  if (res !== null) { closeModal(); showToast('Gast zur Warteliste hinzugefügt', 'success'); await loadAdminQueues(); }
 }
 
 async function refreshMaintenanceOverview() {
