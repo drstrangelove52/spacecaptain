@@ -122,6 +122,18 @@ async def run_migrations(engine: AsyncEngine) -> None:
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """))
 
+        # ── v1.07: ticker_text + announcement in system_settings ─────────────
+        await _add_column_if_missing(conn, "system_settings", "ticker_text",
+                                     "TEXT DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "ticker_speed",
+                                     "INT NOT NULL DEFAULT 80")
+        await _add_column_if_missing(conn, "system_settings", "ticker_font_size",
+                                     "INT NOT NULL DEFAULT 18")
+        await _add_column_if_missing(conn, "system_settings", "announcement",
+                                     "TEXT DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "announcement_font_size",
+                                     "INT NOT NULL DEFAULT 20")
+
         # ── v1.06: push_subscriptions ─────────────────────────────────────────
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS push_subscriptions (

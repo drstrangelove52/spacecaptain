@@ -19,6 +19,11 @@ class SettingsOut(BaseModel):
     modal_backdrop_display: bool
     queue_reservation_minutes: int
     display_refresh_seconds: int
+    ticker_text: Optional[str] = None
+    ticker_speed: int = 80
+    ticker_font_size: int = 18
+    announcement: Optional[str] = None
+    announcement_font_size: int = 20
 
     class Config:
         from_attributes = True
@@ -32,13 +37,25 @@ class SettingsUpdate(BaseModel):
     modal_backdrop_display: Optional[bool] = None
     queue_reservation_minutes: Optional[int] = None
     display_refresh_seconds: Optional[int] = None
+    ticker_text: Optional[str] = None
+    ticker_speed: Optional[int] = None
+    ticker_font_size: Optional[int] = None
+    announcement: Optional[str] = None
+    announcement_font_size: Optional[int] = None
 
 
 @router.get("/public")
 async def read_settings_public(db: AsyncSession = Depends(get_db)):
     """Öffentliche Einstellungen (kein Auth) — nur für Display."""
     s = await get_system_settings(db)
-    return {"display_refresh_seconds": s.display_refresh_seconds}
+    return {
+        "display_refresh_seconds": s.display_refresh_seconds,
+        "ticker_text": s.ticker_text or "",
+        "ticker_speed": s.ticker_speed,
+        "ticker_font_size": s.ticker_font_size,
+        "announcement": s.announcement or "",
+        "announcement_font_size": s.announcement_font_size,
+    }
 
 
 @router.get("", response_model=SettingsOut)
@@ -70,6 +87,16 @@ async def update_settings(
         row.queue_reservation_minutes = max(1, payload.queue_reservation_minutes)
     if payload.display_refresh_seconds is not None:
         row.display_refresh_seconds = max(10, payload.display_refresh_seconds)
+    if payload.ticker_text is not None:
+        row.ticker_text = payload.ticker_text or None
+    if payload.ticker_speed is not None:
+        row.ticker_speed = max(20, min(400, payload.ticker_speed))
+    if payload.ticker_font_size is not None:
+        row.ticker_font_size = max(10, min(72, payload.ticker_font_size))
+    if payload.announcement is not None:
+        row.announcement = payload.announcement or None
+    if payload.announcement_font_size is not None:
+        row.announcement_font_size = max(10, min(72, payload.announcement_font_size))
     await db.commit()
     await db.refresh(row)
     return row

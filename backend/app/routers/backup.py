@@ -11,9 +11,10 @@ from app.database import get_db
 from app.models import (
     User, Guest, Machine, Permission,
     ActivityLog, MachineSession, LogType, SessionEndedBy,
-    MaintenanceInterval, MaintenanceRecord,
+    MaintenanceInterval, MaintenanceRecord, SystemSettings,
 )
 from app.services.auth import require_admin
+from app.services.system_settings import get_system_settings
 
 router = APIRouter(prefix="/backup", tags=["backup"])
 
@@ -27,6 +28,7 @@ async def export_config(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
 ):
+    cfg        = await get_system_settings(db)
     users      = (await db.execute(select(User))).scalars().all()
     guests     = (await db.execute(select(Guest))).scalars().all()
     machines   = (await db.execute(select(Machine))).scalars().all()
@@ -42,8 +44,22 @@ async def export_config(
     user_by_id    = {u.id: u.email     for u in users}
 
     return {
-        "version": "2.4",
+        "version": "2.5",
         "exported_at": datetime.utcnow().isoformat(),
+        "settings": {
+            "nfc_writer_url":          cfg.nfc_writer_url,
+            "jwt_expire_minutes":      cfg.jwt_expire_minutes,
+            "guest_token_days":        cfg.guest_token_days,
+            "modal_backdrop_input":    cfg.modal_backdrop_input,
+            "modal_backdrop_display":  cfg.modal_backdrop_display,
+            "queue_reservation_minutes": cfg.queue_reservation_minutes,
+            "display_refresh_seconds": cfg.display_refresh_seconds,
+            "ticker_text":             cfg.ticker_text,
+            "ticker_speed":            cfg.ticker_speed,
+            "ticker_font_size":        cfg.ticker_font_size,
+            "announcement":            cfg.announcement,
+            "announcement_font_size":  cfg.announcement_font_size,
+        },
         "users": [{
             "name": u.name, "email": u.email, "role": u.role,
             "phone": u.phone, "area": u.area, "is_active": u.is_active,
@@ -59,12 +75,14 @@ async def export_config(
             "model": m.model, "location": m.location, "status": m.status,
             "plug_type": m.plug_type, "plug_ip": m.plug_ip, "plug_extra": m.plug_extra,
             "plug_token": m.plug_token, "idle_power_w": m.idle_power_w,
-            "idle_timeout_min": m.idle_timeout_min, "comment": m.comment,
-            "qr_token": m.qr_token,
+            "idle_timeout_min": m.idle_timeout_min, "plug_poll_interval_sec": m.plug_poll_interval_sec,
+            "training_required": m.training_required, "total_hours": m.total_hours,
+            "comment": m.comment, "qr_token": m.qr_token,
         } for m in machines],
         "permissions": [{
             "guest_username":    guest_by_id.get(p.guest_id),
             "machine_qr_token": machine_by_id.get(p.machine_id),
+            "is_blocked":        p.is_blocked,
         } for p in perms if guest_by_id.get(p.guest_id) and machine_by_id.get(p.machine_id)],
         "sessions": [{
             "machine_qr_token": machine_by_id.get(s.machine_id),
@@ -116,6 +134,18 @@ async def import_config(
     stats = {"users": 0, "guests": 0, "machines": 0, "permissions": 0,
              "sessions": 0, "activity_log": 0,
              "maintenance_intervals": 0, "maintenance_records": 0, "skipped": 0}
+
+    # ── Systemeinstellungen ────────────────────────────────
+    if s := payload.get("settings"):
+        cfg = await get_system_settings(db)
+        for field in ("nfc_writer_url", "jwt_expire_minutes", "guest_token_days",
+                      "modal_backdrop_input", "modal_backdrop_display",
+                      "queue_reservation_minutes", "display_refresh_seconds",
+                      "ticker_text", "ticker_speed", "ticker_font_size",
+                      "announcement", "announcement_font_size"):
+            if field in s:
+                setattr(cfg, field, s[field])
+        await db.flush()
 
     # ── Benutzer ──────────────────────────────────────────
     existing_emails = {u.email for u in (await db.execute(select(User))).scalars().all()}

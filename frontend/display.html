@@ -55,6 +55,17 @@
 
   footer{padding:12px 32px;border-top:1px solid var(--border);display:flex;align-items:center;gap:16px;font-family:var(--mono);font-size:11px;color:var(--text-dim)}
   .refresh-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
+
+  /* TICKER */
+  .ticker-bar{width:100%;background:var(--accent);color:#000;font-family:var(--mono);font-weight:700;letter-spacing:1px;overflow:hidden;white-space:nowrap;flex-shrink:0;padding:10px 0}
+  .ticker-track{display:inline-block;will-change:transform}
+
+  /* ANKÜNDIGUNG */
+  .announcement-card{background:linear-gradient(135deg,rgba(244,166,34,.12),rgba(244,166,34,.06));border:1px solid rgba(244,166,34,.5);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;grid-column:1/-1}
+  .announcement-inner{padding:20px 24px;display:flex;gap:16px;align-items:flex-start}
+  .announcement-icon{font-size:32px;flex-shrink:0}
+  .announcement-label{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:3px;margin-bottom:6px}
+  .announcement-text{font-size:16px;line-height:1.6;color:var(--text);white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -71,6 +82,10 @@
 <main id="machine-grid">
   <div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;grid-column:1/-1;padding:40px;text-align:center">Laden…</div>
 </main>
+
+<div id="ticker-bar" class="ticker-bar" style="display:none">
+  <span class="ticker-track" id="ticker-track"></span>
+</div>
 
 <footer>
   <div class="refresh-dot"></div>
@@ -97,13 +112,71 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
+let _displayRefreshMs = 30000;
+
+// ── JS-Ticker (läuft unabhängig von loadData) ─────────
+let _tickerRAF = null;
+let _tickerPos = 0;
+let _tickerSpeed = 80;
+let _tickerHalfWidth = 0;
+let _tickerLastTime = null;
+
+function _tickerStep(timestamp) {
+  if (_tickerLastTime === null) _tickerLastTime = timestamp;
+  const delta = Math.min(timestamp - _tickerLastTime, 100); // max 100ms Sprung
+  _tickerLastTime = timestamp;
+  _tickerPos += _tickerSpeed * delta / 1000;
+  if (_tickerHalfWidth > 0 && _tickerPos >= _tickerHalfWidth) {
+    _tickerPos -= _tickerHalfWidth;
+  }
+  const track = document.getElementById('ticker-track');
+  if (track) track.style.transform = `translateX(-${_tickerPos}px)`;
+  _tickerRAF = requestAnimationFrame(_tickerStep);
+}
+
+function renderTicker(text, speed, fontSize) {
+  const bar = document.getElementById('ticker-bar');
+  const track = document.getElementById('ticker-track');
+
+  if (!text || !text.trim()) {
+    bar.style.display = 'none';
+    if (_tickerRAF) { cancelAnimationFrame(_tickerRAF); _tickerRAF = null; }
+    return;
+  }
+
+  _tickerSpeed = speed || 80;
+  bar.style.fontSize = (fontSize || 18) + 'px';
+
+  const msgs = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const sep = '     ·     ';
+  const half = msgs.join(sep) + sep;
+  track.style.transform = '';
+  track.textContent = half + half;
+  // Padding damit Text von rechts einläuft
+  track.style.paddingLeft = bar.offsetWidth + 'px';
+  bar.style.display = 'block';
+
+  // Halbe Breite nach Render messen
+  requestAnimationFrame(() => {
+    _tickerHalfWidth = track.scrollWidth / 2;
+    if (!_tickerRAF) {
+      _tickerLastTime = null;
+      _tickerRAF = requestAnimationFrame(_tickerStep);
+    }
+  });
+}
+
+function renderAnnouncement(text, fontSize) {
+  window._announcement = text && text.trim() ? text.trim() : '';
+  window._announcementFontSize = fontSize || 20;
+}
+
 async function loadData() {
   const [machines, queues] = await Promise.all([
     fetch(`${API}/guest/dashboard`).then(r=>r.json()).catch(()=>[]),
     fetch(`${API}/queue`).then(r=>r.json()).catch(()=>[]),
   ]);
 
-  // Queue pro Maschine gruppieren
   const queueMap = {};
   for (const q of queues) {
     if (!queueMap[q.machine_id]) queueMap[q.machine_id] = [];
@@ -111,12 +184,28 @@ async function loadData() {
   }
 
   const grid = document.getElementById('machine-grid');
+  let html = '';
+
+  // Ankündigungs-Karte
+  if (window._announcement) {
+    html += `<div class="announcement-card">
+      <div class="announcement-inner">
+        <div class="announcement-icon">📢</div>
+        <div style="flex:1">
+          <div class="announcement-label">MITTEILUNGEN</div>
+          <div class="announcement-text" style="font-size:${window._announcementFontSize || 20}px">${window._announcement.replace(/</g,'&lt;')}</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
   if (!machines.length) {
-    grid.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;grid-column:1/-1;padding:40px;text-align:center">Keine Maschinen konfiguriert.</div>';
+    html += '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;grid-column:1/-1;padding:40px;text-align:center">Keine Maschinen konfiguriert.</div>';
+    grid.innerHTML = html;
     return;
   }
 
-  grid.innerHTML = machines.map(m => {
+  html += machines.map(m => {
     const icon = machineIcons[m.category] || '🔧';
     const inUse = m.in_use;
     const available = m.status === 'online' && !inUse;
@@ -175,18 +264,29 @@ async function loadData() {
     </div>`;
   }).join('');
 
+  grid.innerHTML = html;
+
   document.getElementById('last-update').textContent =
     'Zuletzt: ' + new Date().toLocaleTimeString('de-CH', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
 
-let _displayRefreshMs = 30000;
 async function initDisplay() {
   try {
     const s = await fetch('/api/settings/public').then(r => r.json());
     if (s.display_refresh_seconds) _displayRefreshMs = s.display_refresh_seconds * 1000;
+    renderTicker(s.ticker_text || '', s.ticker_speed, s.ticker_font_size);
+    renderAnnouncement(s.announcement || '', s.announcement_font_size);
   } catch {}
   loadData();
   setInterval(loadData, _displayRefreshMs);
+  // Ticker/Ankündigung alle 5 Min neu laden
+  setInterval(async () => {
+    try {
+      const s = await fetch('/api/settings/public').then(r => r.json());
+      renderTicker(s.ticker_text || '', s.ticker_speed, s.ticker_font_size);
+      renderAnnouncement(s.announcement || '', s.announcement_font_size);
+    } catch {}
+  }, 300000);
   document.querySelector('footer span:first-of-type').textContent =
     `Automatische Aktualisierung alle ${_displayRefreshMs/1000} Sekunden`;
 }

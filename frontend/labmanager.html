@@ -569,6 +569,34 @@
             <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Wie oft das TV-Dashboard die Daten neu lädt.</div>
           </div>
         </div>
+        <div class="table-wrap" style="padding:20px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">MITTEILUNGEN</div>
+          <div class="form-group">
+            <label class="form-label">Mitteilungs-Karte</label>
+            <textarea class="form-input" id="cfg-announcement" rows="3" placeholder="Wichtige Mitteilung für das TV-Display…" style="resize:vertical"></textarea>
+            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Erscheint als hervorgehobene Karte oben im Display. Leer = ausgeblendet.</div>
+          </div>
+          <div class="form-group" style="margin-top:12px">
+            <label class="form-label">Schriftgrösse Karte <span style="color:var(--text-dim);font-weight:400">(px)</span></label>
+            <input class="form-input" id="cfg-announcement-size" type="number" min="10" max="72" placeholder="20">
+          </div>
+          <div class="form-group" style="margin-top:12px">
+            <label class="form-label">Lauftext (Ticker)</label>
+            <textarea class="form-input" id="cfg-ticker" rows="3" placeholder="Eine Nachricht pro Zeile…&#10;Zweite Nachricht&#10;Dritte Nachricht" style="resize:vertical"></textarea>
+            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Scrollt als Ticker am unteren Rand. Eine Nachricht pro Zeile. Leer = ausgeblendet.</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+            <div class="form-group">
+              <label class="form-label">Schriftgrösse <span style="color:var(--text-dim);font-weight:400">(px)</span></label>
+              <input class="form-input" id="cfg-ticker-size" type="number" min="10" max="72" placeholder="18">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Geschwindigkeit <span style="color:var(--text-dim);font-weight:400">(px/s)</span></label>
+              <input class="form-input" id="cfg-ticker-speed" type="number" min="20" max="400" placeholder="80">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Langsam: 40 · Normal: 80 · Schnell: 160</div>
+            </div>
+          </div>
+        </div>
         <div style="grid-column:1/-1">
           <button class="btn btn-primary" onclick="saveSettings()">Einstellungen speichern</button>
         </div>
@@ -2120,6 +2148,11 @@ async function loadSettings() {
   document.getElementById('cfg-backdrop-display').checked = s.modal_backdrop_display;
   document.getElementById('cfg-queue-min').value = s.queue_reservation_minutes ?? 5;
   document.getElementById('cfg-display-refresh').value = s.display_refresh_seconds ?? 30;
+  document.getElementById('cfg-announcement').value = s.announcement ?? '';
+  document.getElementById('cfg-announcement-size').value = s.announcement_font_size ?? 20;
+  document.getElementById('cfg-ticker').value = s.ticker_text ?? '';
+  document.getElementById('cfg-ticker-size').value = s.ticker_font_size ?? 18;
+  document.getElementById('cfg-ticker-speed').value = s.ticker_speed ?? 80;
   const h = s.jwt_expire_minutes >= 60
     ? `${Math.floor(s.jwt_expire_minutes/60)} h ${s.jwt_expire_minutes%60>0 ? s.jwt_expire_minutes%60+' min' : ''}`.trim()
     : `${s.jwt_expire_minutes} min`;
@@ -2135,6 +2168,11 @@ async function saveSettings() {
     modal_backdrop_display:  document.getElementById('cfg-backdrop-display').checked,
     queue_reservation_minutes: parseInt(document.getElementById('cfg-queue-min').value) || 5,
     display_refresh_seconds:   parseInt(document.getElementById('cfg-display-refresh').value) || 30,
+    announcement:              document.getElementById('cfg-announcement').value,
+    announcement_font_size:    parseInt(document.getElementById('cfg-announcement-size').value) || 20,
+    ticker_text:               document.getElementById('cfg-ticker').value,
+    ticker_font_size:          parseInt(document.getElementById('cfg-ticker-size').value) || 18,
+    ticker_speed:              parseInt(document.getElementById('cfg-ticker-speed').value) || 80,
   };
   const res = await PATCH('/settings', payload);
   if (res) { await loadSettings(); showToast('Einstellungen gespeichert', 'success'); }
