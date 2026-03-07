@@ -31,7 +31,7 @@
   .nav-badge-danger{background:var(--danger)!important;color:#fff!important}
   .nav-icon{width:16px;text-align:center;font-size:14px}
   .nav-badge{margin-left:auto;background:var(--accent);color:var(--bg);font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;font-family:var(--mono)}
-  .sidebar-footer{padding:16px 20px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text-dim)}
+  .sidebar-footer{padding:16px 20px;border-top:2px solid rgba(255,255,255,0.15);font-family:var(--mono);font-size:11px;color:var(--text-dim)}
   .status-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success);margin-right:6px;animation:pulse 2s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
   .main{flex:1;display:flex;flex-direction:column;overflow-x:hidden;min-width:0}
@@ -127,7 +127,7 @@
   .perm-tab{background:transparent;border:1px solid var(--border);border-radius:4px;padding:5px 14px;font-family:var(--mono);font-size:11px;color:var(--text-dim);cursor:pointer;transition:all .15s}
   .perm-tab.active{background:rgba(244,166,34,.1);border-color:var(--accent);color:var(--accent)}
   .perm-tab:hover:not(.active){background:rgba(255,255,255,.03);color:var(--text)}
-  .perm-bulk-footer{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border);padding:12px 0 4px;display:flex;gap:10px;align-items:flex-start;margin-top:16px}
+  .perm-bulk-footer{position:sticky;bottom:0;background:var(--surface);border-top:2px solid rgba(255,255,255,0.15);padding:12px 0 4px;display:flex;gap:10px;align-items:flex-start;margin-top:16px}
   .perm-bulk-item{display:grid;grid-template-columns:20px 28px 1fr auto;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid rgba(42,47,62,.4);cursor:pointer;transition:background .1s}
   .perm-bulk-item:last-of-type{border-bottom:none}
   .perm-bulk-item:hover{background:rgba(255,255,255,.01)}
@@ -172,7 +172,7 @@
   .form-input:focus{border-color:var(--accent)}
   textarea.form-input{resize:vertical}
   .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+  .modal-footer{padding:16px 24px;border-top:2px solid rgba(255,255,255,0.15);display:flex;justify-content:flex-end;gap:10px}
   .plug-hint{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.6;padding:8px;background:var(--bg);border-radius:4px;border:1px solid var(--border)}
   /* SEARCH */
   .search-wrap{position:relative;margin-bottom:16px}
@@ -259,8 +259,7 @@
       <!-- AKTIVE MASCHINEN — wichtigste Info beim Schliessen -->
       <div id="dash-active-section" style="margin-bottom:24px;display:none">
         <div class="section-header">
-          <div class="section-title" style="color:var(--accent2)">● Aktive Maschinen <span id="dash-active-count" style="color:var(--accent);font-size:14px"></span></div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:1px">BITTE VOR SCHLIESSUNG AUSSCHALTEN</div>
+          <div class="section-title">Aktive Maschinen <span id="dash-active-count"></span></div>
         </div>
         <div class="table-wrap"><table>
           <thead><tr><th>Maschine</th><th>Kategorie</th><th>Nutzer</th><th>Seit</th><th>Verbrauch</th><th>Aktion</th></tr></thead>
@@ -270,8 +269,7 @@
       <!-- AKTIVE WARTELISTEN -->
       <div id="dash-queue-section" style="margin-bottom:24px;display:none">
         <div class="section-header">
-          <div class="section-title" style="color:var(--accent2)">⏳ Wartelisten <span id="dash-queue-count" style="color:var(--accent);font-size:14px"></span></div>
-          <button class="btn btn-ghost btn-sm" onclick="loadAdminQueues()">↺ Aktualisieren</button>
+          <div class="section-title">Warteliste <span id="dash-queue-count"></span></div>
         </div>
         <div id="dash-queue-list"></div>
       </div>
@@ -279,14 +277,14 @@
       <!-- WARTUNGSWARNUNGEN -->
       <div id="dash-maintenance-section" style="margin-bottom:24px;display:none">
         <div class="section-header">
-          <div class="section-title" style="color:var(--danger)">🔧 Maschinenpflege <span id="dash-maintenance-count" style="color:var(--accent);font-size:14px"></span></div>
+          <div class="section-title">Maschinenpflege <span id="dash-maintenance-count"></span></div>
           <button class="btn btn-ghost btn-sm" onclick="navigateTo('maintenance')">Zur Übersicht →</button>
         </div>
         <div id="dash-maintenance-list"></div>
       </div>
-      <div class="section-header"><div class="section-title">Alle Maschinen <span>// STATUS</span></div></div>
+      <div class="section-header"><div class="section-title">Alle Maschinen</div></div>
       <div class="table-wrap"><table><thead><tr><th>Maschine</th><th>Kategorie</th><th>Status</th><th>Adapter</th><th>Nutzer</th></tr></thead><tbody id="dash-machine-status"><tr><td colspan="5"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody></table></div>
-      <div class="section-header"><div class="section-title">Aktivitätslog <span>// RECENT</span></div></div>
+      <div class="section-header"><div class="section-title">Aktivitätslog</div></div>
       <div class="table-wrap" style="padding:0 16px" id="dash-log"><div class="loading"><div class="spinner"></div>Laden…</div></div>
     </div>
 
@@ -517,14 +515,14 @@
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px;align-items:start">
         <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">NFC-SCHREIBGERÄT</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">NFC-SCHREIBGERÄT</div>
           <div class="form-group">
             <label class="form-label">ESP32-URL <span style="color:var(--text-dim);font-weight:400">(leer = NFC deaktiviert)</span></label>
             <input class="form-input" id="cfg-nfc-url" placeholder="http://10.10.1.59">
           </div>
         </div>
         <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">SITZUNGEN</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">SITZUNGEN</div>
           <div class="form-group">
             <label class="form-label">Lab-Manager-Session Dauer <span style="color:var(--text-dim);font-weight:400">(Minuten)</span></label>
             <input class="form-input" id="cfg-jwt-min" type="number" min="5" max="1440" placeholder="480">
@@ -532,7 +530,7 @@
           </div>
         </div>
         <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">GAST-TOKENS</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">GAST-TOKENS</div>
           <div class="form-group">
             <label class="form-label">Login-Link Gültigkeit <span style="color:var(--text-dim);font-weight:400">(Tage)</span></label>
             <input class="form-input" id="cfg-token-days" type="number" min="1" max="3650" placeholder="365">
@@ -540,7 +538,7 @@
           </div>
         </div>
         <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">MODAL-VERHALTEN</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">MODAL-VERHALTEN</div>
           <div style="display:flex;flex-direction:column;gap:12px">
             <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
               <input type="checkbox" id="cfg-backdrop-input" style="width:16px;height:16px;accent-color:var(--accent)">
@@ -554,7 +552,7 @@
           </div>
         </div>
         <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">WARTELISTE</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">WARTELISTE</div>
           <div class="form-group">
             <label class="form-label">Reservierungsfenster <span style="color:var(--text-dim);font-weight:400">(Minuten)</span></label>
             <input class="form-input" id="cfg-queue-min" type="number" min="1" max="60" placeholder="5">
@@ -562,15 +560,18 @@
           </div>
         </div>
         <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">DISPLAY</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">DISPLAY</div>
           <div class="form-group">
-            <label class="form-label">Auto-Aktualisierung <span style="color:var(--text-dim);font-weight:400">(Sekunden)</span></label>
+            <label class="form-label">TV-Display Auto-Aktualisierung <span style="color:var(--text-dim);font-weight:400">(Sekunden)</span></label>
             <input class="form-input" id="cfg-display-refresh" type="number" min="10" max="300" placeholder="30">
-            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Wie oft das TV-Dashboard die Daten neu lädt.</div>
+          </div>
+          <div class="form-group" style="margin-top:12px">
+            <label class="form-label">Dashboard Auto-Aktualisierung <span style="color:var(--text-dim);font-weight:400">(Sekunden)</span></label>
+            <input class="form-input" id="cfg-dashboard-refresh" type="number" min="5" max="300" placeholder="30">
           </div>
         </div>
         <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">MITTEILUNGEN</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">MITTEILUNGEN</div>
           <div class="form-group">
             <label class="form-label">Mitteilungs-Karte</label>
             <textarea class="form-input" id="cfg-announcement" rows="3" placeholder="Wichtige Mitteilung für das TV-Display…" style="resize:vertical"></textarea>
@@ -876,7 +877,7 @@ function renderDashboard() {
   const activeSection = document.getElementById('dash-active-section');
   activeSection.style.display = active.length ? 'block' : 'none';
   if (active.length) {
-    document.getElementById('dash-active-count').textContent = `// ${active.length} AKTIV`;
+    document.getElementById('dash-active-count').textContent = `(${active.length})`;
     document.getElementById('dash-active-machines').innerHTML = active.map(m => {
       const dur = m.session_duration_min != null ? formatDuration(m.session_duration_min) : '—';
       const watt = m.power_w != null ? `${Math.round(m.power_w)} W` : '—';
@@ -1015,7 +1016,7 @@ function editGuest(id) {
     <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="e-email" value="${g.email||''}"></div>
     <div class="form-group"><label class="form-label">Telefon</label><input class="form-input" id="e-phone" value="${g.phone||''}"></div>
     <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-active"><option value="true" ${g.is_active?'selected':''}>aktiv</option><option value="false" ${!g.is_active?'selected':''}>inaktiv</option></select></div>
-    <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+    <div style="border-top:2px solid rgba(255,255,255,0.15);margin-top:12px;padding-top:12px">
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">LOGIN-LINK (OHNE PASSWORT)</div>
       ${g.has_login_token
         ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -1140,7 +1141,7 @@ function editLM(id) {
     ${isAdmin?`<div class="form-group"><label class="form-label">Rolle</label><select class="form-input" id="e-role"><option value="manager" ${u.role==='manager'?'selected':''}>Manager</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></div>`:''}
     <div class="form-group"><label class="form-label">Bereich</label><input class="form-input" id="e-area" value="${u.area||''}"></div>
     ${isAdmin?`<div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-lm-active"><option value="true" ${u.is_active?'selected':''}>Aktiv</option><option value="false" ${!u.is_active?'selected':''}>Inaktiv</option></select></div>`:''}
-    ${isAdmin?`<div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+    ${isAdmin?`<div style="border-top:2px solid rgba(255,255,255,0.15);margin-top:12px;padding-top:12px">
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">LOGIN-LINK (OHNE PASSWORT)</div>
       ${u.has_login_token
         ?`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -2148,6 +2149,7 @@ async function loadSettings() {
   document.getElementById('cfg-backdrop-display').checked = s.modal_backdrop_display;
   document.getElementById('cfg-queue-min').value = s.queue_reservation_minutes ?? 5;
   document.getElementById('cfg-display-refresh').value = s.display_refresh_seconds ?? 30;
+  document.getElementById('cfg-dashboard-refresh').value = s.dashboard_refresh_seconds ?? 30;
   document.getElementById('cfg-announcement').value = s.announcement ?? '';
   document.getElementById('cfg-announcement-size').value = s.announcement_font_size ?? 20;
   document.getElementById('cfg-ticker').value = s.ticker_text ?? '';
@@ -2167,7 +2169,8 @@ async function saveSettings() {
     modal_backdrop_input:    document.getElementById('cfg-backdrop-input').checked,
     modal_backdrop_display:  document.getElementById('cfg-backdrop-display').checked,
     queue_reservation_minutes: parseInt(document.getElementById('cfg-queue-min').value) || 5,
-    display_refresh_seconds:   parseInt(document.getElementById('cfg-display-refresh').value) || 30,
+    display_refresh_seconds:    parseInt(document.getElementById('cfg-display-refresh').value) || 30,
+    dashboard_refresh_seconds:  parseInt(document.getElementById('cfg-dashboard-refresh').value) || 30,
     announcement:              document.getElementById('cfg-announcement').value,
     announcement_font_size:    parseInt(document.getElementById('cfg-announcement-size').value) || 20,
     ticker_text:               document.getElementById('cfg-ticker').value,
@@ -2221,10 +2224,18 @@ function _checkIdleAlarm(machines) {
   }
 }
 
-setInterval(async () => {
-  const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
-  if (activePage === 'machines' || activePage === 'dashboard') refreshLiveData();
-}, 5000);
+async function startDashboardRefresh() {
+  let ms = 30000;
+  try {
+    const s = await GET('/settings');
+    if (s?.dashboard_refresh_seconds) ms = s.dashboard_refresh_seconds * 1000;
+  } catch {}
+  setInterval(async () => {
+    const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
+    if (activePage === 'machines' || activePage === 'dashboard') refreshLiveData();
+  }, ms);
+}
+startDashboardRefresh();
 
 // ═══════════════════════════════════════════════════════
 // STATS
@@ -2389,7 +2400,7 @@ async function loadAdminQueues() {
   const count = document.getElementById('dash-queue-count');
 
   section.style.display = 'block';
-  count.textContent = data.length ? `// ${data.length} WARTEND` : '';
+  count.textContent = data.length ? `(${data.length})` : '';
 
   const guests = (cache.guests || []).filter(g => g.is_active).sort((a,b) => a.name.localeCompare(b.name, 'de'));
   const onlineMachines = (cache.machines || []).filter(m => m.status === 'online').sort((a,b) => a.name.localeCompare(b.name, 'de'));
@@ -2401,36 +2412,49 @@ async function loadAdminQueues() {
     byMachine[e.machine_id].entries.push(e);
   }
 
-  // Bestehende Einträge (pro Maschine)
-  const entriesHtml = Object.entries(byMachine).map(([machineId, grp]) => {
-    const inQueue = new Set(grp.entries.map(e => e.guest_id));
-    const rows = grp.entries.map((e, i) => {
-      const badge = e.status === 'notified'
-        ? `<span style="font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3)">BEREIT</span>`
+  // Bestehende Einträge — eine gemeinsame Tabelle, gruppiert nach Maschine
+  const thStyle = `font-family:var(--mono);font-size:10px;color:var(--text-dim);font-weight:400;text-align:left;padding-bottom:6px`;
+  const groups = Object.entries(byMachine).sort((a, b) => a[1].name.localeCompare(b[1].name, 'de'));
+  const allRows = groups.map(([, grp], gi) => {
+    return grp.entries.map((e, i) => {
+      const sep = (i === 0 && gi > 0) ? 'border-top:2px solid rgba(255,255,255,0.15);padding-top:10px' : '';
+      const machineName = i === 0
+        ? `<td style="${sep}" rowspan="${grp.entries.length}">${grp.name}</td>`
         : '';
+      let statusCell;
+      if (e.status === 'notified' && e.expires_at) {
+        const remSec = Math.max(0, Math.round((new Date(e.expires_at) - Date.now()) / 1000));
+        const remMin = Math.floor(remSec / 60);
+        const remS   = remSec % 60;
+        const remStr = `${remMin}:${String(remS).padStart(2,'0')}`;
+        statusCell = `<span class="badge badge-cyan">BEREIT · ${remStr}</span>`;
+      } else {
+        statusCell = `<span class="badge badge-gray">WARTEND</span>`;
+      }
       return `<tr>
-        <td style="font-family:var(--mono);font-size:11px;color:var(--accent);width:28px">${i+1}.</td>
-        <td>${e.guest_name} ${badge}</td>
-        <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${e.joined_at ? new Date(e.joined_at).toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'}) : '—'}</td>
-        <td><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="adminRemoveQueue(${e.id})">✕ Entfernen</button></td>
+        ${machineName}
+        <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);width:28px;${sep}">${i+1}.</td>
+        <td style="${sep}">${e.guest_name}</td>
+        <td style="${sep}">${statusCell}</td>
+        <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);${sep}">${e.joined_at ? new Date(e.joined_at).toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'}) : '—'}</td>
+        <td style="${sep}"><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="adminRemoveQueue(${e.id})">✕ Entfernen</button></td>
       </tr>`;
     }).join('');
-    const available = guests.filter(g => !inQueue.has(g.id));
-    const addHtml = available.length
-      ? `<div style="display:flex;gap:8px;margin-top:10px">
-          <select id="queue-add-select-${machineId}" class="filter-input" style="flex:1">
-            <option value="">Gast auswählen…</option>
-            ${available.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
-          </select>
-          <button class="btn btn-ghost btn-sm" onclick="adminAddToQueue(${machineId})">+ Hinzufügen</button>
-        </div>`
-      : '';
-    return `<div class="table-wrap" style="padding:16px;margin-bottom:12px">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:10px">${grp.name.toUpperCase()}</div>
-      <table style="width:100%"><tbody>${rows}</tbody></table>
-      ${addHtml}
-    </div>`;
   }).join('');
+
+  const entriesHtml = allRows ? `<div class="table-wrap" style="padding:16px;margin-bottom:12px">
+    <table style="width:100%">
+      <thead><tr>
+        <th style="${thStyle}">Maschine</th>
+        <th style="${thStyle}">#</th>
+        <th style="${thStyle}">Gast</th>
+        <th style="${thStyle}">Status</th>
+        <th style="${thStyle}">Eingetragen</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${allRows}</tbody>
+    </table>
+  </div>` : '';
 
   // Formular "Gast zu Maschine hinzufügen" (immer sichtbar)
   const addFormHtml = `<div class="table-wrap" style="padding:16px">
@@ -2448,7 +2472,14 @@ async function loadAdminQueues() {
     </div>
   </div>`;
 
+  // Aktuelle Auswahl merken, damit ein periodischer Refresh sie nicht zurücksetzt
+  const savedMachine = document.getElementById('queue-new-machine')?.value || '';
+  const savedGuest   = document.getElementById('queue-new-guest')?.value   || '';
+
   list.innerHTML = (entriesHtml || '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:4px 0 12px">Keine aktiven Einträge.</div>') + addFormHtml;
+
+  if (savedMachine) document.getElementById('queue-new-machine').value = savedMachine;
+  if (savedGuest)   document.getElementById('queue-new-guest').value   = savedGuest;
 }
 
 async function adminRemoveQueue(entryId) {
@@ -2621,7 +2652,7 @@ function renderDashboardMaintenance(data) {
   section.style.display = urgent.length ? 'block' : 'none';
   if (!urgent.length) return;
 
-  count.textContent = `// ${urgent.filter(iv=>iv.status==='due').length} FÄLLIG, ${urgent.filter(iv=>iv.status==='warning').length} WARNUNG`;
+  count.textContent = `(${urgent.length})`;
 
   list.innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>Status</th><th>Maschine</th><th>Wartung</th><th>Verbleibend</th><th>Letzter Zählerstand</th><th>Aktion</th></tr></thead>

@@ -19,7 +19,7 @@
   .logo{height:44px}
   .header-title{font-family:var(--display);font-size:28px;font-weight:900;color:var(--accent);letter-spacing:3px}
   .header-sub{font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px}
-  .header-time{margin-left:auto;font-family:var(--mono);font-size:20px;color:var(--accent2);letter-spacing:2px}
+  .header-time{margin-left:auto;font-family:var(--mono);font-size:48px;color:var(--accent2);letter-spacing:2px}
 
   main{flex:1;padding:24px 32px;display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));align-content:start}
 
@@ -207,16 +207,22 @@ async function loadData() {
 
   html += machines.map(m => {
     const icon = machineIcons[m.category] || '🔧';
-    const inUse = m.in_use;
-    const available = m.status === 'online' && !inUse;
+    const inUse = m.in_use || (m.plug_supported && m.plug_on === true);
+    const adapterError = m.plug_supported && m.plug_error === 'unreachable';
+    const available = m.status === 'online' && !inUse && !adapterError;
     const offline = m.status !== 'online';
-    const cardClass = offline ? 'offline' : inUse ? 'in-use' : 'available';
+    const cardClass = offline ? 'offline' : (inUse && !adapterError) ? 'in-use' : available ? 'available' : 'offline';
 
     let statusHtml;
     if (offline) {
       statusHtml = `<div class="card-status">
         <div class="dot dot-grey"></div>
         <div class="status-text status-offline">${m.status === 'maintenance' ? 'IN WARTUNG' : 'OFFLINE'}</div>
+      </div>`;
+    } else if (adapterError) {
+      statusHtml = `<div class="card-status">
+        <div class="dot dot-grey"></div>
+        <div class="status-text status-offline">ADAPTER OFFLINE</div>
       </div>`;
     } else if (inUse) {
       const dur = m.session_duration_min != null ? formatDur(m.session_duration_min) : '';

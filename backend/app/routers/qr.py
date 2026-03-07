@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 import qrcode
 
 from app.database import get_db
@@ -161,14 +161,14 @@ async def scan_machine(
             }
         )
 
-    # 4. Warteliste: prüfen ob ein anderer Gast die Maschine reserviert hat
-    notified_res = await db.execute(
+    # 4. Warteliste: blockieren wenn der erste Eintrag in der Queue jemand anderem gehört
+    first_res = await db.execute(
         select(MachineQueue).where(
             MachineQueue.machine_id == machine.id,
-            MachineQueue.status == QueueStatus.notified,
-        )
+            MachineQueue.status.in_([QueueStatus.waiting, QueueStatus.notified]),
+        ).order_by(MachineQueue.joined_at.asc()).limit(1)
     )
-    notified = notified_res.scalar_one_or_none()
+    notified = first_res.scalar_one_or_none()
     if notified and notified.guest_id != guest.id:
         await log_svc.log(
             db, LogType.access_denied,
@@ -186,7 +186,13 @@ async def scan_machine(
             }
         )
 
-    # 5. Smart Plug einschalten
+    # 5. Queue-Eintrag des Gastes entfernen (Sitzung beginnt jetzt)
+    await db.execute(delete(MachineQueue).where(
+        MachineQueue.machine_id == machine.id,
+        MachineQueue.guest_id == guest.id,
+    ))
+
+    # 6. Smart Plug einschalten
     plug_ok, plug_msg = await switch_plug(machine, "on")
 
     await log_svc.log(

@@ -122,6 +122,10 @@ async def run_migrations(engine: AsyncEngine) -> None:
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """))
 
+        # ── v1.08: dashboard_refresh_seconds in system_settings ──────────────
+        await _add_column_if_missing(conn, "system_settings", "dashboard_refresh_seconds",
+                                     "INT NOT NULL DEFAULT 30")
+
         # ── v1.07: ticker_text + announcement in system_settings ─────────────
         await _add_column_if_missing(conn, "system_settings", "ticker_text",
                                      "TEXT DEFAULT NULL")

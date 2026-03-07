@@ -44,7 +44,7 @@ async def get_all_queues(db: AsyncSession = Depends(get_db)):
             "guest_display": name,
             "status": e.status,
             "joined_at": e.joined_at.isoformat() if e.joined_at else None,
-            "expires_at": e.expires_at.isoformat() if e.expires_at else None,
+            "expires_at": (e.expires_at.isoformat() + 'Z') if e.expires_at else None,
         })
     return out
 

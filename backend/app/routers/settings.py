@@ -19,6 +19,7 @@ class SettingsOut(BaseModel):
     modal_backdrop_display: bool
     queue_reservation_minutes: int
     display_refresh_seconds: int
+    dashboard_refresh_seconds: int = 30
     ticker_text: Optional[str] = None
     ticker_speed: int = 80
     ticker_font_size: int = 18
@@ -37,6 +38,7 @@ class SettingsUpdate(BaseModel):
     modal_backdrop_display: Optional[bool] = None
     queue_reservation_minutes: Optional[int] = None
     display_refresh_seconds: Optional[int] = None
+    dashboard_refresh_seconds: Optional[int] = None
     ticker_text: Optional[str] = None
     ticker_speed: Optional[int] = None
     ticker_font_size: Optional[int] = None
@@ -87,6 +89,8 @@ async def update_settings(
         row.queue_reservation_minutes = max(1, payload.queue_reservation_minutes)
     if payload.display_refresh_seconds is not None:
         row.display_refresh_seconds = max(10, payload.display_refresh_seconds)
+    if payload.dashboard_refresh_seconds is not None:
+        row.dashboard_refresh_seconds = max(5, payload.dashboard_refresh_seconds)
     if payload.ticker_text is not None:
         row.ticker_text = payload.ticker_text or None
     if payload.ticker_speed is not None:

@@ -5,7 +5,7 @@ import secrets
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text
+from sqlalchemy import select, text, delete
 from jose import JWTError, jwt
 import bcrypt
 import logging
@@ -230,8 +230,18 @@ async def check_access(payload: CheckRequest, db: AsyncSession = Depends(get_db)
         if log_entry and log_entry.meta and log_entry.meta.get("comment"):
             denial_reason = log_entry.meta["comment"]
 
+    # Prüfen ob der erste Eintrag in der Queue jemand anderem gehört
+    first_res = await db.execute(
+        select(MachineQueue).where(
+            MachineQueue.machine_id == machine.id,
+            MachineQueue.status.in_([QueueStatus.waiting, QueueStatus.notified]),
+        ).order_by(MachineQueue.joined_at.asc()).limit(1)
+    )
+    first_in_queue = first_res.scalar_one_or_none()
+    reserved_for_other = first_in_queue is not None and first_in_queue.guest_id != guest.id
+
     return {"guest_name": guest.name, "guest_id": guest.id, "has_permission": has_permission,
-            "denial_reason": denial_reason, "machine": detail}
+            "denial_reason": denial_reason, "reserved_for_other": reserved_for_other, "machine": detail}
 
 
 # ── Schalten ──────────────────────────────────────────
@@ -300,17 +310,21 @@ async def guest_switch(payload: SwitchRequest, db: AsyncSession = Depends(get_db
 
     if ok:
         if payload.action == "on":
-            # Warteliste: prüfen ob ein anderer Gast die Maschine reserviert hat
-            notified_res = await db.execute(
+            # Warteliste: blockieren wenn der erste Eintrag in der Queue jemand anderem gehört
+            first_res = await db.execute(
                 select(MachineQueue).where(
                     MachineQueue.machine_id == machine.id,
-                    MachineQueue.status == QueueStatus.notified,
-                )
+                    MachineQueue.status.in_([QueueStatus.waiting, QueueStatus.notified]),
+                ).order_by(MachineQueue.joined_at.asc()).limit(1)
             )
-            notified = notified_res.scalar_one_or_none()
-            if notified and notified.guest_id != guest.id:
+            first = first_res.scalar_one_or_none()
+            if first and first.guest_id != guest.id:
                 raise HTTPException(423, "Diese Maschine ist gerade für einen anderen Gast in der Warteliste reserviert")
             await start_session(db, machine, guest.id)
+            await db.execute(delete(MachineQueue).where(
+                MachineQueue.machine_id == machine.id,
+                MachineQueue.guest_id == guest.id,
+            ))
             await log_svc.log(db, LogType.access_granted,
                 f"Zugang: {guest.name} → {machine.name}", guest_id=guest.id, machine_id=machine.id)
         else:
