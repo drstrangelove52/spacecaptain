@@ -463,7 +463,7 @@
       <div class="section-header" style="margin-top:24px"><div class="section-title">Einzelne Sessions <span>// DETAILS</span></div></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Maschine</th><th>Gast</th><th>Start</th><th>Dauer</th><th>Verbrauch</th><th>Beendet durch</th></tr></thead>
+          <thead><tr><th>Maschine</th><th>Benutzer</th><th>Start</th><th>Dauer</th><th>Verbrauch</th><th>Beendet durch</th></tr></thead>
           <tbody id="stats-tbody"><tr><td colspan="6"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody>
         </table>
       </div>
@@ -1423,7 +1423,9 @@ function renderPermGuestList(filter='') {
   const filtered=cache.guests.filter(g=>!filter||g.name.toLowerCase().includes(filter.toLowerCase())||g.username.toLowerCase().includes(filter.toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name,'de'));
   if (!filtered.length) { el.innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:11px;padding:16px">Keine Gäste gefunden</div>'; return; }
   el.innerHTML=filtered.map(g=>{
-    const permCount=cache.permissions.filter(p=>p.guest_id===g.id&&!p.is_blocked).length;
+    const _openMachines=cache.machines.filter(m=>m.training_required===false).length;
+    const _blocked=cache.permissions.filter(p=>p.guest_id===g.id&&p.is_blocked).length;
+    const permCount=cache.permissions.filter(p=>p.guest_id===g.id&&!p.is_blocked).length+_openMachines-_blocked;
     return `<div class="perm-guest-item ${selectedPermGuestId===g.id?'active':''}" onclick="selectPermGuest(${g.id})">
       <div>
         <div style="font-weight:600;color:var(--text)">${g.name}</div>
@@ -1654,8 +1656,10 @@ async function selectPermGuest(guestId) {
   if (!guest) return;
   const grantedPerms=new Set(cache.permissions.filter(p=>p.guest_id===guestId&&!p.is_blocked).map(p=>p.machine_id));
   const blockedPerms=new Set(cache.permissions.filter(p=>p.guest_id===guestId&&p.is_blocked).map(p=>p.machine_id));
+  const _openCount=cache.machines.filter(m=>m.training_required===false).length;
+  const _accessCount=grantedPerms.size+_openCount-blockedPerms.size;
   document.getElementById('perm-detail-title').textContent=guest.name;
-  document.getElementById('perm-detail-stats').textContent=`@${guest.username} — ${grantedPerms.size} von ${cache.machines.length} Maschinen berechtigt`;
+  document.getElementById('perm-detail-stats').textContent=`@${guest.username} — ${_accessCount} von ${cache.machines.length} Maschinen berechtigt`;
   if (!cache.machines.length) {
     document.getElementById('perm-detail-body').innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px;text-align:center">Keine Maschinen vorhanden.</div>';
     return;
@@ -1794,7 +1798,9 @@ async function togglePerm(guestId,machineId) {
   // Stats + Listen aktualisieren
   if(currentPermView==='guest') {
     const gc=cache.permissions.filter(p=>p.guest_id===guestId&&!p.is_blocked).length;
-    document.getElementById('perm-detail-stats').textContent=`@${cache.guests.find(g=>g.id===guestId)?.username} — ${gc} von ${cache.machines.length} Maschinen berechtigt`;
+    const gb=cache.permissions.filter(p=>p.guest_id===guestId&&p.is_blocked).length;
+    const go=cache.machines.filter(m=>m.training_required===false).length;
+    document.getElementById('perm-detail-stats').textContent=`@${cache.guests.find(g=>g.id===guestId)?.username} — ${gc+go-gb} von ${cache.machines.length} Maschinen berechtigt`;
     renderPermGuestList(document.getElementById('perm-guest-search')?.value||'');
   } else {
     const mGranted=cache.permissions.filter(p=>p.machine_id===machineId&&!p.is_blocked).length;
@@ -2211,7 +2217,7 @@ async function loadStats() {
     const ebColor=s.ended_by==='idle_timeout'?'var(--accent)':s.ended_by==='manager'?'var(--accent2)':'var(--text-dim)';
     return `<tr>
       <td><strong>${s.machine_name}</strong></td>
-      <td style="font-family:var(--mono);font-size:11px">${s.guest_name}</td>
+      <td style="font-family:var(--mono);font-size:11px;${s.manager_id && !s.guest_id ? 'color:var(--accent2)' : ''}">${s.user_name || '—'}</td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${dt}</td>
       <td><span class="badge badge-cyan">${dur}</span></td>
       <td style="font-family:var(--mono);font-size:11px">${wh}</td>

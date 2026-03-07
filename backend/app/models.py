@@ -123,6 +123,7 @@ class MachineSession(Base):
     id:           Mapped[int]              = mapped_column(Integer, primary_key=True, autoincrement=True)
     machine_id:   Mapped[int]             = mapped_column(Integer, ForeignKey("machines.id", ondelete="CASCADE"))
     guest_id:     Mapped[Optional[int]]   = mapped_column(Integer, ForeignKey("guests.id", ondelete="SET NULL"))
+    manager_id:   Mapped[Optional[int]]   = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), default=None)
     started_at:   Mapped[datetime]        = mapped_column(DateTime, default=datetime.utcnow)
     ended_at:     Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
     duration_min: Mapped[Optional[float]] = mapped_column(Float, default=None)

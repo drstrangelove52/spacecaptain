@@ -63,6 +63,10 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "guests", "login_token",
                                      "VARCHAR(64) DEFAULT NULL UNIQUE")
 
+    # ── v1.04: manager_id auf machine_sessions ───────────────────────────────
+        await _add_column_if_missing(conn, "machine_sessions", "manager_id",
+                                     "INT UNSIGNED DEFAULT NULL")
+
     # ── v1.04: training_required auf machines ────────────────────────────────
         await _add_column_if_missing(conn, "machines", "training_required",
                                      "TINYINT(1) NOT NULL DEFAULT 1")

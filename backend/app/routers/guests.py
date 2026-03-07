@@ -9,7 +9,7 @@ import bcrypt
 
 def _hash(pw: str) -> str:
     return bcrypt.hashpw(pw.encode(), bcrypt.gensalt(12)).decode()
-from app.models import User, Guest, Permission, LogType
+from app.models import User, Guest, Machine, Permission, LogType
 from app.schemas import GuestCreate, GuestUpdate, GuestOut
 from app.services.auth import get_current_user
 from app.services import logger as log_svc
@@ -18,10 +18,19 @@ router = APIRouter(prefix="/guests", tags=["guests"])
 
 
 async def _guest_out(guest: Guest, db: AsyncSession) -> GuestOut:
-    perm_count = await db.execute(
+    # Explizite Grants (Schulungs-Maschinen)
+    granted = await db.execute(
         select(func.count()).where(Permission.guest_id == guest.id, Permission.is_blocked == False)
     )
-    count = perm_count.scalar() or 0
+    # Offene Maschinen gesamt
+    open_total = await db.execute(
+        select(func.count()).where(Machine.training_required == False)
+    )
+    # Explizit gesperrte Maschinen für diesen Gast
+    blocked = await db.execute(
+        select(func.count()).where(Permission.guest_id == guest.id, Permission.is_blocked == True)
+    )
+    count = (granted.scalar() or 0) + (open_total.scalar() or 0) - (blocked.scalar() or 0)
     out = GuestOut.model_validate(guest)
     out.permission_count = count
     return out

@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.database import get_db
-from app.models import Guest, Machine, Permission, LogType, ActivityLog
+from app.models import Guest, Machine, Permission, LogType, ActivityLog, User
 from app.config import get_settings
 from app.services import logger as log_svc
 from app.config import APP_TIMEZONE
@@ -398,6 +398,7 @@ async def session_stats(
     sessions = result.scalars().all()
     guests   = {g.id: g.name for g in (await db.execute(select(Guest))).scalars().all()}
     machines = {m.id: m.name for m in (await db.execute(select(Machine))).scalars().all()}
+    users    = {u.id: u.name for u in (await db.execute(select(User))).scalars().all()}
 
     total_duration = sum(s.duration_min or 0 for s in sessions)
     total_energy   = sum(s.energy_wh or 0 for s in sessions)
@@ -414,7 +415,9 @@ async def session_stats(
             "machine_id":   s.machine_id,
             "machine_name": machines.get(s.machine_id, "?"),
             "guest_id":     s.guest_id,
-            "guest_name":   guests.get(s.guest_id, "?") if s.guest_id else "—",
+            "guest_name":   guests.get(s.guest_id, "?") if s.guest_id else None,
+            "manager_id":   s.manager_id,
+            "user_name":    guests.get(s.guest_id) if s.guest_id else users.get(s.manager_id),
             "started_at":   _local_iso(s.started_at),
             "ended_at":     _local_iso(s.ended_at),
             "duration_min": s.duration_min,

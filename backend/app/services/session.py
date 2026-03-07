@@ -59,7 +59,7 @@ async def start_manager_session(db: AsyncSession, machine: Machine, user_id: int
         await end_session(db, machine, ended_by=SessionEndedBy.system)
 
     now = datetime.utcnow()
-    session = MachineSession(machine_id=machine.id, guest_id=None, started_at=now)
+    session = MachineSession(machine_id=machine.id, guest_id=None, manager_id=user_id, started_at=now)
     db.add(session)
 
     await db.execute(
