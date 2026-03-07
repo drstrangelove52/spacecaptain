@@ -55,3 +55,14 @@ async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Nur Admins erlaubt")
     return current_user
+
+
+def decode_guest_token(token: str) -> dict | None:
+    """Dekodiert einen Gast-JWT und gibt das Payload zurück, oder None bei Fehler."""
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        if payload.get("type") != "guest":
+            return None
+        return {"guest_id": int(payload["sub"])}
+    except (JWTError, TypeError, ValueError):
+        return None

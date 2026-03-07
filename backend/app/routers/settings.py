@@ -17,6 +17,8 @@ class SettingsOut(BaseModel):
     guest_token_days: int
     modal_backdrop_input: bool
     modal_backdrop_display: bool
+    queue_reservation_minutes: int
+    display_refresh_seconds: int
 
     class Config:
         from_attributes = True
@@ -28,6 +30,15 @@ class SettingsUpdate(BaseModel):
     guest_token_days: Optional[int] = None
     modal_backdrop_input: Optional[bool] = None
     modal_backdrop_display: Optional[bool] = None
+    queue_reservation_minutes: Optional[int] = None
+    display_refresh_seconds: Optional[int] = None
+
+
+@router.get("/public")
+async def read_settings_public(db: AsyncSession = Depends(get_db)):
+    """Öffentliche Einstellungen (kein Auth) — nur für Display."""
+    s = await get_system_settings(db)
+    return {"display_refresh_seconds": s.display_refresh_seconds}
 
 
 @router.get("", response_model=SettingsOut)
@@ -55,6 +66,10 @@ async def update_settings(
         row.modal_backdrop_input = payload.modal_backdrop_input
     if payload.modal_backdrop_display is not None:
         row.modal_backdrop_display = payload.modal_backdrop_display
+    if payload.queue_reservation_minutes is not None:
+        row.queue_reservation_minutes = max(1, payload.queue_reservation_minutes)
+    if payload.display_refresh_seconds is not None:
+        row.display_refresh_seconds = max(10, payload.display_refresh_seconds)
     await db.commit()
     await db.refresh(row)
     return row

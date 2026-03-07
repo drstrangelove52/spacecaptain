@@ -121,6 +121,16 @@ async def end_session(
 
     await db.commit()
     log.info(f"Session beendet: machine_id={machine.id}, by={ended_by}")
+
+    # Nächsten in der Warteliste benachrichtigen
+    try:
+        from app.services.queue_service import notify_next_in_queue
+        from app.services.system_settings import get_system_settings
+        sys_settings = await get_system_settings(db)
+        await notify_next_in_queue(db, machine.id, sys_settings.queue_reservation_minutes)
+    except Exception as e:
+        log.error(f"Queue-Benachrichtigung fehlgeschlagen: {e}")
+
     return session
 
 
@@ -180,6 +190,22 @@ async def idle_watcher(app):
 
         except Exception as e:
             log.error(f"Idle-Watcher Fehler: {e}")
+
+
+async def queue_watcher(app):
+    """Prüft alle 60s auf abgelaufene Queue-Benachrichtigungen und rückt vor."""
+    from app.database import AsyncSessionLocal
+    from app.services.queue_service import expire_stale_notifications
+    from app.services.system_settings import get_system_settings
+
+    while True:
+        await asyncio.sleep(60)
+        try:
+            async with AsyncSessionLocal() as db:
+                sys_settings = await get_system_settings(db)
+                await expire_stale_notifications(db, sys_settings.queue_reservation_minutes)
+        except Exception as e:
+            log.error(f"Queue-Watcher Fehler: {e}")
 
 
 async def plug_watcher(app):

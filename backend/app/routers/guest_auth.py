@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.database import get_db
-from app.models import Guest, Machine, Permission, LogType, ActivityLog, User
+from app.models import Guest, Machine, Permission, LogType, ActivityLog, User, MachineQueue, QueueStatus
 from app.config import get_settings
 from app.services import logger as log_svc
 from app.config import APP_TIMEZONE
@@ -300,6 +300,16 @@ async def guest_switch(payload: SwitchRequest, db: AsyncSession = Depends(get_db
 
     if ok:
         if payload.action == "on":
+            # Warteliste: prüfen ob ein anderer Gast die Maschine reserviert hat
+            notified_res = await db.execute(
+                select(MachineQueue).where(
+                    MachineQueue.machine_id == machine.id,
+                    MachineQueue.status == QueueStatus.notified,
+                )
+            )
+            notified = notified_res.scalar_one_or_none()
+            if notified and notified.guest_id != guest.id:
+                raise HTTPException(423, "Diese Maschine ist gerade für einen anderen Gast in der Warteliste reserviert")
             await start_session(db, machine, guest.id)
             await log_svc.log(db, LogType.access_granted,
                 f"Zugang: {guest.name} → {machine.name}", guest_id=guest.id, machine_id=machine.id)
@@ -345,6 +355,7 @@ async def guest_dashboard(db: AsyncSession = Depends(get_db)):
             "plug_error":           plug_state.get("error"),
             "power_w":              plug_state.get("power_w"),
             "in_use":               m.current_guest_id is not None,
+            "current_guest_id":     m.current_guest_id,
             "current_guest_name":   current_guest_name,
             "session_duration_min": session_duration_min,
             "session_started_at":   _local_iso(m.session_started_at),

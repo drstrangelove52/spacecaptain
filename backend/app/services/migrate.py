@@ -100,6 +100,42 @@ async def run_migrations(engine: AsyncEngine) -> None:
             "VALUES (1, :url, :jwt, 365)"
         ).bindparams(url=_env.nfc_writer_url, jwt=_env.jwt_expire_minutes))
 
+        # ── v1.06: queue_reservation_minutes in system_settings ──────────────
+        await _add_column_if_missing(conn, "system_settings", "queue_reservation_minutes",
+                                     "INT NOT NULL DEFAULT 5")
+        await _add_column_if_missing(conn, "system_settings", "display_refresh_seconds",
+                                     "INT NOT NULL DEFAULT 30")
+
+        # ── v1.06: machine_queue ──────────────────────────────────────────────
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS machine_queue (
+                id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                machine_id   INT UNSIGNED NOT NULL,
+                guest_id     INT UNSIGNED NOT NULL,
+                status       ENUM('waiting','notified','done','expired') NOT NULL DEFAULT 'waiting',
+                joined_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                notified_at  DATETIME DEFAULT NULL,
+                expires_at   DATETIME DEFAULT NULL,
+                UNIQUE KEY uq_machine_guest (machine_id, guest_id),
+                FOREIGN KEY (machine_id) REFERENCES machines(id) ON DELETE CASCADE,
+                FOREIGN KEY (guest_id)   REFERENCES guests(id)   ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
+
+        # ── v1.06: push_subscriptions ─────────────────────────────────────────
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS push_subscriptions (
+                id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                guest_id    INT UNSIGNED NOT NULL,
+                endpoint    VARCHAR(500) NOT NULL,
+                p256dh      VARCHAR(255) NOT NULL,
+                auth        VARCHAR(64)  NOT NULL,
+                created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_guest_endpoint (guest_id, endpoint(200)),
+                FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
+
     log.info("Migrationen abgeschlossen")
 
 

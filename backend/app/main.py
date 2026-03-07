@@ -8,7 +8,8 @@ from app.database import engine, Base
 from app.services.migrate import run_migrations
 from app.routers import auth, users, guests, machines, permissions, qr, dashboard, guest_auth, backup, maintenance, nfc
 from app.routers import settings as settings_router
-from app.services.session import idle_watcher, plug_watcher
+from app.routers import queue as queue_router
+from app.services.session import idle_watcher, plug_watcher, queue_watcher
 
 settings = get_settings()
 
@@ -20,9 +21,10 @@ async def lifespan(app: FastAPI):
     await run_migrations(engine)
     task1 = asyncio.create_task(idle_watcher(app))
     task2 = asyncio.create_task(plug_watcher(app))
+    task3 = asyncio.create_task(queue_watcher(app))
     yield
-    task1.cancel(); task2.cancel()
-    for t in (task1, task2):
+    task1.cancel(); task2.cancel(); task3.cancel()
+    for t in (task1, task2, task3):
         try:
             await t
         except asyncio.CancelledError:
@@ -84,3 +86,4 @@ app.include_router(backup.router,       prefix="/api")
 app.include_router(maintenance.router,  prefix="/api")
 app.include_router(nfc.router,          prefix="/api")
 app.include_router(settings_router.router, prefix="/api")
+app.include_router(queue_router.router,    prefix="/api")

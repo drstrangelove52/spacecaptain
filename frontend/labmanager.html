@@ -267,6 +267,15 @@
           <tbody id="dash-active-machines"></tbody>
         </table></div>
       </div>
+      <!-- AKTIVE WARTELISTEN -->
+      <div id="dash-queue-section" style="margin-bottom:24px;display:none">
+        <div class="section-header">
+          <div class="section-title" style="color:var(--accent2)">⏳ Wartelisten <span id="dash-queue-count" style="color:var(--accent);font-size:14px"></span></div>
+          <button class="btn btn-ghost btn-sm" onclick="loadAdminQueues()">↺ Aktualisieren</button>
+        </div>
+        <div id="dash-queue-list"></div>
+      </div>
+
       <!-- WARTUNGSWARNUNGEN -->
       <div id="dash-maintenance-section" style="margin-bottom:24px;display:none">
         <div class="section-header">
@@ -506,15 +515,15 @@
       <div class="section-header">
         <div class="section-title">Einstellungen <span>// ADMIN</span></div>
       </div>
-      <div style="max-width:560px">
-        <div class="table-wrap" style="padding:20px;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px;align-items:start">
+        <div class="table-wrap" style="padding:20px">
           <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">NFC-SCHREIBGERÄT</div>
           <div class="form-group">
             <label class="form-label">ESP32-URL <span style="color:var(--text-dim);font-weight:400">(leer = NFC deaktiviert)</span></label>
             <input class="form-input" id="cfg-nfc-url" placeholder="http://10.10.1.59">
           </div>
         </div>
-        <div class="table-wrap" style="padding:20px;margin-bottom:16px">
+        <div class="table-wrap" style="padding:20px">
           <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">SITZUNGEN</div>
           <div class="form-group">
             <label class="form-label">Lab-Manager-Session Dauer <span style="color:var(--text-dim);font-weight:400">(Minuten)</span></label>
@@ -522,7 +531,7 @@
             <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Aktuell: <span id="cfg-jwt-human">—</span> — gilt ab dem nächsten Login</div>
           </div>
         </div>
-        <div class="table-wrap" style="padding:20px;margin-bottom:16px">
+        <div class="table-wrap" style="padding:20px">
           <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">GAST-TOKENS</div>
           <div class="form-group">
             <label class="form-label">Login-Link Gültigkeit <span style="color:var(--text-dim);font-weight:400">(Tage)</span></label>
@@ -530,7 +539,7 @@
             <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Gilt für neu generierte Links. Bestehende Links behalten ihre Laufzeit.</div>
           </div>
         </div>
-        <div class="table-wrap" style="padding:20px;margin-bottom:20px">
+        <div class="table-wrap" style="padding:20px">
           <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">MODAL-VERHALTEN</div>
           <div style="display:flex;flex-direction:column;gap:12px">
             <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
@@ -544,7 +553,25 @@
             <div style="font-size:12px;color:var(--text-dim)">Anzeige-Modals: Login-Link, QR-Code. Eingabe-Modals: Formulare zum Bearbeiten.</div>
           </div>
         </div>
-        <button class="btn btn-primary" onclick="saveSettings()">Einstellungen speichern</button>
+        <div class="table-wrap" style="padding:20px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">WARTELISTE</div>
+          <div class="form-group">
+            <label class="form-label">Reservierungsfenster <span style="color:var(--text-dim);font-weight:400">(Minuten)</span></label>
+            <input class="form-input" id="cfg-queue-min" type="number" min="1" max="60" placeholder="5">
+            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Wie lange ein Gast Zeit hat, die Maschine nach Benachrichtigung einzuschalten.</div>
+          </div>
+        </div>
+        <div class="table-wrap" style="padding:20px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">DISPLAY</div>
+          <div class="form-group">
+            <label class="form-label">Auto-Aktualisierung <span style="color:var(--text-dim);font-weight:400">(Sekunden)</span></label>
+            <input class="form-input" id="cfg-display-refresh" type="number" min="10" max="300" placeholder="30">
+            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Wie oft das TV-Dashboard die Daten neu lädt.</div>
+          </div>
+        </div>
+        <div style="grid-column:1/-1">
+          <button class="btn btn-primary" onclick="saveSettings()">Einstellungen speichern</button>
+        </div>
       </div>
     </div>
 
@@ -753,7 +780,7 @@ function navigate(el) {
   if (page==='stats') loadStats();
   if (page==='maintenance') loadMaintenance();
   if (page==='dashboard' || page==='machines') refreshLiveData();
-  if (page==='dashboard') refreshMaintenanceOverview();
+  if (page==='dashboard') { refreshMaintenanceOverview(); loadAdminQueues(); }
   if (page==='settings') loadSettings();
 }
 
@@ -808,6 +835,8 @@ async function refreshLiveData() {
   renderMachines();
   renderDashboard();
   refreshMaintenanceOverview();
+  const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
+  if (activePage === 'dashboard') loadAdminQueues();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2089,6 +2118,8 @@ async function loadSettings() {
   document.getElementById('cfg-token-days').value = s.guest_token_days;
   document.getElementById('cfg-backdrop-input').checked   = s.modal_backdrop_input;
   document.getElementById('cfg-backdrop-display').checked = s.modal_backdrop_display;
+  document.getElementById('cfg-queue-min').value = s.queue_reservation_minutes ?? 5;
+  document.getElementById('cfg-display-refresh').value = s.display_refresh_seconds ?? 30;
   const h = s.jwt_expire_minutes >= 60
     ? `${Math.floor(s.jwt_expire_minutes/60)} h ${s.jwt_expire_minutes%60>0 ? s.jwt_expire_minutes%60+' min' : ''}`.trim()
     : `${s.jwt_expire_minutes} min`;
@@ -2102,6 +2133,8 @@ async function saveSettings() {
     guest_token_days:        parseInt(document.getElementById('cfg-token-days').value) || 365,
     modal_backdrop_input:    document.getElementById('cfg-backdrop-input').checked,
     modal_backdrop_display:  document.getElementById('cfg-backdrop-display').checked,
+    queue_reservation_minutes: parseInt(document.getElementById('cfg-queue-min').value) || 5,
+    display_refresh_seconds:   parseInt(document.getElementById('cfg-display-refresh').value) || 30,
   };
   const res = await PATCH('/settings', payload);
   if (res) { await loadSettings(); showToast('Einstellungen gespeichert', 'success'); }
@@ -2304,6 +2337,101 @@ async function loadMaintenance() {
   populateMaintMachineFilter();
   renderIntervals();
   renderMaintenanceHistory();
+}
+
+// ═══════════════════════════════════════════════════════
+// WARTELISTEN-VERWALTUNG (Admin/Manager)
+// ═══════════════════════════════════════════════════════
+async function loadAdminQueues() {
+  const data = await apiSilent('GET', '/queue/admin');
+  if (!data) return;
+
+  const section = document.getElementById('dash-queue-section');
+  const list = document.getElementById('dash-queue-list');
+  const count = document.getElementById('dash-queue-count');
+
+  section.style.display = 'block';
+  count.textContent = data.length ? `// ${data.length} WARTEND` : '';
+
+  const guests = (cache.guests || []).filter(g => g.is_active).sort((a,b) => a.name.localeCompare(b.name, 'de'));
+  const onlineMachines = (cache.machines || []).filter(m => m.status === 'online').sort((a,b) => a.name.localeCompare(b.name, 'de'));
+
+  // Gruppieren nach Maschine
+  const byMachine = {};
+  for (const e of data) {
+    if (!byMachine[e.machine_id]) byMachine[e.machine_id] = { name: e.machine_name, entries: [] };
+    byMachine[e.machine_id].entries.push(e);
+  }
+
+  // Bestehende Einträge (pro Maschine)
+  const entriesHtml = Object.entries(byMachine).map(([machineId, grp]) => {
+    const inQueue = new Set(grp.entries.map(e => e.guest_id));
+    const rows = grp.entries.map((e, i) => {
+      const badge = e.status === 'notified'
+        ? `<span style="font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3)">BEREIT</span>`
+        : '';
+      return `<tr>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--accent);width:28px">${i+1}.</td>
+        <td>${e.guest_name} ${badge}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${e.joined_at ? new Date(e.joined_at).toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'}) : '—'}</td>
+        <td><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="adminRemoveQueue(${e.id})">✕ Entfernen</button></td>
+      </tr>`;
+    }).join('');
+    const available = guests.filter(g => !inQueue.has(g.id));
+    const addHtml = available.length
+      ? `<div style="display:flex;gap:8px;margin-top:10px">
+          <select id="queue-add-select-${machineId}" class="filter-input" style="flex:1">
+            <option value="">Gast auswählen…</option>
+            ${available.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="adminAddToQueue(${machineId})">+ Hinzufügen</button>
+        </div>`
+      : '';
+    return `<div class="table-wrap" style="padding:16px;margin-bottom:12px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:10px">${grp.name.toUpperCase()}</div>
+      <table style="width:100%"><tbody>${rows}</tbody></table>
+      ${addHtml}
+    </div>`;
+  }).join('');
+
+  // Formular "Gast zu Maschine hinzufügen" (immer sichtbar)
+  const addFormHtml = `<div class="table-wrap" style="padding:16px">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:12px">GAST HINZUFÜGEN</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <select id="queue-new-machine" class="filter-input" style="flex:1;min-width:160px">
+        <option value="">Maschine wählen…</option>
+        ${onlineMachines.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
+      </select>
+      <select id="queue-new-guest" class="filter-input" style="flex:1;min-width:160px">
+        <option value="">Gast wählen…</option>
+        ${guests.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="adminAddToQueueNew()">+ Hinzufügen</button>
+    </div>
+  </div>`;
+
+  list.innerHTML = (entriesHtml || '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:4px 0 12px">Keine aktiven Einträge.</div>') + addFormHtml;
+}
+
+async function adminRemoveQueue(entryId) {
+  const ok = await api('DELETE', `/queue/admin/${entryId}`);
+  if (ok !== null) { showToast('Eintrag entfernt', 'success'); await loadAdminQueues(); }
+}
+
+async function adminAddToQueue(machineId) {
+  const sel = document.getElementById(`queue-add-select-${machineId}`);
+  const guestId = parseInt(sel?.value);
+  if (!guestId) return;
+  const res = await api('POST', `/queue/admin/${machineId}/${guestId}`);
+  if (res !== null) { showToast('Gast zur Warteliste hinzugefügt', 'success'); await loadAdminQueues(); }
+}
+
+async function adminAddToQueueNew() {
+  const machineId = parseInt(document.getElementById('queue-new-machine')?.value);
+  const guestId   = parseInt(document.getElementById('queue-new-guest')?.value);
+  if (!machineId || !guestId) { showToast('Bitte Maschine und Gast auswählen', 'warn'); return; }
+  const res = await api('POST', `/queue/admin/${machineId}/${guestId}`);
+  if (res !== null) { showToast('Gast zur Warteliste hinzugefügt', 'success'); await loadAdminQueues(); }
 }
 
 async function refreshMaintenanceOverview() {

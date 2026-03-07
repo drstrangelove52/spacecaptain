@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpaceCaptain — Display</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0f12;--surface:#151820;--surface2:#1c2030;--border:#2a2f3e;
+    --accent:#f4a622;--accent2:#22d3ee;--danger:#ef4444;--success:#22c55e;
+    --text:#e2e8f0;--text-dim:#a8bece;--text-mid:#c8d8e5;
+    --mono:'Share Tech Mono',monospace;--body:'Barlow',sans-serif;--display:'Barlow Condensed',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;display:flex;flex-direction:column}
+
+  header{background:var(--surface);border-bottom:2px solid var(--border);padding:16px 32px;display:flex;align-items:center;gap:20px;flex-shrink:0}
+  .logo{height:44px}
+  .header-title{font-family:var(--display);font-size:28px;font-weight:900;color:var(--accent);letter-spacing:3px}
+  .header-sub{font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px}
+  .header-time{margin-left:auto;font-family:var(--mono);font-size:20px;color:var(--accent2);letter-spacing:2px}
+
+  main{flex:1;padding:24px 32px;display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));align-content:start}
+
+  .machine-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+  .machine-card.in-use{border-color:rgba(34,211,238,.4)}
+  .machine-card.available{border-color:rgba(34,197,94,.3)}
+  .machine-card.offline{opacity:.5}
+  .card-top{padding:20px 20px 12px;display:flex;gap:14px;align-items:flex-start}
+  .card-icon{font-size:36px;flex-shrink:0;margin-top:2px}
+  .card-info{flex:1}
+  .card-name{font-family:var(--display);font-size:24px;font-weight:900;letter-spacing:1px;line-height:1.1}
+  .card-cat{font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;margin-top:3px}
+  .card-status{padding:12px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px}
+  .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .dot-on{background:var(--accent2);animation:pulse 2s infinite}
+  .dot-off{background:var(--success)}
+  .dot-grey{background:var(--text-dim)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .status-text{font-family:var(--mono);font-size:13px}
+  .status-user{font-weight:700;color:var(--accent2)}
+  .status-avail{color:var(--success)}
+  .status-offline{color:var(--text-dim)}
+  .card-watt{margin-left:auto;font-family:var(--mono);font-size:16px;color:var(--accent);font-weight:700}
+  .card-dur{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:2px}
+
+  .queue-section{padding:10px 20px 14px;border-top:1px solid var(--border)}
+  .queue-title{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px}
+  .queue-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+  .queue-item:last-child{border-bottom:none}
+  .queue-pos{font-family:var(--mono);font-size:11px;color:var(--accent);width:18px;flex-shrink:0}
+  .queue-name{font-family:var(--mono);font-size:13px;color:var(--text)}
+  .queue-badge{font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3);letter-spacing:1px;margin-left:auto}
+
+  footer{padding:12px 32px;border-top:1px solid var(--border);display:flex;align-items:center;gap:16px;font-family:var(--mono);font-size:11px;color:var(--text-dim)}
+  .refresh-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="/SpaceCaptain.svg" class="logo" alt="SpaceCaptain">
+  <div>
+    <div class="header-title">SPACECAPTAIN</div>
+    <div class="header-sub">MASCHINEN-STATUS // LIVE</div>
+  </div>
+  <div class="header-time" id="clock"></div>
+</header>
+
+<main id="machine-grid">
+  <div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;grid-column:1/-1;padding:40px;text-align:center">Laden…</div>
+</main>
+
+<footer>
+  <div class="refresh-dot"></div>
+  <span>Automatische Aktualisierung alle 30 Sekunden</span>
+  <span style="margin-left:auto" id="last-update"></span>
+</footer>
+
+<script>
+const API = '/api';
+const machineIcons = {Laser:'⚡',CNC:'⚙','3D-Druck':'🖨',Holz:'🪚',Metall:'🔩',Elektronik:'🔌',Textil:'🧵',Sonstiges:'🔧'};
+
+function formatDur(min) {
+  if (min == null) return '';
+  if (min < 60) return `${Math.floor(min)} min`;
+  const h = Math.floor(min/60), m = Math.floor(min%60);
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+}
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('de-CH', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+async function loadData() {
+  const [machines, queues] = await Promise.all([
+    fetch(`${API}/guest/dashboard`).then(r=>r.json()).catch(()=>[]),
+    fetch(`${API}/queue`).then(r=>r.json()).catch(()=>[]),
+  ]);
+
+  // Queue pro Maschine gruppieren
+  const queueMap = {};
+  for (const q of queues) {
+    if (!queueMap[q.machine_id]) queueMap[q.machine_id] = [];
+    queueMap[q.machine_id].push(q);
+  }
+
+  const grid = document.getElementById('machine-grid');
+  if (!machines.length) {
+    grid.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;grid-column:1/-1;padding:40px;text-align:center">Keine Maschinen konfiguriert.</div>';
+    return;
+  }
+
+  grid.innerHTML = machines.map(m => {
+    const icon = machineIcons[m.category] || '🔧';
+    const inUse = m.in_use;
+    const available = m.status === 'online' && !inUse;
+    const offline = m.status !== 'online';
+    const cardClass = offline ? 'offline' : inUse ? 'in-use' : 'available';
+
+    let statusHtml;
+    if (offline) {
+      statusHtml = `<div class="card-status">
+        <div class="dot dot-grey"></div>
+        <div class="status-text status-offline">${m.status === 'maintenance' ? 'IN WARTUNG' : 'OFFLINE'}</div>
+      </div>`;
+    } else if (inUse) {
+      const dur = m.session_duration_min != null ? formatDur(m.session_duration_min) : '';
+      const watt = m.power_w != null ? `${Math.round(m.power_w)} W` : '';
+      statusHtml = `<div class="card-status">
+        <div class="dot dot-on"></div>
+        <div>
+          <div class="status-text status-user">◉ ${m.current_guest_name || 'In Benutzung'}</div>
+          ${dur ? `<div class="card-dur">${dur}</div>` : ''}
+        </div>
+        ${watt ? `<div class="card-watt">${watt}</div>` : ''}
+      </div>`;
+    } else {
+      statusHtml = `<div class="card-status">
+        <div class="dot dot-off"></div>
+        <div class="status-text status-avail">● VERFÜGBAR</div>
+      </div>`;
+    }
+
+    const q = queueMap[m.id] || [];
+    let queueHtml = '';
+    if (q.length > 0) {
+      const items = q.map((entry, i) => `
+        <div class="queue-item">
+          <div class="queue-pos">${i+1}.</div>
+          <div class="queue-name">${entry.guest_display}</div>
+          ${entry.status === 'notified' ? '<div class="queue-badge">BEREIT</div>' : ''}
+        </div>`).join('');
+      queueHtml = `<div class="queue-section">
+        <div class="queue-title">WARTELISTE // ${q.length} WARTEND</div>
+        ${items}
+      </div>`;
+    }
+
+    return `<div class="machine-card ${cardClass}">
+      <div class="card-top">
+        <div class="card-icon">${icon}</div>
+        <div class="card-info">
+          <div class="card-name">${m.name}</div>
+          <div class="card-cat">${m.category}${m.location && m.location !== '—' ? ' // ' + m.location : ''}</div>
+        </div>
+      </div>
+      ${statusHtml}
+      ${queueHtml}
+    </div>`;
+  }).join('');
+
+  document.getElementById('last-update').textContent =
+    'Zuletzt: ' + new Date().toLocaleTimeString('de-CH', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+let _displayRefreshMs = 30000;
+async function initDisplay() {
+  try {
+    const s = await fetch('/api/settings/public').then(r => r.json());
+    if (s.display_refresh_seconds) _displayRefreshMs = s.display_refresh_seconds * 1000;
+  } catch {}
+  loadData();
+  setInterval(loadData, _displayRefreshMs);
+  document.querySelector('footer span:first-of-type').textContent =
+    `Automatische Aktualisierung alle ${_displayRefreshMs/1000} Sekunden`;
+}
+initDisplay();
+</script>
+</body>
+</html>

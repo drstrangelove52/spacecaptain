@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 from sqlalchemy import (Integer, String, Boolean, DateTime, Text, JSON,
                         Enum, ForeignKey, UniqueConstraint, Float)
+from sqlalchemy.dialects.mysql import INTEGER as UINT
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 import enum
@@ -45,6 +46,12 @@ class SessionEndedBy(str, enum.Enum):
     manager = "manager"
     idle_timeout = "idle_timeout"
     system = "system"
+
+class QueueStatus(str, enum.Enum):
+    waiting = "waiting"
+    notified = "notified"
+    done = "done"
+    expired = "expired"
 
 
 class User(Base):
@@ -179,12 +186,38 @@ class MaintenanceInterval(Base):
 
 class SystemSettings(Base):
     __tablename__ = "system_settings"
-    id:                 Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
-    nfc_writer_url:          Mapped[str]  = mapped_column(String(255), default="")
-    jwt_expire_minutes:      Mapped[int]  = mapped_column(Integer, default=480)
-    guest_token_days:        Mapped[int]  = mapped_column(Integer, default=365)
-    modal_backdrop_input:    Mapped[bool] = mapped_column(Boolean, default=True)
-    modal_backdrop_display:  Mapped[bool] = mapped_column(Boolean, default=True)
+    id:                       Mapped[int]  = mapped_column(Integer, primary_key=True, default=1)
+    nfc_writer_url:           Mapped[str]  = mapped_column(String(255), default="")
+    jwt_expire_minutes:       Mapped[int]  = mapped_column(Integer, default=480)
+    guest_token_days:         Mapped[int]  = mapped_column(Integer, default=365)
+    modal_backdrop_input:     Mapped[bool] = mapped_column(Boolean, default=True)
+    modal_backdrop_display:   Mapped[bool] = mapped_column(Boolean, default=True)
+    queue_reservation_minutes:  Mapped[int] = mapped_column(Integer, default=5)
+    display_refresh_seconds:    Mapped[int] = mapped_column(Integer, default=30)
+
+
+class MachineQueue(Base):
+    __tablename__ = "machine_queue"
+    id:          Mapped[int]          = mapped_column(Integer, primary_key=True, autoincrement=True)
+    machine_id:  Mapped[int]          = mapped_column(UINT(unsigned=True), ForeignKey("machines.id", ondelete="CASCADE"))
+    guest_id:    Mapped[int]          = mapped_column(UINT(unsigned=True), ForeignKey("guests.id", ondelete="CASCADE"))
+    status:      Mapped[QueueStatus]  = mapped_column(Enum(QueueStatus), default=QueueStatus.waiting)
+    joined_at:   Mapped[datetime]     = mapped_column(DateTime, default=datetime.utcnow)
+    notified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
+    expires_at:  Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
+    machine:     Mapped["Machine"]    = relationship("Machine")
+    guest:       Mapped["Guest"]      = relationship("Guest")
+
+
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+    id:         Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    guest_id:   Mapped[int]      = mapped_column(UINT(unsigned=True), ForeignKey("guests.id", ondelete="CASCADE"))
+    endpoint:   Mapped[str]      = mapped_column(String(500), nullable=False)
+    p256dh:     Mapped[str]      = mapped_column(String(255), nullable=False)
+    auth:       Mapped[str]      = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    guest:      Mapped["Guest"]  = relationship("Guest")
 
 
 class MaintenanceRecord(Base):
