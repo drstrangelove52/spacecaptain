@@ -226,7 +226,6 @@
     <div class="nav-item" data-page="machines" onclick="navigate(this)"><span class="nav-icon">🏭</span> Maschinen <span class="nav-badge" id="badge-machines">0</span></div>
     <div class="nav-item" data-page="permissions" onclick="navigate(this)"><span class="nav-icon">🔑</span> Berechtigungen</div>
     <div class="nav-section">SYSTEM</div>
-    <div class="nav-item" data-page="qr" onclick="navigate(this)"><span class="nav-icon">📷</span> QR-System</div>
     <div class="nav-item" data-page="log" onclick="navigate(this)"><span class="nav-icon">📋</span> Aktivitätslog</div>
     <div class="nav-item" data-page="stats" onclick="navigate(this)"><span class="nav-icon">📈</span> Statistiken</div>
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
@@ -374,39 +373,6 @@
     </div>
 
     <!-- QR SYSTEM -->
-    <div class="page" id="page-qr">
-      <div class="section-header"><div class="section-title">QR-Code System <span>// WORKFLOW</span></div></div>
-      <div class="qr-flow">
-        <div class="qr-step"><div class="qr-step-icon">👤</div><div class="qr-step-num">SCHRITT 01</div><div class="qr-step-title">Gast öffnet Seite</div><div class="qr-step-desc">Gast öffnet <strong>http://&lt;IP&gt;/</strong> auf dem Smartphone und meldet sich mit Username + Passwort an</div></div>
-        <div class="qr-step"><div class="qr-step-icon">▦</div><div class="qr-step-num">SCHRITT 02</div><div class="qr-step-title">QR-Code scannen</div><div class="qr-step-desc">Gast scannt den QR-Code an der gewünschten Maschine — der Code enthält die Maschinen-ID</div></div>
-        <div class="qr-step"><div class="qr-step-icon">🔑</div><div class="qr-step-num">SCHRITT 03</div><div class="qr-step-title">Prüfung</div><div class="qr-step-desc">Server prüft Berechtigung in der Datenbank in Echtzeit</div></div>
-        <div class="qr-step"><div class="qr-step-icon">⚡</div><div class="qr-step-num">SCHRITT 04</div><div class="qr-step-title">Maschine EIN</div><div class="qr-step-desc">Bei Berechtigung: myStrom / Shelly API schaltet die Steckdose ein</div></div>
-      </div>
-      <div class="grid-2">
-        <div>
-          <div class="section-header"><div class="section-title">Maschinen-QR / NFC</div></div>
-          <div class="table-wrap" style="padding:16px">
-            <div class="form-group"><label class="form-label">Maschine</label><select class="form-input" id="qr-machine-select"><option value="">— Maschine wählen —</option></select></div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn btn-primary" onclick="showMachineQR()">▦ QR-Code anzeigen</button>
-              <button class="btn btn-ghost" onclick="writeNfcTag()" id="nfc-write-btn">📡 NFC-Tag beschreiben</button>
-            </div>
-            <div id="qr-machine-display" style="margin-top:16px;text-align:center;display:none">
-              <div class="qr-img-box"><img id="qr-machine-img" src="" alt="QR Code"></div>
-              <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:8px" id="qr-machine-label"></div>
-              <div id="qr-machine-url-box" style="display:none;margin-top:8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px;word-break:break-all;text-align:left">
-                <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:4px;letter-spacing:2px">GÄSTE-URL (IM QR ENTHALTEN)</div>
-                <div style="font-family:var(--mono);font-size:10px;color:var(--accent2)" id="qr-machine-url"></div>
-              </div>
-              <div style="margin-top:10px;display:flex;gap:8px;justify-content:center">
-                <button class="btn btn-danger btn-sm" onclick="regenMachineQR()">↺ QR neu generieren</button>
-              </div>
-            </div>
-            <div id="nfc-status-box" style="display:none;margin-top:16px;border-radius:6px;padding:12px 14px;font-size:13px"></div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- LOG -->
     <div class="page" id="page-log">
@@ -678,6 +644,21 @@
     <div class="modal-footer" id="modal-footer"></div>
   </div>
 </div>
+<div class="modal-overlay" id="modal-qr-overlay" onclick="if(event.target===this)closeQRModal()" style="display:none">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header"><div class="modal-title" id="qr-modal-title">QR / NFC</div><button class="modal-close" onclick="closeQRModal()">✕</button></div>
+    <div class="modal-body" style="text-align:center">
+      <div class="qr-img-box" style="margin:0 auto 12px"><img id="qr-modal-img" src="" alt="QR Code"></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px">GÄSTE-URL</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--accent2);word-break:break-all;margin-bottom:16px" id="qr-modal-url"></div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="writeNfcTagModal()" id="nfc-modal-btn">📡 NFC beschreiben</button>
+        <button class="btn btn-danger btn-sm" onclick="regenMachineQRModal()">↺ QR neu generieren</button>
+      </div>
+      <div id="nfc-modal-status" style="display:none;margin-top:12px;border-radius:6px;padding:10px 12px;font-size:13px;text-align:left"></div>
+    </div>
+  </div>
+</div>
 <div class="toast-container" id="toasts"></div>
 
 <script>
@@ -754,7 +735,7 @@ function doLogout() {
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',permissions:'Berechtigungen',qr:'QR-Code System',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',backup:'Backup & Restore',settings:'Einstellungen',info:'Info'};
+const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',backup:'Backup & Restore',settings:'Einstellungen',info:'Info'};
 const pageActions={
   guests:()=>`<button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`,
@@ -769,7 +750,6 @@ function navigate(el) {
   document.getElementById('page-title').textContent=pageTitles[page]||page;
   document.getElementById('topbar-actions').innerHTML=pageActions[page]?pageActions[page]():'';
   if (page==='log') { loadLogFilterOptions(); loadLog(); }
-  if (page==='qr') populateQRSelects();
   if (page==='stats') loadStats();
   if (page==='maintenance') loadMaintenance();
   if (page==='dashboard' || page==='machines') refreshLiveData();
@@ -1217,12 +1197,13 @@ function renderMachinesFiltered(machines) {
         ${m.plug_type!=='none'?`<div class="machine-stat"><strong style="color:var(--accent2)">${m.power_w!=null?Math.round(m.power_w)+' W':'— W'}</strong>Verbrauch</div>`:''}
       </div>
       ${idleBadge}
-      ${m.plug_type!=='none'?`<div style="display:flex;gap:6px;margin-bottom:8px;margin-top:${idleBadge?'8':'0'}px">
+      ${m.plug_type!=='none'&&m.status==='online'?`<div style="display:flex;gap:6px;margin-bottom:8px;margin-top:${idleBadge?'8':'0'}px">
         <button class="btn btn-success btn-sm" onclick="managerSwitchMachine(${m.id},'on',this)" ${m.current_guest_name?'':''}style="flex:1;justify-content:center">⚡ EIN</button>
         <button class="btn btn-danger btn-sm" onclick="managerSwitchMachine(${m.id},'off',this)" style="flex:1;justify-content:center">○ AUS</button>
       </div>`:''}
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="editMachine(${m.id})">✏ Bearbeiten</button>
+        <button class="btn btn-ghost btn-sm" onclick="openQRModal(${m.id})">▦ QR/NFC</button>
         <button class="btn btn-danger btn-sm" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>
       </div>
     </div>`;
@@ -1358,12 +1339,14 @@ function editMachine(id) {
     const plug_type=plugSel;
     const plug_extra=null;
     const rawToken=document.getElementById('e-plugtoken')?.value.trim()||'';
-    const plug_token=rawToken?(plugSel==='shelly'?`admin:${rawToken}`:rawToken):null;
+    const plug_token=rawToken?(plugSel==='shelly'?`admin:${rawToken}`:rawToken):undefined;
     const idle_w=document.getElementById('e-idlew')?.value;
     const idle_t=document.getElementById('e-idlet')?.value;
     const poll_s=document.getElementById('e-poll')?.value;
     const training_required=document.getElementById('e-training')?.checked??true;
-    const res=await PATCH(`/machines/${id}`,{name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,plug_type,plug_ip:document.getElementById('e-plugip')?.value.trim()||null,plug_extra,plug_token,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required});
+    const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,plug_type,plug_ip:document.getElementById('e-plugip')?.value.trim()||null,plug_extra,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required};
+    if (plug_token!==undefined) payload.plug_token=plug_token;
+    const res=await PATCH(`/machines/${id}`,payload);
     if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
   });
 }
@@ -1821,10 +1804,9 @@ function renderStats() {
 // QR SYSTEM
 // ═══════════════════════════════════════════════════════
 function populateQRSelects() {
-  ['qr-machine-select','plug-machine-select'].forEach(id=>{
+  ['plug-machine-select'].forEach(id=>{
     const el=document.getElementById(id); if (!el) return;
-    const prefix=id==='qr-machine-select'?'<option value="">— Maschine wählen —</option>':'';
-    el.innerHTML=prefix+cache.machines.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+    el.innerHTML=cache.machines.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
   });
 }
 
@@ -1896,6 +1878,47 @@ async function regenMachineQR() {
   if (!selectedMachineIdForQR||!confirm('QR-Code neu generieren? Der alte wird ungültig!')) return;
   const res=await POST(`/machines/${selectedMachineIdForQR}/regenerate-qr`);
   if (res) { await loadAll(); showMachineQR(); showToast('Neuer QR-Code generiert','success'); }
+}
+
+// ── QR-Modal (Maschinenkarte) ───────────────────────────
+async function openQRModal(machineId) {
+  selectedMachineIdForQR = machineId;
+  const fresh = await GET(`/machines/${machineId}`);
+  const m = fresh || cache.machines.find(x => x.id === machineId);
+  if (!m?.qr_token) { showToast('QR-Token nicht verfügbar', 'error'); return; }
+  document.getElementById('qr-modal-title').textContent = m.name;
+  document.getElementById('qr-modal-img').src = `${API}/machines/${machineId}/qr.png?token=${encodeURIComponent(token)}`;
+  document.getElementById('qr-modal-url').textContent = `${window.location.origin}/?m=${m.qr_token}`;
+  document.getElementById('nfc-modal-status').style.display = 'none';
+  document.getElementById('nfc-modal-btn').disabled = false;
+  document.getElementById('modal-qr-overlay').style.display = 'flex';
+}
+
+function closeQRModal() {
+  document.getElementById('modal-qr-overlay').style.display = 'none';
+}
+
+async function writeNfcTagModal() {
+  const m = cache.machines.find(x => x.id === selectedMachineIdForQR);
+  if (!m?.qr_token) { showToast('QR-Token nicht verfügbar', 'error'); return; }
+  const btn = document.getElementById('nfc-modal-btn');
+  btn.disabled = true;
+  await _writeNfcTagUrl(`${window.location.origin}/?m=${m.qr_token}`, m.name,
+    document.getElementById('nfc-modal-status'), () => { btn.disabled = false; });
+}
+
+async function regenMachineQRModal() {
+  if (!selectedMachineIdForQR || !confirm('QR-Code neu generieren? Der alte wird ungültig!')) return;
+  const res = await POST(`/machines/${selectedMachineIdForQR}/regenerate-qr`);
+  if (res) {
+    await loadAll();
+    const m = cache.machines.find(x => x.id === selectedMachineIdForQR);
+    if (m?.qr_token) {
+      document.getElementById('qr-modal-img').src = `${API}/machines/${selectedMachineIdForQR}/qr.png?token=${encodeURIComponent(token)}`;
+      document.getElementById('qr-modal-url').textContent = `${window.location.origin}/?m=${m.qr_token}`;
+    }
+    showToast('Neuer QR-Code generiert', 'success');
+  }
 }
 
 async function manualPlug(action) {

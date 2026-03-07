@@ -124,7 +124,9 @@ async def list_machines_live(
                 "status": m.status,
                 "comment": m.comment,
                 "plug_type": m.plug_type,
-                # plug_ip nicht exponieren (Security)
+                "plug_ip": m.plug_ip,
+                "plug_token": m.plug_token,
+                "plug_poll_interval_sec": m.plug_poll_interval_sec,
                 "qr_token": m.qr_token,
                 "user_count": user_count,
                 "idle_power_w": m.idle_power_w,

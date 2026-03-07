@@ -42,7 +42,7 @@ def get_settings() -> Settings:
     return Settings()
 
 
-APP_VERSION = "1.04"
+APP_VERSION = "1.05"
 
 # Patch: Zeitzone aus Umgebungsvariable lesen (wird in docker-compose gesetzt)
 import os as _os, zoneinfo as _zi
