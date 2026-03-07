@@ -85,7 +85,7 @@ async def list_machines_live(
             if m.current_guest_id:
                 session_owner = current_guest_name
             elif m.session_manager_id:
-                session_owner = f"Manager ({user_map.get(m.session_manager_id, 'Unbekannt')})"
+                session_owner = user_map.get(m.session_manager_id, 'Unbekannt')
             session_duration_min = None
             if m.session_started_at:
                 session_duration_min = round((datetime.utcnow() - m.session_started_at).total_seconds() / 60, 1)
