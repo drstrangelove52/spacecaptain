@@ -16,8 +16,17 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    for attempt in range(1, 11):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            break
+        except Exception as e:
+            if attempt == 10:
+                raise
+            import logging
+            logging.getLogger("uvicorn").warning(f"DB not ready (attempt {attempt}/10), retrying in 3s… ({e})")
+            await asyncio.sleep(3)
     await run_migrations(engine)
     task1 = asyncio.create_task(idle_watcher(app))
     task2 = asyncio.create_task(plug_watcher(app))
