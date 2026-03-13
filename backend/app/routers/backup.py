@@ -53,8 +53,10 @@ async def export_config(
             "modal_backdrop_input":    cfg.modal_backdrop_input,
             "modal_backdrop_display":  cfg.modal_backdrop_display,
             "queue_reservation_minutes": cfg.queue_reservation_minutes,
-            "display_refresh_seconds": cfg.display_refresh_seconds,
-            "ticker_text":             cfg.ticker_text,
+            "display_refresh_seconds":   cfg.display_refresh_seconds,
+            "display_page_size":         cfg.display_page_size,
+            "dashboard_refresh_seconds": cfg.dashboard_refresh_seconds,
+            "ticker_text":               cfg.ticker_text,
             "ticker_speed":            cfg.ticker_speed,
             "ticker_font_size":        cfg.ticker_font_size,
             "announcement":            cfg.announcement,
@@ -107,6 +109,7 @@ async def export_config(
         } for iv in maint_ivs if machine_by_id.get(iv.machine_id)],
         "maintenance_records": [{
             "interval_export_id":  r.interval_id,
+            "name":                r.name,
             "machine_qr_token":    machine_by_id.get(r.machine_id),
             "user_email":          user_by_id.get(r.performed_by),
             "performed_at":        _iso(r.performed_at),
@@ -141,6 +144,7 @@ async def import_config(
         for field in ("nfc_writer_url", "jwt_expire_minutes", "guest_token_days",
                       "modal_backdrop_input", "modal_backdrop_display",
                       "queue_reservation_minutes", "display_refresh_seconds",
+                      "display_page_size", "dashboard_refresh_seconds",
                       "ticker_text", "ticker_speed", "ticker_font_size",
                       "announcement", "announcement_font_size"):
             if field in s:
@@ -206,7 +210,7 @@ async def import_config(
         mid = machine_map.get(p.get("machine_qr_token"))
         if not gid or not mid or (gid, mid) in existing_perms:
             stats["skipped"] += 1; continue
-        db.add(Permission(guest_id=gid, machine_id=mid))
+        db.add(Permission(guest_id=gid, machine_id=mid, is_blocked=p.get("is_blocked", False)))
         stats["permissions"] += 1
 
     # ── Sessions ──────────────────────────────────────────
@@ -284,7 +288,7 @@ async def import_config(
         export_iv_id = r.get("interval_export_id")
         new_iv_id = interval_id_map.get(export_iv_id) if export_iv_id else None
         mid = machine_map.get(r.get("machine_qr_token"))
-        if not new_iv_id or not mid:
+        if not mid:
             stats["skipped"] += 1; continue
         performed_at = datetime.fromisoformat(r["performed_at"]) if r.get("performed_at") else datetime.utcnow()
         rec_key = (new_iv_id, performed_at.isoformat())
@@ -293,6 +297,7 @@ async def import_config(
         existing_rec_keys.add(rec_key)
         db.add(MaintenanceRecord(
             interval_id=new_iv_id,
+            name=r.get("name"),
             machine_id=mid,
             performed_by=user_map.get(r.get("user_email")),
             performed_at=performed_at,
