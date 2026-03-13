@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpaceCaptain — NFC Writer Setup</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js"></script>
+  <style>
+    :root {
+      --bg: #0d0f12; --surface: #151820; --surface2: #1c2030; --border: #2a2f3e;
+      --accent: #f4a622; --accent2: #22d3ee; --success: #22c55e; --danger: #ef4444;
+      --text: #e2e8f0; --text-dim: #a8bece; --text-mid: #c8d8e5;
+      --mono: 'Share Tech Mono', monospace; --body: 'Barlow', sans-serif;
+      --display: 'Barlow Condensed', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text); font-family: var(--body);
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 48px 24px;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    }
+    .logo-mark { font-family: var(--display); font-size: 22px; font-weight: 900; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; margin-bottom: 4px; }
+    .logo-sub { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 48px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 28px 32px; width: 100%; max-width: 580px; margin-bottom: 16px; position: relative;
+    }
+    .card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: linear-gradient(to bottom, var(--accent), var(--accent2));
+      border-radius: 8px 0 0 8px; opacity: 0.6;
+    }
+    .step-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .step-num { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; flex-shrink: 0; }
+    .step-title { font-family: var(--display); font-size: 17px; font-weight: 700; letter-spacing: 1px; color: var(--text); text-transform: uppercase; }
+    .step-body { color: var(--text-mid); font-size: 14px; line-height: 1.7; }
+    .step-body p { margin-bottom: 10px; }
+    .step-body p:last-child { margin-bottom: 0; }
+
+    /* ESP Web Tools Button anpassen */
+    esp-web-install-button {
+      display: block;
+      margin-top: 16px;
+    }
+    esp-web-install-button::part(button) {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: 4px;
+      font-family: var(--body);
+      font-size: 14px;
+      font-weight: 700;
+      padding: 10px 24px;
+      cursor: pointer;
+      transition: filter 0.15s;
+    }
+    esp-web-install-button::part(button):hover { filter: brightness(1.1); }
+
+    .note {
+      background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent2);
+      border-radius: 6px; padding: 14px 18px; font-size: 13px; color: var(--text-dim);
+      max-width: 580px; width: 100%; line-height: 1.7; font-family: var(--mono);
+    }
+    .note strong { color: var(--text); }
+
+    .wifi-info {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+      padding: 12px 16px; margin-top: 12px; font-family: var(--mono); font-size: 13px;
+    }
+    .wifi-info .label { color: var(--text-dim); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+    .wifi-info .value { color: var(--accent2); }
+  </style>
+</head>
+<body>
+
+  <div class="logo-mark">SpaceCaptain</div>
+  <div class="logo-sub">NFC Writer Setup // ESP32</div>
+
+  <div class="card">
+    <div class="step-header">
+      <div class="step-num">Schritt 01</div>
+      <div class="step-title">ESP32 per USB verbinden</div>
+    </div>
+    <div class="step-body">
+      <p>ESP32 per USB an diesen Computer anschliessen. Chrome oder Edge verwenden (Web Serial API erforderlich).</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="step-header">
+      <div class="step-num">Schritt 02</div>
+      <div class="step-title">Firmware installieren</div>
+    </div>
+    <div class="step-body">
+      <p>Auf "Installieren" klicken, den richtigen COM-Port auswählen und den Flash-Vorgang bestätigen.</p>
+      <esp-web-install-button manifest="/nfc-writer-manifest.json"></esp-web-install-button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="step-header">
+      <div class="step-num">Schritt 03</div>
+      <div class="step-title">WLAN konfigurieren</div>
+    </div>
+    <div class="step-body">
+      <p>Nach dem Flash startet der ESP32 neu und öffnet einen WLAN-Access-Point:</p>
+      <div class="wifi-info">
+        <div class="label">SSID</div>
+        <div class="value">SpaceCaptain-NFC</div>
+      </div>
+      <p style="margin-top:12px">Mit dem Smartphone oder Laptop mit diesem WLAN verbinden. Es öffnet sich automatisch ein Konfigurationsportal — dort SSID und Passwort des lokalen WLANs eingeben. Der ESP32 speichert die Zugangsdaten und verbindet sich künftig automatisch.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="step-header">
+      <div class="step-num">Schritt 04</div>
+      <div class="step-title">IP-Adresse eintragen</div>
+    </div>
+    <div class="step-body">
+      <p>Nach erfolgreicher WLAN-Verbindung zeigt der ESP32 seine IP-Adresse im Serial Monitor. Diese URL in den SpaceCaptain-Einstellungen unter <strong>NFC-Writer URL</strong> eintragen:</p>
+      <div class="wifi-info">
+        <div class="label">Beispiel</div>
+        <div class="value">http://192.168.1.42</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Hinweis:</strong> Erneutes Flashen setzt die WLAN-Einstellungen nicht zurück — die gespeicherten Zugangsdaten bleiben erhalten. Zum Zurücksetzen den BOOT-Button beim Start gedrückt halten.
+  </div>
+
+</body>
+</html>

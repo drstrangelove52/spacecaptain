@@ -1,0 +1,5 @@
+esphome/ESPAsyncWebServer-esphome
+fastled/FastLED
+tzapu/WiFiManager
+bblanchon/ArduinoJson
+adafruit/Adafruit PN532

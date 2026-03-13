@@ -23,9 +23,9 @@ struct AppState {
     uint32_t jobStartMs = 0; // millis() beim Start des Auftrags
 };
 
-class WebServer {
+class NfcHttpServer {
 public:
-    explicit WebServer(AppState& state, uint16_t port = 80);
+    explicit NfcHttpServer(AppState& state, uint16_t port = 80);
     void begin();
 
 private:

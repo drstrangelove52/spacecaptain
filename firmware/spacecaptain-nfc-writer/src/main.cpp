@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <WiFiManager.h>
 #include <FastLED.h>
 #include "config.h"
 #include "nfc_writer.h"
@@ -9,7 +10,7 @@
 
 AppState  appState;
 NfcWriter nfcWriter(PN532_SDA, PN532_SCL);
-WebServer httpServer(appState, 80);
+NfcHttpServer httpServer(appState, 80);
 
 // ─── WS2812B LED ──────────────────────────────────────────────────────────────
 
@@ -59,24 +60,24 @@ static void updateLeds() {
     }
 }
 
-// ─── WLAN verbinden ───────────────────────────────────────────────────────────
+// ─── WLAN verbinden (WiFiManager) ────────────────────────────────────────────
 
 static void connectWifi() {
-    Serial.printf("[WiFi] Verbinde mit \"%s\"...\n", WIFI_SSID);
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    WiFiManager wm;
+    wm.setConfigPortalTimeout(WIFI_TIMEOUT);
 
-    uint32_t start = millis();
-    while (WiFi.status() != WL_CONNECTED) {
-        // Blaue LED blinken während Verbindungsaufbau
-        ledColor(CRGB::Blue);
-        delay(250);
-        ledsOff();
-        delay(250);
-        if (millis() - start > 30000) {
-            Serial.println("[WiFi] Verbindung fehlgeschlagen – Neustart");
-            ESP.restart();
-        }
+    // Callback: AP gestartet → lila leuchten
+    wm.setAPCallback([](WiFiManager*) {
+        Serial.printf("[WiFi] Kein WLAN gespeichert – AP \"%s\" gestartet\n", WIFI_AP_NAME);
+        ledColor(CRGB::Purple);
+    });
+
+    // Verbinden oder Konfigurationsportal starten
+    if (!wm.autoConnect(WIFI_AP_NAME, strlen(WIFI_AP_PASS) ? WIFI_AP_PASS : nullptr)) {
+        Serial.println("[WiFi] Konfiguration fehlgeschlagen – Neustart");
+        ledColor(CRGB::Red);
+        delay(3000);
+        ESP.restart();
     }
 
     Serial.printf("[WiFi] Verbunden – IP: %s\n", WiFi.localIP().toString().c_str());
@@ -111,8 +112,9 @@ void setup() {
 void loop() {
     // WLAN-Verbindung überwachen
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("[WiFi] Verbindung verloren – reconnect...");
-        connectWifi();
+        Serial.println("[WiFi] Verbindung verloren – Neustart...");
+        delay(1000);
+        ESP.restart();
     }
 
     // LED aktualisieren

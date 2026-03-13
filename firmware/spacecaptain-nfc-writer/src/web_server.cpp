@@ -5,7 +5,7 @@
 
 // ─── Konstruktor ──────────────────────────────────────────────────────────────
 
-WebServer::WebServer(AppState& state, uint16_t port)
+NfcHttpServer::NfcHttpServer(AppState& state, uint16_t port)
     : _server(port), _state(state) {}
 
 // ─── Hilfsmakro: CORS-Header setzen ──────────────────────────────────────────
@@ -18,7 +18,7 @@ static void addCors(AsyncWebServerResponse* res) {
 
 // ─── Server starten ───────────────────────────────────────────────────────────
 
-void WebServer::begin() {
+void NfcHttpServer::begin() {
     // OPTIONS-Preflight für CORS
     _server.on("/*", HTTP_OPTIONS, [](AsyncWebServerRequest* req) {
         AsyncWebServerResponse* res = req->beginResponse(204);
@@ -63,7 +63,7 @@ void WebServer::begin() {
 
 // ─── GET /status ──────────────────────────────────────────────────────────────
 
-void WebServer::handleGetStatus(AsyncWebServerRequest* req) {
+void NfcHttpServer::handleGetStatus(AsyncWebServerRequest* req) {
     JsonDocument doc;
 
     switch (_state.state) {
@@ -94,7 +94,7 @@ void WebServer::handleGetStatus(AsyncWebServerRequest* req) {
 // ESPAsyncWebServer ruft onBody ggf. mehrfach auf (chunked transfer).
 static String _bodyAccum;
 
-void WebServer::handlePostWrite(AsyncWebServerRequest* req,
+void NfcHttpServer::handlePostWrite(AsyncWebServerRequest* req,
                                 uint8_t* data, size_t len,
                                 size_t index, size_t total) {
     // Ersten Chunk: Puffer zurücksetzen
@@ -155,7 +155,7 @@ void WebServer::handlePostWrite(AsyncWebServerRequest* req,
 
 // ─── GET /result ──────────────────────────────────────────────────────────────
 
-void WebServer::handleGetResult(AsyncWebServerRequest* req) {
+void NfcHttpServer::handleGetResult(AsyncWebServerRequest* req) {
     JsonDocument doc;
 
     switch (_state.state) {

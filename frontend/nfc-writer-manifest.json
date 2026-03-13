@@ -1,0 +1,15 @@
+{
+  "name": "SpaceCaptain NFC Writer",
+  "version": "1.0.0",
+  "home_assistant_domain": "spacecaptain",
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        { "path": "/nfc-writer-bootloader.bin", "offset": 4096 },
+        { "path": "/nfc-writer-partitions.bin", "offset": 32768 },
+        { "path": "/nfc-writer.bin",             "offset": 65536 }
+      ]
+    }
+  ]
+}

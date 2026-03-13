@@ -1,8 +1,11 @@
 #pragma once
 
-// ─── WLAN ────────────────────────────────────────────────────────────────────
-#define WIFI_SSID     "MakerSpace-WLAN"
-#define WIFI_PASSWORD "wlan-passwort"
+// ─── WLAN ─────────────────────────────────────────────────────────────────────
+// Credentials werden über WiFiManager konfiguriert (kein Hardcoding nötig).
+// AP-Name beim ersten Boot:
+#define WIFI_AP_NAME  "SpaceCaptain-NFC"
+#define WIFI_AP_PASS  ""           // leer = offenes AP (für einfaches Onboarding)
+#define WIFI_TIMEOUT  180          // Sekunden, bis AP-Modus aufgegeben wird
 
 // ─── NFC / PN532 (I2C) ────────────────────────────────────────────────────────
 #define PN532_SDA     21
