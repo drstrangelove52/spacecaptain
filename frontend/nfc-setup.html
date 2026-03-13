@@ -73,12 +73,152 @@
     }
     .wifi-info .label { color: var(--text-dim); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
     .wifi-info .value { color: var(--accent2); }
+
+    /* Akkordeon */
+    .accordion {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      width: 100%; max-width: 580px; margin-bottom: 16px; overflow: hidden;
+    }
+    .accordion-toggle {
+      width: 100%; background: none; border: none; padding: 20px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; color: var(--text); font-family: var(--body); text-align: left;
+    }
+    .accordion-toggle:hover { background: var(--surface2); }
+    .accordion-label { display: flex; align-items: center; gap: 14px; }
+    .accordion-tag { font-family: var(--mono); font-size: 11px; color: var(--accent2); letter-spacing: 2px; text-transform: uppercase; }
+    .accordion-title { font-family: var(--display); font-size: 17px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+    .accordion-chevron { font-size: 12px; color: var(--text-dim); transition: transform 0.2s; }
+    .accordion.open .accordion-chevron { transform: rotate(180deg); }
+    .accordion-body { display: none; padding: 0 32px 28px; }
+    .accordion.open .accordion-body { display: block; }
+
+    /* Hardware-Tabellen */
+    .hw-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px; }
+    .hw-table th { text-align: left; padding: 6px 12px 8px 0; font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--text-dim); font-weight: 400; border-bottom: 1px solid var(--border); }
+    .hw-table td { padding: 8px 12px 8px 0; color: var(--text-mid); border-bottom: 1px solid rgba(42,47,62,.5); vertical-align: top; line-height: 1.5; }
+    .hw-table td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; }
+    .hw-table tr:last-child td { border-bottom: none; }
+
+    .hw-section-title { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; margin: 20px 0 10px; }
+    .hw-section-title:first-child { margin-top: 0; }
+
+    /* LED-Status Legende */
+    .led-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+    .led-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-mid); }
+    .led-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Verdrahtungs-Sketch */
+    .wiring-sketch {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      padding: 16px; font-family: var(--mono); font-size: 12px; color: var(--accent2);
+      line-height: 1.6; overflow-x: auto; white-space: pre; margin-top: 8px;
+    }
+
+    /* I2C Hinweis-Box */
+    .i2c-box {
+      background: var(--surface2); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+      border-radius: 6px; padding: 12px 16px; font-size: 13px; color: var(--text-mid);
+      line-height: 1.6; margin-bottom: 20px;
+    }
+    .i2c-box strong { color: var(--accent); }
   </style>
 </head>
 <body>
 
   <div class="logo-mark">SpaceCaptain</div>
   <div class="logo-sub">NFC Writer Setup // ESP32</div>
+
+  <!-- Hardware-Anleitung (eingeklappt) -->
+  <div class="accordion" id="hw-accordion">
+    <button class="accordion-toggle" onclick="toggleAccordion()">
+      <div class="accordion-label">
+        <div class="accordion-tag">Hardware</div>
+        <div class="accordion-title">Bauteile &amp; Verdrahtung</div>
+      </div>
+      <div class="accordion-chevron">▼</div>
+    </button>
+    <div class="accordion-body">
+
+      <div class="hw-section-title">Teileliste</div>
+      <table class="hw-table">
+        <thead><tr><th>Komponente</th><th>Beschreibung</th><th>Hinweis</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>ESP32 DevKit V1</td>
+            <td>38-Pin Development Board</td>
+            <td>Wemos D1 R32 oder ähnliche Boards funktionieren ebenfalls</td>
+          </tr>
+          <tr>
+            <td>PN532 NFC-Modul</td>
+            <td>NFC/RFID Controller (Adafruit oder kompatibel)</td>
+            <td>Muss auf <strong style="color:var(--accent)">I²C-Modus</strong> gestellt werden</td>
+          </tr>
+          <tr>
+            <td>WS2812B LED</td>
+            <td>Einzelne RGB-LED oder 1 Pixel aus einem Strip</td>
+            <td>Zeigt den Gerätestatus an</td>
+          </tr>
+          <tr>
+            <td>USB-Kabel</td>
+            <td>Micro-USB oder USB-C (je nach ESP32)</td>
+            <td>Für Flash-Vorgang und Betrieb</td>
+          </tr>
+          <tr>
+            <td>Jumperkabel</td>
+            <td>7× weiblich–weiblich</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="hw-section-title">LED-Statusanzeige</div>
+      <div class="led-grid" style="margin-bottom:20px">
+        <div class="led-item"><div class="led-dot" style="background:#3b82f6;box-shadow:0 0 6px #3b82f6"></div> Blau blinkend = Bereit</div>
+        <div class="led-item"><div class="led-dot" style="background:#eab308;box-shadow:0 0 6px #eab308"></div> Gelb blinkend = Wartet auf Tag</div>
+        <div class="led-item"><div class="led-dot" style="background:#22c55e;box-shadow:0 0 6px #22c55e"></div> Grün = Schreiben erfolgreich</div>
+        <div class="led-item"><div class="led-dot" style="background:#ef4444;box-shadow:0 0 6px #ef4444"></div> Rot = Fehler / Timeout</div>
+        <div class="led-item"><div class="led-dot" style="background:#a855f7;box-shadow:0 0 6px #a855f7"></div> Lila = WLAN-Konfiguration (AP)</div>
+      </div>
+
+      <div class="hw-section-title">PN532 auf I²C einstellen</div>
+      <div class="i2c-box">
+        <strong>DIP-Schalter:</strong> SEL0 = OFF &nbsp;·&nbsp; SEL1 = ON<br>
+        <strong>Lötbrücken:</strong> Brücke 1 offen, Brücke 0 geschlossen<br>
+        <span style="color:var(--text-dim);font-size:12px">Die genaue Beschriftung variiert je nach Modulversion — im Datenblatt des jeweiligen Boards nachschlagen.</span>
+      </div>
+
+      <div class="hw-section-title">Verdrahtung</div>
+      <table class="hw-table" style="margin-bottom:12px">
+        <thead><tr><th>PN532</th><th>ESP32</th></tr></thead>
+        <tbody>
+          <tr><td>VCC</td><td>3.3V</td></tr>
+          <tr><td>GND</td><td>GND</td></tr>
+          <tr><td>SDA</td><td>GPIO 21</td></tr>
+          <tr><td>SCL</td><td>GPIO 22</td></tr>
+        </tbody>
+      </table>
+      <table class="hw-table" style="margin-bottom:12px">
+        <thead><tr><th>WS2812B</th><th>ESP32</th></tr></thead>
+        <tbody>
+          <tr><td>VCC</td><td>3.3V</td></tr>
+          <tr><td>GND</td><td>GND</td></tr>
+          <tr><td>DIN</td><td>GPIO 2</td></tr>
+        </tbody>
+      </table>
+      <div class="wiring-sketch">ESP32
+┌──────────────────┐
+│  3.3V ───────────┼──┬── PN532 VCC
+│  GND  ───────────┼──┼── PN532 GND  ──── WS2812B GND
+│  IO21 ───────────┼──┼── PN532 SDA
+│  IO22 ───────────┼──┼── PN532 SCL
+│                  │  │
+│  IO2  ───────────┼──┼── WS2812B DIN
+│  3.3V ───────────┼──┴── WS2812B VCC
+└──────────────────┘</div>
+
+    </div>
+  </div>
 
   <div class="card">
     <div class="step-header">
@@ -134,5 +274,10 @@
     <strong>Hinweis:</strong> Erneutes Flashen setzt die WLAN-Einstellungen nicht zurück — die gespeicherten Zugangsdaten bleiben erhalten. Zum Zurücksetzen den BOOT-Button beim Start gedrückt halten.
   </div>
 
+  <script>
+    function toggleAccordion() {
+      document.getElementById('hw-accordion').classList.toggle('open');
+    }
+  </script>
 </body>
 </html>
