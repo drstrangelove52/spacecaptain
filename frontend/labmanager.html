@@ -470,10 +470,10 @@
             </div>
           </div>
           <div id="maintenance-filter" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-            <select class="form-input" id="maint-filter-machine" style="flex:1;min-width:140px;font-size:12px" onchange="renderIntervals()">
+            <select class="form-input" id="maint-filter-machine" style="flex:1;min-width:140px;font-size:13px" onchange="renderIntervals()">
               <option value="">Alle Maschinen</option>
             </select>
-            <select class="form-input" id="maint-filter-status" style="width:130px;font-size:12px" onchange="renderIntervals()">
+            <select class="form-input" id="maint-filter-status" style="width:130px;font-size:13px" onchange="renderIntervals()">
               <option value="">Alle Status</option>
               <option value="due">Fällig</option>
               <option value="warning">Warnung</option>
@@ -2704,7 +2704,7 @@ function renderIntervals() {
             Verbleibend: ${intervalRemaining(iv)}
             &nbsp;·&nbsp; Letzter Zählerstand: ${iv.last_performed_at ? `<span style="color:var(--text)">${new Date(iv.last_performed_at).toLocaleDateString('de-CH')}</span> (${iv.last_performer_name||'—'})` : '<span style="color:var(--text-dim)">noch nie</span>'}
           </div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px">
+          <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-top:2px">
             Maschinenstunden gesamt: ${iv.hours_since != null ? iv.hours_since.toFixed(1) + ' h seit letzter Wartung' : '—'}
           </div>
         </div>
