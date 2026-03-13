@@ -148,7 +148,7 @@ function renderTicker(text, speed, fontSize) {
   bar.style.fontSize = (fontSize || 18) + 'px';
 
   const msgs = text.split('\n').map(l => l.trim()).filter(Boolean);
-  const sep = '     ·     ';
+  const sep = '     +++     ';
   const half = msgs.join(sep) + sep;
   track.style.transform = '';
   track.textContent = half + half;
@@ -192,7 +192,6 @@ async function loadData() {
       <div class="announcement-inner">
         <div class="announcement-icon">📢</div>
         <div style="flex:1">
-          <div class="announcement-label">MITTEILUNGEN</div>
           <div class="announcement-text" style="font-size:${window._announcementFontSize || 20}px">${window._announcement.replace(/</g,'&lt;')}</div>
         </div>
       </div>
