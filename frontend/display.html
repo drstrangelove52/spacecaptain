@@ -98,7 +98,8 @@
 <footer>
   <div class="refresh-dot"></div>
   <span>Automatische Aktualisierung alle 30 Sekunden</span>
-  <span style="margin-left:auto" id="last-update"></span>
+  <span id="page-indicator" style="margin:0 auto;font-size:14px;letter-spacing:4px"></span>
+  <span id="last-update"></span>
 </footer>
 
 <script>
@@ -121,6 +122,14 @@ setInterval(updateClock, 1000);
 updateClock();
 
 let _displayRefreshMs = 30000;
+
+// ── Paginierung ────────────────────────────────────────
+let _allMachines = [];
+let _allQueues   = {};
+let _currentPage = 0;
+const PAGE_SIZE     = 8;
+const PAGE_INTERVAL = 10000;
+let _pageTimer = null;
 
 // ── JS-Ticker (läuft unabhängig von loadData) ─────────
 let _tickerRAF = null;
@@ -179,105 +188,104 @@ function renderAnnouncement(text, fontSize) {
   window._announcementFontSize = fontSize || 20;
 }
 
+function buildMachineCard(m) {
+  const icon = machineIcons[m.category] || '🔧';
+  const inUse = m.in_use || (m.plug_supported && m.plug_on === true);
+  const adapterError = m.plug_supported && m.plug_error === 'unreachable';
+  const available = m.status === 'online' && !inUse && !adapterError;
+  const offline = m.status !== 'online';
+  const cardClass = offline ? 'offline' : (inUse && !adapterError) ? 'in-use' : available ? 'available' : 'offline';
+
+  let statusHtml;
+  if (offline) {
+    statusHtml = `<div class="card-status"><div class="dot dot-grey"></div><div class="status-text status-offline">${m.status === 'maintenance' ? 'IN WARTUNG' : 'OFFLINE'}</div></div>`;
+  } else if (adapterError) {
+    statusHtml = `<div class="card-status"><div class="dot dot-grey"></div><div class="status-text status-offline">ADAPTER OFFLINE</div></div>`;
+  } else if (inUse) {
+    const dur = m.session_duration_min != null ? formatDur(m.session_duration_min) : '';
+    const watt = m.power_w != null ? `${Math.round(m.power_w)} W` : '';
+    statusHtml = `<div class="card-status"><div class="dot dot-on"></div><div><div class="status-text status-user">◉ ${m.current_guest_name || 'In Benutzung'}</div>${dur ? `<div class="card-dur">${dur}</div>` : ''}</div>${watt ? `<div class="card-watt">${watt}</div>` : ''}</div>`;
+  } else {
+    statusHtml = `<div class="card-status"><div class="dot dot-off"></div><div class="status-text status-avail">● VERFÜGBAR</div></div>`;
+  }
+
+  const q = _allQueues[m.id] || [];
+  let queueHtml = '';
+  if (q.length > 0) {
+    const items = q.map((entry, i) => `
+      <div class="queue-item">
+        <div class="queue-pos">${i+1}.</div>
+        <div class="queue-name">${entry.guest_display}</div>
+        ${entry.status === 'notified' ? '<div class="queue-badge">BEREIT</div>' : ''}
+      </div>`).join('');
+    queueHtml = `<div class="queue-section"><div class="queue-title">WARTELISTE // ${q.length} WARTEND</div>${items}</div>`;
+  }
+
+  return `<div class="machine-card ${cardClass}">
+    <div class="card-top">
+      <div class="card-icon">${icon}</div>
+      <div class="card-info">
+        <div class="card-name">${m.name}</div>
+        <div class="card-cat">${m.category}${m.location && m.location !== '—' ? ' // ' + m.location : ''}</div>
+      </div>
+    </div>
+    ${statusHtml}
+    ${queueHtml}
+  </div>`;
+}
+
+function renderPage(page) {
+  const totalPages = Math.max(1, Math.ceil(_allMachines.length / PAGE_SIZE));
+  if (page >= totalPages) page = 0;
+  _currentPage = page;
+
+  const grid = document.getElementById('machine-grid');
+  let html = '';
+
+  // Ankündigung nur auf Seite 0
+  if (page === 0 && window._announcement) {
+    html += `<div class="announcement-card"><div class="announcement-inner"><div class="announcement-icon">📢</div><div style="flex:1"><div class="announcement-text" style="font-size:${window._announcementFontSize || 20}px">${window._announcement.replace(/</g,'&lt;')}</div></div></div></div>`;
+  }
+
+  if (!_allMachines.length) {
+    html += '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;grid-column:1/-1;padding:40px;text-align:center">Keine Maschinen konfiguriert.</div>';
+    grid.innerHTML = html;
+    return;
+  }
+
+  const pageMachines = _allMachines.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  html += pageMachines.map(buildMachineCard).join('');
+  grid.innerHTML = html;
+
+  // Seitenindikator im Footer
+  const dots = Array.from({length: totalPages}, (_, i) =>
+    `<span style="color:${i === page ? 'var(--accent)' : 'var(--border)'}">●</span>`
+  ).join(' ');
+  document.getElementById('page-indicator').innerHTML = totalPages > 1 ? dots : '';
+}
+
+function startPageTimer() {
+  if (_pageTimer) clearInterval(_pageTimer);
+  const totalPages = Math.ceil(_allMachines.length / PAGE_SIZE);
+  if (totalPages <= 1) return;
+  _pageTimer = setInterval(() => renderPage(_currentPage + 1), PAGE_INTERVAL);
+}
+
 async function loadData() {
   const [machines, queues] = await Promise.all([
     fetch(`${API}/guest/dashboard`).then(r=>r.json()).catch(()=>[]),
     fetch(`${API}/queue`).then(r=>r.json()).catch(()=>[]),
   ]);
 
-  const queueMap = {};
+  _allMachines = machines;
+  _allQueues = {};
   for (const q of queues) {
-    if (!queueMap[q.machine_id]) queueMap[q.machine_id] = [];
-    queueMap[q.machine_id].push(q);
+    if (!_allQueues[q.machine_id]) _allQueues[q.machine_id] = [];
+    _allQueues[q.machine_id].push(q);
   }
 
-  const grid = document.getElementById('machine-grid');
-  let html = '';
-
-  // Ankündigungs-Karte
-  if (window._announcement) {
-    html += `<div class="announcement-card">
-      <div class="announcement-inner">
-        <div class="announcement-icon">📢</div>
-        <div style="flex:1">
-          <div class="announcement-text" style="font-size:${window._announcementFontSize || 20}px">${window._announcement.replace(/</g,'&lt;')}</div>
-        </div>
-      </div>
-    </div>`;
-  }
-
-  if (!machines.length) {
-    html += '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;grid-column:1/-1;padding:40px;text-align:center">Keine Maschinen konfiguriert.</div>';
-    grid.innerHTML = html;
-    return;
-  }
-
-  html += machines.map(m => {
-    const icon = machineIcons[m.category] || '🔧';
-    const inUse = m.in_use || (m.plug_supported && m.plug_on === true);
-    const adapterError = m.plug_supported && m.plug_error === 'unreachable';
-    const available = m.status === 'online' && !inUse && !adapterError;
-    const offline = m.status !== 'online';
-    const cardClass = offline ? 'offline' : (inUse && !adapterError) ? 'in-use' : available ? 'available' : 'offline';
-
-    let statusHtml;
-    if (offline) {
-      statusHtml = `<div class="card-status">
-        <div class="dot dot-grey"></div>
-        <div class="status-text status-offline">${m.status === 'maintenance' ? 'IN WARTUNG' : 'OFFLINE'}</div>
-      </div>`;
-    } else if (adapterError) {
-      statusHtml = `<div class="card-status">
-        <div class="dot dot-grey"></div>
-        <div class="status-text status-offline">ADAPTER OFFLINE</div>
-      </div>`;
-    } else if (inUse) {
-      const dur = m.session_duration_min != null ? formatDur(m.session_duration_min) : '';
-      const watt = m.power_w != null ? `${Math.round(m.power_w)} W` : '';
-      statusHtml = `<div class="card-status">
-        <div class="dot dot-on"></div>
-        <div>
-          <div class="status-text status-user">◉ ${m.current_guest_name || 'In Benutzung'}</div>
-          ${dur ? `<div class="card-dur">${dur}</div>` : ''}
-        </div>
-        ${watt ? `<div class="card-watt">${watt}</div>` : ''}
-      </div>`;
-    } else {
-      statusHtml = `<div class="card-status">
-        <div class="dot dot-off"></div>
-        <div class="status-text status-avail">● VERFÜGBAR</div>
-      </div>`;
-    }
-
-    const q = queueMap[m.id] || [];
-    let queueHtml = '';
-    if (q.length > 0) {
-      const items = q.map((entry, i) => `
-        <div class="queue-item">
-          <div class="queue-pos">${i+1}.</div>
-          <div class="queue-name">${entry.guest_display}</div>
-          ${entry.status === 'notified' ? '<div class="queue-badge">BEREIT</div>' : ''}
-        </div>`).join('');
-      queueHtml = `<div class="queue-section">
-        <div class="queue-title">WARTELISTE // ${q.length} WARTEND</div>
-        ${items}
-      </div>`;
-    }
-
-    return `<div class="machine-card ${cardClass}">
-      <div class="card-top">
-        <div class="card-icon">${icon}</div>
-        <div class="card-info">
-          <div class="card-name">${m.name}</div>
-          <div class="card-cat">${m.category}${m.location && m.location !== '—' ? ' // ' + m.location : ''}</div>
-        </div>
-      </div>
-      ${statusHtml}
-      ${queueHtml}
-    </div>`;
-  }).join('');
-
-  grid.innerHTML = html;
+  renderPage(_currentPage);
+  startPageTimer();
 
   document.getElementById('last-update').textContent =
     'Zuletzt: ' + new Date().toLocaleTimeString('de-CH', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
