@@ -120,34 +120,41 @@
     .step-body p { margin-bottom: 10px; }
     .step-body p:last-child { margin-bottom: 0; }
 
+    .code-wrap {
+      margin-top: 12px;
+    }
+
     .code-block {
       background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 14px 48px 14px 16px;
+      border-radius: 6px 6px 0 0;
+      padding: 14px 16px;
       font-family: var(--mono);
       font-size: 13px;
       color: var(--accent2);
       word-break: break-all;
-      position: relative;
-      margin-top: 12px;
+    }
+
+    .code-footer {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      padding: 6px 10px;
+      display: flex;
+      justify-content: flex-end;
     }
 
     .copy-btn {
-      position: absolute;
-      top: 50%;
-      right: 10px;
-      transform: translateY(-50%);
-      background: var(--surface2);
+      background: transparent;
       border: 1px solid var(--border);
       border-radius: 4px;
       color: var(--text-dim);
       font-family: var(--mono);
       font-size: 11px;
-      padding: 4px 10px;
+      padding: 3px 10px;
       cursor: pointer;
       transition: all 0.15s;
-      white-space: nowrap;
     }
     .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
     .copy-btn.copied { color: #22c55e; border-color: #22c55e; }
@@ -200,9 +207,11 @@
     </div>
     <div class="step-body">
       <p>Terminal öffnen und folgenden Befehl einfügen:</p>
-      <div class="code-block">
-        <span id="cmd-text">Lade...</span>
-        <button class="copy-btn" id="copy-btn" onclick="copyCmd()">Kopieren</button>
+      <div class="code-wrap">
+        <div class="code-block"><span id="cmd-text">Lade...</span></div>
+        <div class="code-footer">
+          <button class="copy-btn" id="copy-btn" onclick="copyCmd()">Kopieren</button>
+        </div>
       </div>
       <p style="margin-top:12px">Das Skript installiert Chromium, deaktiviert den Bildschirmschoner und richtet den Kiosk-Autostart ein.</p>
     </div>
