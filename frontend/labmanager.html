@@ -578,6 +578,10 @@
             <label class="form-label">TV-Display Auto-Aktualisierung <span style="color:var(--text-dim);font-weight:400">(Sekunden)</span></label>
             <input class="form-input" id="cfg-display-refresh" type="number" min="10" max="300" placeholder="30">
           </div>
+          <div class="form-group">
+            <label class="form-label">Maschinen pro Seite <span style="color:var(--text-dim);font-weight:400">(TV-Display)</span></label>
+            <input class="form-input" id="cfg-display-page-size" type="number" min="1" max="50" placeholder="8">
+          </div>
           <div class="form-group" style="margin-top:12px">
             <label class="form-label">Dashboard Auto-Aktualisierung <span style="color:var(--text-dim);font-weight:400">(Sekunden)</span></label>
             <input class="form-input" id="cfg-dashboard-refresh" type="number" min="5" max="300" placeholder="30">
@@ -2162,6 +2166,7 @@ async function loadSettings() {
   document.getElementById('cfg-backdrop-display').checked = s.modal_backdrop_display;
   document.getElementById('cfg-queue-min').value = s.queue_reservation_minutes ?? 5;
   document.getElementById('cfg-display-refresh').value = s.display_refresh_seconds ?? 30;
+  document.getElementById('cfg-display-page-size').value = s.display_page_size ?? 8;
   document.getElementById('cfg-dashboard-refresh').value = s.dashboard_refresh_seconds ?? 30;
   document.getElementById('cfg-announcement').value = s.announcement ?? '';
   document.getElementById('cfg-announcement-size').value = s.announcement_font_size ?? 20;
@@ -2183,6 +2188,7 @@ async function saveSettings() {
     modal_backdrop_display:  document.getElementById('cfg-backdrop-display').checked,
     queue_reservation_minutes: parseInt(document.getElementById('cfg-queue-min').value) || 5,
     display_refresh_seconds:    parseInt(document.getElementById('cfg-display-refresh').value) || 30,
+    display_page_size:          parseInt(document.getElementById('cfg-display-page-size').value) || 8,
     dashboard_refresh_seconds:  parseInt(document.getElementById('cfg-dashboard-refresh').value) || 30,
     announcement:              document.getElementById('cfg-announcement').value,
     announcement_font_size:    parseInt(document.getElementById('cfg-announcement-size').value) || 20,

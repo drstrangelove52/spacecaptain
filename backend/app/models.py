@@ -197,6 +197,7 @@ class SystemSettings(Base):
     modal_backdrop_display:   Mapped[bool] = mapped_column(Boolean, default=True)
     queue_reservation_minutes:  Mapped[int] = mapped_column(Integer, default=5)
     display_refresh_seconds:    Mapped[int] = mapped_column(Integer, default=30)
+    display_page_size:          Mapped[int] = mapped_column(Integer, default=8)
     dashboard_refresh_seconds:  Mapped[int] = mapped_column(Integer, default=30)
     ticker_text:                Mapped[Optional[str]] = mapped_column(Text, default=None)
     ticker_speed:               Mapped[int] = mapped_column(Integer, default=80)

@@ -127,7 +127,7 @@ let _displayRefreshMs = 30000;
 let _allMachines = [];
 let _allQueues   = {};
 let _currentPage = 0;
-const PAGE_SIZE     = 8;
+let PAGE_SIZE     = 8;
 const PAGE_INTERVAL = 10000;
 let _pageTimer = null;
 
@@ -242,8 +242,8 @@ function renderPage(page) {
   const grid = document.getElementById('machine-grid');
   let html = '';
 
-  // Ankündigung nur auf Seite 0
-  if (page === 0 && window._announcement) {
+  // Ankündigung auf allen Seiten
+  if (window._announcement) {
     html += `<div class="announcement-card"><div class="announcement-inner"><div class="announcement-icon">📢</div><div style="flex:1"><div class="announcement-text" style="font-size:${window._announcementFontSize || 20}px">${window._announcement.replace(/</g,'&lt;')}</div></div></div></div>`;
   }
 
@@ -299,6 +299,7 @@ async function initDisplay() {
   try {
     const s = await fetch('/api/settings/public').then(r => r.json());
     if (s.display_refresh_seconds) _displayRefreshMs = s.display_refresh_seconds * 1000;
+    if (s.display_page_size) PAGE_SIZE = s.display_page_size;
     renderTicker(s.ticker_text || '', s.ticker_speed, s.ticker_font_size);
     renderAnnouncement(s.announcement || '', s.announcement_font_size);
   } catch {}

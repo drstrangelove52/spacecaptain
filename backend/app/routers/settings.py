@@ -19,6 +19,7 @@ class SettingsOut(BaseModel):
     modal_backdrop_display: bool
     queue_reservation_minutes: int
     display_refresh_seconds: int
+    display_page_size: int = 8
     dashboard_refresh_seconds: int = 30
     ticker_text: Optional[str] = None
     ticker_speed: int = 80
@@ -38,6 +39,7 @@ class SettingsUpdate(BaseModel):
     modal_backdrop_display: Optional[bool] = None
     queue_reservation_minutes: Optional[int] = None
     display_refresh_seconds: Optional[int] = None
+    display_page_size: Optional[int] = None
     dashboard_refresh_seconds: Optional[int] = None
     ticker_text: Optional[str] = None
     ticker_speed: Optional[int] = None
@@ -52,6 +54,7 @@ async def read_settings_public(db: AsyncSession = Depends(get_db)):
     s = await get_system_settings(db)
     return {
         "display_refresh_seconds": s.display_refresh_seconds,
+        "display_page_size": s.display_page_size,
         "ticker_text": s.ticker_text or "",
         "ticker_speed": s.ticker_speed,
         "ticker_font_size": s.ticker_font_size,
@@ -89,6 +92,8 @@ async def update_settings(
         row.queue_reservation_minutes = max(1, payload.queue_reservation_minutes)
     if payload.display_refresh_seconds is not None:
         row.display_refresh_seconds = max(10, payload.display_refresh_seconds)
+    if payload.display_page_size is not None:
+        row.display_page_size = max(1, payload.display_page_size)
     if payload.dashboard_refresh_seconds is not None:
         row.dashboard_refresh_seconds = max(5, payload.dashboard_refresh_seconds)
     if payload.ticker_text is not None:

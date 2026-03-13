@@ -125,6 +125,8 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # ── v1.08: dashboard_refresh_seconds in system_settings ──────────────
         await _add_column_if_missing(conn, "system_settings", "dashboard_refresh_seconds",
                                      "INT NOT NULL DEFAULT 30")
+        await _add_column_if_missing(conn, "system_settings", "display_page_size",
+                                     "INT NOT NULL DEFAULT 8")
 
         # ── v1.09: pending_approval für Gast-Selbstregistrierung ─────────────
         await _add_column_if_missing(conn, "guests", "pending_approval",
