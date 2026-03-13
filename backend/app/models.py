@@ -40,6 +40,8 @@ class LogType(str, enum.Enum):
     session_started = "session_started"
     maintenance_due = "maintenance_due"
     maintenance_done = "maintenance_done"
+    guest_registered = "guest_registered"
+    guest_approved = "guest_approved"
 
 class SessionEndedBy(str, enum.Enum):
     guest = "guest"
@@ -78,7 +80,8 @@ class Guest(Base):
     password_hash: Mapped[Optional[str]] = mapped_column(String(255))
     phone:         Mapped[Optional[str]] = mapped_column(String(50))
     note:          Mapped[Optional[str]] = mapped_column(Text)
-    is_active:     Mapped[bool]          = mapped_column(Boolean, default=True)
+    is_active:        Mapped[bool]          = mapped_column(Boolean, default=True)
+    pending_approval: Mapped[bool]          = mapped_column(Boolean, default=False)
     created_at:    Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
     updated_at:    Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     login_token:   Mapped[Optional[str]]       = mapped_column(String(64), unique=True, nullable=True)

@@ -75,9 +75,17 @@ class GuestUpdate(BaseModel):
     note: Optional[str] = None
     is_active: Optional[bool] = None
 
+class GuestRegister(BaseModel):
+    name: str
+    username: str
+    password: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
 class GuestOut(GuestBase):
     id: int
     is_active: bool
+    pending_approval: bool = False
     created_at: datetime
     permission_count: int = 0
     username: str = ""

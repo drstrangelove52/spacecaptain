@@ -36,6 +36,19 @@ router = APIRouter(prefix="/qr", tags=["qr"])
 class RenderRequest(BaseModel):
     data: str
 
+@router.get("/url-png")
+async def url_qr_png(u: str):
+    """Generiert einen QR-Code PNG für eine URL — öffentlich, kein Login (für Display-Seite)."""
+    qr = qrcode.QRCode(version=1, box_size=8, border=3)
+    qr.add_data(u)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="image/png")
+
+
 @router.post("/render")
 async def render_qr(
     payload: RenderRequest,

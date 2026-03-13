@@ -10,7 +10,7 @@ import bcrypt
 def _hash(pw: str) -> str:
     return bcrypt.hashpw(pw.encode(), bcrypt.gensalt(12)).decode()
 from app.models import User, Guest, Machine, Permission, LogType
-from app.schemas import GuestCreate, GuestUpdate, GuestOut
+from app.schemas import GuestCreate, GuestUpdate, GuestOut, GuestRegister
 from app.services.auth import get_current_user
 from app.services import logger as log_svc
 
@@ -41,9 +41,70 @@ async def list_guests(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Guest).order_by(Guest.created_at.desc()))
+    result = await db.execute(
+        select(Guest).where(Guest.pending_approval == False).order_by(Guest.created_at.desc())
+    )
     guests = result.scalars().all()
     return [await _guest_out(g, db) for g in guests]
+
+
+@router.get("/pending", response_model=List[GuestOut])
+async def list_pending_guests(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Guest).where(Guest.pending_approval == True).order_by(Guest.created_at.asc())
+    )
+    guests = result.scalars().all()
+    return [await _guest_out(g, db) for g in guests]
+
+
+@router.post("/register")
+async def register_guest(
+    payload: GuestRegister,
+    db: AsyncSession = Depends(get_db),
+):
+    """Öffentlicher Endpunkt — Gast-Selbstregistrierung (wartet auf Lab Manager Freigabe)."""
+    existing = await db.execute(select(Guest).where(Guest.username == payload.username))
+    if existing.scalar_one_or_none():
+        raise HTTPException(400, "Benutzername bereits vergeben")
+    if payload.email:
+        ex_email = await db.execute(select(Guest).where(Guest.email == payload.email))
+        if ex_email.scalar_one_or_none():
+            raise HTTPException(400, "E-Mail-Adresse bereits registriert")
+    guest = Guest(
+        name=payload.name,
+        username=payload.username,
+        password_hash=_hash(payload.password),
+        email=payload.email or None,
+        phone=payload.phone or None,
+        is_active=False,
+        pending_approval=True,
+    )
+    db.add(guest)
+    await db.commit()
+    await db.refresh(guest)
+    await log_svc.log(db, LogType.guest_registered, f"Gast {guest.name} hat sich selbst registriert", guest_id=guest.id)
+    return {"ok": True, "message": "Registrierung eingegangen. Ein Lab Manager schaltet deinen Zugang frei."}
+
+
+@router.post("/{guest_id}/approve", response_model=GuestOut)
+async def approve_guest(
+    guest_id: int,
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Guest).where(Guest.id == guest_id))
+    guest = result.scalar_one_or_none()
+    if not guest:
+        raise HTTPException(404, "Gast nicht gefunden")
+    guest.is_active = True
+    guest.pending_approval = False
+    await db.commit()
+    await db.refresh(guest)
+    await log_svc.log(db, LogType.guest_approved, f"Gast {guest.name} freigeschaltet", guest_id=guest.id, user_id=current.id)
+    return await _guest_out(guest, db)
 
 
 @router.post("", response_model=GuestOut)

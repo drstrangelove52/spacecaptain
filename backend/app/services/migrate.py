@@ -126,6 +126,13 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "system_settings", "dashboard_refresh_seconds",
                                      "INT NOT NULL DEFAULT 30")
 
+        # ── v1.09: pending_approval für Gast-Selbstregistrierung ─────────────
+        await _add_column_if_missing(conn, "guests", "pending_approval",
+                                     "TINYINT(1) NOT NULL DEFAULT 0")
+        await _extend_enum_if_needed(conn, "activity_log", "type", [
+            "guest_registered", "guest_approved"
+        ])
+
         # ── v1.07: ticker_text + announcement in system_settings ─────────────
         await _add_column_if_missing(conn, "system_settings", "ticker_text",
                                      "TEXT DEFAULT NULL")

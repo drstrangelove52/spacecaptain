@@ -76,7 +76,15 @@
     <div class="header-title">SPACECAPTAIN</div>
     <div class="header-sub">NAVIGATING CREATIVITY</div>
   </div>
-  <div class="header-time" id="clock"></div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:28px">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="background:#fff;padding:4px;border-radius:4px;line-height:0">
+        <img id="reg-qr" src="" alt="Registrierung" style="width:64px;height:64px;display:block;image-rendering:pixelated">
+      </div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px">REGISTRIEREN</div>
+    </div>
+    <div class="header-time" id="clock"></div>
+  </div>
 </header>
 
 <main id="machine-grid">
@@ -276,6 +284,10 @@ async function loadData() {
 }
 
 async function initDisplay() {
+  // Registrierungs-QR laden
+  const regUrl = `${window.location.origin}/register`;
+  document.getElementById('reg-qr').src = `/api/qr/url-png?u=${encodeURIComponent(regUrl)}`;
+
   try {
     const s = await fetch('/api/settings/public').then(r => r.json());
     if (s.display_refresh_seconds) _displayRefreshMs = s.display_refresh_seconds * 1000;

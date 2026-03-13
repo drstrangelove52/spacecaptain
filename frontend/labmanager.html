@@ -223,7 +223,7 @@
   <div class="logo"><img src="/SpaceCaptain.svg" class="logo-img" alt="SpaceCaptain"><div><div class="logo-mark">SpaceCaptain</div><div class="logo-sub">Navigating Creativity</div><div id="app-version-sidebar" style="margin-top:4px;font-family:var(--mono);font-size:11px;color:var(--accent);opacity:.85;letter-spacing:1px"></div></div></div>
   <nav class="nav">
     <div class="nav-section">ÜBERSICHT</div>
-    <div class="nav-item active" data-page="dashboard" onclick="navigate(this)"><span class="nav-icon">📊</span> Dashboard</div>
+    <div class="nav-item active" data-page="dashboard" onclick="navigate(this)"><span class="nav-icon">📊</span> Dashboard <span class="nav-badge nav-badge-danger" id="badge-pending" style="display:none">!</span></div>
     <div class="nav-section">PERSONEN</div>
     <div class="nav-item" data-page="guests" onclick="navigate(this)"><span class="nav-icon">👥</span> Gäste <span class="nav-badge" id="badge-guests">0</span></div>
     <div class="nav-item" data-page="labmanager" onclick="navigate(this)"><span class="nav-icon">🧑‍💼</span> Lab Manager <span class="nav-badge" id="badge-lm">0</span></div>
@@ -270,6 +270,13 @@
           <thead><tr><th>Maschine</th><th>Kategorie</th><th>Nutzer</th><th>Seit</th><th>Verbrauch</th><th>Aktion</th></tr></thead>
           <tbody id="dash-active-machines"></tbody>
         </table></div>
+      </div>
+      <!-- AUSSTEHENDE REGISTRIERUNGEN -->
+      <div id="dash-pending-section" style="margin-bottom:24px;display:none">
+        <div class="section-header">
+          <div class="section-title">Ausstehende Registrierungen <span id="dash-pending-count"></span></div>
+        </div>
+        <div id="dash-pending-list"></div>
       </div>
       <!-- AKTIVE WARTELISTEN -->
       <div id="dash-queue-section" style="margin-bottom:24px;display:none">
@@ -815,7 +822,7 @@ function navigate(el) {
   if (page==='stats') loadStats();
   if (page==='maintenance') loadMaintenance();
   if (page==='dashboard' || page==='machines') refreshLiveData();
-  if (page==='dashboard') { refreshMaintenanceOverview(); loadAdminQueues(); }
+  if (page==='dashboard') { refreshMaintenanceOverview(); loadAdminQueues(); loadPendingGuests(); }
   if (page==='settings') loadSettings();
 }
 
@@ -871,7 +878,7 @@ async function refreshLiveData() {
   renderDashboard();
   refreshMaintenanceOverview();
   const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
-  if (activePage === 'dashboard') loadAdminQueues();
+  if (activePage === 'dashboard') { loadAdminQueues(); loadPendingGuests(); }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2395,6 +2402,68 @@ async function loadMaintenance() {
 }
 
 // ═══════════════════════════════════════════════════════
+// AUSSTEHENDE REGISTRIERUNGEN
+// ═══════════════════════════════════════════════════════
+async function loadPendingGuests() {
+  const data = await apiSilent('GET', '/guests/pending');
+  const section = document.getElementById('dash-pending-section');
+  const list    = document.getElementById('dash-pending-list');
+  const count   = document.getElementById('dash-pending-count');
+  const badge   = document.getElementById('badge-pending');
+
+  if (!data || !data.length) {
+    section.style.display = 'none';
+    badge.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  count.textContent = `(${data.length})`;
+  badge.style.display = '';
+
+  const thStyle = `font-family:var(--mono);font-size:10px;color:var(--text-dim);font-weight:400;text-align:left;padding-bottom:6px`;
+  const rows = data.map(g => `<tr>
+    <td><strong>${g.name}</strong></td>
+    <td style="font-family:var(--mono)">${g.username}</td>
+    <td style="font-family:var(--mono);color:var(--text-dim)">${g.email || '—'}</td>
+    <td style="font-family:var(--mono);color:var(--text-dim)">${g.phone || '—'}</td>
+    <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">${new Date(g.created_at).toLocaleString('de-CH',{dateStyle:'short',timeStyle:'short'})}</td>
+    <td style="display:flex;gap:6px;padding:8px 16px">
+      <button class="btn btn-ghost btn-sm" style="color:var(--success)" onclick="approveGuest(${g.id})">✓ Freischalten</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deletePendingGuest(${g.id},'${g.name.replace(/'/g,"\\'")}')">✕ Ablehnen</button>
+    </td>
+  </tr>`).join('');
+
+  list.innerHTML = `<div class="table-wrap" style="padding:16px">
+    <table style="width:100%">
+      <thead><tr>
+        <th style="${thStyle}">Name</th>
+        <th style="${thStyle}">Benutzername</th>
+        <th style="${thStyle}">E-Mail</th>
+        <th style="${thStyle}">Telefon</th>
+        <th style="${thStyle}">Registriert</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+async function approveGuest(guestId) {
+  const res = await api('POST', `/guests/${guestId}/approve`);
+  if (res !== null) {
+    showToast('Gast freigeschaltet', 'success');
+    await loadPendingGuests();
+    const fresh = await apiSilent('GET', '/guests');
+    if (fresh) { cache.guests = fresh; renderGuests(); }
+  }
+}
+
+async function deletePendingGuest(guestId, name) {
+  const ok = await api('DELETE', `/guests/${guestId}`);
+  if (ok !== null) { showToast(`${name} abgelehnt`, 'warn'); await loadPendingGuests(); }
+}
+
 // WARTELISTEN-VERWALTUNG (Admin/Manager)
 // ═══════════════════════════════════════════════════════
 async function loadAdminQueues() {
