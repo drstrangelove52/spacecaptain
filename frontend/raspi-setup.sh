@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # SpaceCaptain Kiosk Setup
-# Usage: SPACECAPTAIN_URL="https://your-host/display" bash raspi-setup.sh
+# Usage: curl -s https://your-host/raspi-setup.sh | bash -s https://your-host/display
 
 set -e
 
-URL="${SPACECAPTAIN_URL:-}"
+URL="${1:-}"
 
 if [ -z "$URL" ]; then
-    echo "Bitte SPACECAPTAIN_URL setzen:"
     read -rp "Display-URL (z.B. https://spacecaptain.local/display): " URL
 fi
 
