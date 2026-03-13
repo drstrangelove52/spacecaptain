@@ -4,13 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SpaceCaptain — Kiosk Setup</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #0d0f12;
+      --surface: #151820;
+      --surface2: #1c2030;
+      --border: #2a2f3e;
+      --accent: #f4a622;
+      --accent2: #22d3ee;
+      --text: #e2e8f0;
+      --text-dim: #a8bece;
+      --text-mid: #c8d8e5;
+      --mono: 'Share Tech Mono', monospace;
+      --body: 'Barlow', sans-serif;
+      --display: 'Barlow Condensed', sans-serif;
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #0d1117;
-      color: #e6edf3;
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -18,130 +34,159 @@
       padding: 48px 24px;
     }
 
-    .logo {
-      font-size: 13px;
-      font-weight: 700;
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    .logo-mark {
+      font-family: var(--display);
+      font-size: 22px;
+      font-weight: 900;
       letter-spacing: 3px;
-      color: #58a6ff;
+      color: var(--accent);
       text-transform: uppercase;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
 
-    h1 {
-      font-size: 28px;
-      font-weight: 600;
-      color: #f0f6fc;
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      color: #8b949e;
-      font-size: 15px;
+    .logo-sub {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 3px;
+      text-transform: uppercase;
       margin-bottom: 48px;
     }
 
     .card {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 12px;
-      padding: 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 28px 32px;
       width: 100%;
-      max-width: 640px;
-      margin-bottom: 24px;
+      max-width: 620px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: linear-gradient(to bottom, var(--accent), var(--accent2));
+      border-radius: 8px 0 0 8px;
+      opacity: 0.6;
     }
 
     .step-header {
       display: flex;
       align-items: center;
       gap: 14px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     .step-num {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: #1f6feb;
-      color: #fff;
-      font-weight: 700;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 2px;
+      text-transform: uppercase;
       flex-shrink: 0;
     }
 
     .step-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #f0f6fc;
+      font-family: var(--display);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--text);
+      text-transform: uppercase;
     }
 
     .step-body {
-      color: #8b949e;
+      color: var(--text-mid);
       font-size: 14px;
       line-height: 1.7;
-      padding-left: 46px;
+      padding-left: 0;
     }
 
     .step-body p { margin-bottom: 10px; }
     .step-body p:last-child { margin-bottom: 0; }
 
     .code-block {
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 14px 16px;
-      font-family: 'Courier New', monospace;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 48px 14px 16px;
+      font-family: var(--mono);
       font-size: 13px;
-      color: #79c0ff;
+      color: var(--accent2);
       word-break: break-all;
       position: relative;
-      margin-top: 10px;
+      margin-top: 12px;
     }
 
     .copy-btn {
       position: absolute;
-      top: 8px;
-      right: 8px;
-      background: #21262d;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      color: #8b949e;
-      font-size: 12px;
+      top: 50%;
+      right: 10px;
+      transform: translateY(-50%);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 11px;
       padding: 4px 10px;
       cursor: pointer;
       transition: all 0.15s;
+      white-space: nowrap;
     }
-    .copy-btn:hover { background: #30363d; color: #e6edf3; }
-    .copy-btn.copied { color: #3fb950; border-color: #3fb950; }
+    .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .copy-btn.copied { color: #22c55e; border-color: #22c55e; }
 
     .note {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-left: 3px solid #1f6feb;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent2);
       border-radius: 6px;
-      padding: 12px 16px;
+      padding: 14px 18px;
       font-size: 13px;
-      color: #8b949e;
-      max-width: 640px;
+      color: var(--text-dim);
+      max-width: 620px;
       width: 100%;
-      line-height: 1.6;
+      line-height: 1.7;
+      font-family: var(--mono);
     }
 
-    .note strong { color: #e6edf3; }
+    .note strong { color: var(--text); }
+
+    code {
+      background: var(--surface2);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent2);
+    }
   </style>
 </head>
 <body>
 
-  <div class="logo">SpaceCaptain</div>
-  <h1>Kiosk Setup</h1>
-  <p class="subtitle">Raspberry Pi als Display-Terminal einrichten</p>
+  <div class="logo-mark">SpaceCaptain</div>
+  <div class="logo-sub">Kiosk Setup // Raspberry Pi</div>
 
   <div class="card">
     <div class="step-header">
-      <div class="step-num">1</div>
-      <div class="step-title">Raspberry Pi OS (Desktop) installieren</div>
+      <div class="step-num">Schritt 01</div>
+      <div class="step-title">Raspberry Pi OS installieren</div>
     </div>
     <div class="step-body">
       <p>Raspberry Pi Imager herunterladen und <strong>Raspberry Pi OS (Desktop)</strong> auf eine SD-Karte schreiben. SSH und WLAN können direkt im Imager konfiguriert werden.</p>
@@ -150,12 +195,12 @@
 
   <div class="card">
     <div class="step-header">
-      <div class="step-num">2</div>
-      <div class="step-title">Terminal öffnen und Befehl ausführen</div>
+      <div class="step-num">Schritt 02</div>
+      <div class="step-title">Setup-Skript ausführen</div>
     </div>
     <div class="step-body">
-      <p>Terminal-App öffnen und folgenden Befehl einfügen und ausführen:</p>
-      <div class="code-block" id="cmd-block">
+      <p>Terminal öffnen und folgenden Befehl einfügen:</p>
+      <div class="code-block">
         <span id="cmd-text">Lade...</span>
         <button class="copy-btn" id="copy-btn" onclick="copyCmd()">Kopieren</button>
       </div>
@@ -165,7 +210,7 @@
 
   <div class="card">
     <div class="step-header">
-      <div class="step-num">3</div>
+      <div class="step-num">Schritt 03</div>
       <div class="step-title">Neustart</div>
     </div>
     <div class="step-body">
@@ -174,15 +219,14 @@
   </div>
 
   <div class="note">
-    <strong>Hinweis:</strong> Das Skript läuft nur auf Raspberry Pi OS (Debian-basiert). Chromium wird über <code>apt</code> installiert. Für Updates einfach den Befehl erneut ausführen.
+    <strong>Hinweis:</strong> Das Skript läuft nur auf Raspberry Pi OS (Debian-basiert).<br>
+    Chromium wird über <code>apt</code> installiert. Für Updates einfach den Befehl erneut ausführen.
   </div>
 
   <script>
     function buildCmd() {
       const origin = window.location.origin;
-      const displayUrl = origin + '/display';
-      const scriptUrl = origin + '/raspi-setup.sh';
-      return `SPACECAPTAIN_URL="${displayUrl}" bash <(curl -s ${scriptUrl})`;
+      return `SPACECAPTAIN_URL="${origin}/display" bash <(curl -s ${origin}/raspi-setup.sh)`;
     }
 
     document.getElementById('cmd-text').textContent = buildCmd();
