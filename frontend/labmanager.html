@@ -406,7 +406,7 @@
         <div class="filter-group"><label class="filter-label">Suche</label><input class="filter-input" id="f-search" type="text" placeholder="Begriff suchen…" onkeydown="if(event.key==='Enter')loadLog()"></div>
         <div style="display:flex;align-items:flex-end"><button class="btn btn-ghost btn-sm" onclick="resetLogFilters()">✕ Reset</button></div>
       </div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:12px" id="log-count"></div>
+      <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);margin-bottom:12px" id="log-count"></div>
       <div class="table-wrap" style="padding:0 16px" id="full-log"><div class="loading"><div class="spinner"></div>Laden…</div></div>
     </div>
 
@@ -923,16 +923,16 @@ function renderDashboard() {
 
       return `<tr style="${rowStyle}">
         <td><strong>${m.name}</strong></td>
-        <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${m.category||'—'}</td>
-        <td style="font-family:var(--mono);font-size:12px;color:${m.current_guest_name && !m.session_manager_id ? 'var(--text)' : 'var(--accent2)'}">${
+        <td style="font-family:var(--mono);font-size:13px;color:var(--text-dim)">${m.category||'—'}</td>
+        <td style="font-family:var(--mono);font-size:13px;color:${m.current_guest_name && !m.session_manager_id ? 'var(--text)' : 'var(--accent2)'}">${
           m.current_guest_name
             ? m.current_guest_name
             : m.session_manager_id
-              ? '<span style="color:var(--accent2);font-size:10px">◈ Manager</span>'
+              ? '<span style="color:var(--accent2);font-size:12px">◈ Manager</span>'
               : '<span style="color:var(--text-dim)">—</span>'
         }</td>
-        <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${dur}</td>
-        <td style="font-family:var(--mono);font-size:12px;color:var(--accent)">${watt}</td>
+        <td style="font-family:var(--mono);font-size:13px;color:var(--text-dim)">${dur}</td>
+        <td style="font-family:var(--mono);font-size:13px;color:var(--accent)">${watt}</td>
         <td><button class="btn btn-danger btn-sm" onclick="managerSwitchMachine(${m.id},'off',this)">○ AUS</button></td>
       </tr>${idleBanner}`;
     }).join('');
@@ -946,8 +946,8 @@ function renderDashboard() {
     :sortedM.map(m=>{
       const inUse = m.current_guest_name || m.in_use;
       const userCell = inUse
-        ? `<span style="font-family:var(--mono);font-size:11px;color:${m.session_manager_id?'var(--accent2)':'var(--text)'}">◉ ${m.current_guest_name||'Manager'}</span>`
-        : `<span style="color:var(--text-dim);font-size:12px">—</span>`;
+        ? `<span style="font-family:var(--mono);font-size:13px;color:${m.session_manager_id?'var(--accent2)':'var(--text)'}">◉ ${m.current_guest_name||'Manager'}</span>`
+        : `<span style="color:var(--text-dim);font-size:13px">—</span>`;
       let idleCell='';
       if (m.idle_state==='idle_warning'){
         const rem=m.idle_timeout_min&&m.idle_since_min!=null?Math.max(0,Math.ceil(m.idle_timeout_min-m.idle_since_min)):'?';
@@ -955,16 +955,16 @@ function renderDashboard() {
       } else if (m.idle_state==='idle'){
         idleCell=`<span style="background:rgba(244,166,34,.12);color:var(--accent);border:1px solid rgba(244,166,34,.3);border-radius:4px;padding:2px 6px;font-family:var(--mono);font-size:10px">⏱ Leerlauf</span>`;
       }
-      let adapterCell='<span style="color:var(--text-dim);font-size:12px">—</span>';
+      let adapterCell='<span style="color:var(--text-dim);font-size:13px">—</span>';
       if (m.plug_type!=='none') {
         if (m.plug_error==='unreachable')
-          adapterCell=`<span style="color:var(--accent);font-family:var(--mono);font-size:11px">⚠ OFFLINE</span>`;
+          adapterCell=`<span style="color:var(--accent);font-family:var(--mono);font-size:13px">⚠ OFFLINE</span>`;
         else if (m.plug_on===true)
-          adapterCell=`<span style="color:var(--success);font-family:var(--mono);font-size:11px">● EIN</span>`;
+          adapterCell=`<span style="color:var(--success);font-family:var(--mono);font-size:13px">● EIN</span>`;
         else if (m.plug_on===false)
-          adapterCell=`<span style="color:var(--text-dim);font-family:var(--mono);font-size:11px">○ AUS</span>`;
+          adapterCell=`<span style="color:var(--text-dim);font-family:var(--mono);font-size:13px">○ AUS</span>`;
       }
-      return `<tr style="${m.idle_state==='idle_warning'?'background:rgba(239,68,68,.04)':''}"><td><strong>${m.name}</strong>${m.comment?` <span style="font-size:10px;color:var(--accent)">⚠</span>`:''} ${idleCell}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${m.category}</td><td><span class="badge ${m.status==='online'?'badge-green':m.status==='maintenance'?'badge-orange':'badge-gray'}">${m.status}</span></td><td>${adapterCell}</td><td>${userCell}</td></tr>`;
+      return `<tr style="${m.idle_state==='idle_warning'?'background:rgba(239,68,68,.04)':''}"><td><strong>${m.name}</strong>${m.comment?` <span style="font-size:10px;color:var(--accent)">⚠</span>`:''} ${idleCell}</td><td style="font-family:var(--mono);font-size:13px;color:var(--text-dim)">${m.category}</td><td><span class="badge ${m.status==='online'?'badge-green':m.status==='maintenance'?'badge-orange':'badge-gray'}">${m.status}</span></td><td>${adapterCell}</td><td>${userCell}</td></tr>`;
     }).join('');
 }
 
@@ -977,7 +977,7 @@ function renderGuests() {
   const sorted=[...cache.guests].sort((a,b)=>a.name.localeCompare(b.name,'de'));
   tbody.innerHTML=sorted.map(g=>`<tr>
     <td><strong>${g.name}</strong></td>
-    <td style="font-family:var(--mono);font-size:11px">@${g.username}</td>
+    <td style="font-family:var(--mono)">@${g.username}</td>
     <td style="font-family:var(--mono);font-size:11px">${g.email||'—'}</td>
     <td><span class="badge badge-cyan">${g.permission_count} Maschinen</span></td>
     <td><span class="badge ${g.is_active?'badge-green':'badge-gray'}">${g.is_active?'aktiv':'inaktiv'}</span></td>
@@ -1108,7 +1108,7 @@ function renderLM() {
   const sorted=[...cache.users].sort((a,b)=>a.name.localeCompare(b.name,'de'));
   tbody.innerHTML=sorted.map(u=>`<tr>
     <td><strong>${u.name}</strong></td>
-    <td style="font-family:var(--mono);font-size:11px">${u.email}</td>
+    <td style="font-family:var(--mono)">${u.email}</td>
     <td><span class="badge ${u.role==='admin'?'badge-red':'badge-orange'}">${u.role}</span></td>
     <td style="font-size:12px;color:var(--text-dim)">${u.area||'—'}</td>
     <td><span class="badge ${u.is_active?'badge-green':'badge-gray'}">${u.is_active?'aktiv':'inaktiv'}</span></td>
@@ -2291,10 +2291,10 @@ async function loadStats() {
         const bar = `<div style="background:var(--surface2);border-radius:3px;height:6px;margin-top:4px"><div style="background:var(--accent2);width:${pct}%;height:6px;border-radius:3px;transition:width .3s"></div></div>`;
         return `<tr>
           <td><strong>${m.name}</strong>${bar}</td>
-          <td style="font-size:12px;color:var(--text-dim)">${m.category}</td>
+          <td style="font-size:13px;color:var(--text-dim)">${m.category}</td>
           <td style="font-family:var(--mono);font-size:13px;color:var(--accent2);font-weight:700">${m.total_hours.toFixed(1)} h</td>
-          <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${m.avg_h != null ? m.avg_h.toFixed(2)+' h' : '—'}</td>
-          <td style="font-family:var(--mono);font-size:11px">${m.sessions}</td>
+          <td style="font-family:var(--mono);font-size:13px;color:var(--text-dim)">${m.avg_h != null ? m.avg_h.toFixed(2)+' h' : '—'}</td>
+          <td style="font-family:var(--mono);font-size:13px">${m.sessions}</td>
         </tr>`;
       }).join('');
     }
@@ -2329,11 +2329,11 @@ async function loadStats() {
     const ebColor=s.ended_by==='idle_timeout'?'var(--accent)':s.ended_by==='manager'?'var(--accent2)':'var(--text-dim)';
     return `<tr>
       <td><strong>${s.machine_name}</strong></td>
-      <td style="font-family:var(--mono);font-size:11px;${s.manager_id && !s.guest_id ? 'color:var(--accent2)' : ''}">${s.user_name || '—'}</td>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${dt}</td>
+      <td style="font-family:var(--mono);font-size:13px;${s.manager_id && !s.guest_id ? 'color:var(--accent2)' : ''}">${s.user_name || '—'}</td>
+      <td style="font-family:var(--mono);font-size:13px;color:var(--text-dim)">${dt}</td>
       <td><span class="badge badge-cyan">${dur}</span></td>
-      <td style="font-family:var(--mono);font-size:11px">${wh}</td>
-      <td style="font-family:var(--mono);font-size:11px;color:${ebColor}">${eb}</td>
+      <td style="font-family:var(--mono);font-size:13px">${wh}</td>
+      <td style="font-family:var(--mono);font-size:13px;color:${ebColor}">${eb}</td>
     </tr>`;
   }).join('');
 }
@@ -2621,11 +2621,11 @@ function renderIntervals() {
             ${statusBadge(iv.status)}
             <strong style="font-size:14px">${iv.name}</strong>
           </div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:2px">
+          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);margin-bottom:2px">
             🔧 ${iv.machine_name} &nbsp;·&nbsp; ${intervalMeta(iv)}
           </div>
-          ${iv.description ? `<div style="font-size:12px;color:var(--text-mid);margin-top:4px">${iv.description}</div>` : ''}
-          <div style="font-family:var(--mono);font-size:11px;color:var(--text-mid);margin-top:6px">
+          ${iv.description ? `<div style="font-size:13px;color:var(--text-mid);margin-top:4px">${iv.description}</div>` : ''}
+          <div style="font-family:var(--mono);font-size:13px;color:var(--text-mid);margin-top:6px">
             Verbleibend: ${intervalRemaining(iv)}
             &nbsp;·&nbsp; Letzter Zählerstand: ${iv.last_performed_at ? `<span style="color:var(--text)">${new Date(iv.last_performed_at).toLocaleDateString('de-CH')}</span> (${iv.last_performer_name||'—'})` : '<span style="color:var(--text-dim)">noch nie</span>'}
           </div>
@@ -2666,12 +2666,12 @@ function renderMaintenanceHistory() {
     <thead><tr><th>Datum</th><th>Maschine</th><th>Bezeichnung</th><th>Ausgeführt von</th><th>Std.</th><th>Notizen</th></tr></thead>
     <tbody>
       ${recs.slice(0, 100).map(r => `<tr>
-        <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${new Date(r.performed_at).toLocaleString('de-CH',{dateStyle:'short',timeStyle:'short'})}</td>
+        <td style="font-family:var(--mono);font-size:13px;white-space:nowrap">${new Date(r.performed_at).toLocaleString('de-CH',{dateStyle:'short',timeStyle:'short'})}</td>
         <td><strong>${r.machine_name}</strong></td>
-        <td style="font-size:12px">${r.interval_name}${!r.interval_id ? '<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-left:4px">[frei]</span>' : ''}</td>
-        <td style="font-size:12px;color:var(--text-mid)">${r.performer_name}</td>
-        <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${r.hours_at_execution != null ? r.hours_at_execution.toFixed(1)+' h' : '—'}</td>
-        <td style="font-size:12px;color:var(--text-mid);min-width:200px">${_notesHtml(r.notes)}</td>
+        <td style="font-size:13px">${r.interval_name}${!r.interval_id ? '<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-left:4px">[frei]</span>' : ''}</td>
+        <td style="font-size:13px;color:var(--text-mid)">${r.performer_name}</td>
+        <td style="font-family:var(--mono);font-size:13px;color:var(--text-dim)">${r.hours_at_execution != null ? r.hours_at_execution.toFixed(1)+' h' : '—'}</td>
+        <td style="font-size:13px;color:var(--text-mid);min-width:200px">${_notesHtml(r.notes)}</td>
       </tr>`).join('')}
     </tbody>
   </table></div>`;
@@ -2701,9 +2701,9 @@ function renderDashboardMaintenance(data) {
       ${urgent.map(iv => `<tr style="${iv.status==='due'?'background:rgba(239,68,68,.04)':''}">
         <td>${statusBadge(iv.status)}</td>
         <td><strong>${iv.machine_name}</strong></td>
-        <td style="font-size:12px">${iv.name}</td>
-        <td style="font-family:var(--mono);font-size:11px">${intervalRemaining(iv)}</td>
-        <td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">${iv.last_performed_at ? new Date(iv.last_performed_at).toLocaleDateString('de-CH') : '—'}</td>
+        <td style="font-size:13px">${iv.name}</td>
+        <td style="font-family:var(--mono);font-size:13px">${intervalRemaining(iv)}</td>
+        <td style="font-family:var(--mono);font-size:13px;color:var(--text-dim)">${iv.last_performed_at ? new Date(iv.last_performed_at).toLocaleDateString('de-CH') : '—'}</td>
         <td><button class="btn btn-success btn-sm" onclick="showRecordMaintenanceById(${iv.id})">✓ Durchgeführt</button></td>
       </tr>`).join('')}
     </tbody>
