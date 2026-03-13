@@ -59,8 +59,11 @@
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Benutzername</label>
-      <input class="form-input" id="r-username" type="text" placeholder="max.muster" autocomplete="username" spellcheck="false">
+      <label class="form-label" style="display:flex;justify-content:space-between;align-items:center">
+        Benutzername
+        <span id="un-status" style="font-size:11px;font-weight:400;letter-spacing:0;text-transform:none"></span>
+      </label>
+      <input class="form-input" id="r-username" type="text" placeholder="max.muster" autocomplete="username" spellcheck="false" oninput="onUsernameInput()">
     </div>
     <div class="form-group">
       <label class="form-label">Passwort</label>
@@ -84,6 +87,59 @@
 </div>
 <script>
 const API = '/api';
+let _unCheckTimer = null;
+let _unAvailable = null;
+
+function toUsername(str) {
+  return str.toLowerCase()
+    .replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss')
+    .replace(/[^a-z0-9.]/g,'');
+}
+
+function updateUsername() {
+  const fn = document.getElementById('r-firstname').value.trim();
+  const ln = document.getElementById('r-lastname').value.trim();
+  const unField = document.getElementById('r-username');
+  if (fn || ln) {
+    unField.value = toUsername(fn) + (fn && ln ? '.' : '') + toUsername(ln);
+    checkUsername();
+  }
+}
+
+function onUsernameInput() {
+  _unAvailable = null;
+  setUnStatus('', '');
+  clearTimeout(_unCheckTimer);
+  _unCheckTimer = setTimeout(checkUsername, 400);
+}
+
+async function checkUsername() {
+  const un = document.getElementById('r-username').value.trim();
+  if (!un) { setUnStatus('', ''); return; }
+  setUnStatus('Wird geprüft…', 'var(--text-dim)');
+  try {
+    const res = await fetch(`${API}/guests/check-username?u=${encodeURIComponent(un)}`);
+    const data = await res.json();
+    _unAvailable = data.available;
+    if (data.available) {
+      setUnStatus('✓ Verfügbar', 'var(--success)');
+    } else {
+      setUnStatus('✗ Bereits vergeben', 'var(--danger)');
+    }
+  } catch { setUnStatus('', ''); }
+}
+
+function setUnStatus(text, color) {
+  const el = document.getElementById('un-status');
+  el.textContent = text;
+  el.style.color = color;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('r-firstname').addEventListener('blur', updateUsername);
+  document.getElementById('r-lastname').addEventListener('blur', updateUsername);
+});
+
 async function doRegister() {
   const fn = document.getElementById('r-firstname').value.trim();
   const ln = document.getElementById('r-lastname').value.trim();
@@ -96,6 +152,7 @@ async function doRegister() {
 
   if (!fn || !ln) return showErr('Bitte Vor- und Nachname angeben.');
   if (!un) return showErr('Bitte einen Benutzernamen wählen.');
+  if (_unAvailable === false) return showErr('Benutzername bereits vergeben. Bitte einen anderen wählen.');
   if (pw.length < 6) return showErr('Passwort muss mindestens 6 Zeichen lang sein.');
 
   const btn = document.getElementById('r-submit');
@@ -123,6 +180,7 @@ async function doRegister() {
     btn.textContent = 'Registrierung absenden';
   }
 }
+
 function showErr(msg) {
   const el = document.getElementById('r-error');
   el.textContent = msg;

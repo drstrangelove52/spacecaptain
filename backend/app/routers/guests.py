@@ -48,6 +48,14 @@ async def list_guests(
     return [await _guest_out(g, db) for g in guests]
 
 
+@router.get("/check-username")
+async def check_username(u: str, db: AsyncSession = Depends(get_db)):
+    """Öffentlich — prüft ob ein Benutzername verfügbar ist."""
+    existing = await db.execute(select(Guest).where(Guest.username == u))
+    taken = existing.scalar_one_or_none() is not None
+    return {"available": not taken}
+
+
 @router.get("/pending", response_model=List[GuestOut])
 async def list_pending_guests(
     db: AsyncSession = Depends(get_db),
