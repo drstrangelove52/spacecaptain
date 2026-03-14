@@ -238,7 +238,13 @@ async def check_access(payload: CheckRequest, db: AsyncSession = Depends(get_db)
         ).order_by(MachineQueue.joined_at.asc()).limit(1)
     )
     first_in_queue = first_res.scalar_one_or_none()
-    reserved_for_other = first_in_queue is not None and first_in_queue.guest_id != guest.id
+    # Nicht blockieren wenn der anfragende Gast die laufende Session besitzt —
+    # er soll seine eigene Maschine immer ausschalten können.
+    reserved_for_other = (
+        first_in_queue is not None
+        and first_in_queue.guest_id != guest.id
+        and machine.current_guest_id != guest.id
+    )
 
     return {"guest_name": guest.name, "guest_id": guest.id, "has_permission": has_permission,
             "denial_reason": denial_reason, "reserved_for_other": reserved_for_other, "machine": detail}

@@ -102,8 +102,13 @@ async def list_machines_live(
             idle_state = None
             idle_since_min = None
             power_w = plug_info.get("power_w")
+            session_age_sec = (
+                (datetime.utcnow() - m.session_started_at).total_seconds()
+                if m.session_started_at else 0
+            )
             if (m.session_started_at and m.idle_power_w is not None
-                    and m.idle_timeout_min is not None and power_w is not None):
+                    and m.idle_timeout_min is not None and power_w is not None
+                    and session_age_sec >= 60):  # 60s Anlaufzeit nach Session-Start
                 if power_w <= m.idle_power_w:
                     if m.id in idle_since_global:
                         idle_since_min = round(
