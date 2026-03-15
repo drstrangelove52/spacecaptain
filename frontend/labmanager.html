@@ -94,6 +94,37 @@
   .machine-card.online::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 24px 24px 0;border-color:transparent var(--success) transparent transparent}
   .machine-card.offline::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 24px 24px 0;border-color:transparent var(--border) transparent transparent}
   .machine-card.maintenance::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 24px 24px 0;border-color:transparent var(--accent) transparent transparent}
+  /* ── Hilfe-Seite ──────────────────────────────────────────────── */
+  .help-search-wrap{position:relative;margin-bottom:24px}
+  .help-search-wrap .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--text-dim);pointer-events:none}
+  .help-search{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px 10px 36px;color:var(--text);font-family:var(--body);font-size:14px;outline:none;transition:border-color .15s}
+  .help-search:focus{border-color:var(--accent2)}
+  .help-search::placeholder{color:var(--text-dim)}
+  .help-cat{background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:12px;overflow:hidden}
+  .help-cat-header{display:flex;align-items:center;gap:12px;padding:16px 20px;cursor:pointer;user-select:none;transition:background .15s}
+  .help-cat-header:hover{background:var(--surface2)}
+  .help-cat-icon{font-size:16px;flex-shrink:0}
+  .help-cat-title{font-family:var(--display);font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;flex:1}
+  .help-cat-chevron{font-size:11px;color:var(--text-dim);transition:transform .2s}
+  .help-cat.open .help-cat-chevron{transform:rotate(180deg)}
+  .help-cat-body{display:none;border-top:1px solid var(--border)}
+  .help-cat.open .help-cat-body{display:block}
+  .help-article{padding:16px 20px;border-bottom:1px solid var(--border)}
+  .help-article:last-child{border-bottom:none}
+  .help-article-title{font-weight:600;font-size:14px;color:var(--text);margin-bottom:6px}
+  .help-article-body{font-size:13px;color:var(--text-mid);line-height:1.75}
+  .help-article-body ol,.help-article-body ul{padding-left:18px;margin:8px 0}
+  .help-article-body li{margin-bottom:4px}
+  .help-article-body strong{color:var(--text)}
+  .help-article-body code{background:var(--surface2);padding:1px 5px;border-radius:3px;font-family:var(--mono);font-size:12px;color:var(--accent2)}
+  .help-tip{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.25);border-left:3px solid #22c55e;border-radius:6px;padding:10px 14px;margin-top:10px;font-size:13px;color:var(--text-mid);line-height:1.6}
+  .help-tip strong{color:#22c55e}
+  .help-warn{background:rgba(244,166,34,.06);border:1px solid rgba(244,166,34,.25);border-left:3px solid var(--accent);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:13px;color:var(--text-mid);line-height:1.6}
+  .help-warn strong{color:var(--accent)}
+  .help-no-result{text-align:center;padding:40px;color:var(--text-dim);font-size:14px}
+  .help-ctx-btn{background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:11px;font-family:var(--mono);padding:3px 8px;cursor:pointer;transition:all .15s;letter-spacing:1px}
+  .help-ctx-btn:hover{border-color:var(--accent2);color:var(--accent2)}
+  /* ── Ende Hilfe-Seite ─────────────────────────────────────────── */
   .machine-icon{font-size:28px;margin-bottom:12px}
   .machine-name{font-family:var(--display);font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px}
   .machine-cat{font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px}
@@ -237,6 +268,7 @@
     <div class="nav-item" data-page="backup" onclick="navigate(this)"><span class="nav-icon">💾</span> Backup</div>
     <div class="nav-item" data-page="settings" onclick="navigate(this)" id="nav-settings" style="display:none"><span class="nav-icon">⚙️</span> Einstellungen</div>
     <div class="nav-item" data-page="info" onclick="navigate(this)"><span class="nav-icon">ℹ️</span> Info</div>
+    <div class="nav-item" data-page="help" onclick="navigate(this)"><span class="nav-icon">📖</span> Hilfe</div>
   </nav>
   <div class="sidebar-footer">
     <div><span class="status-dot"></span>System online</div>
@@ -710,6 +742,424 @@
     </div>
 
   </div>
+
+    <!-- ═══ HILFE ═══════════════════════════════════════════════════════ -->
+    <div class="page" id="page-help">
+      <div class="section-header"><div class="section-title">Hilfe <span>// DOKUMENTATION</span></div></div>
+      <div style="max-width:760px">
+
+        <div class="help-search-wrap">
+          <span class="search-icon">🔍</span>
+          <input class="help-search" id="help-search" placeholder="Suchen… z.B. «Gast sperren», «Smart Plug», «Backup»" oninput="helpSearch(this.value)">
+        </div>
+
+        <div id="help-no-result" class="help-no-result" style="display:none">
+          Kein Ergebnis gefunden.<br>
+          <a href="mailto:martin.nigg@makerspace.li" style="color:var(--accent2);font-size:13px;margin-top:8px;display:inline-block">Frage stellen →</a>
+        </div>
+
+        <!-- ── Erste Schritte ── -->
+        <div class="help-cat" id="help-cat-start">
+          <div class="help-cat-header" onclick="toggleHelpCat('start')">
+            <span class="help-cat-icon">🚀</span>
+            <span class="help-cat-title">Erste Schritte</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Anmelden als Lab Manager</div>
+              <div class="help-article-body">
+                Öffne SpaceCaptain im Browser. Auf der Login-Seite Benutzername (E-Mail) und Passwort eingeben. Nach erfolgreicher Anmeldung wird das Dashboard angezeigt. Die Session bleibt für die konfigurierte JWT-Dauer aktiv (Standard: 8 Stunden).
+                <div class="help-tip"><strong>Tipp:</strong> Der Browser merkt sich die Session. Nach einem Neustart des Tabs kann eine erneute Anmeldung nötig sein.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Dashboard verstehen</div>
+              <div class="help-article-body">
+                Das Dashboard zeigt auf einen Blick: aktive Maschinen-Sessions, ausstehende Gast-Registrierungen, aktive Wartelisten-Einträge und fällige Wartungen. Einträge mit einem <strong>!</strong>-Badge in der Sidebar signalisieren dringenden Handlungsbedarf.
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Passwort ändern</div>
+              <div class="help-article-body">
+                Eigenes Passwort ändern: Sidebar → <strong>Lab Manager</strong> → eigenen Eintrag bearbeiten (✏) → neues Passwort eingeben → Speichern. Fremde Passwörter können nur Admins ändern.
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Rollen: Admin vs. Manager</div>
+              <div class="help-article-body">
+                <ul>
+                  <li><strong>Admin</strong> — hat Zugriff auf alle Funktionen inkl. Einstellungen und kann andere Lab Manager verwalten.</li>
+                  <li><strong>Manager</strong> — kann Gäste, Maschinen und Berechtigungen verwalten, hat aber keinen Zugriff auf Einstellungen oder die Admin-Funktionen.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Gästeverwaltung ── -->
+        <div class="help-cat" id="help-cat-guests">
+          <div class="help-cat-header" onclick="toggleHelpCat('guests')">
+            <span class="help-cat-icon">👥</span>
+            <span class="help-cat-title">Gästeverwaltung</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Gast manuell anlegen</div>
+              <div class="help-article-body">
+                <ol>
+                  <li>Sidebar → <strong>Gäste</strong> → «+ Gast hinzufügen»</li>
+                  <li>Vor- und Nachname, Benutzername und Passwort eingeben</li>
+                  <li>Optional: E-Mail und Telefon</li>
+                  <li>«Speichern» — der Gast ist sofort aktiv</li>
+                </ol>
+                <div class="help-tip"><strong>Tipp:</strong> Der Benutzername muss einzigartig sein und wird zum Login verwendet. Empfehlung: <code>vorname.nachname</code></div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Selbstregistrierung freischalten oder ablehnen</div>
+              <div class="help-article-body">
+                Wenn ein Gast sich über den QR-Code auf der Display-Seite selbst registriert, erscheint er mit einem <strong>!</strong>-Badge im Dashboard unter «Ausstehende Registrierungen».
+                <ol>
+                  <li>Dashboard → Abschnitt «Ausstehende Registrierungen»</li>
+                  <li><strong>Freischalten</strong>: Gast erhält sofort Zugang (kein Maschinenrecht, muss separat vergeben werden)</li>
+                  <li><strong>Ablehnen</strong>: Datensatz wird gelöscht</li>
+                </ol>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Gast sperren vs. deaktivieren</div>
+              <div class="help-article-body">
+                <ul>
+                  <li><strong>Sperren</strong> (rotes Schloss-Icon): Der Gast kann sich einloggen, aber keine Maschinen mehr benutzen. Berechtigungen bleiben erhalten.</li>
+                  <li><strong>Deaktivieren</strong> (Schalter aus): Der Gast kann sich nicht mehr einloggen.</li>
+                </ul>
+                <div class="help-warn"><strong>Hinweis:</strong> Das Sperren eines Gastkontos beendet keine laufende Session. Die Maschine läuft bis zum manuellen oder automatischen Ende weiter.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Gast-Token (NFC/QR-Login)</div>
+              <div class="help-article-body">
+                Gäste können sich statt mit Passwort auch per NFC-Token oder QR-Code authentifizieren. Tokens werden automatisch vergeben und haben eine konfigurierbare Gültigkeitsdauer (Standard: 30 Tage). Nach Ablauf muss sich der Gast erneut mit Passwort anmelden.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Maschinen ── -->
+        <div class="help-cat" id="help-cat-machines">
+          <div class="help-cat-header" onclick="toggleHelpCat('machines')">
+            <span class="help-cat-icon">🏭</span>
+            <span class="help-cat-title">Maschinen</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Maschine anlegen</div>
+              <div class="help-article-body">
+                <ol>
+                  <li>Sidebar → <strong>Maschinen</strong> → «+ Maschine hinzufügen»</li>
+                  <li>Name, Kategorie, Hersteller und Modell eingeben</li>
+                  <li>Optional: Standort, Kommentar, Smart Plug konfigurieren</li>
+                  <li>«Schulung erforderlich» aktivieren wenn Gäste eine explizite Berechtigung brauchen</li>
+                </ol>
+                <div class="help-tip"><strong>Tipp:</strong> Maschinen ohne «Schulung erforderlich» sind für alle aktiven Gäste automatisch zugänglich — sofern sie nicht explizit gesperrt wurden.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Smart Plug konfigurieren</div>
+              <div class="help-article-body">
+                Unterstützte Geräte: <strong>MyStrom</strong> und <strong>Shelly</strong>.
+                <ol>
+                  <li>Maschine bearbeiten → Abschnitt «Smart Plug»</li>
+                  <li>Typ wählen (MyStrom / Shelly / Keiner)</li>
+                  <li>IP-Adresse des Plugs eingeben (im lokalen Netzwerk)</li>
+                  <li>Optional: Leerlauf-Schwellwert (Watt) und Timeout (Minuten) für automatisches Abschalten</li>
+                </ol>
+                <div class="help-warn"><strong>Hinweis:</strong> Der Smart Plug muss im gleichen Netzwerk wie der SpaceCaptain-Server erreichbar sein. Feste IP-Adresse empfohlen (DHCP-Reservierung im Router).</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Leerlauf-Erkennung</div>
+              <div class="help-article-body">
+                Wenn Leerlauf-Schwellwert und Timeout konfiguriert sind, überwacht SpaceCaptain den Stromverbrauch. Fällt die Leistung unter den Schwellwert, startet ein Countdown. Nach Ablauf des Timeouts wird die Maschine automatisch abgeschaltet und die Session beendet. Die Leerlauf-Erkennung greift erst 60 Sekunden nach Session-Start, um Anlaufzeit zu ermöglichen.
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Maschinenstatus manuell setzen</div>
+              <div class="help-article-body">
+                Mögliche Zustände: <strong>Online</strong> (verfügbar), <strong>Offline</strong> (nicht verwendbar), <strong>Wartung</strong> (in Reparatur/Service).
+                Status ändern: Maschine bearbeiten → Feld «Status». Maschinen im Status «Offline» oder «Wartung» können von Gästen nicht gestartet werden.
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">QR-Code und NFC-Tag beschreiben</div>
+              <div class="help-article-body">
+                Jede Maschine hat einen eindeutigen QR-Token. Den QR-Code drucken:
+                <ol>
+                  <li>Maschine in der Liste → QR-Icon</li>
+                  <li>QR-Code erscheint als Bild — rechtsklick → Bild speichern oder drucken</li>
+                </ol>
+                NFC-Tag beschreiben:
+                <ol>
+                  <li>NFC-Writer mit SpaceCaptain verbunden und bereit (LED blinkt blau)</li>
+                  <li>Maschine bearbeiten → «NFC beschreiben»</li>
+                  <li>NFC-Tag ans Gerät halten — LED leuchtet grün bei Erfolg</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Berechtigungen ── -->
+        <div class="help-cat" id="help-cat-permissions">
+          <div class="help-cat-header" onclick="toggleHelpCat('permissions')">
+            <span class="help-cat-icon">🔑</span>
+            <span class="help-cat-title">Berechtigungen</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Berechtigung vergeben</div>
+              <div class="help-article-body">
+                <ol>
+                  <li>Sidebar → <strong>Berechtigungen</strong></li>
+                  <li>Maschine auswählen → Gast aus der Liste wählen → «Zugang gewähren»</li>
+                </ol>
+                Alternativ direkt über den Gast-Eintrag: Gäste → Gast bearbeiten → Berechtigungen-Tab.
+                <div class="help-tip"><strong>Tipp:</strong> Bei Maschinen ohne Schulungspflicht brauchen Gäste keine explizite Berechtigung — der Zugang ist automatisch gewährt, sofern kein aktives Verbot besteht.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Berechtigung entziehen vs. sperren</div>
+              <div class="help-article-body">
+                <ul>
+                  <li><strong>Entzug</strong>: Die Berechtigung wird vollständig entfernt. Bei Maschinen ohne Schulungspflicht hat der Gast danach wieder automatischen Zugang.</li>
+                  <li><strong>Sperren</strong>: Setzt ein explizites Verbot. Gilt auch bei Maschinen ohne Schulungspflicht. Geeignet wenn ein Gast eine bestimmte Maschine definitiv nicht nutzen darf.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Maschinenpflege ── -->
+        <div class="help-cat" id="help-cat-maintenance">
+          <div class="help-cat-header" onclick="toggleHelpCat('maintenance')">
+            <span class="help-cat-icon">🔧</span>
+            <span class="help-cat-title">Maschinenpflege</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Wartungsintervall anlegen</div>
+              <div class="help-article-body">
+                <ol>
+                  <li>Sidebar → <strong>Maschinenpflege</strong> → «+ Neues Intervall»</li>
+                  <li>Maschine wählen, Bezeichnung eingeben (z.B. «Sägeblatt prüfen»)</li>
+                  <li>Intervall definieren: nach <strong>Betriebsstunden</strong> und/oder nach <strong>Kalendertagen</strong></li>
+                  <li>Optional: Vorwarnzeit — ab wann soll die Warnung erscheinen</li>
+                </ol>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Wartung durchführen und dokumentieren</div>
+              <div class="help-article-body">
+                <ol>
+                  <li>Maschinenpflege → fälliges Intervall auswählen → «✓ Durchgeführt»</li>
+                  <li>Datum, ausführende Person und optionale Notizen eingeben</li>
+                  <li>«Speichern» — der Zähler wird zurückgesetzt</li>
+                </ol>
+                Für Wartungen ohne Intervall (spontan): «+ Freie Wartung» im Abschnitt Wartungsintervalle.
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Statusfarben verstehen</div>
+              <div class="help-article-body">
+                <ul>
+                  <li><strong style="color:#ef4444">Rot / Fällig</strong>: Wartung überfällig — sofort handeln</li>
+                  <li><strong style="color:var(--accent)">Orange / Warnung</strong>: Wartung steht bald an (innerhalb Vorwarnzeit)</li>
+                  <li><strong style="color:#22c55e">Kein Badge</strong>: Alles im grünen Bereich</li>
+                </ul>
+                Fällige Wartungen erscheinen auch auf dem Dashboard mit einem <strong>!</strong>-Badge in der Sidebar.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Display & Kiosk ── -->
+        <div class="help-cat" id="help-cat-display">
+          <div class="help-cat-header" onclick="toggleHelpCat('display')">
+            <span class="help-cat-icon">📺</span>
+            <span class="help-cat-title">Display & Kiosk</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Raspberry Pi als Display-Kiosk einrichten</div>
+              <div class="help-article-body">
+                <ol>
+                  <li>Raspberry Pi OS (Desktop) auf SD-Karte installieren</li>
+                  <li>Pi hochfahren, Browser öffnen, <code>/display/setup</code> aufrufen</li>
+                  <li>Den angezeigten Befehl ins Terminal kopieren und ausführen</li>
+                  <li>Pi neu starten — Chromium öffnet sich automatisch im Vollbild</li>
+                </ol>
+                <div class="help-tip"><strong>Tipp:</strong> Der Befehl auf der Setup-Seite enthält bereits die richtige URL deines SpaceCaptain-Servers.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Maschinen pro Seite konfigurieren</div>
+              <div class="help-article-body">
+                Sidebar → <strong>Einstellungen</strong> → «Maschinen pro Seite (Display)». Wert anpassen je nach TV-Grösse und Auflösung. Die Display-Seite rotiert automatisch alle 10 Sekunden zur nächsten Seite. Die Ankündigung erscheint auf allen Seiten.
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Ticker und Ankündigung bearbeiten</div>
+              <div class="help-article-body">
+                Sidebar → <strong>Einstellungen</strong> → Abschnitt «Display». Ticker-Text, Geschwindigkeit und Schriftgrösse sind separat konfigurierbar. Die Ankündigung erscheint als Banner über dem Ticker.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Einstellungen ── -->
+        <div class="help-cat" id="help-cat-settings">
+          <div class="help-cat-header" onclick="toggleHelpCat('settings')">
+            <span class="help-cat-icon">⚙️</span>
+            <span class="help-cat-title">Einstellungen</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">NFC-Writer URL</div>
+              <div class="help-article-body">
+                IP-Adresse des NFC-Writers im Format <code>http://192.168.1.x</code>. Die IP findet man im Serial Monitor nach dem ersten Start des ESP32, oder im Router unter «verbundene Geräte». Eine feste IP (DHCP-Reservierung) empfiehlt sich, damit die URL nicht wechselt.
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">JWT-Ablaufzeit</div>
+              <div class="help-article-body">
+                Bestimmt wie lange eine Lab-Manager-Session gültig ist (in Minuten). Standard: 480 (8 Stunden). Nach Ablauf wird man automatisch ausgeloggt. Für geteilte Geräte empfiehlt sich ein kürzerer Wert.
+                <div class="help-warn"><strong>Achtung:</strong> Nach Änderung dieser Einstellung werden alle aktiven Sessions ungültig — alle eingeloggten Lab Manager müssen sich neu anmelden.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Warteschlangen-Reservierungsfenster</div>
+              <div class="help-article-body">
+                Zeit (in Minuten) die ein Gast hat, eine Maschine einzuschalten nachdem er benachrichtigt wurde. Startet er die Maschine nicht innerhalb dieser Zeit, wird sein Platz in der Warteschlange freigegeben.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Backup & Restore ── -->
+        <div class="help-cat" id="help-cat-backup">
+          <div class="help-cat-header" onclick="toggleHelpCat('backup')">
+            <span class="help-cat-icon">💾</span>
+            <span class="help-cat-title">Backup & Restore</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Backup erstellen</div>
+              <div class="help-article-body">
+                Sidebar → <strong>Backup</strong> → «Exportieren». Es wird eine JSON-Datei heruntergeladen mit: Einstellungen, Benutzer (inkl. Passwort-Hashes), Gäste, Maschinen, Berechtigungen, Sessions, Wartungsintervalle, Wartungshistorie und Aktivitätslog.
+                <div class="help-warn"><strong>Sicherheit:</strong> Die Backup-Datei enthält Passwort-Hashes. Sicher aufbewahren und nicht per E-Mail versenden.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Backup einspielen (Restore)</div>
+              <div class="help-article-body">
+                <ol>
+                  <li>Sidebar → <strong>Backup</strong> → «Datei wählen»</li>
+                  <li>Backup-JSON auswählen → «Importieren»</li>
+                  <li>Das System importiert alle Daten und überspringt bereits vorhandene Einträge (keine Duplikate)</li>
+                </ol>
+                <div class="help-tip"><strong>Tipp:</strong> Der Import ist additiv — bestehende Daten werden nicht überschrieben oder gelöscht. Ideal für Migrationen auf einen neuen Server.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Was ist im Backup enthalten?</div>
+              <div class="help-article-body">
+                <strong>Enthalten:</strong> Alle Stammdaten, Sessions, Logs, Wartungshistorie, Einstellungen.<br>
+                <strong>Nicht enthalten:</strong> Aktive Warteschlangen-Einträge, Push-Notification-Abonnements und NFC-Gast-Tokens (alles ephemere Laufzeitdaten die nach einem Restore nicht mehr relevant sind).
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Häufige Probleme ── -->
+        <div class="help-cat" id="help-cat-problems">
+          <div class="help-cat-header" onclick="toggleHelpCat('problems')">
+            <span class="help-cat-icon">🛠</span>
+            <span class="help-cat-title">Häufige Probleme</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">SpaceCaptain nicht erreichbar nach Server-Neustart</div>
+              <div class="help-article-body">
+                Der Backend-Container wartet beim Start bis die Datenbank bereit ist (bis zu 30 Sekunden, 10 Versuche). Wenn SpaceCaptain direkt nach einem Neustart nicht reagiert: 30 Sekunden warten und erneut versuchen. Hält das Problem an:
+                <ol>
+                  <li>SSH auf den Server</li>
+                  <li><code>docker compose logs backend</code> prüfen</li>
+                  <li>Falls DB-Fehler: <code>docker compose restart backend</code></li>
+                </ol>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Maschine schaltet nicht ein/aus</div>
+              <div class="help-article-body">
+                <ol>
+                  <li>Smart Plug erreichbar? Browser öffnen, Plug-IP direkt aufrufen (<code>http://192.168.1.x</code>)</li>
+                  <li>Plug im gleichen Netzwerk wie Server?</li>
+                  <li>IP-Adresse geändert? In den Maschineneinstellungen aktualisieren</li>
+                  <li>Maschinen-Status auf «Online»?</li>
+                </ol>
+                <div class="help-tip"><strong>Tipp:</strong> Im Aktivitätslog sieht man Fehler beim Schalten mit genauer Fehlermeldung.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Gast kann sich nicht einloggen</div>
+              <div class="help-article-body">
+                Mögliche Ursachen:
+                <ul>
+                  <li>Konto deaktiviert → Gäste → Konto aktivieren</li>
+                  <li>Falsches Passwort → Gäste → Passwort zurücksetzen</li>
+                  <li>Ausstehende Registrierung → noch nicht freigeschaltet</li>
+                  <li>NFC-Token abgelaufen → Gast muss sich einmalig mit Passwort anmelden um neuen Token zu erhalten</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Display-Seite zeigt falschen Status</div>
+              <div class="help-article-body">
+                Die Display-Seite aktualisiert sich automatisch im konfigurierten Intervall (Standard: 30 Sekunden). Bei längeren Verzögerungen:
+                <ol>
+                  <li>Seite manuell neu laden</li>
+                  <li>Refresh-Intervall in den Einstellungen prüfen</li>
+                  <li>Browser-Konsole auf Fehler prüfen (F12)</li>
+                </ol>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">NFC-Writer reagiert nicht</div>
+              <div class="help-article-body">
+                <ol>
+                  <li>LED-Status prüfen: Blinkt blau = bereit, Rot = Fehler</li>
+                  <li>WLAN-Verbindung: Lila LED bedeutet, der Writer sucht ein Netzwerk → mit «SpaceCaptain-NFC» verbinden und WLAN konfigurieren</li>
+                  <li>IP-Adresse in den Einstellungen korrekt?</li>
+                  <li>Neustart: Strom kurz trennen</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
 </main>
 
 <!-- MODAL -->
@@ -811,11 +1261,17 @@ function doLogout() {
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',backup:'Backup & Restore',settings:'Einstellungen',info:'Info'};
+const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',backup:'Backup & Restore',settings:'Einstellungen',info:'Info',help:'Hilfe & Dokumentation'};
+const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',machines:'machines',permissions:'permissions',maintenance:'maintenance',backup:'backup',settings:'settings'};
 const pageActions={
-  guests:()=>`<button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
-  labmanager:()=>`<button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`,
-  machines:()=>`<button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`,
+  guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
+  labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button> <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`,
+  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`,
+  permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
+  maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`,
+  backup:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('backup')" title="Hilfe zu Backup">? Hilfe</button>`,
+  settings:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('settings')" title="Hilfe zu Einstellungen">? Hilfe</button>`,
+  dashboard:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>`,
 };
 function navigate(el) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -831,6 +1287,53 @@ function navigate(el) {
   if (page==='dashboard' || page==='machines') refreshLiveData();
   if (page==='dashboard') { refreshMaintenanceOverview(); loadAdminQueues(); loadPendingGuests(); }
   if (page==='settings') loadSettings();
+  if (page==='help') initHelp();
+}
+
+function navigateToHelp(section) {
+  navigateTo('help');
+  setTimeout(() => openHelpSection(section), 50);
+}
+
+function initHelp() {
+  document.getElementById('help-search').value = '';
+  helpSearch('');
+}
+
+function toggleHelpCat(id) {
+  const el = document.getElementById('cat-' + id);
+  if (el) el.classList.toggle('open');
+}
+
+function openHelpSection(id) {
+  const el = document.getElementById('cat-' + id);
+  if (el) {
+    el.classList.add('open');
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function helpSearch(query) {
+  const q = query.trim().toLowerCase();
+  const cats = document.querySelectorAll('.help-cat');
+  let anyVisible = false;
+  cats.forEach(cat => {
+    const articles = cat.querySelectorAll('.help-article');
+    let catMatch = false;
+    articles.forEach(art => {
+      const text = art.textContent.toLowerCase();
+      const match = !q || text.includes(q);
+      art.style.display = match ? '' : 'none';
+      if (match) catMatch = true;
+    });
+    cat.style.display = catMatch ? '' : 'none';
+    if (catMatch) {
+      anyVisible = true;
+      if (q) cat.classList.add('open');
+    }
+  });
+  const noResult = document.getElementById('help-no-result');
+  if (noResult) noResult.style.display = anyVisible ? 'none' : '';
 }
 
 // ═══════════════════════════════════════════════════════
