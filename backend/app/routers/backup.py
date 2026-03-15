@@ -11,7 +11,7 @@ from app.database import get_db
 from app.models import (
     User, Guest, Machine, Permission,
     ActivityLog, MachineSession, LogType, SessionEndedBy,
-    MaintenanceInterval, MaintenanceRecord, SystemSettings,
+    MaintenanceInterval, MaintenanceRecord, SystemSettings, Announcement,
 )
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
@@ -37,6 +37,7 @@ async def export_config(
     sessions   = (await db.execute(select(MachineSession).order_by(MachineSession.id))).scalars().all()
     maint_ivs  = (await db.execute(select(MaintenanceInterval).order_by(MaintenanceInterval.id))).scalars().all()
     maint_recs = (await db.execute(select(MaintenanceRecord).order_by(MaintenanceRecord.id))).scalars().all()
+    announcements = (await db.execute(select(Announcement).order_by(Announcement.id))).scalars().all()
 
     # Stabile Referenzen statt IDs
     guest_by_id   = {g.id: g.username  for g in guests}
@@ -116,6 +117,20 @@ async def export_config(
             "hours_at_execution":  r.hours_at_execution,
             "notes":               r.notes,
         } for r in maint_recs if machine_by_id.get(r.machine_id)],
+        "announcements": [{
+            "text":               a.text,
+            "is_active":          a.is_active,
+            "is_recurring":       a.is_recurring,
+            "display_type":       a.display_type or "banner",
+            "start_at":           _iso(a.start_at),
+            "end_at":             _iso(a.end_at),
+            "recur_days":         a.recur_days,
+            "recur_start_time":   a.recur_start_time.strftime("%H:%M") if a.recur_start_time else None,
+            "recur_end_time":     a.recur_end_time.strftime("%H:%M") if a.recur_end_time else None,
+            "recur_valid_from":   a.recur_valid_from.isoformat() if a.recur_valid_from else None,
+            "recur_valid_until":  a.recur_valid_until.isoformat() if a.recur_valid_until else None,
+            "created_at":         _iso(a.created_at),
+        } for a in announcements],
         "activity_log": [{
             "type":             l.type,
             "message":          l.message,
@@ -305,6 +320,40 @@ async def import_config(
             notes=r.get("notes"),
         ))
         stats["maintenance_records"] += 1
+
+    # ── Mitteilungen ──────────────────────────────────────
+    existing_ann = {
+        (a.text, _iso(a.start_at), a.recur_days)
+        for a in (await db.execute(select(Announcement))).scalars().all()
+    }
+    for a in payload.get("announcements", []):
+        from datetime import time as _time, date as _date
+        start_at = datetime.fromisoformat(a["start_at"]) if a.get("start_at") else None
+        key = (a["text"], _iso(start_at), a.get("recur_days"))
+        if key in existing_ann:
+            stats["skipped"] += 1; continue
+        existing_ann.add(key)
+        def _parse_time(s):
+            if not s: return None
+            h, m = s.split(":")
+            return _time(int(h), int(m))
+        db.add(Announcement(
+            text=a["text"],
+            is_active=a.get("is_active", True),
+            is_recurring=a.get("is_recurring", False),
+            display_type=a.get("display_type", "banner"),
+            start_at=start_at,
+            end_at=datetime.fromisoformat(a["end_at"]) if a.get("end_at") else None,
+            recur_days=a.get("recur_days"),
+            recur_start_time=_parse_time(a.get("recur_start_time")),
+            recur_end_time=_parse_time(a.get("recur_end_time")),
+            recur_valid_from=_date.fromisoformat(a["recur_valid_from"]) if a.get("recur_valid_from") else None,
+            recur_valid_until=_date.fromisoformat(a["recur_valid_until"]) if a.get("recur_valid_until") else None,
+            created_at=datetime.fromisoformat(a["created_at"]) if a.get("created_at") else datetime.utcnow(),
+        ))
+        if "announcements" not in stats:
+            stats["announcements"] = 0
+        stats["announcements"] += 1
 
     # ── Activity Log ──────────────────────────────────────
     for l in payload.get("activity_log", []):
