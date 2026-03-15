@@ -741,12 +741,10 @@
       </div>
     </div>
 
-  </div>
-
     <!-- ═══ HILFE ═══════════════════════════════════════════════════════ -->
     <div class="page" id="page-help">
       <div class="section-header"><div class="section-title">Hilfe <span>// DOKUMENTATION</span></div></div>
-      <div style="max-width:760px">
+      <div style="max-width:760px;margin-top:8px">
 
         <div class="help-search-wrap">
           <span class="search-icon">🔍</span>
@@ -1301,12 +1299,12 @@ function initHelp() {
 }
 
 function toggleHelpCat(id) {
-  const el = document.getElementById('cat-' + id);
+  const el = document.getElementById('help-cat-' + id);
   if (el) el.classList.toggle('open');
 }
 
 function openHelpSection(id) {
-  const el = document.getElementById('cat-' + id);
+  const el = document.getElementById('help-cat-' + id);
   if (el) {
     el.classList.add('open');
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
