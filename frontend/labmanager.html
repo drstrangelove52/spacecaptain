@@ -1020,6 +1020,132 @@
           </div>
         </div>
 
+        <!-- ── NFC-Writer ── -->
+        <div class="help-cat" id="help-cat-nfc">
+          <div class="help-cat-header" onclick="toggleHelpCat('nfc')">
+            <span class="help-cat-icon">📡</span>
+            <span class="help-cat-title">NFC-Writer</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Benötigte Hardware</div>
+              <div class="help-article-body">
+                <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px">
+                  <thead><tr style="border-bottom:1px solid var(--border)">
+                    <th style="text-align:left;padding:5px 12px 6px 0;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text-dim);font-weight:400">BAUTEIL</th>
+                    <th style="text-align:left;padding:5px 12px 6px 0;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text-dim);font-weight:400">BESCHREIBUNG</th>
+                    <th style="text-align:left;padding:5px 0 6px 0;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text-dim);font-weight:400">HINWEIS</th>
+                  </tr></thead>
+                  <tbody style="color:var(--text-mid)">
+                    <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:7px 12px 7px 0;color:var(--text);font-weight:600">ESP32 DevKit V1</td><td style="padding:7px 12px 7px 0">38-Pin Development Board</td><td style="padding:7px 0">Wemos D1 R32 o. ä. funktionieren ebenfalls</td></tr>
+                    <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:7px 12px 7px 0;color:var(--text);font-weight:600">PN532 NFC-Modul</td><td style="padding:7px 12px 7px 0">NFC/RFID Controller (Adafruit oder kompatibel)</td><td style="padding:7px 0">Muss auf <strong>I²C-Modus</strong> gestellt werden</td></tr>
+                    <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:7px 12px 7px 0;color:var(--text);font-weight:600">WS2812B LED</td><td style="padding:7px 12px 7px 0">Einzelne RGB-LED oder 1 Pixel aus einem Strip</td><td style="padding:7px 0">Zeigt den Gerätestatus an</td></tr>
+                    <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:7px 12px 7px 0;color:var(--text);font-weight:600">USB-Kabel</td><td style="padding:7px 12px 7px 0">Micro-USB oder USB-C (je nach ESP32)</td><td style="padding:7px 0">Für Flash-Vorgang und Betrieb</td></tr>
+                    <tr><td style="padding:7px 12px 7px 0;color:var(--text);font-weight:600">Jumperkabel</td><td style="padding:7px 12px 7px 0">7× weiblich–weiblich</td><td style="padding:7px 0">—</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">PN532 auf I²C einstellen</div>
+              <div class="help-article-body">
+                Das PN532-Modul muss vor dem Verbinden auf <strong>I²C-Modus</strong> gestellt werden:
+                <ul style="margin-top:8px;padding-left:18px;line-height:1.9">
+                  <li><strong>DIP-Schalter:</strong> SEL0 = OFF &nbsp;·&nbsp; SEL1 = ON</li>
+                  <li><strong>Lötbrücken:</strong> Brücke 1 offen, Brücke 0 geschlossen</li>
+                </ul>
+                <div class="help-tip" style="margin-top:10px">Die genaue Beschriftung variiert je nach Modulversion — im Datenblatt des jeweiligen Boards nachschlagen.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Verdrahtung</div>
+              <div class="help-article-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px">
+                  <div>
+                    <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:8px">PN532 → ESP32</div>
+                    <table style="width:100%;border-collapse:collapse;font-size:13px">
+                      <tbody style="color:var(--text-mid)">
+                        <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">VCC</td><td style="padding:5px 0">3.3V</td></tr>
+                        <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">GND</td><td style="padding:5px 0">GND</td></tr>
+                        <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">SDA</td><td style="padding:5px 0">GPIO 21</td></tr>
+                        <tr><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">SCL</td><td style="padding:5px 0">GPIO 22</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div>
+                    <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:8px">WS2812B → ESP32</div>
+                    <table style="width:100%;border-collapse:collapse;font-size:13px">
+                      <tbody style="color:var(--text-mid)">
+                        <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">VCC</td><td style="padding:5px 0">3.3V</td></tr>
+                        <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">GND</td><td style="padding:5px 0">GND</td></tr>
+                        <tr><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">DIN</td><td style="padding:5px 0">GPIO 2</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 16px;font-family:var(--mono);font-size:12px;color:var(--accent2);line-height:1.6;overflow-x:auto">ESP32
+┌──────────────────┐
+│  3.3V ───────────┼──┬── PN532 VCC
+│  GND  ───────────┼──┼── PN532 GND  ──── WS2812B GND
+│  IO21 ───────────┼──┼── PN532 SDA
+│  IO22 ───────────┼──┼── PN532 SCL
+│                  │  │
+│  IO2  ───────────┼──┼── WS2812B DIN
+│  3.3V ───────────┼──┴── WS2812B VCC
+└──────────────────┘</pre>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Firmware flashen (ESP Web Tools)</div>
+              <div class="help-article-body">
+                Die Firmware kann direkt im Browser geflasht werden — kein PlatformIO nötig.
+                <ol style="margin-top:8px;padding-left:18px;line-height:2">
+                  <li>ESP32 per USB an den Computer anschliessen</li>
+                  <li><strong>Chrome oder Edge</strong> verwenden (Web Serial API erforderlich)</li>
+                  <li>Seite <code>/nfc-setup</code> aufrufen</li>
+                  <li>Auf «Installieren» klicken, COM-Port auswählen, Flash-Vorgang bestätigen</li>
+                </ol>
+                <div class="help-tip" style="margin-top:10px"><strong>Tipp:</strong> Erneutes Flashen setzt die gespeicherten WLAN-Zugangsdaten nicht zurück. Zum Zurücksetzen den BOOT-Button beim Start gedrückt halten.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">WLAN konfigurieren (erster Start)</div>
+              <div class="help-article-body">
+                Nach dem ersten Flash öffnet der ESP32 automatisch einen WLAN-Access-Point:
+                <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;margin:10px 0;font-family:var(--mono);font-size:13px">
+                  <div style="color:var(--text-dim);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">SSID</div>
+                  <div style="color:var(--accent2)">SpaceCaptain-NFC</div>
+                </div>
+                Mit Smartphone oder Laptop mit diesem WLAN verbinden. Es öffnet sich automatisch ein Konfigurationsportal — dort SSID und Passwort des lokalen WLANs eingeben. Der ESP32 speichert die Zugangsdaten und verbindet sich künftig automatisch.
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">IP-Adresse in SpaceCaptain eintragen</div>
+              <div class="help-article-body">
+                Nach erfolgreicher WLAN-Verbindung zeigt der ESP32 seine IP-Adresse im Serial Monitor. Diese URL in den SpaceCaptain-Einstellungen unter <strong>NFC-Writer URL</strong> eintragen:
+                <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;margin:10px 0;font-family:var(--mono);font-size:13px">
+                  <div style="color:var(--text-dim);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Beispiel</div>
+                  <div style="color:var(--accent2)">http://192.168.1.42</div>
+                </div>
+                <div class="help-tip"><strong>Tipp:</strong> Eine DHCP-Reservierung im Router verhindert, dass sich die IP-Adresse nach einem Neustart ändert.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">LED-Statusanzeige</div>
+              <div class="help-article-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;color:var(--text-mid)">
+                  <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:#3b82f6;box-shadow:0 0 6px #3b82f6;flex-shrink:0"></div> Blau blinkend = Bereit</div>
+                  <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:#eab308;box-shadow:0 0 6px #eab308;flex-shrink:0"></div> Gelb blinkend = Wartet auf Tag</div>
+                  <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;flex-shrink:0"></div> Grün = Schreiben erfolgreich</div>
+                  <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;flex-shrink:0"></div> Rot = Fehler / Timeout</div>
+                  <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:#a855f7;box-shadow:0 0 6px #a855f7;flex-shrink:0"></div> Lila = WLAN-Konfiguration (AP)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- ── Einstellungen ── -->
         <div class="help-cat" id="help-cat-settings">
           <div class="help-cat-header" onclick="toggleHelpCat('settings')">
