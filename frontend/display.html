@@ -137,6 +137,7 @@ let _tickerPos = 0;
 let _tickerSpeed = 80;
 let _tickerHalfWidth = 0;
 let _tickerLastTime = null;
+let _tickerLastSource = '';
 
 function _tickerStep(timestamp) {
   if (_tickerLastTime === null) _tickerLastTime = timestamp;
@@ -155,37 +156,71 @@ function renderTicker(text, speed, fontSize) {
   const bar = document.getElementById('ticker-bar');
   const track = document.getElementById('ticker-track');
 
+  _tickerSpeed = speed || 80;
+
   if (!text || !text.trim()) {
     bar.style.display = 'none';
     if (_tickerRAF) { cancelAnimationFrame(_tickerRAF); _tickerRAF = null; }
+    _tickerPos = 0;
+    _tickerLastSource = '';
     return;
   }
 
-  _tickerSpeed = speed || 80;
   bar.style.fontSize = (fontSize || 18) + 'px';
+
+  // Läuft bereits mit gleichem Quelltext → nur Speed/Grösse übernehmen
+  if (text === _tickerLastSource && _tickerRAF) return;
+  _tickerLastSource = text;
+
+  if (_tickerRAF) { cancelAnimationFrame(_tickerRAF); _tickerRAF = null; }
+  _tickerPos = 0;
+  _tickerLastTime = null;
 
   const msgs = text.split('\n').map(l => l.trim()).filter(Boolean);
   const sep = '     +++     ';
   const half = msgs.join(sep) + sep;
+
+  // Erst mal nur half setzen um Breite zu messen
+  track.style.paddingLeft = '0';
   track.style.transform = '';
-  track.textContent = half + half;
-  // Padding damit Text von rechts einläuft
-  track.style.paddingLeft = bar.offsetWidth + 'px';
+  track.textContent = half;
   bar.style.display = 'block';
 
-  // Halbe Breite nach Render messen
   requestAnimationFrame(() => {
-    _tickerHalfWidth = track.scrollWidth / 2;
-    if (!_tickerRAF) {
+    const barW = bar.offsetWidth;
+    const singleW = track.scrollWidth;
+
+    // half so oft wiederholen bis es mindestens 1.5× Bildschirmbreite bedeckt
+    // → Schleifenpunkt liegt immer ausserhalb des sichtbaren Bereichs
+    let finalHalf = half;
+    if (singleW > 0 && singleW < barW * 1.5) {
+      const repeats = Math.ceil((barW * 1.5) / singleW);
+      finalHalf = Array(repeats).fill(half).join('');
+    }
+
+    track.style.paddingLeft = barW + 'px';
+    track.textContent = finalHalf + finalHalf;
+
+    requestAnimationFrame(() => {
+      _tickerHalfWidth = (track.scrollWidth - barW) / 2;
       _tickerLastTime = null;
       _tickerRAF = requestAnimationFrame(_tickerStep);
-    }
+    });
   });
 }
 
-function renderAnnouncement(text, fontSize) {
-  window._announcement = text && text.trim() ? text.trim() : '';
-  window._announcementFontSize = fontSize || 20;
+async function loadAnnouncements() {
+  try {
+    const items = await fetch('/api/announcements/active').then(r => r.json());
+    window._announcements = (items || []).filter(a => a.display_type === 'banner').map(a => a.text);
+    window._tickerExtra = (items || []).filter(a => a.display_type === 'ticker').map(a => a.text).join('\n');
+    _rebuildTicker();
+  } catch {}
+}
+
+function _rebuildTicker() {
+  const parts = [window._tickerBase || '', window._tickerExtra || ''].filter(Boolean);
+  renderTicker(parts.join('\n'), window._tickerSpeed || 80, window._tickerFontSize || 18);
 }
 
 function buildMachineCard(m) {
@@ -242,10 +277,10 @@ function renderPage(page) {
   const grid = document.getElementById('machine-grid');
   let html = '';
 
-  // Ankündigung auf allen Seiten
-  if (window._announcement) {
-    html += `<div class="announcement-card"><div class="announcement-inner"><div class="announcement-icon">📢</div><div style="flex:1"><div class="announcement-text" style="font-size:${window._announcementFontSize || 20}px">${window._announcement.replace(/</g,'&lt;')}</div></div></div></div>`;
-  }
+  // Ankündigungen auf allen Seiten
+  (window._announcements || []).forEach(text => {
+    html += `<div class="announcement-card"><div class="announcement-inner"><div class="announcement-icon">📢</div><div style="flex:1"><div class="announcement-text" style="font-size:${window._announcementFontSize||20}px">${text.replace(/</g,'&lt;')}</div></div></div></div>`;
+  });
 
   if (!_allMachines.length) {
     html += '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;grid-column:1/-1;padding:40px;text-align:center">Keine Maschinen konfiguriert.</div>';
@@ -300,19 +335,26 @@ async function initDisplay() {
     const s = await fetch('/api/settings/public').then(r => r.json());
     if (s.display_refresh_seconds) _displayRefreshMs = s.display_refresh_seconds * 1000;
     if (s.display_page_size) PAGE_SIZE = s.display_page_size;
-    renderTicker(s.ticker_text || '', s.ticker_speed, s.ticker_font_size);
-    renderAnnouncement(s.announcement || '', s.announcement_font_size);
+    window._tickerBase = s.ticker_text || '';
+    window._tickerSpeed = s.ticker_speed || 80;
+    window._tickerFontSize = s.ticker_font_size || 18;
+    window._announcementFontSize = s.announcement_font_size || 20;
   } catch {}
+  await loadAnnouncements();
   loadData();
   setInterval(loadData, _displayRefreshMs);
-  // Ticker/Ankündigung alle 5 Min neu laden
+  // Settings alle 5 Min, Ankündigungen jede Minute neu laden
   setInterval(async () => {
     try {
       const s = await fetch('/api/settings/public').then(r => r.json());
-      renderTicker(s.ticker_text || '', s.ticker_speed, s.ticker_font_size);
-      renderAnnouncement(s.announcement || '', s.announcement_font_size);
+      window._tickerBase = s.ticker_text || '';
+      window._tickerSpeed = s.ticker_speed || 80;
+      window._tickerFontSize = s.ticker_font_size || 18;
+      window._announcementFontSize = s.announcement_font_size || 20;
+      _rebuildTicker();
     } catch {}
   }, 300000);
+  setInterval(loadAnnouncements, 60000);
   document.querySelector('footer span:first-of-type').textContent =
     `Automatische Aktualisierung alle ${_displayRefreshMs/1000} Sekunden`;
 }

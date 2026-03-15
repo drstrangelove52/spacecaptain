@@ -9,6 +9,7 @@ from app.services.migrate import run_migrations
 from app.routers import auth, users, guests, machines, permissions, qr, dashboard, guest_auth, backup, maintenance, nfc
 from app.routers import settings as settings_router
 from app.routers import queue as queue_router
+from app.routers import announcements as announcements_router
 from app.services.session import idle_watcher, plug_watcher, queue_watcher
 
 settings = get_settings()
@@ -96,3 +97,4 @@ app.include_router(maintenance.router,  prefix="/api")
 app.include_router(nfc.router,          prefix="/api")
 app.include_router(settings_router.router, prefix="/api")
 app.include_router(queue_router.router,    prefix="/api")
+app.include_router(announcements_router.router, prefix="/api")

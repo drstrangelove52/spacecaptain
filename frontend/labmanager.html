@@ -265,6 +265,7 @@
     <div class="nav-item" data-page="log" onclick="navigate(this)"><span class="nav-icon">📋</span> Aktivitätslog</div>
     <div class="nav-item" data-page="stats" onclick="navigate(this)"><span class="nav-icon">📈</span> Statistiken</div>
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
+    <div class="nav-item" data-page="announcements" onclick="navigate(this)"><span class="nav-icon">📢</span> Mitteilungen</div>
     <div class="nav-item" data-page="backup" onclick="navigate(this)"><span class="nav-icon">💾</span> Backup</div>
     <div class="nav-item" data-page="settings" onclick="navigate(this)" id="nav-settings" style="display:none"><span class="nav-icon">⚙️</span> Einstellungen</div>
     <div class="nav-item" data-page="info" onclick="navigate(this)"><span class="nav-icon">ℹ️</span> Info</div>
@@ -621,27 +622,22 @@
         </div>
         <div class="table-wrap" style="padding:20px">
           <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">MITTEILUNGEN</div>
-          <div class="form-group">
-            <label class="form-label">Mitteilungs-Karte</label>
-            <textarea class="form-input" id="cfg-announcement" rows="3" placeholder="Wichtige Mitteilung für das TV-Display…" style="resize:vertical"></textarea>
-            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Erscheint als hervorgehobene Karte oben im Display. Leer = ausgeblendet.</div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:6px;padding:14px 18px;font-size:13px;color:var(--text-mid);line-height:1.7;margin-bottom:16px">
+            Mitteilungs-Karte und Lauftext werden über die Mitteilungsverwaltung gesteuert.<br>
+            Dort lassen sich zeitgesteuerte und wiederkehrende Mitteilungen einrichten.<br>
+            <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="navigateTo('announcements')">→ Zur Mitteilungsverwaltung</button>
           </div>
-          <div class="form-group" style="margin-top:12px">
-            <label class="form-label">Schriftgrösse Karte <span style="color:var(--text-dim);font-weight:400">(px)</span></label>
-            <input class="form-input" id="cfg-announcement-size" type="number" min="10" max="72" placeholder="20">
-          </div>
-          <div class="form-group" style="margin-top:12px">
-            <label class="form-label">Lauftext (Ticker)</label>
-            <textarea class="form-input" id="cfg-ticker" rows="3" placeholder="Eine Nachricht pro Zeile…&#10;Zweite Nachricht&#10;Dritte Nachricht" style="resize:vertical"></textarea>
-            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Scrollt als Ticker am unteren Rand. Eine Nachricht pro Zeile. Leer = ausgeblendet.</div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
             <div class="form-group">
-              <label class="form-label">Schriftgrösse <span style="color:var(--text-dim);font-weight:400">(px)</span></label>
+              <label class="form-label">Mitteilungs-Karte Schriftgrösse <span style="color:var(--text-dim);font-weight:400">(px)</span></label>
+              <input class="form-input" id="cfg-announcement-size" type="number" min="10" max="72" placeholder="20">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Lauftext Schriftgrösse <span style="color:var(--text-dim);font-weight:400">(px)</span></label>
               <input class="form-input" id="cfg-ticker-size" type="number" min="10" max="72" placeholder="18">
             </div>
             <div class="form-group">
-              <label class="form-label">Geschwindigkeit <span style="color:var(--text-dim);font-weight:400">(px/s)</span></label>
+              <label class="form-label">Lauftext Geschwindigkeit <span style="color:var(--text-dim);font-weight:400">(px/s)</span></label>
               <input class="form-input" id="cfg-ticker-speed" type="number" min="20" max="400" placeholder="80">
               <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Langsam: 40 · Normal: 80 · Schnell: 160</div>
             </div>
@@ -739,6 +735,11 @@
         </div>
 
       </div>
+    </div>
+
+    <!-- ═══ MITTEILUNGEN ════════════════════════════════════════════════ -->
+    <div class="page" id="page-announcements">
+      <div id="ann-list"><div class="loading"><div class="spinner"></div>Laden…</div></div>
     </div>
 
     <!-- ═══ HILFE ═══════════════════════════════════════════════════════ -->
@@ -1385,7 +1386,7 @@ function doLogout() {
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',backup:'Backup & Restore',settings:'Einstellungen',info:'Info',help:'Hilfe & Dokumentation'};
+const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Mitteilungen',backup:'Backup & Restore',settings:'Einstellungen',info:'Info',help:'Hilfe & Dokumentation'};
 const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',machines:'machines',permissions:'permissions',maintenance:'maintenance',backup:'backup',settings:'settings'};
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
@@ -1393,6 +1394,7 @@ const pageActions={
   machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`,
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
   maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`,
+  announcements:()=>`<button class="btn btn-primary" onclick="showAddAnnouncement()">+ Neue Mitteilung</button>`,
   backup:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('backup')" title="Hilfe zu Backup">? Hilfe</button>`,
   settings:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('settings')" title="Hilfe zu Einstellungen">? Hilfe</button>`,
   dashboard:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>`,
@@ -1408,6 +1410,7 @@ function navigate(el) {
   if (page==='log') { loadLogFilterOptions(); loadLog(); }
   if (page==='stats') loadStats();
   if (page==='maintenance') loadMaintenance();
+  if (page==='announcements') loadAnnouncements();
   if (page==='dashboard' || page==='machines') refreshLiveData();
   if (page==='dashboard') { refreshMaintenanceOverview(); loadAdminQueues(); loadPendingGuests(); }
   if (page==='settings') loadSettings();
@@ -1458,6 +1461,193 @@ function helpSearch(query) {
   });
   const noResult = document.getElementById('help-no-result');
   if (noResult) noResult.style.display = anyVisible ? 'none' : '';
+}
+
+// ═══════════════════════════════════════════════════════
+// MITTEILUNGEN
+// ═══════════════════════════════════════════════════════
+
+const DAY_LABELS = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+
+async function loadAnnouncements() {
+  const data = await api('GET', '/announcements');
+  if (!data) return;
+  renderAnnouncementList(data);
+}
+
+function annStatusBadge(status) {
+  const map = {
+    aktiv:        `<span style="background:rgba(34,197,94,.15);color:var(--success);border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:11px">● AKTIV</span>`,
+    geplant:      `<span style="background:rgba(34,211,238,.1);color:var(--accent2);border:1px solid rgba(34,211,238,.3);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:11px">◷ GEPLANT</span>`,
+    abgelaufen:   `<span style="background:rgba(100,116,139,.15);color:var(--text-dim);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:11px">✕ ABGELAUFEN</span>`,
+    deaktiviert:  `<span style="background:rgba(100,116,139,.15);color:var(--text-dim);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:11px">○ DEAKTIVIERT</span>`,
+  };
+  return map[status] || status;
+}
+
+function annMeta(a) {
+  if (a.is_recurring) {
+    const days = a.recur_days
+      ? a.recur_days.split(',').map(d => DAY_LABELS[parseInt(d)]).join(' ')
+      : '—';
+    const time = [a.recur_start_time, a.recur_end_time].filter(Boolean).join(' – ');
+    let range = '';
+    if (a.recur_valid_from || a.recur_valid_until)
+      range = ` &nbsp;·&nbsp; ${a.recur_valid_from||'?'} bis ${a.recur_valid_until||'offen'}`;
+    return `🔁 ${days}${time ? ' &nbsp;·&nbsp; ' + time : ''}${range}`;
+  } else {
+    const from = a.start_at ? new Date(a.start_at).toLocaleString('de-CH') : 'sofort';
+    const to   = a.end_at   ? new Date(a.end_at).toLocaleString('de-CH')   : 'dauerhaft';
+    return `📅 ${from} → ${to}`;
+  }
+}
+
+function renderAnnouncementList(data) {
+  const el = document.getElementById('ann-list');
+  if (!el) return;
+  if (!data.length) {
+    el.innerHTML = `<div style="color:var(--text-dim);font-size:13px;padding:24px;text-align:center">Noch keine Mitteilungen vorhanden.</div>`;
+    return;
+  }
+  const order = { aktiv: 0, geplant: 1, abgelaufen: 2, deaktiviert: 3 };
+  data = [...data].sort((a,b) => (order[a.status]||9) - (order[b.status]||9));
+  el.innerHTML = data.map(a => `
+    <div class="card" style="padding:16px;margin-bottom:12px;border-left:3px solid ${a.currently_active?'var(--success)':a.status==='geplant'?'var(--accent2)':'var(--border)'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+            ${annStatusBadge(a.status)}
+            ${a.is_recurring ? `<span style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:1px">WIEDERKEHREND</span>` : ''}
+            <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px">${a.display_type === 'ticker' ? '🎞 LAUFTEXT' : '📢 KARTE'}</span>
+          </div>
+          <div style="font-size:14px;color:var(--text);margin-bottom:6px;white-space:pre-wrap">${a.text.replace(/</g,'&lt;')}</div>
+          <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">${annMeta(a)}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-ghost btn-sm" onclick="showEditAnnouncement(${a.id})">✎</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(${a.id})">✕</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function _annFormHtml(a) {
+  const isRec = a && a.is_recurring;
+  const days = a && a.recur_days ? a.recur_days.split(',').map(Number) : [];
+  return `
+    <div class="form-group"><label class="form-label">Text *</label>
+      <textarea class="form-input" id="ann-text" rows="3" placeholder="Text der Mitteilung">${a ? a.text.replace(/</g,'&lt;') : ''}</textarea></div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Anzeige</label>
+      <div style="display:flex;gap:12px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+          <input type="radio" name="ann-display" value="banner" ${(!a||a.display_type==='banner')?'checked':''}> 📢 Mitteilungs-Karte
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+          <input type="radio" name="ann-display" value="ticker" ${(a&&a.display_type==='ticker')?'checked':''}> 🎞 Lauftext
+        </label>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Zeitplanung</label>
+      <div style="display:flex;gap:12px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+          <input type="radio" name="ann-type" value="once" ${!isRec?'checked':''} onchange="toggleAnnType()"> Einmalig
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+          <input type="radio" name="ann-type" value="recurring" ${isRec?'checked':''} onchange="toggleAnnType()"> Wiederkehrend
+        </label>
+      </div>
+    </div>
+
+    <div id="ann-once-fields" style="display:${isRec?'none':'block'}">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Start (leer = sofort)</label>
+          <input class="form-input" id="ann-start" type="datetime-local" value="${a&&a.start_at?a.start_at.slice(0,16):''}"></div>
+        <div class="form-group"><label class="form-label">Ende (leer = dauerhaft)</label>
+          <input class="form-input" id="ann-end" type="datetime-local" value="${a&&a.end_at?a.end_at.slice(0,16):''}"></div>
+      </div>
+    </div>
+
+    <div id="ann-rec-fields" style="display:${isRec?'block':'none'}">
+      <div class="form-group"><label class="form-label">Wochentage</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${DAY_LABELS.map((d,i) => `<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:4px 10px"><input type="checkbox" name="ann-days" value="${i}" ${days.includes(i)?'checked':''}> ${d}</label>`).join('')}
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Uhrzeit Start</label>
+          <input class="form-input" id="ann-rstart" type="time" value="${a&&a.recur_start_time||''}"></div>
+        <div class="form-group"><label class="form-label">Uhrzeit Ende</label>
+          <input class="form-input" id="ann-rend" type="time" value="${a&&a.recur_end_time||''}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Gültig ab (optional)</label>
+          <input class="form-input" id="ann-vfrom" type="date" value="${a&&a.recur_valid_from||''}"></div>
+        <div class="form-group"><label class="form-label">Gültig bis (optional)</label>
+          <input class="form-input" id="ann-vuntil" type="date" value="${a&&a.recur_valid_until||''}"></div>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-top:4px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
+        <input type="checkbox" id="ann-active" ${!a||a.is_active?'checked':''}> Aktiv
+      </label>
+    </div>`;
+}
+
+function toggleAnnType() {
+  const rec = document.querySelector('input[name="ann-type"]:checked').value === 'recurring';
+  document.getElementById('ann-once-fields').style.display = rec ? 'none' : 'block';
+  document.getElementById('ann-rec-fields').style.display  = rec ? 'block' : 'none';
+}
+
+function _annPayload() {
+  const rec = document.querySelector('input[name="ann-type"]:checked').value === 'recurring';
+  const checkedDays = [...document.querySelectorAll('input[name="ann-days"]:checked')].map(c => c.value).join(',');
+  const displayType = document.querySelector('input[name="ann-display"]:checked')?.value || 'banner';
+  return {
+    text:              document.getElementById('ann-text').value.trim(),
+    is_active:         document.getElementById('ann-active').checked,
+    is_recurring:      rec,
+    display_type:      displayType,
+    start_at:          !rec ? (document.getElementById('ann-start').value || null) : null,
+    end_at:            !rec ? (document.getElementById('ann-end').value || null) : null,
+    recur_days:        rec ? (checkedDays || null) : null,
+    recur_start_time:  rec ? (document.getElementById('ann-rstart').value || null) : null,
+    recur_end_time:    rec ? (document.getElementById('ann-rend').value || null) : null,
+    recur_valid_from:  rec ? (document.getElementById('ann-vfrom').value || null) : null,
+    recur_valid_until: rec ? (document.getElementById('ann-vuntil').value || null) : null,
+  };
+}
+
+function showAddAnnouncement() {
+  openModal('Neue Mitteilung', _annFormHtml(null),
+    async () => {
+      const body = _annPayload();
+      if (!body.text) { showToast('Text ist erforderlich','error'); return false; }
+      const res = await api('POST', '/announcements', body);
+      if (res) { closeModal(); showToast('Mitteilung erstellt','success'); loadAnnouncements(); }
+    }, 'Erstellen');
+}
+
+async function showEditAnnouncement(id) {
+  const data = await api('GET', '/announcements');
+  const a = data && data.find(x => x.id === id);
+  if (!a) return;
+  openModal('Mitteilung bearbeiten', _annFormHtml(a),
+    async () => {
+      const body = _annPayload();
+      if (!body.text) { showToast('Text ist erforderlich','error'); return false; }
+      const res = await api('PUT', `/announcements/${id}`, body);
+      if (res) { closeModal(); showToast('Gespeichert','success'); loadAnnouncements(); }
+    }, 'Speichern');
+}
+
+async function deleteAnnouncement(id) {
+  if (!confirm('Mitteilung löschen?')) return;
+  const res = await api('DELETE', `/announcements/${id}`);
+  if (res) { showToast('Gelöscht','success'); loadAnnouncements(); }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2798,9 +2988,7 @@ async function loadSettings() {
   document.getElementById('cfg-display-refresh').value = s.display_refresh_seconds ?? 30;
   document.getElementById('cfg-display-page-size').value = s.display_page_size ?? 8;
   document.getElementById('cfg-dashboard-refresh').value = s.dashboard_refresh_seconds ?? 30;
-  document.getElementById('cfg-announcement').value = s.announcement ?? '';
   document.getElementById('cfg-announcement-size').value = s.announcement_font_size ?? 20;
-  document.getElementById('cfg-ticker').value = s.ticker_text ?? '';
   document.getElementById('cfg-ticker-size').value = s.ticker_font_size ?? 18;
   document.getElementById('cfg-ticker-speed').value = s.ticker_speed ?? 80;
   const h = s.jwt_expire_minutes >= 60
@@ -2820,9 +3008,7 @@ async function saveSettings() {
     display_refresh_seconds:    parseInt(document.getElementById('cfg-display-refresh').value) || 30,
     display_page_size:          parseInt(document.getElementById('cfg-display-page-size').value) || 8,
     dashboard_refresh_seconds:  parseInt(document.getElementById('cfg-dashboard-refresh').value) || 30,
-    announcement:              document.getElementById('cfg-announcement').value,
     announcement_font_size:    parseInt(document.getElementById('cfg-announcement-size').value) || 20,
-    ticker_text:               document.getElementById('cfg-ticker').value,
     ticker_font_size:          parseInt(document.getElementById('cfg-ticker-size').value) || 18,
     ticker_speed:              parseInt(document.getElementById('cfg-ticker-speed').value) || 80,
   };

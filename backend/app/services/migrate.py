@@ -161,6 +161,27 @@ async def run_migrations(engine: AsyncEngine) -> None:
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """))
 
+        # ── v1.09: announcements ──────────────────────────────────────────────
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS announcements (
+                id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                text              TEXT NOT NULL,
+                is_active         TINYINT(1) NOT NULL DEFAULT 1,
+                is_recurring      TINYINT(1) NOT NULL DEFAULT 0,
+                display_type      VARCHAR(20) NOT NULL DEFAULT 'banner',
+                start_at          DATETIME DEFAULT NULL,
+                end_at            DATETIME DEFAULT NULL,
+                recur_days        VARCHAR(20) DEFAULT NULL,
+                recur_start_time  TIME DEFAULT NULL,
+                recur_end_time    TIME DEFAULT NULL,
+                recur_valid_from  DATE DEFAULT NULL,
+                recur_valid_until DATE DEFAULT NULL,
+                created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
+        await _add_column_if_missing(conn, "announcements", "display_type",
+                                     "VARCHAR(20) NOT NULL DEFAULT 'banner'")
+
     log.info("Migrationen abgeschlossen")
 
 

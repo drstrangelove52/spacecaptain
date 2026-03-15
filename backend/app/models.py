@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime, date, time
 from typing import Optional
 from sqlalchemy import (Integer, String, Boolean, DateTime, Text, JSON,
-                        Enum, ForeignKey, UniqueConstraint, Float)
+                        Enum, ForeignKey, UniqueConstraint, Float, Date, Time)
 from sqlalchemy.dialects.mysql import INTEGER as UINT
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
@@ -228,6 +228,25 @@ class PushSubscription(Base):
     auth:       Mapped[str]      = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     guest:      Mapped["Guest"]  = relationship("Guest")
+
+
+class Announcement(Base):
+    __tablename__ = "announcements"
+    id:                 Mapped[int]            = mapped_column(Integer, primary_key=True, autoincrement=True)
+    text:               Mapped[str]            = mapped_column(Text, nullable=False)
+    is_active:          Mapped[bool]           = mapped_column(Boolean, default=True)
+    is_recurring:       Mapped[bool]           = mapped_column(Boolean, default=False)
+    # einmalig
+    start_at:           Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    end_at:             Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # wiederkehrend
+    recur_days:         Mapped[Optional[str]]  = mapped_column(String(20), nullable=True)   # "0,1,2,3,4"
+    recur_start_time:   Mapped[Optional[time]] = mapped_column(Time, nullable=True)
+    recur_end_time:     Mapped[Optional[time]] = mapped_column(Time, nullable=True)
+    recur_valid_from:   Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    recur_valid_until:  Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    display_type:       Mapped[str]            = mapped_column(String(20), default="banner")  # "banner" | "ticker"
+    created_at:         Mapped[datetime]       = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class MaintenanceRecord(Base):
