@@ -43,6 +43,8 @@
   .btn-ghost{background:transparent;color:var(--text-mid);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
   .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}.btn-danger:hover{background:var(--danger);color:#fff}
   .btn-success{background:var(--success);color:var(--bg)}.btn-success:hover{filter:brightness(1.1)}
+  .btn-success-outline{background:transparent;color:var(--success);border:1px solid var(--success)}.btn-success-outline:hover{background:var(--success);color:var(--bg)}
+  .btn-danger-filled{background:var(--danger);color:#fff;border:1px solid var(--danger)}.btn-danger-filled:hover{filter:brightness(1.1)}
   .btn-sm{padding:5px 10px;font-size:12px}
   .content{flex:1;padding:24px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
   .page{display:none}.page.active{display:block}
@@ -641,6 +643,14 @@
               <input class="form-input" id="cfg-ticker-speed" type="number" min="20" max="400" placeholder="80">
               <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Langsam: 40 · Normal: 80 · Schnell: 160</div>
             </div>
+          </div>
+        </div>
+        <div class="table-wrap" style="padding:20px;grid-column:1/-1">
+          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">ALLGEMEINE GESCHÄFTSBEDINGUNGEN</div>
+          <div class="form-group">
+            <label class="form-label">AGB-Text <span style="color:var(--text-dim);font-weight:400">(Markdown — wird auf der Registrierungsseite angezeigt)</span></label>
+            <textarea class="form-input" id="cfg-agb-text" rows="8" placeholder="## Allgemeine Geschäftsbedingungen&#10;&#10;Bitte lies die folgenden Bedingungen sorgfältig..." style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
+            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Leer = keine AGB-Pflicht bei der Registrierung. Unterstützt Markdown: **fett**, *kursiv*, ## Überschriften, - Listen.</div>
           </div>
         </div>
         <div style="grid-column:1/-1">
@@ -1496,8 +1506,8 @@ function annMeta(a) {
       range = ` &nbsp;·&nbsp; ${a.recur_valid_from||'?'} bis ${a.recur_valid_until||'offen'}`;
     return `🔁 ${days}${time ? ' &nbsp;·&nbsp; ' + time : ''}${range}`;
   } else {
-    const from = a.start_at ? new Date(a.start_at).toLocaleString('de-CH') : 'sofort';
-    const to   = a.end_at   ? new Date(a.end_at).toLocaleString('de-CH')   : 'dauerhaft';
+    const from = a.start_at ? fmtDate(a.start_at) : 'sofort';
+    const to   = a.end_at   ? fmtDate(a.end_at)   : 'dauerhaft';
     return `📅 ${from} → ${to}`;
   }
 }
@@ -1657,13 +1667,14 @@ let _serverTZ = Intl.DateTimeFormat().resolvedOptions().timeZone; // Browser-Fal
 
 function fmtDate(isoStr) {
   if (!isoStr) return '—';
-  // Backend gibt Lokalzeit mit Offset zurück (z.B. 2025-01-01T10:30:00+01:00)
-  // Browser parst ISO mit Offset korrekt → direkt formatieren
-  const d = new Date(isoStr);
+  // Backend speichert UTC ohne Z-Suffix → Z anhängen damit Browser korrekt parst
+  const s = /[Z+]/.test(isoStr) ? isoStr : isoStr + 'Z';
+  const d = new Date(s);
   if (isNaN(d)) return isoStr;
   return d.toLocaleString('de-CH', {
     day:'2-digit', month:'2-digit', year:'numeric',
-    hour:'2-digit', minute:'2-digit'
+    hour:'2-digit', minute:'2-digit',
+    timeZone: 'Europe/Zurich'
   });
 }
 
@@ -2093,8 +2104,8 @@ function renderMachinesFiltered(machines) {
       </div>
       ${idleBadge}
       ${m.plug_type!=='none'&&m.status==='online'?`<div style="display:flex;gap:6px;margin-bottom:8px;margin-top:${idleBadge?'8':'0'}px">
-        <button class="btn btn-success btn-sm" onclick="managerSwitchMachine(${m.id},'on',this)" ${m.current_guest_name?'':''}style="flex:1;justify-content:center">⚡ EIN</button>
-        <button class="btn btn-danger btn-sm" onclick="managerSwitchMachine(${m.id},'off',this)" style="flex:1;justify-content:center">○ AUS</button>
+        <button class="btn ${m.plug_on?'btn-success-outline':'btn-success'} btn-sm" onclick="managerSwitchMachine(${m.id},'on',this)" style="flex:1;justify-content:center">⚡ EIN</button>
+        <button class="btn ${m.plug_on?'btn-danger-filled':'btn-danger'} btn-sm" onclick="managerSwitchMachine(${m.id},'off',this)" style="flex:1;justify-content:center">○ AUS</button>
       </div>`:''}
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="editMachine(${m.id})">✏ Bearbeiten</button>
@@ -2991,6 +3002,7 @@ async function loadSettings() {
   document.getElementById('cfg-announcement-size').value = s.announcement_font_size ?? 20;
   document.getElementById('cfg-ticker-size').value = s.ticker_font_size ?? 18;
   document.getElementById('cfg-ticker-speed').value = s.ticker_speed ?? 80;
+  document.getElementById('cfg-agb-text').value = s.agb_text ?? '';
   const h = s.jwt_expire_minutes >= 60
     ? `${Math.floor(s.jwt_expire_minutes/60)} h ${s.jwt_expire_minutes%60>0 ? s.jwt_expire_minutes%60+' min' : ''}`.trim()
     : `${s.jwt_expire_minutes} min`;
@@ -3011,6 +3023,7 @@ async function saveSettings() {
     announcement_font_size:    parseInt(document.getElementById('cfg-announcement-size').value) || 20,
     ticker_font_size:          parseInt(document.getElementById('cfg-ticker-size').value) || 18,
     ticker_speed:              parseInt(document.getElementById('cfg-ticker-speed').value) || 80,
+    agb_text:                  document.getElementById('cfg-agb-text').value || null,
   };
   const res = await PATCH('/settings', payload);
   if (res) { await loadSettings(); showToast('Einstellungen gespeichert', 'success'); }
@@ -3249,7 +3262,7 @@ async function loadPendingGuests() {
     <td style="font-family:var(--mono)">${g.username}</td>
     <td style="font-family:var(--mono);color:var(--text-dim)">${g.email || '—'}</td>
     <td style="font-family:var(--mono);color:var(--text-dim)">${g.phone || '—'}</td>
-    <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">${new Date(g.created_at).toLocaleString('de-CH',{dateStyle:'short',timeStyle:'short'})}</td>
+    <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">${fmtDate(g.created_at)}</td>
     <td style="display:flex;gap:6px;padding:8px 16px">
       <button class="btn btn-ghost btn-sm" style="color:var(--success)" onclick="approveGuest(${g.id})">✓ Freischalten</button>
       <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deletePendingGuest(${g.id},'${g.name.replace(/'/g,"\\'")}')">✕ Ablehnen</button>
@@ -3557,7 +3570,7 @@ function renderMaintenanceHistory() {
     <thead><tr><th>Datum</th><th>Maschine</th><th>Bezeichnung</th><th>Ausgeführt von</th><th>Std.</th><th>Notizen</th></tr></thead>
     <tbody>
       ${recs.slice(0, 100).map(r => `<tr>
-        <td style="font-family:var(--mono);font-size:13px;white-space:nowrap">${new Date(r.performed_at).toLocaleString('de-CH',{dateStyle:'short',timeStyle:'short'})}</td>
+        <td style="font-family:var(--mono);font-size:13px;white-space:nowrap">${fmtDate(r.performed_at)}</td>
         <td><strong>${r.machine_name}</strong></td>
         <td style="font-size:13px">${r.interval_name}${!r.interval_id ? '<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-left:4px">[frei]</span>' : ''}</td>
         <td style="font-size:13px;color:var(--text-mid)">${r.performer_name}</td>

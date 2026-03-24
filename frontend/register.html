@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SpaceCaptain — Registrieren</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
   :root{
     --bg:#0a0a0f;--surface:#13131a;--surface2:#1a1a24;--border:rgba(255,255,255,.08);
@@ -37,6 +38,27 @@
   .login-link{text-align:center;margin-top:18px;font-size:13px;color:var(--text-dim)}
   .login-link a{color:var(--accent2);text-decoration:none}
   .login-link a:hover{text-decoration:underline}
+  /* AGB Checkbox */
+  .agb-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;margin-top:4px;font-size:13px;line-height:1.5;color:var(--text-dim)}
+  .agb-row input[type=checkbox]{width:16px;height:16px;flex-shrink:0;margin-top:2px;accent-color:var(--accent);cursor:pointer}
+  .agb-link{color:var(--accent2);text-decoration:none;cursor:pointer}
+  .agb-link:hover{text-decoration:underline}
+  /* AGB Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:20px;z-index:100}
+  .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:100%;max-width:640px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
+  .modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  .modal-title{font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+  .modal-close{background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;line-height:1;padding:4px}
+  .modal-close:hover{color:var(--text)}
+  .modal-body{padding:24px;overflow-y:auto;flex:1;font-size:14px;line-height:1.7;color:var(--text-dim)}
+  .modal-body h1,.modal-body h2,.modal-body h3{font-family:var(--display);color:var(--text);margin:16px 0 8px;letter-spacing:.5px}
+  .modal-body h1{font-size:20px}.modal-body h2{font-size:17px}.modal-body h3{font-size:15px}
+  .modal-body p{margin-bottom:10px}
+  .modal-body ul,.modal-body ol{margin:0 0 10px 20px}
+  .modal-body li{margin-bottom:4px}
+  .modal-body strong{color:var(--text)}
+  .modal-body hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+  .modal-body a{color:var(--accent2)}
 </style>
 </head>
 <body>
@@ -77,6 +99,10 @@
       <label class="form-label">Telefon <span class="opt">(optional)</span></label>
       <input class="form-input" id="r-phone" type="tel" placeholder="+41 79 123 45 67" autocomplete="tel">
     </div>
+    <div class="agb-row" id="agb-row" style="display:none">
+      <input type="checkbox" id="r-agb">
+      <label for="r-agb">Ich habe die <a class="agb-link" onclick="openAgbModal()">Allgemeinen Geschäftsbedingungen</a> gelesen und akzeptiere sie.</label>
+    </div>
     <button class="btn btn-primary" id="r-submit" onclick="doRegister()">Registrierung absenden</button>
     <div class="msg msg-success" id="r-success">
       ✓ Deine Registrierung wurde übermittelt. Ein Lab Manager wird deinen Zugang in Kürze freischalten.
@@ -85,10 +111,23 @@
     <div class="login-link">Bereits registriert? <a href="/">Zum Login</a></div>
   </div>
 </div>
+
+<!-- AGB Modal -->
+<div class="modal-overlay" id="agb-modal" style="display:none" onclick="closeAgbModal(event)">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Allgemeine Geschäftsbedingungen</div>
+      <button class="modal-close" onclick="closeAgbModal()">✕</button>
+    </div>
+    <div class="modal-body" id="agb-content"></div>
+  </div>
+</div>
+
 <script>
 const API = '/api';
 let _unCheckTimer = null;
 let _unAvailable = null;
+let _agbText = '';
 
 function toUsername(str) {
   return str.toLowerCase()
@@ -135,9 +174,31 @@ function setUnStatus(text, color) {
   el.style.color = color;
 }
 
+async function loadAgb() {
+  try {
+    const s = await fetch(`${API}/settings/public`).then(r => r.json());
+    _agbText = s.agb_text || '';
+    if (_agbText.trim()) {
+      document.getElementById('agb-row').style.display = 'flex';
+    }
+  } catch { /* AGB nicht verfügbar — kein Pflichtfeld */ }
+}
+
+function openAgbModal() {
+  document.getElementById('agb-content').innerHTML = marked.parse(_agbText);
+  document.getElementById('agb-modal').style.display = 'flex';
+}
+
+function closeAgbModal(e) {
+  if (!e || e.target === document.getElementById('agb-modal')) {
+    document.getElementById('agb-modal').style.display = 'none';
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('r-firstname').addEventListener('blur', updateUsername);
   document.getElementById('r-lastname').addEventListener('blur', updateUsername);
+  loadAgb();
 });
 
 async function doRegister() {
@@ -154,6 +215,9 @@ async function doRegister() {
   if (!un) return showErr('Bitte einen Benutzernamen wählen.');
   if (_unAvailable === false) return showErr('Benutzername bereits vergeben. Bitte einen anderen wählen.');
   if (pw.length < 6) return showErr('Passwort muss mindestens 6 Zeichen lang sein.');
+  if (_agbText.trim() && !document.getElementById('r-agb').checked) {
+    return showErr('Bitte akzeptiere die Allgemeinen Geschäftsbedingungen.');
+  }
 
   const btn = document.getElementById('r-submit');
   btn.disabled = true;

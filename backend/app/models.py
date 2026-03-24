@@ -204,6 +204,7 @@ class SystemSettings(Base):
     ticker_font_size:           Mapped[int] = mapped_column(Integer, default=18)
     announcement:               Mapped[Optional[str]] = mapped_column(Text, default=None)
     announcement_font_size:     Mapped[int] = mapped_column(Integer, default=20)
+    agb_text:                   Mapped[Optional[str]] = mapped_column(Text, default=None)
 
 
 class MachineQueue(Base):

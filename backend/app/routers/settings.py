@@ -26,6 +26,7 @@ class SettingsOut(BaseModel):
     ticker_font_size: int = 18
     announcement: Optional[str] = None
     announcement_font_size: int = 20
+    agb_text: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -46,6 +47,7 @@ class SettingsUpdate(BaseModel):
     ticker_font_size: Optional[int] = None
     announcement: Optional[str] = None
     announcement_font_size: Optional[int] = None
+    agb_text: Optional[str] = None
 
 
 @router.get("/public")
@@ -60,6 +62,7 @@ async def read_settings_public(db: AsyncSession = Depends(get_db)):
         "ticker_font_size": s.ticker_font_size,
         "announcement": s.announcement or "",
         "announcement_font_size": s.announcement_font_size,
+        "agb_text": s.agb_text or "",
     }
 
 
@@ -106,6 +109,8 @@ async def update_settings(
         row.announcement = payload.announcement or None
     if payload.announcement_font_size is not None:
         row.announcement_font_size = max(10, min(72, payload.announcement_font_size))
+    if payload.agb_text is not None:
+        row.agb_text = payload.agb_text or None
     await db.commit()
     await db.refresh(row)
     return row

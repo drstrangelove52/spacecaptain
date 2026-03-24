@@ -328,7 +328,7 @@ async function loadData() {
 
 async function initDisplay() {
   // Registrierungs-QR laden
-  const regUrl = `${window.location.origin}/register`;
+  const regUrl = `${window.location.origin}/`;
   document.getElementById('reg-qr').src = `/api/qr/url-png?u=${encodeURIComponent(regUrl)}`;
 
   try {

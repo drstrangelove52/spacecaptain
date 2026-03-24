@@ -62,6 +62,7 @@ async def export_config(
             "ticker_font_size":        cfg.ticker_font_size,
             "announcement":            cfg.announcement,
             "announcement_font_size":  cfg.announcement_font_size,
+            "agb_text":                cfg.agb_text,
         },
         "users": [{
             "name": u.name, "email": u.email, "role": u.role,
@@ -161,7 +162,7 @@ async def import_config(
                       "queue_reservation_minutes", "display_refresh_seconds",
                       "display_page_size", "dashboard_refresh_seconds",
                       "ticker_text", "ticker_speed", "ticker_font_size",
-                      "announcement", "announcement_font_size"):
+                      "announcement", "announcement_font_size", "agb_text"):
             if field in s:
                 setattr(cfg, field, s[field])
         await db.flush()
