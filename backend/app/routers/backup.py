@@ -241,16 +241,25 @@ async def import_config(
         stats["permissions"] += 1
 
     # ── Sessions ──────────────────────────────────────────
+    existing_sessions = {
+        (sess.machine_id, sess.started_at.isoformat() if sess.started_at else "")
+        for sess in (await db.execute(select(MachineSession))).scalars().all()
+    }
     # Gleichzeitig total_hours pro Maschine akkumulieren (für v2.11-Backups ohne total_hours)
     hours_accumulator: dict[int, float] = {}
     for s in payload.get("sessions", []):
         mid = machine_map.get(s.get("machine_qr_token"))
         if not mid:
             stats["skipped"] += 1; continue
+        started_at = datetime.fromisoformat(s["started_at"]) if s.get("started_at") else None
+        sess_key = (mid, started_at.isoformat() if started_at else "")
+        if sess_key in existing_sessions:
+            stats["skipped"] += 1; continue
+        existing_sessions.add(sess_key)
         db.add(MachineSession(
             machine_id=mid,
             guest_id=guest_map.get(s.get("guest_username")),
-            started_at=datetime.fromisoformat(s["started_at"]) if s.get("started_at") else datetime.utcnow(),
+            started_at=started_at or datetime.utcnow(),
             ended_at=datetime.fromisoformat(s["ended_at"]) if s.get("ended_at") else None,
             duration_min=s.get("duration_min"),
             energy_wh=s.get("energy_wh"),
@@ -368,14 +377,25 @@ async def import_config(
         stats["announcements"] += 1
 
     # ── Activity Log ──────────────────────────────────────
+    existing_logs = {
+        (e.type, e.message, e.created_at.isoformat() if e.created_at else "", e.guest_id, e.machine_id)
+        for e in (await db.execute(select(ActivityLog))).scalars().all()
+    }
     for l in payload.get("activity_log", []):
+        created_at = datetime.fromisoformat(l["created_at"]) if l.get("created_at") else datetime.utcnow()
+        gid = guest_map.get(l.get("guest_username"))
+        mid = machine_map.get(l.get("machine_qr_token"))
+        log_key = (l["type"], l["message"], created_at.isoformat(), gid, mid)
+        if log_key in existing_logs:
+            stats["skipped"] += 1; continue
+        existing_logs.add(log_key)
         db.add(ActivityLog(
             type=l["type"],
             message=l["message"],
             meta=l.get("meta"),
-            created_at=datetime.fromisoformat(l["created_at"]) if l.get("created_at") else datetime.utcnow(),
-            guest_id=guest_map.get(l.get("guest_username")),
-            machine_id=machine_map.get(l.get("machine_qr_token")),
+            created_at=created_at,
+            guest_id=gid,
+            machine_id=mid,
             user_id=user_map.get(l.get("user_email")),
         ))
         stats["activity_log"] += 1
