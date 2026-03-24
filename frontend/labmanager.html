@@ -3189,7 +3189,8 @@ async function doExport() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   const ts = new Date().toISOString().slice(0,10);
-  a.href = url; a.download = `spacecaptain-backup-${ts}.json`;
+  const ver = data.version ? `-v${data.version}` : '';
+  a.href = url; a.download = `spacecaptain-backup-${ts}${ver}.json`;
   a.click(); URL.revokeObjectURL(url);
   showToast('Export erfolgreich', 'success');
 }
