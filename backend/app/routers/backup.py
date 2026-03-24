@@ -15,6 +15,7 @@ from app.models import (
 )
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
+from app.config import APP_VERSION
 
 router = APIRouter(prefix="/backup", tags=["backup"])
 
@@ -46,6 +47,7 @@ async def export_config(
 
     return {
         "version": "2.5",
+        "app_version": APP_VERSION,
         "exported_at": datetime.utcnow().isoformat(),
         "settings": {
             "nfc_writer_url":          cfg.nfc_writer_url,
