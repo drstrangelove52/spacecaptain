@@ -205,6 +205,34 @@ class SystemSettings(Base):
     announcement:               Mapped[Optional[str]] = mapped_column(Text, default=None)
     announcement_font_size:     Mapped[int] = mapped_column(Integer, default=20)
     agb_text:                   Mapped[Optional[str]] = mapped_column(Text, default=None)
+    ntfy_server:                Mapped[str]  = mapped_column(String(255), default="https://ntfy.sh")
+    ntfy_token:                 Mapped[Optional[str]] = mapped_column(String(255), default=None)
+    emergency_trigger_token:    Mapped[Optional[str]] = mapped_column(String(100), default=None)
+    emergency_text:             Mapped[Optional[str]] = mapped_column(Text, default=None)
+    emergency_duration_min:     Mapped[int]  = mapped_column(Integer, default=0)
+    emergency_ntfy_topic_id:    Mapped[Optional[int]] = mapped_column(Integer, default=None)
+    emergency_plug_ip:          Mapped[Optional[str]] = mapped_column(String(100), default=None)
+    emergency_plug_type:        Mapped[Optional[str]] = mapped_column(String(20), default=None)
+    emergency_plug2_ip:         Mapped[Optional[str]] = mapped_column(String(100), default=None)
+    emergency_plug2_type:       Mapped[Optional[str]] = mapped_column(String(20), default=None)
+
+
+class NtfyTopic(Base):
+    __tablename__ = "ntfy_topics"
+    id:          Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    key:         Mapped[str]           = mapped_column(String(50), unique=True, nullable=False)
+    topic:       Mapped[str]           = mapped_column(String(200), nullable=False)
+    title:       Mapped[str]           = mapped_column(String(200), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at:  Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class EmergencyState(Base):
+    __tablename__ = "emergency_state"
+    id:           Mapped[int]           = mapped_column(Integer, primary_key=True, default=1)
+    active:       Mapped[bool]          = mapped_column(Boolean, default=False)
+    triggered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    triggered_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
 
 class MachineQueue(Base):

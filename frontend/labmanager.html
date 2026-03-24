@@ -230,6 +230,15 @@
   .toast.error{border-left-color:var(--danger)}.toast.warn{border-left-color:var(--accent)}
   @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
   ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  /* EMERGENCY BANNER */
+  .emergency-banner{background:var(--danger);color:#fff;padding:10px 24px;display:flex;align-items:center;gap:14px;flex-shrink:0}
+  .emergency-banner strong{font-family:var(--display);font-size:15px;letter-spacing:2px;text-transform:uppercase}
+  @keyframes emergencyBlink{0%,100%{opacity:1}50%{opacity:.5}}
+  .emergency-icon{font-size:18px;animation:emergencyBlink .8s infinite}
+  /* NTFY QR */
+  .topic-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:20px;display:flex;gap:20px;align-items:flex-start}
+  .topic-qr{background:#fff;padding:6px;border-radius:6px;flex-shrink:0}
+  .topic-qr img{display:block;width:100px;height:100px;image-rendering:pixelated}
 </style>
 </head>
 <body>
@@ -268,6 +277,7 @@
     <div class="nav-item" data-page="stats" onclick="navigate(this)"><span class="nav-icon">📈</span> Statistiken</div>
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
     <div class="nav-item" data-page="announcements" onclick="navigate(this)"><span class="nav-icon">📢</span> Mitteilungen</div>
+    <div class="nav-item" data-page="notifications" onclick="navigate(this)"><span class="nav-icon">🔔</span> Benachrichtigungen</div>
     <div class="nav-item" data-page="backup" onclick="navigate(this)"><span class="nav-icon">💾</span> Backup</div>
     <div class="nav-item" data-page="settings" onclick="navigate(this)" id="nav-settings" style="display:none"><span class="nav-icon">⚙️</span> Einstellungen</div>
     <div class="nav-item" data-page="info" onclick="navigate(this)"><span class="nav-icon">ℹ️</span> Info</div>
@@ -285,6 +295,13 @@
   <div class="topbar">
     <div class="page-title" id="page-title">Dashboard</div>
     <div class="topbar-actions" id="topbar-actions"></div>
+  </div>
+  <!-- NOTFALL-BANNER (sichtbar wenn Alarm aktiv) -->
+  <div class="emergency-banner" id="emergency-banner" style="display:none">
+    <span class="emergency-icon">🚨</span>
+    <strong>Notfall aktiv</strong>
+    <span id="emergency-banner-time" style="font-family:var(--mono);font-size:12px;opacity:.85"></span>
+    <button class="btn btn-sm" style="margin-left:auto;background:#fff;color:var(--danger);font-weight:700;border:none" onclick="cancelEmergency()">✓ Quittieren</button>
   </div>
   <div class="content">
 
@@ -653,9 +670,101 @@
             <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Leer = keine AGB-Pflicht bei der Registrierung. Unterstützt Markdown: **fett**, *kursiv*, ## Überschriften, - Listen.</div>
           </div>
         </div>
+        <!-- BENACHRICHTIGUNGEN (ntfy) -->
+        <div class="table-wrap" style="padding:20px">
+          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">BENACHRICHTIGUNGEN (NTFY)</div>
+          <div class="form-group">
+            <label class="form-label">Server-URL</label>
+            <input class="form-input" id="cfg-ntfy-server" placeholder="https://ntfy.sh">
+            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Standard: https://ntfy.sh — für selbst gehostete Instanz anpassen.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Auth-Token <span style="color:var(--text-dim);font-weight:400">(nur bei selbst gehosteter Instanz mit Auth)</span></label>
+            <input class="form-input" id="cfg-ntfy-token" type="password" placeholder="leer = kein Token">
+          </div>
+        </div>
+        <!-- NOTFALL-ALARM -->
+        <div class="table-wrap" style="padding:20px">
+          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">NOTFALL-ALARM</div>
+          <div class="form-group">
+            <label class="form-label">Trigger-Token <span style="color:var(--text-dim);font-weight:400">(geheimes Token für den physischen Knopf)</span></label>
+            <input class="form-input" id="cfg-emergency-token" type="password" placeholder="z.B. xK9pQ3rTvZ…">
+            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Dieser Token muss am Shelly als X-Emergency-Token Header konfiguriert werden.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Auto-Stop Sirene/Licht <span style="color:var(--text-dim);font-weight:400">(Minuten, 0 = nur manuell)</span></label>
+            <input class="form-input" id="cfg-emergency-duration" type="number" min="0" max="60" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ntfy-Topic</label>
+            <select class="form-input" id="cfg-emergency-topic">
+              <option value="">— Kein Topic —</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Sirene — Plug IP</label>
+              <input class="form-input" id="cfg-emergency-plug-ip" placeholder="192.168.1.50">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Sirene — Typ</label>
+              <select class="form-input" id="cfg-emergency-plug-type">
+                <option value="">— Kein Plug —</option>
+                <option value="shelly">Shelly</option>
+                <option value="mystrom">myStrom</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Blinklicht — Plug IP</label>
+              <input class="form-input" id="cfg-emergency-plug2-ip" placeholder="192.168.1.51">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Blinklicht — Typ</label>
+              <select class="form-input" id="cfg-emergency-plug2-type">
+                <option value="">— Kein Plug —</option>
+                <option value="shelly">Shelly</option>
+                <option value="mystrom">myStrom</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap" style="padding:20px;grid-column:1/-1">
+          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">NOTFALL-ANZEIGETEXT</div>
+          <div class="form-group">
+            <label class="form-label">Text für das Display <span style="color:var(--text-dim);font-weight:400">(erscheint auf dem TV-Display während des Alarms)</span></label>
+            <textarea class="form-input" id="cfg-emergency-text" rows="5" placeholder="🚑 Notruf: 144&#10;🚒 Feuerwehr: 118&#10;☎ AED: Eingang Hauptgebäude" style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
+          </div>
+        </div>
+        <!-- TOPICS VERWALTUNG (Admin) -->
+        <div class="table-wrap" style="padding:20px;grid-column:1/-1" id="cfg-topics-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px">NTFY TOPICS</div>
+            <button class="btn btn-ghost btn-sm" onclick="showAddTopic()">+ Topic hinzufügen</button>
+          </div>
+          <div id="cfg-topics-list" style="display:flex;flex-direction:column;gap:8px">
+            <div style="color:var(--text-dim);font-size:13px">Laden…</div>
+          </div>
+        </div>
         <div style="grid-column:1/-1">
           <button class="btn btn-primary" onclick="saveSettings()">Einstellungen speichern</button>
         </div>
+      </div>
+    </div>
+
+    <!-- BENACHRICHTIGUNGEN-SEITE -->
+    <div class="page" id="page-notifications">
+      <div class="section-header">
+        <div class="section-title">Benachrichtigungen <span>// NTFY TOPICS</span></div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:6px;padding:14px 18px;font-size:13px;color:var(--text-mid);line-height:1.7;margin-bottom:20px">
+        Installiere die <strong>ntfy</strong> App auf deinem Smartphone und abonniere die gewünschten Topics per QR-Code.
+        Die App ist kostenlos für <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" style="color:var(--accent2)">iOS</a> und
+        <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" style="color:var(--accent2)">Android</a> verfügbar.
+      </div>
+      <div id="notifications-list" style="display:flex;flex-direction:column;gap:16px">
+        <div style="color:var(--text-dim);font-size:13px">Laden…</div>
       </div>
     </div>
 
@@ -1396,7 +1505,7 @@ function doLogout() {
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Mitteilungen',backup:'Backup & Restore',settings:'Einstellungen',info:'Info',help:'Hilfe & Dokumentation'};
+const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Mitteilungen',notifications:'Benachrichtigungen',backup:'Backup & Restore',settings:'Einstellungen',info:'Info',help:'Hilfe & Dokumentation'};
 const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',machines:'machines',permissions:'permissions',maintenance:'maintenance',backup:'backup',settings:'settings'};
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
@@ -1421,9 +1530,11 @@ function navigate(el) {
   if (page==='stats') loadStats();
   if (page==='maintenance') loadMaintenance();
   if (page==='announcements') loadAnnouncements();
+  if (page==='notifications') loadNotificationsPage();
   if (page==='dashboard' || page==='machines') refreshLiveData();
   if (page==='dashboard') { refreshMaintenanceOverview(); loadAdminQueues(); loadPendingGuests(); }
-  if (page==='settings') loadSettings();
+  if (page==='settings') { loadSettings(); loadTopicsForSettings(); }
+
   if (page==='help') initHelp();
 }
 
@@ -3003,6 +3114,17 @@ async function loadSettings() {
   document.getElementById('cfg-ticker-size').value = s.ticker_font_size ?? 18;
   document.getElementById('cfg-ticker-speed').value = s.ticker_speed ?? 80;
   document.getElementById('cfg-agb-text').value = s.agb_text ?? '';
+  document.getElementById('cfg-ntfy-server').value = s.ntfy_server ?? 'https://ntfy.sh';
+  document.getElementById('cfg-ntfy-token').value = s.ntfy_token ?? '';
+  document.getElementById('cfg-emergency-token').value = s.emergency_trigger_token ?? '';
+  document.getElementById('cfg-emergency-duration').value = s.emergency_duration_min ?? 0;
+  document.getElementById('cfg-emergency-plug-ip').value = s.emergency_plug_ip ?? '';
+  document.getElementById('cfg-emergency-plug-type').value = s.emergency_plug_type ?? '';
+  document.getElementById('cfg-emergency-plug2-ip').value = s.emergency_plug2_ip ?? '';
+  document.getElementById('cfg-emergency-plug2-type').value = s.emergency_plug2_type ?? '';
+  document.getElementById('cfg-emergency-text').value = s.emergency_text ?? '';
+  // Topic-Dropdown füllen und Auswahl setzen
+  _emergencyNtfyTopicId = s.emergency_ntfy_topic_id;
   const h = s.jwt_expire_minutes >= 60
     ? `${Math.floor(s.jwt_expire_minutes/60)} h ${s.jwt_expire_minutes%60>0 ? s.jwt_expire_minutes%60+' min' : ''}`.trim()
     : `${s.jwt_expire_minutes} min`;
@@ -3024,6 +3146,16 @@ async function saveSettings() {
     ticker_font_size:          parseInt(document.getElementById('cfg-ticker-size').value) || 18,
     ticker_speed:              parseInt(document.getElementById('cfg-ticker-speed').value) || 80,
     agb_text:                  document.getElementById('cfg-agb-text').value || null,
+    ntfy_server:               document.getElementById('cfg-ntfy-server').value.trim() || 'https://ntfy.sh',
+    ntfy_token:                document.getElementById('cfg-ntfy-token').value.trim() || null,
+    emergency_trigger_token:   document.getElementById('cfg-emergency-token').value.trim() || null,
+    emergency_duration_min:    parseInt(document.getElementById('cfg-emergency-duration').value) || 0,
+    emergency_ntfy_topic_id:   parseInt(document.getElementById('cfg-emergency-topic').value) || null,
+    emergency_plug_ip:         document.getElementById('cfg-emergency-plug-ip').value.trim() || null,
+    emergency_plug_type:       document.getElementById('cfg-emergency-plug-type').value || null,
+    emergency_plug2_ip:        document.getElementById('cfg-emergency-plug2-ip').value.trim() || null,
+    emergency_plug2_type:      document.getElementById('cfg-emergency-plug2-type').value || null,
+    emergency_text:            document.getElementById('cfg-emergency-text').value || null,
   };
   const res = await PATCH('/settings', payload);
   if (res) { await loadSettings(); showToast('Einstellungen gespeichert', 'success'); }
@@ -3805,6 +3937,154 @@ async function saveRecord(intervalId) {
 }
 
 document.getElementById('info-year').textContent = new Date().getFullYear();
+
+// ═══════════════════════════════════════════════════════
+// NOTFALL
+// ═══════════════════════════════════════════════════════
+let _emergencyPollTimer = null;
+let _emergencyNtfyTopicId = null;
+
+async function checkEmergencyStatus() {
+  try {
+    const s = await fetch('/api/emergency/status').then(r => r.json());
+    const banner = document.getElementById('emergency-banner');
+    if (s.active) {
+      const ts = s.triggered_at
+        ? fmtDate(s.triggered_at)
+        : '';
+      document.getElementById('emergency-banner-time').textContent = ts ? `seit ${ts}` : '';
+      banner.style.display = 'flex';
+    } else {
+      banner.style.display = 'none';
+    }
+  } catch {}
+}
+
+async function cancelEmergency() {
+  const ok = await POST('/emergency/cancel', {});
+  if (ok) {
+    showToast('Notfall quittiert', 'success');
+    checkEmergencyStatus();
+  }
+}
+
+// Emergency-Status alle 15s prüfen
+checkEmergencyStatus();
+setInterval(checkEmergencyStatus, 15000);
+
+// ═══════════════════════════════════════════════════════
+// BENACHRICHTIGUNGEN (ntfy Topics)
+// ═══════════════════════════════════════════════════════
+async function loadNotificationsPage() {
+  const container = document.getElementById('notifications-list');
+  const topics = await GET('/ntfy-topics');
+  if (!topics) return;
+  if (!topics.length) {
+    container.innerHTML = '<div style="color:var(--text-dim);font-size:13px">Noch keine Topics konfiguriert. Admin kann Topics in den Einstellungen hinzufügen.</div>';
+    return;
+  }
+  const s = await GET('/settings');
+  const server = (s?.ntfy_server || 'https://ntfy.sh').replace(/\/$/, '');
+  container.innerHTML = topics.map(t => {
+    const url = `${server}/${t.topic}`;
+    const qrSrc = `/api/qr/url-png?u=${encodeURIComponent(url)}`;
+    return `<div class="topic-card">
+      <div class="topic-qr"><img src="${qrSrc}" alt="QR"></div>
+      <div style="flex:1">
+        <div style="font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:.5px;margin-bottom:4px">${t.title}</div>
+        ${t.description ? `<div style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5">${t.description}</div>` : ''}
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-bottom:6px">TOPIC</div>
+        <div style="font-family:var(--mono);font-size:13px;color:var(--accent2);word-break:break-all">${url}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Topics für Einstellungs-Dropdown und -Liste laden
+async function loadTopicsForSettings() {
+  const topics = await GET('/ntfy-topics');
+  if (!topics) return;
+
+  // Dropdown für Emergency-Topic befüllen
+  const sel = document.getElementById('cfg-emergency-topic');
+  sel.innerHTML = '<option value="">— Kein Topic —</option>' +
+    topics.map(t => `<option value="${t.id}">${t.title}</option>`).join('');
+  if (_emergencyNtfyTopicId) sel.value = _emergencyNtfyTopicId;
+
+  // Topics-Liste in Einstellungen rendern
+  const list = document.getElementById('cfg-topics-list');
+  if (!topics.length) {
+    list.innerHTML = '<div style="color:var(--text-dim);font-size:13px">Noch keine Topics definiert.</div>';
+    return;
+  }
+  list.innerHTML = topics.map(t => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px">
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:14px">${t.title}</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:2px">${t.key} · ${t.topic}</div>
+        ${t.description ? `<div style="font-size:12px;color:var(--text-dim);margin-top:2px">${t.description}</div>` : ''}
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="showEditTopic(${t.id})">✏</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteTopic(${t.id})">✕</button>
+    </div>`).join('');
+}
+
+function _topicFormHtml(t) {
+  return `
+    <div class="form-group">
+      <label class="form-label">Interner Schlüssel <span style="color:var(--text-dim);font-weight:400">(z.B. emergency, registration)</span></label>
+      <input class="form-input" id="tf-key" value="${t?.key||''}" placeholder="emergency">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Anzeigename</label>
+      <input class="form-input" id="tf-title" value="${t?.title||''}" placeholder="Notfall-Alarm">
+    </div>
+    <div class="form-group">
+      <label class="form-label">ntfy Topic-String</label>
+      <input class="form-input" id="tf-topic" value="${t?.topic||''}" placeholder="makerspace-notfall-x7k2">
+      <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Geheimen, schwer erratbaren String wählen.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Beschreibung <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
+      <textarea class="form-input" id="tf-desc" rows="2" placeholder="Benachrichtigungen bei Notfall-Alarm">${t?.description||''}</textarea>
+    </div>`;
+}
+
+function _topicPayload() {
+  return {
+    key:         document.getElementById('tf-key').value.trim(),
+    title:       document.getElementById('tf-title').value.trim(),
+    topic:       document.getElementById('tf-topic').value.trim(),
+    description: document.getElementById('tf-desc').value.trim() || null,
+  };
+}
+
+function showAddTopic() {
+  openModal('Topic hinzufügen', _topicFormHtml(null), async () => {
+    const p = _topicPayload();
+    if (!p.key || !p.title || !p.topic) return showToast('Bitte alle Pflichtfelder ausfüllen', 'warn');
+    const res = await POST('/ntfy-topics', p);
+    if (res) { closeModal(); showToast('Topic gespeichert', 'success'); loadTopicsForSettings(); }
+  });
+}
+
+async function showEditTopic(id) {
+  const topics = await GET('/ntfy-topics');
+  const t = topics?.find(x => x.id === id);
+  if (!t) return;
+  openModal('Topic bearbeiten', _topicFormHtml(t), async () => {
+    const p = _topicPayload();
+    if (!p.key || !p.title || !p.topic) return showToast('Bitte alle Pflichtfelder ausfüllen', 'warn');
+    const res = await PUT(`/ntfy-topics/${id}`, p);
+    if (res) { closeModal(); showToast('Topic aktualisiert', 'success'); loadTopicsForSettings(); }
+  });
+}
+
+async function deleteTopic(id) {
+  if (!confirm('Topic wirklich löschen?')) return;
+  const res = await apiSilent('DELETE', `/ntfy-topics/${id}`);
+  if (res !== null) { showToast('Topic gelöscht', 'warn'); loadTopicsForSettings(); }
+}
 
 </script>
 </body>

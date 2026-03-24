@@ -27,6 +27,16 @@ class SettingsOut(BaseModel):
     announcement: Optional[str] = None
     announcement_font_size: int = 20
     agb_text: Optional[str] = None
+    ntfy_server: str = "https://ntfy.sh"
+    ntfy_token: Optional[str] = None
+    emergency_trigger_token: Optional[str] = None
+    emergency_text: Optional[str] = None
+    emergency_duration_min: int = 0
+    emergency_ntfy_topic_id: Optional[int] = None
+    emergency_plug_ip: Optional[str] = None
+    emergency_plug_type: Optional[str] = None
+    emergency_plug2_ip: Optional[str] = None
+    emergency_plug2_type: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -48,6 +58,16 @@ class SettingsUpdate(BaseModel):
     announcement: Optional[str] = None
     announcement_font_size: Optional[int] = None
     agb_text: Optional[str] = None
+    ntfy_server: Optional[str] = None
+    ntfy_token: Optional[str] = None
+    emergency_trigger_token: Optional[str] = None
+    emergency_text: Optional[str] = None
+    emergency_duration_min: Optional[int] = None
+    emergency_ntfy_topic_id: Optional[int] = None
+    emergency_plug_ip: Optional[str] = None
+    emergency_plug_type: Optional[str] = None
+    emergency_plug2_ip: Optional[str] = None
+    emergency_plug2_type: Optional[str] = None
 
 
 @router.get("/public")
@@ -111,6 +131,26 @@ async def update_settings(
         row.announcement_font_size = max(10, min(72, payload.announcement_font_size))
     if payload.agb_text is not None:
         row.agb_text = payload.agb_text or None
+    if payload.ntfy_server is not None:
+        row.ntfy_server = payload.ntfy_server or "https://ntfy.sh"
+    if payload.ntfy_token is not None:
+        row.ntfy_token = payload.ntfy_token or None
+    if payload.emergency_trigger_token is not None:
+        row.emergency_trigger_token = payload.emergency_trigger_token or None
+    if payload.emergency_text is not None:
+        row.emergency_text = payload.emergency_text or None
+    if payload.emergency_duration_min is not None:
+        row.emergency_duration_min = max(0, payload.emergency_duration_min)
+    if payload.emergency_ntfy_topic_id is not None:
+        row.emergency_ntfy_topic_id = payload.emergency_ntfy_topic_id or None
+    if payload.emergency_plug_ip is not None:
+        row.emergency_plug_ip = payload.emergency_plug_ip or None
+    if payload.emergency_plug_type is not None:
+        row.emergency_plug_type = payload.emergency_plug_type or None
+    if payload.emergency_plug2_ip is not None:
+        row.emergency_plug2_ip = payload.emergency_plug2_ip or None
+    if payload.emergency_plug2_type is not None:
+        row.emergency_plug2_type = payload.emergency_plug2_type or None
     await db.commit()
     await db.refresh(row)
     return row

@@ -10,6 +10,8 @@ from app.routers import auth, users, guests, machines, permissions, qr, dashboar
 from app.routers import settings as settings_router
 from app.routers import queue as queue_router
 from app.routers import announcements as announcements_router
+from app.routers import ntfy_topics as ntfy_topics_router
+from app.routers import emergency as emergency_router
 from app.services.session import idle_watcher, plug_watcher, queue_watcher
 
 settings = get_settings()
@@ -98,3 +100,5 @@ app.include_router(nfc.router,          prefix="/api")
 app.include_router(settings_router.router, prefix="/api")
 app.include_router(queue_router.router,    prefix="/api")
 app.include_router(announcements_router.router, prefix="/api")
+app.include_router(ntfy_topics_router.router,   prefix="/api")
+app.include_router(emergency_router.router,     prefix="/api")

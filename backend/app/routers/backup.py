@@ -11,7 +11,7 @@ from app.database import get_db
 from app.models import (
     User, Guest, Machine, Permission,
     ActivityLog, MachineSession, LogType, SessionEndedBy,
-    MaintenanceInterval, MaintenanceRecord, SystemSettings, Announcement,
+    MaintenanceInterval, MaintenanceRecord, SystemSettings, Announcement, NtfyTopic,
 )
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
@@ -39,6 +39,7 @@ async def export_config(
     maint_ivs  = (await db.execute(select(MaintenanceInterval).order_by(MaintenanceInterval.id))).scalars().all()
     maint_recs = (await db.execute(select(MaintenanceRecord).order_by(MaintenanceRecord.id))).scalars().all()
     announcements = (await db.execute(select(Announcement).order_by(Announcement.id))).scalars().all()
+    ntfy_topics   = (await db.execute(select(NtfyTopic).order_by(NtfyTopic.id))).scalars().all()
 
     # Stabile Referenzen statt IDs
     guest_by_id   = {g.id: g.username  for g in guests}
@@ -65,7 +66,22 @@ async def export_config(
             "announcement":            cfg.announcement,
             "announcement_font_size":  cfg.announcement_font_size,
             "agb_text":                cfg.agb_text,
+            "ntfy_server":             cfg.ntfy_server,
+            "ntfy_token":              cfg.ntfy_token,
+            "emergency_trigger_token": cfg.emergency_trigger_token,
+            "emergency_text":          cfg.emergency_text,
+            "emergency_duration_min":  cfg.emergency_duration_min,
+            "emergency_plug_ip":       cfg.emergency_plug_ip,
+            "emergency_plug_type":     cfg.emergency_plug_type,
+            "emergency_plug2_ip":      cfg.emergency_plug2_ip,
+            "emergency_plug2_type":    cfg.emergency_plug2_type,
         },
+        "ntfy_topics": [{
+            "key":         t.key,
+            "topic":       t.topic,
+            "title":       t.title,
+            "description": t.description,
+        } for t in ntfy_topics],
         "users": [{
             "name": u.name, "email": u.email, "role": u.role,
             "phone": u.phone, "area": u.area, "is_active": u.is_active,
@@ -173,7 +189,11 @@ async def import_config(
                       "queue_reservation_minutes", "display_refresh_seconds",
                       "display_page_size", "dashboard_refresh_seconds",
                       "ticker_text", "ticker_speed", "ticker_font_size",
-                      "announcement", "announcement_font_size", "agb_text"):
+                      "announcement", "announcement_font_size", "agb_text",
+                      "ntfy_server", "ntfy_token",
+                      "emergency_trigger_token", "emergency_text", "emergency_duration_min",
+                      "emergency_plug_ip", "emergency_plug_type",
+                      "emergency_plug2_ip", "emergency_plug2_type"):
             if field in s:
                 setattr(cfg, field, s[field])
         await db.flush()
@@ -375,6 +395,24 @@ async def import_config(
         if "announcements" not in stats:
             stats["announcements"] = 0
         stats["announcements"] += 1
+
+    # ── ntfy Topics ───────────────────────────────────────
+    existing_topic_keys = {
+        t.key for t in (await db.execute(select(NtfyTopic))).scalars().all()
+    }
+    for t in payload.get("ntfy_topics", []):
+        if t.get("key") in existing_topic_keys:
+            stats["skipped"] += 1; continue
+        existing_topic_keys.add(t["key"])
+        db.add(NtfyTopic(
+            key=t["key"],
+            topic=t["topic"],
+            title=t["title"],
+            description=t.get("description"),
+        ))
+        if "ntfy_topics" not in stats:
+            stats["ntfy_topics"] = 0
+        stats["ntfy_topics"] += 1
 
     # ── Activity Log ──────────────────────────────────────
     existing_logs = {

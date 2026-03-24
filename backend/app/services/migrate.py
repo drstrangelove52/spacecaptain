@@ -186,6 +186,49 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "system_settings", "agb_text",
                                      "TEXT DEFAULT NULL")
 
+        # ── v1.11: ntfy + emergency ───────────────────────────────────────────
+        await _add_column_if_missing(conn, "system_settings", "ntfy_server",
+                                     "VARCHAR(255) NOT NULL DEFAULT 'https://ntfy.sh'")
+        await _add_column_if_missing(conn, "system_settings", "ntfy_token",
+                                     "VARCHAR(255) DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "emergency_trigger_token",
+                                     "VARCHAR(100) DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "emergency_text",
+                                     "TEXT DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "emergency_duration_min",
+                                     "INT NOT NULL DEFAULT 0")
+        await _add_column_if_missing(conn, "system_settings", "emergency_ntfy_topic_id",
+                                     "INT DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "emergency_plug_ip",
+                                     "VARCHAR(100) DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "emergency_plug_type",
+                                     "VARCHAR(20) DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "emergency_plug2_ip",
+                                     "VARCHAR(100) DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "emergency_plug2_type",
+                                     "VARCHAR(20) DEFAULT NULL")
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS ntfy_topics (
+                id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                `key`       VARCHAR(50)  NOT NULL UNIQUE,
+                topic       VARCHAR(200) NOT NULL,
+                title       VARCHAR(200) NOT NULL,
+                description TEXT         DEFAULT NULL,
+                created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS emergency_state (
+                id           INT UNSIGNED PRIMARY KEY DEFAULT 1,
+                active       TINYINT(1)   NOT NULL DEFAULT 0,
+                triggered_at DATETIME     DEFAULT NULL,
+                triggered_by VARCHAR(100) DEFAULT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
+        await conn.execute(text(
+            "INSERT IGNORE INTO emergency_state (id, active) VALUES (1, 0)"
+        ))
+
     log.info("Migrationen abgeschlossen")
 
 

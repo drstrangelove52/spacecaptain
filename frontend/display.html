@@ -102,6 +102,17 @@
   <span id="last-update"></span>
 </footer>
 
+<!-- NOTFALL-SCREEN -->
+<div id="emergency-screen" style="display:none;position:fixed;inset:0;background:#1a0000;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center">
+  <div style="font-size:80px;animation:emergencyPulse 1s infinite">🚨</div>
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:72px;font-weight:900;color:#ef4444;letter-spacing:4px;margin:16px 0;text-transform:uppercase;animation:emergencyPulse 1s infinite">NOTFALL</div>
+  <div id="emergency-display-text" style="max-width:800px;font-size:22px;line-height:1.8;color:#fca5a5;margin-top:16px;white-space:pre-wrap"></div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:14px;color:rgba(239,68,68,.5);margin-top:32px;letter-spacing:2px" id="emergency-display-time"></div>
+</div>
+<style>
+  @keyframes emergencyPulse{0%,100%{opacity:1}50%{opacity:.4}}
+</style>
+
 <script>
 const API = '/api';
 const machineIcons = {Laser:'⚡',CNC:'⚙','3D-Druck':'🖨',Holz:'🪚',Metall:'🔩',Elektronik:'🔌',Textil:'🧵',Sonstiges:'🔧'};
@@ -355,9 +366,30 @@ async function initDisplay() {
     } catch {}
   }, 300000);
   setInterval(loadAnnouncements, 60000);
+  checkEmergency();
+  setInterval(checkEmergency, 10000);
   document.querySelector('footer span:first-of-type').textContent =
     `Automatische Aktualisierung alle ${_displayRefreshMs/1000} Sekunden`;
 }
+
+async function checkEmergency() {
+  try {
+    const s = await fetch('/api/emergency/status').then(r => r.json());
+    const screen = document.getElementById('emergency-screen');
+    if (s.active) {
+      document.getElementById('emergency-display-text').textContent = s.emergency_text || '';
+      if (s.triggered_at) {
+        const d = new Date(s.triggered_at.includes('Z') ? s.triggered_at : s.triggered_at + 'Z');
+        document.getElementById('emergency-display-time').textContent =
+          'Ausgelöst: ' + d.toLocaleString('de-CH', {timeZone:'Europe/Zurich'});
+      }
+      screen.style.display = 'flex';
+    } else {
+      screen.style.display = 'none';
+    }
+  } catch {}
+}
+
 initDisplay();
 </script>
 </body>
