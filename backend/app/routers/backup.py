@@ -150,6 +150,15 @@ async def import_config(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
 ):
+    # KOMPATIBILITÄTSREGEL — Backups älterer Versionen müssen immer importierbar bleiben:
+    #   • Neue Settings-Felder: einfach zur Feldliste hinzufügen — der `if field in s`-Guard
+    #     überspringt sie automatisch wenn sie im Backup fehlen.
+    #   • Neue Top-Level-Sektionen: immer payload.get("sektion", []) verwenden, nie payload["sektion"].
+    #   • Neue Felder innerhalb von Datensätzen: immer a.get("feld", default) verwenden, nie a["feld"].
+    #   • Felder umbenennen: Altnamen als Fallback lesen, z.B. a.get("neu") or a.get("alt").
+    #   • Niemals breaking changes ohne Versions-Prüfung (payload.get("version")) einbauen.
+    backup_version = payload.get("version", "unbekannt")
+
     stats = {"users": 0, "guests": 0, "machines": 0, "permissions": 0,
              "sessions": 0, "activity_log": 0,
              "maintenance_intervals": 0, "maintenance_records": 0, "skipped": 0}
@@ -370,4 +379,4 @@ async def import_config(
         stats["activity_log"] += 1
 
     await db.commit()
-    return {"ok": True, "imported": stats}
+    return {"ok": True, "imported": stats, "backup_version": backup_version}
