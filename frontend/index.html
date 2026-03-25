@@ -144,6 +144,16 @@
         <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px">Session aktiv · 8h gültig</div>
       </div>
     </div>
+    <div id="ntfy-topic-box" style="display:none;background:var(--surface);border:1px solid rgba(34,211,238,.25);border-radius:12px;padding:14px 16px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--accent2);letter-spacing:2px;margin-bottom:8px">BENACHRICHTIGUNGEN (ntfy)</div>
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5">
+        Trage dieses Topic in die <strong style="color:var(--text)">ntfy-App</strong> ein, um eine Benachrichtigung zu erhalten, wenn du mit einer Maschine loslegen kannst.
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div id="ntfy-topic-value" style="flex:1;font-family:var(--mono);font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+        <button onclick="copyNtfyTopic()" style="flex-shrink:0;padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:16px;color:var(--text-mid)" title="Kopieren">📋</button>
+      </div>
+    </div>
     <div class="scan-box">
       <div class="scan-icon">▦</div>
       <div class="scan-title">Maschine wählen</div>
@@ -257,6 +267,7 @@ let S = {
   guestName:     null,
   username:      null,
   guestId:       null,
+  ntfyTopic:     null,
   machine:       null,
   hasPermission: false,
   myMachineOn:   false,
@@ -271,6 +282,26 @@ function getParam(k) { return new URLSearchParams(window.location.search).get(k)
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
+  if (id === 'scan') {
+    const box = document.getElementById('ntfy-topic-box');
+    if (box) {
+      if (S.ntfyTopic) {
+        document.getElementById('ntfy-topic-value').textContent = S.ntfyTopic;
+        box.style.display = 'block';
+      } else {
+        box.style.display = 'none';
+      }
+    }
+  }
+}
+
+function copyNtfyTopic() {
+  if (!S.ntfyTopic) return;
+  navigator.clipboard.writeText(S.ntfyTopic).then(() => {
+    const btn = event.target;
+    btn.textContent = '✓';
+    setTimeout(() => btn.textContent = '📋', 1500);
+  });
 }
 
 function setHeaderUser(name) {
@@ -392,10 +423,12 @@ async function doLogin() {
     S.guestName  = data.guest_name;
     S.username   = data.username;
     S.guestId    = data.guest_id;
+    S.ntfyTopic  = data.ntfy_topic || null;
     localStorage.setItem('guest_token',    S.guestToken);
     localStorage.setItem('guest_name',     S.guestName);
     localStorage.setItem('guest_username', S.username);
     localStorage.setItem('guest_id',       data.guest_id);
+    if (S.ntfyTopic) localStorage.setItem('guest_ntfy_topic', S.ntfyTopic);
     setHeaderUser(S.username);
 
     if (S.machineToken) {
@@ -631,7 +664,7 @@ async function switchMachine(action) {
 function doLogout() {
   stopLiveRefresh();
   localStorage.clear();
-  S.guestToken = null; S.guestName = null; S.username = null; S.guestId = null;
+  S.guestToken = null; S.guestName = null; S.username = null; S.guestId = null; S.ntfyTopic = null;
   setHeaderUser(null);
   document.getElementById('login-username').value = '';
   document.getElementById('login-pass').value = '';
@@ -791,10 +824,12 @@ async function init() {
         S.guestName  = d.guest_name;
         S.username   = d.username;
         S.guestId    = d.guest_id;
+        S.ntfyTopic  = d.ntfy_topic || null;
         localStorage.setItem('guest_token',    S.guestToken);
         localStorage.setItem('guest_name',     S.guestName);
         localStorage.setItem('guest_username', S.username);
         localStorage.setItem('guest_id',       S.guestId);
+        if (S.ntfyTopic) localStorage.setItem('guest_ntfy_topic', S.ntfyTopic);
         setHeaderUser(S.username);
         // URL bereinigen (lt-Parameter entfernen) ohne Reload
         const cleanUrl = window.location.pathname + (S.machineToken ? `?m=${S.machineToken}` : '');
@@ -829,6 +864,7 @@ async function init() {
     S.guestName  = savedName;
     S.username   = savedUsername;
     S.guestId    = parseInt(localStorage.getItem('guest_id')) || null;
+    S.ntfyTopic  = localStorage.getItem('guest_ntfy_topic') || null;
     setHeaderUser(savedUsername);
 
     if (S.machineToken) {

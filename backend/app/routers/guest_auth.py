@@ -125,6 +125,7 @@ async def guest_login(payload: GuestLoginRequest, db: AsyncSession = Depends(get
     return {
         "access_token": token, "token_type": "bearer",
         "guest_id": guest.id, "guest_name": guest.name, "username": guest.username,
+        "ntfy_topic": guest.ntfy_topic,
     }
 
 
@@ -151,6 +152,7 @@ async def guest_login_by_token(
     return {
         "access_token": token, "token_type": "bearer",
         "guest_id": guest.id, "guest_name": guest.name, "username": guest.username,
+        "ntfy_topic": guest.ntfy_topic,
     }
 
 

@@ -31,12 +31,15 @@ class SettingsOut(BaseModel):
     ntfy_token: Optional[str] = None
     emergency_trigger_token: Optional[str] = None
     emergency_text: Optional[str] = None
-    emergency_duration_min: int = 0
+    emergency_ntfy_message: Optional[str] = None
+    emergency_duration_sec: int = 0
     emergency_ntfy_topic_id: Optional[int] = None
     emergency_plug_ip: Optional[str] = None
     emergency_plug_type: Optional[str] = None
+    emergency_plug_token: Optional[str] = None
     emergency_plug2_ip: Optional[str] = None
     emergency_plug2_type: Optional[str] = None
+    emergency_plug2_token: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -62,12 +65,15 @@ class SettingsUpdate(BaseModel):
     ntfy_token: Optional[str] = None
     emergency_trigger_token: Optional[str] = None
     emergency_text: Optional[str] = None
-    emergency_duration_min: Optional[int] = None
+    emergency_ntfy_message: Optional[str] = None
+    emergency_duration_sec: Optional[int] = None
     emergency_ntfy_topic_id: Optional[int] = None
     emergency_plug_ip: Optional[str] = None
     emergency_plug_type: Optional[str] = None
+    emergency_plug_token: Optional[str] = None
     emergency_plug2_ip: Optional[str] = None
     emergency_plug2_type: Optional[str] = None
+    emergency_plug2_token: Optional[str] = None
 
 
 @router.get("/public")
@@ -139,18 +145,24 @@ async def update_settings(
         row.emergency_trigger_token = payload.emergency_trigger_token or None
     if payload.emergency_text is not None:
         row.emergency_text = payload.emergency_text or None
-    if payload.emergency_duration_min is not None:
-        row.emergency_duration_min = max(0, payload.emergency_duration_min)
+    if payload.emergency_ntfy_message is not None:
+        row.emergency_ntfy_message = payload.emergency_ntfy_message or None
+    if payload.emergency_duration_sec is not None:
+        row.emergency_duration_sec = max(0, payload.emergency_duration_sec)
     if payload.emergency_ntfy_topic_id is not None:
         row.emergency_ntfy_topic_id = payload.emergency_ntfy_topic_id or None
     if payload.emergency_plug_ip is not None:
         row.emergency_plug_ip = payload.emergency_plug_ip or None
     if payload.emergency_plug_type is not None:
         row.emergency_plug_type = payload.emergency_plug_type or None
+    if payload.emergency_plug_token is not None:
+        row.emergency_plug_token = payload.emergency_plug_token or None
     if payload.emergency_plug2_ip is not None:
         row.emergency_plug2_ip = payload.emergency_plug2_ip or None
     if payload.emergency_plug2_type is not None:
         row.emergency_plug2_type = payload.emergency_plug2_type or None
+    if payload.emergency_plug2_token is not None:
+        row.emergency_plug2_token = payload.emergency_plug2_token or None
     await db.commit()
     await db.refresh(row)
     return row

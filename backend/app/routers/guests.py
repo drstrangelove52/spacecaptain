@@ -89,6 +89,7 @@ async def register_guest(
         phone=payload.phone or None,
         is_active=False,
         pending_approval=True,
+        ntfy_topic=f"sc-{secrets.token_urlsafe(12)}",
     )
     db.add(guest)
     await db.commit()
@@ -132,6 +133,7 @@ async def create_guest(
         if field in data and data[field] == '':
             data[field] = None
     data['password_hash'] = _hash(payload.password)
+    data['ntfy_topic'] = f"sc-{secrets.token_urlsafe(12)}"
     guest = Guest(**data)
     db.add(guest)
     await db.commit()
@@ -244,4 +246,34 @@ async def revoke_login_token(
         raise HTTPException(404, "Gast nicht gefunden")
     guest.login_token = None
     await db.commit()
+    return {"ok": True}
+
+
+@router.post("/{guest_id}/ntfy-test")
+async def send_guest_ntfy_test(
+    guest_id: int,
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    """Sendet eine Test-Benachrichtigung an das persönliche ntfy-Topic des Gastes."""
+    result = await db.execute(select(Guest).where(Guest.id == guest_id))
+    guest = result.scalar_one_or_none()
+    if not guest:
+        raise HTTPException(404, "Gast nicht gefunden")
+    if not guest.ntfy_topic:
+        raise HTTPException(400, "Kein ntfy-Topic für diesen Gast vorhanden")
+
+    from app.models import SystemSettings
+    from app.services.ntfy import send_notification
+    cfg = await db.get(SystemSettings, 1)
+    ok = await send_notification(
+        server=cfg.ntfy_server if cfg and cfg.ntfy_server else "https://ntfy.sh",
+        token=cfg.ntfy_token if cfg else None,
+        topic=guest.ntfy_topic,
+        title="SpaceCaptain — Testbenachrichtigung",
+        message=f"Hallo {guest.name}! Deine ntfy-Benachrichtigungen für SpaceCaptain funktionieren.",
+        priority="default",
+    )
+    if not ok:
+        raise HTTPException(500, "ntfy-Benachrichtigung konnte nicht gesendet werden")
     return {"ok": True}

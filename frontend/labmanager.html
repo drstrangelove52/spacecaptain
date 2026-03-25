@@ -23,9 +23,9 @@
   .logo-img{height:44px;width:auto;flex-shrink:0}
   .logo-mark{font-family:var(--display);font-size:18px;font-weight:900;letter-spacing:2px;color:var(--accent)}
   .logo-sub{font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-top:2px}
-  .nav{padding:16px 0;flex:1}
-  .nav-section{padding:8px 20px 4px;font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:3px;text-transform:uppercase;margin-top:8px}
-  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-mid);transition:all .15s;border-left:2px solid transparent}
+  .nav{padding:12px 0;flex:1}
+  .nav-section{padding:6px 20px 3px;font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:3px;text-transform:uppercase;margin-top:4px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:7px 20px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-mid);transition:all .15s;border-left:2px solid transparent}
   .nav-item:hover{color:var(--text);background:var(--surface2)}
   .nav-item.active{color:var(--accent);background:rgba(244,166,34,.08);border-left-color:var(--accent)}
   .nav-badge-danger{background:var(--danger)!important;color:#fff!important}
@@ -278,7 +278,7 @@
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
     <div class="nav-item" data-page="announcements" onclick="navigate(this)"><span class="nav-icon">📢</span> Mitteilungen</div>
     <div class="nav-item" data-page="notifications" onclick="navigate(this)"><span class="nav-icon">🔔</span> Benachrichtigungen</div>
-    <div class="nav-item" data-page="backup" onclick="navigate(this)"><span class="nav-icon">💾</span> Backup</div>
+    <div class="nav-item" data-page="backup" onclick="navigate(this)" id="nav-backup" style="display:none"><span class="nav-icon">💾</span> Backup</div>
     <div class="nav-item" data-page="settings" onclick="navigate(this)" id="nav-settings" style="display:none"><span class="nav-icon">⚙️</span> Einstellungen</div>
     <div class="nav-item" data-page="info" onclick="navigate(this)"><span class="nav-icon">ℹ️</span> Info</div>
     <div class="nav-item" data-page="help" onclick="navigate(this)"><span class="nav-icon">📖</span> Hilfe</div>
@@ -307,14 +307,16 @@
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
-      <div class="stats-grid">
-        <div class="stat-card orange"><div class="stat-label">Gäste</div><div class="stat-value" id="stat-guests">—</div><div class="stat-sub">registriert</div></div>
-        <div class="stat-card cyan"><div class="stat-label">Maschinen</div><div class="stat-value" id="stat-machines">—</div><div class="stat-sub">im System</div></div>
-        <div class="stat-card green"><div class="stat-label">Lab Manager</div><div class="stat-value" id="stat-lm">—</div><div class="stat-sub">aktiv</div></div>
-        <div class="stat-card red"><div class="stat-label">Berechtigungen</div><div class="stat-value" id="stat-perms">—</div><div class="stat-sub">erteilt</div></div>
+      <!-- OPERATIVE METRIKEN -->
+      <div class="stats-grid" style="margin-bottom:20px">
+        <div class="stat-card green"><div class="stat-label">Aktive Sessions</div><div class="stat-value" id="stat-active-sessions">—</div><div class="stat-sub" id="stat-active-sub">Maschinen in Betrieb</div></div>
+        <div class="stat-card orange"><div class="stat-label">Registrierungen</div><div class="stat-value" id="stat-pending-reg">—</div><div class="stat-sub">ausstehend</div></div>
+        <div class="stat-card red"><div class="stat-label">Wartung fällig</div><div class="stat-value" id="stat-maint-due">—</div><div class="stat-sub">Maschinen</div></div>
+        <div class="stat-card cyan"><div class="stat-label">Maschinen online</div><div class="stat-value" id="stat-online">—</div><div class="stat-sub" id="stat-online-sub">von — gesamt</div></div>
       </div>
+
       <!-- AKTIVE MASCHINEN — wichtigste Info beim Schliessen -->
-      <div id="dash-active-section" style="margin-bottom:24px;display:none">
+      <div id="dash-active-section" style="margin-bottom:20px;display:none">
         <div class="section-header">
           <div class="section-title">Aktive Maschinen <span id="dash-active-count"></span></div>
         </div>
@@ -323,15 +325,17 @@
           <tbody id="dash-active-machines"></tbody>
         </table></div>
       </div>
+
       <!-- AUSSTEHENDE REGISTRIERUNGEN -->
-      <div id="dash-pending-section" style="margin-bottom:24px;display:none">
+      <div id="dash-pending-section" style="margin-bottom:20px;display:none">
         <div class="section-header">
           <div class="section-title">Ausstehende Registrierungen <span id="dash-pending-count"></span></div>
         </div>
         <div id="dash-pending-list"></div>
       </div>
+
       <!-- AKTIVE WARTELISTEN -->
-      <div id="dash-queue-section" style="margin-bottom:24px;display:none">
+      <div id="dash-queue-section" style="margin-bottom:20px;display:none">
         <div class="section-header">
           <div class="section-title">Warteliste <span id="dash-queue-count"></span></div>
           <button class="btn btn-ghost btn-sm" onclick="openQueueModal()">+ Neuer Eintrag</button>
@@ -340,17 +344,19 @@
       </div>
 
       <!-- WARTUNGSWARNUNGEN -->
-      <div id="dash-maintenance-section" style="margin-bottom:24px;display:none">
+      <div id="dash-maintenance-section" style="margin-bottom:20px;display:none">
         <div class="section-header">
           <div class="section-title">Maschinenpflege <span id="dash-maintenance-count"></span></div>
           <button class="btn btn-ghost btn-sm" onclick="navigateTo('maintenance')">Zur Übersicht →</button>
         </div>
         <div id="dash-maintenance-list"></div>
       </div>
-      <div class="section-header"><div class="section-title">Alle Maschinen</div></div>
-      <div class="table-wrap"><table><thead><tr><th>Maschine</th><th>Kategorie</th><th>Status</th><th>Adapter</th><th>Nutzer</th></tr></thead><tbody id="dash-machine-status"><tr><td colspan="5"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody></table></div>
-      <div class="section-header"><div class="section-title">Aktivitätslog</div></div>
-      <div class="table-wrap" style="padding:0 16px" id="dash-log"><div class="loading"><div class="spinner"></div>Laden…</div></div>
+
+      <!-- ALLE MASCHINEN — kompakte Grid-Ansicht -->
+      <div class="section-header" style="margin-bottom:12px">
+        <div class="section-title">Maschinen <span id="dash-machines-count"></span></div>
+      </div>
+      <div id="dash-machine-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:24px"></div>
     </div>
 
     <!-- GUESTS -->
@@ -578,33 +584,34 @@
       <div class="section-header">
         <div class="section-title">Einstellungen <span>// ADMIN</span></div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:16px">
+
+        <!-- SYSTEM -->
         <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">NFC-SCHREIBGERÄT</div>
-          <div class="form-group">
-            <label class="form-label">ESP32-URL <span style="color:var(--text-dim);font-weight:400">(leer = NFC deaktiviert)</span></label>
-            <input class="form-input" id="cfg-nfc-url" placeholder="http://10.10.1.59">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">SYSTEM</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">NFC-Schreibgerät (ESP32-URL) <span style="color:var(--text-dim);font-weight:400">— leer = deaktiviert</span></label>
+              <input class="form-input" id="cfg-nfc-url" placeholder="http://10.10.1.59">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Lab-Manager-Session <span style="color:var(--text-dim);font-weight:400">(Minuten)</span></label>
+              <input class="form-input" id="cfg-jwt-min" type="number" min="5" max="1440" placeholder="480">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Aktuell: <span id="cfg-jwt-human">—</span> — gilt ab dem nächsten Login</div>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Gast-Login-Link Gültigkeit <span style="color:var(--text-dim);font-weight:400">(Tage)</span></label>
+              <input class="form-input" id="cfg-token-days" type="number" min="1" max="3650" placeholder="365">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Gilt für neu generierte Links.</div>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Warteliste Reservierungsfenster <span style="color:var(--text-dim);font-weight:400">(Minuten)</span></label>
+              <input class="form-input" id="cfg-queue-min" type="number" min="1" max="60" placeholder="5">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Zeit zum Einschalten nach Benachrichtigung.</div>
+            </div>
           </div>
-        </div>
-        <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">SITZUNGEN</div>
-          <div class="form-group">
-            <label class="form-label">Lab-Manager-Session Dauer <span style="color:var(--text-dim);font-weight:400">(Minuten)</span></label>
-            <input class="form-input" id="cfg-jwt-min" type="number" min="5" max="1440" placeholder="480">
-            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Aktuell: <span id="cfg-jwt-human">—</span> — gilt ab dem nächsten Login</div>
-          </div>
-        </div>
-        <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">GAST-TOKENS</div>
-          <div class="form-group">
-            <label class="form-label">Login-Link Gültigkeit <span style="color:var(--text-dim);font-weight:400">(Tage)</span></label>
-            <input class="form-input" id="cfg-token-days" type="number" min="1" max="3650" placeholder="365">
-            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Gilt für neu generierte Links. Bestehende Links behalten ihre Laufzeit.</div>
-          </div>
-        </div>
-        <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">MODAL-VERHALTEN</div>
-          <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">MODAL-VERHALTEN</div>
             <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
               <input type="checkbox" id="cfg-backdrop-input" style="width:16px;height:16px;accent-color:var(--accent)">
               <span style="font-size:14px">Eingabe-Modals bei Klick ausserhalb schliessen</span>
@@ -613,141 +620,161 @@
               <input type="checkbox" id="cfg-backdrop-display" style="width:16px;height:16px;accent-color:var(--accent)">
               <span style="font-size:14px">Anzeige-Modals bei Klick ausserhalb schliessen</span>
             </label>
-            <div style="font-size:12px;color:var(--text-dim)">Anzeige-Modals: Login-Link, QR-Code. Eingabe-Modals: Formulare zum Bearbeiten.</div>
+            <div style="font-size:12px;color:var(--text-dim)">Anzeige-Modals: Login-Link, QR-Code · Eingabe-Modals: Formulare zum Bearbeiten</div>
           </div>
         </div>
+
+        <!-- DISPLAY -->
         <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">WARTELISTE</div>
-          <div class="form-group">
-            <label class="form-label">Reservierungsfenster <span style="color:var(--text-dim);font-weight:400">(Minuten)</span></label>
-            <input class="form-input" id="cfg-queue-min" type="number" min="1" max="60" placeholder="5">
-            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Wie lange ein Gast Zeit hat, die Maschine nach Benachrichtigung einzuschalten.</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">DISPLAY</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">TV-Display Aktualisierung <span style="color:var(--text-dim);font-weight:400">(s)</span></label>
+              <input class="form-input" id="cfg-display-refresh" type="number" min="10" max="300" placeholder="30">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Maschinen pro Seite <span style="color:var(--text-dim);font-weight:400">(TV)</span></label>
+              <input class="form-input" id="cfg-display-page-size" type="number" min="1" max="50" placeholder="8">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Dashboard Aktualisierung <span style="color:var(--text-dim);font-weight:400">(s)</span></label>
+              <input class="form-input" id="cfg-dashboard-refresh" type="number" min="5" max="300" placeholder="30">
+            </div>
           </div>
         </div>
+
+        <!-- MITTEILUNGEN -->
         <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">DISPLAY</div>
-          <div class="form-group">
-            <label class="form-label">TV-Display Auto-Aktualisierung <span style="color:var(--text-dim);font-weight:400">(Sekunden)</span></label>
-            <input class="form-input" id="cfg-display-refresh" type="number" min="10" max="300" placeholder="30">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">MITTEILUNGEN</div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:6px;padding:12px 16px;font-size:13px;color:var(--text-mid);line-height:1.6;margin-bottom:16px">
+            Inhalte werden über die Mitteilungsverwaltung gesteuert — zeitgesteuert und wiederkehrend.
+            <button class="btn btn-ghost btn-sm" style="margin-left:12px" onclick="navigateTo('announcements')">→ Zur Mitteilungsverwaltung</button>
           </div>
-          <div class="form-group">
-            <label class="form-label">Maschinen pro Seite <span style="color:var(--text-dim);font-weight:400">(TV-Display)</span></label>
-            <input class="form-input" id="cfg-display-page-size" type="number" min="1" max="50" placeholder="8">
-          </div>
-          <div class="form-group" style="margin-top:12px">
-            <label class="form-label">Dashboard Auto-Aktualisierung <span style="color:var(--text-dim);font-weight:400">(Sekunden)</span></label>
-            <input class="form-input" id="cfg-dashboard-refresh" type="number" min="5" max="300" placeholder="30">
-          </div>
-        </div>
-        <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">MITTEILUNGEN</div>
-          <div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:6px;padding:14px 18px;font-size:13px;color:var(--text-mid);line-height:1.7;margin-bottom:16px">
-            Mitteilungs-Karte und Lauftext werden über die Mitteilungsverwaltung gesteuert.<br>
-            Dort lassen sich zeitgesteuerte und wiederkehrende Mitteilungen einrichten.<br>
-            <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="navigateTo('announcements')">→ Zur Mitteilungsverwaltung</button>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-            <div class="form-group">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
+            <div class="form-group" style="margin:0">
               <label class="form-label">Mitteilungs-Karte Schriftgrösse <span style="color:var(--text-dim);font-weight:400">(px)</span></label>
               <input class="form-input" id="cfg-announcement-size" type="number" min="10" max="72" placeholder="20">
             </div>
-            <div class="form-group">
+            <div class="form-group" style="margin:0">
               <label class="form-label">Lauftext Schriftgrösse <span style="color:var(--text-dim);font-weight:400">(px)</span></label>
               <input class="form-input" id="cfg-ticker-size" type="number" min="10" max="72" placeholder="18">
             </div>
-            <div class="form-group">
+            <div class="form-group" style="margin:0">
               <label class="form-label">Lauftext Geschwindigkeit <span style="color:var(--text-dim);font-weight:400">(px/s)</span></label>
               <input class="form-input" id="cfg-ticker-speed" type="number" min="20" max="400" placeholder="80">
               <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Langsam: 40 · Normal: 80 · Schnell: 160</div>
             </div>
           </div>
         </div>
-        <div class="table-wrap" style="padding:20px;grid-column:1/-1">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">ALLGEMEINE GESCHÄFTSBEDINGUNGEN</div>
-          <div class="form-group">
+
+        <!-- AGB -->
+        <div class="table-wrap" style="padding:20px">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">ALLGEMEINE GESCHÄFTSBEDINGUNGEN</div>
+          <div class="form-group" style="margin:0">
             <label class="form-label">AGB-Text <span style="color:var(--text-dim);font-weight:400">(Markdown — wird auf der Registrierungsseite angezeigt)</span></label>
             <textarea class="form-input" id="cfg-agb-text" rows="8" placeholder="## Allgemeine Geschäftsbedingungen&#10;&#10;Bitte lies die folgenden Bedingungen sorgfältig..." style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
             <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Leer = keine AGB-Pflicht bei der Registrierung. Unterstützt Markdown: **fett**, *kursiv*, ## Überschriften, - Listen.</div>
           </div>
         </div>
-        <!-- BENACHRICHTIGUNGEN (ntfy) -->
+
+        <!-- BENACHRICHTIGUNGEN -->
         <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">BENACHRICHTIGUNGEN (NTFY)</div>
-          <div class="form-group">
-            <label class="form-label">Server-URL</label>
-            <input class="form-input" id="cfg-ntfy-server" placeholder="https://ntfy.sh">
-            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Standard: https://ntfy.sh — für selbst gehostete Instanz anpassen.</div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Auth-Token <span style="color:var(--text-dim);font-weight:400">(nur bei selbst gehosteter Instanz mit Auth)</span></label>
-            <input class="form-input" id="cfg-ntfy-token" type="password" placeholder="leer = kein Token">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">BENACHRICHTIGUNGEN (NTFY)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Server-URL</label>
+              <input class="form-input" id="cfg-ntfy-server" placeholder="https://ntfy.sh">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Standard: https://ntfy.sh — für selbst gehostete Instanz anpassen.</div>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Auth-Token <span style="color:var(--text-dim);font-weight:400">(nur bei selbst gehosteter Instanz mit Auth)</span></label>
+              <input class="form-input" id="cfg-ntfy-token" type="password" placeholder="leer = kein Token">
+            </div>
           </div>
         </div>
+
         <!-- NOTFALL-ALARM -->
         <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">NOTFALL-ALARM</div>
-          <div class="form-group">
-            <label class="form-label">Trigger-Token <span style="color:var(--text-dim);font-weight:400">(geheimes Token für den physischen Knopf)</span></label>
-            <input class="form-input" id="cfg-emergency-token" type="password" placeholder="z.B. xK9pQ3rTvZ…">
-            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Dieser Token muss am Shelly als X-Emergency-Token Header konfiguriert werden.</div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Auto-Stop Sirene/Licht <span style="color:var(--text-dim);font-weight:400">(Minuten, 0 = nur manuell)</span></label>
-            <input class="form-input" id="cfg-emergency-duration" type="number" min="0" max="60" placeholder="0">
-          </div>
-          <div class="form-group">
-            <label class="form-label">ntfy-Topic</label>
-            <select class="form-input" id="cfg-emergency-topic">
-              <option value="">— Kein Topic —</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Sirene — Plug IP</label>
-              <input class="form-input" id="cfg-emergency-plug-ip" placeholder="192.168.1.50">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">NOTFALL-ALARM</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Trigger-Token <span style="color:var(--text-dim);font-weight:400">(Shelly X-Emergency-Token)</span></label>
+              <input class="form-input" id="cfg-emergency-token" type="password" placeholder="z.B. xK9pQ3rTvZ…">
             </div>
-            <div class="form-group">
-              <label class="form-label">Sirene — Typ</label>
-              <select class="form-input" id="cfg-emergency-plug-type">
-                <option value="">— Kein Plug —</option>
-                <option value="shelly">Shelly</option>
-                <option value="mystrom">myStrom</option>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Auto-Stop Sirene/Licht <span style="color:var(--text-dim);font-weight:400">(Sekunden, 0 = manuell)</span></label>
+              <input class="form-input" id="cfg-emergency-duration" type="number" min="0" max="3600" placeholder="0">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">ntfy-Topic für Alarm</label>
+              <select class="form-input" id="cfg-emergency-topic">
+                <option value="">— Kein Topic —</option>
               </select>
             </div>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Blinklicht — Plug IP</label>
-              <input class="form-input" id="cfg-emergency-plug2-ip" placeholder="192.168.1.51">
+          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+            <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px">SMART PLUGS</div>
+            <div style="display:grid;grid-template-columns:1fr 160px 1fr;gap:12px;align-items:end;margin-bottom:12px">
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Sirene — IP-Adresse</label>
+                <input class="form-input" id="cfg-emergency-plug-ip" placeholder="192.168.1.50">
+              </div>
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Typ</label>
+                <select class="form-input" id="cfg-emergency-plug-type">
+                  <option value="">— Kein Plug —</option>
+                  <option value="shelly">Shelly</option>
+                  <option value="mystrom">myStrom</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Token <span style="color:var(--text-dim);font-weight:400">(myStrom: API-Token · Shelly: admin:passwort)</span></label>
+                <input class="form-input" id="cfg-emergency-plug-token" type="password" placeholder="leer = kein Token">
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Blinklicht — Typ</label>
-              <select class="form-input" id="cfg-emergency-plug2-type">
-                <option value="">— Kein Plug —</option>
-                <option value="shelly">Shelly</option>
-                <option value="mystrom">myStrom</option>
-              </select>
+            <div style="display:grid;grid-template-columns:1fr 160px 1fr;gap:12px;align-items:end">
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Blinklicht — IP-Adresse</label>
+                <input class="form-input" id="cfg-emergency-plug2-ip" placeholder="192.168.1.51">
+              </div>
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Typ</label>
+                <select class="form-input" id="cfg-emergency-plug2-type">
+                  <option value="">— Kein Plug —</option>
+                  <option value="shelly">Shelly</option>
+                  <option value="mystrom">myStrom</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Token <span style="color:var(--text-dim);font-weight:400">(myStrom: API-Token · Shelly: admin:passwort)</span></label>
+                <input class="form-input" id="cfg-emergency-plug2-token" type="password" placeholder="leer = kein Token">
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Notfall-Anzeigetext <span style="color:var(--text-dim);font-weight:400">(TV-Display während Alarm)</span></label>
+              <textarea class="form-input" id="cfg-emergency-text" rows="4" placeholder="🚑 Notruf: 144&#10;🚒 Feuerwehr: 118&#10;☎ AED: Eingang Hauptgebäude" style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">ntfy-Nachricht <span style="color:var(--text-dim);font-weight:400">(Push-Benachrichtigung bei Auslösung — <code>{ts}</code> = Zeitstempel)</span></label>
+              <textarea class="form-input" id="cfg-emergency-ntfy-message" rows="4" placeholder="Notfall-Alarm ausgelöst am {ts}. Bitte sofort reagieren." style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
             </div>
           </div>
         </div>
-        <div class="table-wrap" style="padding:20px;grid-column:1/-1">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:16px">NOTFALL-ANZEIGETEXT</div>
-          <div class="form-group">
-            <label class="form-label">Text für das Display <span style="color:var(--text-dim);font-weight:400">(erscheint auf dem TV-Display während des Alarms)</span></label>
-            <textarea class="form-input" id="cfg-emergency-text" rows="5" placeholder="🚑 Notruf: 144&#10;🚒 Feuerwehr: 118&#10;☎ AED: Eingang Hauptgebäude" style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
-          </div>
-        </div>
-        <!-- TOPICS VERWALTUNG (Admin) -->
-        <div class="table-wrap" style="padding:20px;grid-column:1/-1" id="cfg-topics-section">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-            <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px">NTFY TOPICS</div>
+
+        <!-- NTFY TOPICS -->
+        <div class="table-wrap" style="padding:20px" id="cfg-topics-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+            <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px">NTFY TOPICS</div>
             <button class="btn btn-ghost btn-sm" onclick="showAddTopic()">+ Topic hinzufügen</button>
           </div>
           <div id="cfg-topics-list" style="display:flex;flex-direction:column;gap:8px">
             <div style="color:var(--text-dim);font-size:13px">Laden…</div>
           </div>
         </div>
-        <div style="grid-column:1/-1">
+
+        <div>
           <button class="btn btn-primary" onclick="saveSettings()">Einstellungen speichern</button>
         </div>
       </div>
@@ -839,6 +866,7 @@
               <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">FastLED</td><td style="padding:7px 12px 7px 0">MIT</td><td style="padding:7px 0">FastLED / Daniel Garcia</td></tr>
               <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">httpx</td><td style="padding:7px 12px 7px 0">BSD-3-Clause</td><td style="padding:7px 0">Encode</td></tr>
               <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">MariaDB</td><td style="padding:7px 12px 7px 0">GPL-2.0</td><td style="padding:7px 0">MariaDB Foundation</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">marked</td><td style="padding:7px 12px 7px 0">MIT</td><td style="padding:7px 0">Christopher Jeffrey / markedjs</td></tr>
               <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">nginx</td><td style="padding:7px 12px 7px 0">BSD-2-Clause</td><td style="padding:7px 0">Igor Sysoev / nginx Inc.</td></tr>
               <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">Pillow</td><td style="padding:7px 12px 7px 0">HPND</td><td style="padding:7px 0">Jeffrey Clark / PIL contributors</td></tr>
               <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">Pydantic / pydantic-settings</td><td style="padding:7px 12px 7px 0">MIT</td><td style="padding:7px 0">Samuel Colvin</td></tr>
@@ -848,7 +876,10 @@
               <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">Share Tech Mono</td><td style="padding:7px 12px 7px 0">SIL OFL 1.1</td><td style="padding:7px 0">Ralph du Carrois</td></tr>
               <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">SQLAlchemy</td><td style="padding:7px 12px 7px 0">MIT</td><td style="padding:7px 0">Mike Bayer</td></tr>
               <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">uvicorn</td><td style="padding:7px 12px 7px 0">BSD-3-Clause</td><td style="padding:7px 0">Encode</td></tr>
-              <tr><td style="padding:7px 12px 7px 0">WiFiManager</td><td style="padding:7px 12px 7px 0">MIT</td><td style="padding:7px 0">tzapu</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">WiFiManager</td><td style="padding:7px 12px 7px 0">MIT</td><td style="padding:7px 0">tzapu</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">ntfy</td><td style="padding:7px 12px 7px 0">Apache-2.0</td><td style="padding:7px 0">Philipp Heckel / binwiederhier</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:7px 12px 7px 0">Shelly API</td><td style="padding:7px 12px 7px 0">Proprietär (REST API)</td><td style="padding:7px 0">Allterco Robotics</td></tr>
+              <tr><td style="padding:7px 12px 7px 0">myStrom API</td><td style="padding:7px 12px 7px 0">Proprietär (REST API)</td><td style="padding:7px 0">myStrom AG</td></tr>
             </tbody>
           </table>
         </div>
@@ -960,6 +991,18 @@
               <div class="help-article-title">Gast-Token (NFC/QR-Login)</div>
               <div class="help-article-body">
                 Gäste können sich statt mit Passwort auch per NFC-Token oder QR-Code authentifizieren. Tokens werden automatisch vergeben und haben eine konfigurierbare Gültigkeitsdauer (Standard: 30 Tage). Nach Ablauf muss sich der Gast erneut mit Passwort anmelden.
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Warteliste</div>
+              <div class="help-article-body">
+                Gäste können sich für eine Maschine in die Warteliste eintragen, wenn diese gerade belegt ist.
+                <ul style="margin-top:8px">
+                  <li>Sobald die Maschine frei wird, rückt der erste Gast vor und erhält eine ntfy-Push-Benachrichtigung (sofern eingerichtet)</li>
+                  <li>Das Reservierungsfenster ist konfigurierbar (Einstellungen → «Warteschlangen-Reservierungsfenster»). Meldet sich der Gast nicht innerhalb dieser Zeit an der Maschine an, verfällt sein Platz und der Nächste wird benachrichtigt</li>
+                  <li>Lab Manager können neue Einträge manuell über das Dashboard anlegen</li>
+                </ul>
+                <div class="help-tip"><strong>Voraussetzung für ntfy:</strong> Der Gast muss sein persönliches ntfy-Topic in der ntfy-App abonniert haben (Gäste-Seite → Scan-Screen).</div>
               </div>
             </div>
           </div>
@@ -1293,6 +1336,113 @@
                 Zeit (in Minuten) die ein Gast hat, eine Maschine einzuschalten nachdem er benachrichtigt wurde. Startet er die Maschine nicht innerhalb dieser Zeit, wird sein Platz in der Warteschlange freigegeben.
               </div>
             </div>
+            <div class="help-article">
+              <div class="help-article-title">Allgemeine Geschäftsbedingungen (AGB)</div>
+              <div class="help-article-body">
+                Unter <strong>Einstellungen → Allgemeine Geschäftsbedingungen</strong> kann ein AGB-Text im Markdown-Format hinterlegt werden. Ist ein Text vorhanden, erscheint auf der Registrierungsseite eine Pflicht-Checkbox — Gäste müssen die AGB vor der Registrierung akzeptieren.
+                <ul style="margin-top:8px">
+                  <li>Leer lassen = keine AGB-Pflicht</li>
+                  <li>Markdown unterstützt: <code>**fett**</code>, <code>*kursiv*</code>, <code>## Überschriften</code>, <code>- Listen</code></li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Benachrichtigungen (ntfy) — System-Topics</div>
+              <div class="help-article-body">
+                SpaceCaptain kann Push-Benachrichtigungen über <strong>ntfy</strong> versenden. ntfy ist ein kostenloser, open-source Benachrichtigungsdienst ohne Kontoregistrierung.
+                <ul style="margin-top:8px">
+                  <li><strong>Server-URL:</strong> Standard ist <code>https://ntfy.sh</code>. Für selbst gehostete Instanzen die eigene URL eintragen.</li>
+                  <li><strong>Auth-Token:</strong> Nur bei selbst gehosteten Instanzen mit Authentifizierung erforderlich.</li>
+                </ul>
+                System-Topics (z.B. für den Notfall-Alarm) werden unter <strong>Einstellungen → NTFY Topics</strong> verwaltet. Pro Topic kann eine Test-Benachrichtigung verschickt werden.
+                <div class="help-tip"><strong>App installieren:</strong> Die ntfy-App ist kostenlos für iOS und Android. Topic per QR-Code auf der Benachrichtigungen-Seite abonnieren.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Benachrichtigungen (ntfy) — Gast-Topics</div>
+              <div class="help-article-body">
+                Jeder Gast erhält automatisch ein persönliches ntfy-Topic (Format: <code>sc-xxxxxxxxxxxxxxxx</code>). Das Topic wird nach dem Login auf der Gäste-Seite angezeigt und kann mit einem Tipp kopiert werden.
+                <ul style="margin-top:8px">
+                  <li><strong>Wo sichtbar:</strong> Gäste-Seite (index.html) → Scan-Screen → Abschnitt «Benachrichtigungen (ntfy)»</li>
+                  <li><strong>Verwendung:</strong> Gast trägt das Topic in die ntfy-App ein → erhält automatisch eine Benachrichtigung wenn er in der Warteliste an die Reihe kommt</li>
+                  <li><strong>Test-Nachricht:</strong> Im LabManager → Gast bearbeiten → Abschnitt «NTFY Benachrichtigungen» → «▶ Test»</li>
+                </ul>
+                <div class="help-tip"><strong>Sicherheit:</strong> Das Topic ist zufällig generiert (16 Zeichen, URL-sicher) und für Dritte nicht erratbar. Nur der Gast selbst kennt es.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Notfall-Alarm</div>
+              <div class="help-article-body">
+                Der Notfall-Alarm wird durch einen physischen Knopf (z.B. grosser roter Not-Aus-Knopf via Shelly 1 Mini) ausgelöst und:
+                <ul style="margin-top:8px">
+                  <li>Schaltet konfigurierte Smart Plugs ein (Sirene, Blinklicht)</li>
+                  <li>Zeigt einen Notfallbildschirm mit konfigurierbarem Text auf dem TV-Display</li>
+                  <li>Sendet eine Push-Benachrichtigung an das konfigurierte ntfy-Topic</li>
+                  <li>Protokolliert das Ereignis (mit IP-Adresse) im Aktivitätslog</li>
+                </ul>
+                <strong>Konfiguration:</strong>
+                <ol style="margin-top:8px">
+                  <li><strong>Trigger-Token:</strong> Geheimes Token, das am Shelly als HTTP-Action-Header <code>X-Emergency-Token</code> konfiguriert wird</li>
+                  <li><strong>Auto-Stop (Sekunden):</strong> Sirene und Licht schalten sich nach der konfigurierten Zeit automatisch aus (Display bleibt bis zur manuellen Quittierung)</li>
+                  <li><strong>Smart Plugs:</strong> IP-Adresse, Typ (Shelly/myStrom) und optionaler Auth-Token für Sirene und Blinklicht separat konfigurierbar</li>
+                  <li><strong>Anzeigetext:</strong> Erscheint auf dem TV-Display während des Alarms (z.B. Notrufnummern)</li>
+                  <li><strong>ntfy-Nachrichtentext:</strong> Frei konfigurierbarer Text für die Push-Benachrichtigung. Platzhalter: <code>{ts}</code> wird durch Datum und Uhrzeit ersetzt.</li>
+                </ol>
+                <strong>Alarm quittieren:</strong> Im roten Banner oben auf der Lab-Manager-Seite auf «✓ Quittieren» klicken. Ein Kommentarfeld ist Pflicht. Quittierung sendet ebenfalls eine ntfy-Benachrichtigung und protokolliert den quittierenden Lab Manager.
+                <div class="help-tip"><strong>Testen:</strong> <code>curl -X POST /api/emergency/trigger -H "X-Emergency-Token: [token]"</code></div>
+                <div class="help-warn"><strong>Shelly konfigurieren:</strong> Im Shelly-Webinterface unter «Actions → Button pressed» eine HTTP-Action auf <code>POST /api/emergency/trigger</code> mit Header <code>X-Emergency-Token: [dein-token]</code> einrichten.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Aktivitätslog ── -->
+        <div class="help-cat" id="help-cat-log">
+          <div class="help-cat-header" onclick="toggleHelpCat('log')">
+            <span class="help-cat-icon">📋</span>
+            <span class="help-cat-title">Aktivitätslog</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Log-Typen</div>
+              <div class="help-article-body">
+                Jeder Eintrag hat einen Typ. Folgende Typen existieren:
+                <table style="width:100%;margin-top:8px;font-size:13px;border-collapse:collapse">
+                  <thead><tr style="border-bottom:1px solid var(--border)">
+                    <th style="text-align:left;padding:4px 8px;font-family:var(--mono);font-size:11px;color:var(--text-dim)">Typ</th>
+                    <th style="text-align:left;padding:4px 8px;font-family:var(--mono);font-size:11px;color:var(--text-dim)">Bedeutung</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">session_started</td><td style="padding:4px 8px">Maschinen-Session gestartet (Gast)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">session_ended</td><td style="padding:4px 8px">Session beendet (manuell oder automatisch)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">access_granted</td><td style="padding:4px 8px">Zugang zur Maschine gewährt</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">access_denied</td><td style="padding:4px 8px">Zugangsverweigerung (keine Berechtigung)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">plug_on / plug_off</td><td style="padding:4px 8px">Smart Plug ein-/ausgeschaltet</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">guest_created</td><td style="padding:4px 8px">Gast durch Lab Manager angelegt</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">guest_registered</td><td style="padding:4px 8px">Gast hat sich selbst registriert</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">guest_login</td><td style="padding:4px 8px">Gast-Login (Passwort oder Token-Link)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">session_started (LM)</td><td style="padding:4px 8px">Session durch Lab Manager gestartet</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">maintenance_due</td><td style="padding:4px 8px">Wartungsintervall fällig</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">maintenance_done</td><td style="padding:4px 8px">Wartung als durchgeführt markiert</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">emergency_triggered</td><td style="padding:4px 8px">Notfall-Alarm ausgelöst (mit IP-Adresse)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">emergency_cancelled</td><td style="padding:4px 8px">Notfall-Alarm quittiert (mit Kommentar und Name)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">error</td><td style="padding:4px 8px">Fehler (z.B. Plug nicht erreichbar)</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Filtern und Suchen</div>
+              <div class="help-article-body">
+                Der Log kann gefiltert werden nach: Gast, Maschine, Typ, Datumsbereich und Freitext-Suche.
+                <ul style="margin-top:8px">
+                  <li>Der Filter «🚨 Notfall» zeigt Alarm-Auslösungen und -Quittierungen gemeinsam</li>
+                  <li>Es werden maximal 200 Einträge angezeigt; die Gesamtzahl der Treffer erscheint oben</li>
+                  <li>Für Notfall-Einträge wird die auslösende IP-Adresse und der quittierenden Lab Manager angezeigt</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1476,6 +1626,7 @@ async function apiSilent(method, path, body=null) {
 }
 const GET=(p)=>api('GET',p);
 const POST=(p,b)=>api('POST',p,b);
+const PUT=(p,b)=>api('PUT',p,b);
 const PATCH=(p,b)=>api('PATCH',p,b);
 const DELETE=(p)=>api('DELETE',p);
 
@@ -1799,17 +1950,13 @@ async function loadAll() {
   if (machines) cache.machines = machines;
   if (perms)    cache.permissions = perms;
   if (stats) {
-    document.getElementById('stat-guests').textContent    = stats.total_guests;
-    document.getElementById('stat-machines').textContent  = stats.total_machines;
-    document.getElementById('stat-lm').textContent        = stats.total_managers;
-    document.getElementById('stat-perms').textContent     = stats.total_permissions;
     document.getElementById('badge-guests').textContent   = stats.total_guests;
     document.getElementById('badge-lm').textContent       = stats.total_managers;
     document.getElementById('badge-machines').textContent = stats.total_machines;
   }
   // Sofort rendern — Dashboard und Log sind damit schon sichtbar
   renderGuests(); renderLM(); renderMachines(); renderPermGuestList(); renderPermMachineList(); renderDashboard();
-  populateQRSelects(); loadLog();
+  populateQRSelects();
 
   // Live-Daten (Plug-Status, Session-Info) im Hintergrund nachladen
   refreshLiveData();
@@ -1831,8 +1978,23 @@ async function refreshLiveData() {
 // DASHBOARD
 // ═══════════════════════════════════════════════════════
 function renderDashboard() {
-  // Aktive Maschinen: session_started_at ist bereits im Basis-Response vorhanden
-  const active = cache.machines.filter(m => m.session_started_at || m.in_use || m.current_guest_name);
+  const machines = cache.machines;
+  const active = machines.filter(m => m.session_started_at || m.in_use || m.current_guest_name);
+  const online = machines.filter(m => m.status === 'online' || m.status === 'inuse' || m.in_use || m.current_guest_name);
+
+  // Operative Metriken
+  document.getElementById('stat-active-sessions').textContent = active.length;
+  document.getElementById('stat-online').textContent = online.length;
+  document.getElementById('stat-online-sub').textContent = `von ${machines.length} gesamt`;
+
+  // Pending-Reg und Wartung werden von loadPendingGuests / refreshMaintenanceOverview gesetzt
+  // Hier nur initialen Fallback wenn noch nicht geladen
+  if (document.getElementById('stat-pending-reg').textContent === '—')
+    document.getElementById('stat-pending-reg').textContent = '0';
+  if (document.getElementById('stat-maint-due').textContent === '—')
+    document.getElementById('stat-maint-due').textContent = '0';
+
+  // Aktive Maschinen-Tabelle
   const activeSection = document.getElementById('dash-active-section');
   activeSection.style.display = active.length ? 'block' : 'none';
   if (active.length) {
@@ -1840,11 +2002,8 @@ function renderDashboard() {
     document.getElementById('dash-active-machines').innerHTML = active.map(m => {
       const dur = m.session_duration_min != null ? formatDuration(m.session_duration_min) : '—';
       const watt = m.power_w != null ? `${Math.round(m.power_w)} W` : '—';
-
-      // Leerlauf-Status: eigene Zeile als farbiges Banner
       let idleBanner = '';
       let rowStyle = '';
-      let rowClass = '';
       if (m.idle_state === 'idle_warning') {
         const rem = (m.idle_timeout_min != null && m.idle_since_min != null)
           ? Math.max(0, Math.ceil(m.idle_timeout_min - m.idle_since_min)) : '?';
@@ -1873,7 +2032,6 @@ function renderDashboard() {
         </tr>`;
         rowStyle = 'border-left:3px solid var(--accent)';
       }
-
       return `<tr style="${rowStyle}">
         <td><strong>${m.name}</strong></td>
         <td style="font-family:var(--mono);font-size:13px;color:var(--text-dim)">${m.category||'—'}</td>
@@ -1891,34 +2049,47 @@ function renderDashboard() {
     }).join('');
   }
 
-  // Alle Maschinen
-  const mTbody=document.getElementById('dash-machine-status');
-  const sortedM=[...cache.machines].sort((a,b)=>a.name.localeCompare(b.name,'de'));
-  mTbody.innerHTML=!sortedM.length
-    ?'<tr><td colspan="5" style="color:var(--text-dim);text-align:center;padding:16px">Keine Maschinen</td></tr>'
-    :sortedM.map(m=>{
-      const inUse = m.current_guest_name || m.in_use;
-      const userCell = inUse
-        ? `<span style="font-family:var(--mono);font-size:13px;color:${m.session_manager_id?'var(--accent2)':'var(--text)'}">◉ ${m.current_guest_name||'Manager'}</span>`
-        : `<span style="color:var(--text-dim);font-size:13px">—</span>`;
-      let idleCell='';
-      if (m.idle_state==='idle_warning'){
-        const rem=m.idle_timeout_min&&m.idle_since_min!=null?Math.max(0,Math.ceil(m.idle_timeout_min-m.idle_since_min)):'?';
-        idleCell=`<span style="background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.4);border-radius:4px;padding:2px 6px;font-family:var(--mono);font-size:10px;font-weight:700">⚠ ABS. in ${rem}min</span>`;
-      } else if (m.idle_state==='idle'){
-        idleCell=`<span style="background:rgba(244,166,34,.12);color:var(--accent);border:1px solid rgba(244,166,34,.3);border-radius:4px;padding:2px 6px;font-family:var(--mono);font-size:10px">⏱ Leerlauf</span>`;
-      }
-      let adapterCell='<span style="color:var(--text-dim);font-size:13px">—</span>';
-      if (m.plug_type!=='none') {
-        if (m.plug_error==='unreachable')
-          adapterCell=`<span style="color:var(--accent);font-family:var(--mono);font-size:13px">⚠ OFFLINE</span>`;
-        else if (m.plug_on===true)
-          adapterCell=`<span style="color:var(--success);font-family:var(--mono);font-size:13px">● EIN</span>`;
-        else if (m.plug_on===false)
-          adapterCell=`<span style="color:var(--text-dim);font-family:var(--mono);font-size:13px">○ AUS</span>`;
-      }
-      return `<tr style="${m.idle_state==='idle_warning'?'background:rgba(239,68,68,.04)':''}"><td><strong>${m.name}</strong>${m.comment?` <span style="font-size:10px;color:var(--accent)">⚠</span>`:''} ${idleCell}</td><td style="font-family:var(--mono);font-size:13px;color:var(--text-dim)">${m.category}</td><td><span class="badge ${m.status==='online'?'badge-green':m.status==='maintenance'?'badge-orange':'badge-gray'}">${m.status}</span></td><td>${adapterCell}</td><td>${userCell}</td></tr>`;
-    }).join('');
+  // Kompakte Maschinen-Grid
+  const grid = document.getElementById('dash-machine-grid');
+  const sorted = [...machines].sort((a,b) => a.name.localeCompare(b.name,'de'));
+  document.getElementById('dash-machines-count').textContent = `(${sorted.length})`;
+  if (!sorted.length) {
+    grid.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px">Keine Maschinen</div>';
+    return;
+  }
+  grid.innerHTML = sorted.map(m => {
+    const inUse = m.current_guest_name || m.in_use;
+    const isActive = inUse;
+    let dotColor = 'var(--text-dim)'; // offline/unknown
+    let borderColor = 'var(--border)';
+    if (m.status === 'maintenance') { dotColor = 'var(--accent)'; borderColor = 'rgba(244,166,34,.3)'; }
+    else if (isActive)              { dotColor = 'var(--success)'; borderColor = 'rgba(34,197,94,.3)'; }
+    else if (m.status === 'online') { dotColor = 'var(--accent2)'; borderColor = 'rgba(34,211,238,.2)'; }
+
+    let idleTag = '';
+    if (m.idle_state === 'idle_warning') {
+      const rem = (m.idle_timeout_min != null && m.idle_since_min != null)
+        ? Math.max(0, Math.ceil(m.idle_timeout_min - m.idle_since_min)) : '?';
+      idleTag = `<span style="font-family:var(--mono);font-size:9px;color:#ef4444;font-weight:700">⚠ ABS. ${rem}min</span>`;
+    } else if (m.idle_state === 'idle') {
+      idleTag = `<span style="font-family:var(--mono);font-size:9px;color:var(--accent)">⏱ Leerlauf</span>`;
+    }
+
+    const userLine = isActive
+      ? `<div style="font-size:11px;color:${m.session_manager_id?'var(--accent2)':'var(--text-mid)'};margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">◉ ${m.current_guest_name||'Manager'}</div>`
+      : '';
+
+    return `<div style="background:var(--surface);border:1px solid ${borderColor};border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:2px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0;${isActive?'box-shadow:0 0 6px '+dotColor:''}"></span>
+        <span style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${m.name}</span>
+        ${m.comment?`<span style="font-size:10px;color:var(--accent)" title="${m.comment}">⚠</span>`:''}
+      </div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);padding-left:16px">${m.category||'—'}</div>
+      ${userLine ? `<div style="padding-left:16px">${userLine}</div>` : ''}
+      ${idleTag ? `<div style="padding-left:16px;margin-top:2px">${idleTag}</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1988,6 +2159,15 @@ function editGuest(id) {
         : `<button class="btn btn-ghost btn-sm" onclick="genLoginToken(${g.id})" type="button">🔗 Login-Link generieren</button>`
       }
     </div>
+    ${g.ntfy_topic ? `
+    <div style="border-top:2px solid rgba(255,255,255,0.15);margin-top:12px;padding-top:12px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">NTFY BENACHRICHTIGUNGEN</div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+        <span style="font-family:var(--mono);font-size:12px;color:var(--accent2);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:4px 8px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.ntfy_topic}</span>
+        <button class="btn btn-ghost btn-sm" onclick="sendGuestTestNtfy(${g.id},'${g.ntfy_topic}',this)" type="button">▶ Test</button>
+      </div>
+    </div>` : ''
+    }
   `, async()=>{
     const upd={name:document.getElementById('e-name').value.trim(),username:document.getElementById('e-un').value.trim(),email:document.getElementById('e-email').value.trim(),phone:document.getElementById('e-phone').value.trim(),is_active:document.getElementById('e-active').value==='true'};
     const p=document.getElementById('e-pass').value; if (p) upd.password=p;
@@ -2039,6 +2219,13 @@ async function revokeLoginToken(guestId) {
   if (!confirm('Login-Link widerrufen? Der Gast muss danach wieder mit Passwort einloggen.')) return;
   await DELETE(`/guests/${guestId}/login-token`);
   closeModal(); await loadAll(); editGuest(guestId); showToast('Login-Link widerrufen', 'warn');
+}
+
+async function sendGuestTestNtfy(guestId, topic, btn) {
+  btn.disabled = true; btn.textContent = '…';
+  const res = await POST(`/guests/${guestId}/ntfy-test`, {});
+  btn.disabled = false; btn.textContent = '▶ Test';
+  if (res !== null) showToast(`Test-Nachricht an ${topic} gesendet`, 'success');
 }
 
 function copyLoginLink(inputId) {
@@ -2814,7 +3001,7 @@ async function togglePerm(guestId,machineId) {
 }
 
 function renderStats() {
-  document.getElementById('stat-perms').textContent=cache.permissions.filter(p=>!p.is_blocked).length;
+  // stat-perms card removed from dashboard; no-op kept for compatibility
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2953,8 +3140,52 @@ async function manualPlug(action) {
 // ═══════════════════════════════════════════════════════
 // LOG mit Filtern
 // ═══════════════════════════════════════════════════════
-const logColors={access_granted:'var(--success)',access_denied:'var(--danger)',plug_on:'var(--accent2)',plug_off:'var(--text-dim)',guest_created:'var(--success)',guest_deleted:'var(--accent)',machine_created:'var(--accent2)',machine_deleted:'var(--accent)',permission_granted:'var(--success)',permission_revoked:'var(--accent)',login:'var(--accent)',guest_login:'var(--accent2)',idle_off:'var(--text-dim)',error:'var(--danger)'};
-const logTypeLabels={access_granted:'✓ Zugang',access_denied:'✗ Verweigert',plug_on:'⚡ EIN',plug_off:'○ AUS',guest_created:'+ Gast',guest_deleted:'− Gast',machine_created:'+ Maschine',machine_deleted:'− Maschine',permission_granted:'+ Berechtigung',permission_revoked:'− Berechtigung',login:'⎋ Login',guest_login:'👤 Gast-Login',idle_off:'⏱ Leerlauf-AUS',error:'⚠ Fehler'};
+const logColors={
+  access_granted:      'var(--success)',
+  access_denied:       'var(--danger)',
+  plug_on:             'var(--accent2)',
+  plug_off:            'var(--text-dim)',
+  session_started:     'var(--accent2)',
+  idle_off:            'var(--text-dim)',
+  guest_created:       'var(--success)',
+  guest_deleted:       'var(--accent)',
+  guest_registered:    'var(--accent2)',
+  guest_approved:      'var(--success)',
+  guest_login:         'var(--accent2)',
+  login:               'var(--accent)',
+  machine_created:     'var(--accent2)',
+  machine_deleted:     'var(--accent)',
+  permission_granted:  'var(--success)',
+  permission_revoked:  'var(--accent)',
+  maintenance_due:     'var(--accent)',
+  maintenance_done:    'var(--success)',
+  error:               'var(--danger)',
+  emergency_triggered: 'var(--danger)',
+  emergency_cancelled: 'var(--success)',
+};
+const logTypeLabels={
+  access_granted:      '✓ Zugang gewährt',
+  access_denied:       '✗ Zugang verweigert',
+  plug_on:             '⚡ Plug EIN',
+  plug_off:            '○ Plug AUS',
+  session_started:     '▶ Session gestartet',
+  idle_off:            '⏱ Leerlauf-Stop',
+  guest_created:       '+ Gast erstellt',
+  guest_deleted:       '− Gast gelöscht',
+  guest_registered:    '📋 Selbstregistrierung',
+  guest_approved:      '✓ Gast freigeschaltet',
+  guest_login:         '👤 Gast-Login',
+  login:               '⎋ Manager-Login',
+  machine_created:     '+ Maschine erstellt',
+  machine_deleted:     '− Maschine gelöscht',
+  permission_granted:  '+ Berechtigung erteilt',
+  permission_revoked:  '− Berechtigung entzogen',
+  maintenance_due:     '🔧 Wartung fällig',
+  maintenance_done:    '🔧 Wartung durchgeführt',
+  error:               '⚠ Fehler',
+  emergency_triggered: '🚨 Notfall ausgelöst',
+  emergency_cancelled: '✓ Notfall quittiert',
+};
 
 async function loadLogFilterOptions() {
   const opts=await GET('/log/filter-options'); if (!opts) return;
@@ -2963,7 +3194,10 @@ async function loadLogFilterOptions() {
   const tSel=document.getElementById('f-type');
   gSel.innerHTML='<option value="">Alle Gäste</option>'+opts.guests.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
   mSel.innerHTML='<option value="">Alle Maschinen</option>'+opts.machines.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
-  tSel.innerHTML='<option value="">Alle Typen</option>'+opts.types.map(t=>`<option value="${t}">${logTypeLabels[t]||t}</option>`).join('');
+  const dynamicTypes = opts.types.filter(t => !t.startsWith('emergency_'));
+  tSel.innerHTML='<option value="">Alle Typen</option>'
+    + '<option value="emergency_triggered,emergency_cancelled">🚨 Notfall</option>'
+    + dynamicTypes.map(t=>`<option value="${t}">${logTypeLabels[t]||t}</option>`).join('');
 }
 
 async function loadLog() {
@@ -2981,10 +3215,14 @@ async function loadLog() {
   if (to)        params.append('date_to',to);
   if (search)    params.append('search',search);
 
-  const logs=await GET(`/log?${params}`); if (!logs) return;
+  const res=await GET(`/log?${params}`); if (!res) return;
+  const logs=res.logs;
+  const total=res.total;
 
   const countEl=document.getElementById('log-count');
-  if (countEl) countEl.textContent=`${logs.length} Einträge gefunden`;
+  if (countEl) countEl.textContent = total > logs.length
+    ? `${logs.length} von ${total} Einträgen (ältere ausgeblendet)`
+    : `${total} Einträge gefunden`;
 
   const render=(containerId,limit=999)=>{
     const el=document.getElementById(containerId); if (!el) return;
@@ -2993,9 +3231,10 @@ async function loadLog() {
       const color=logColors[l.type]||'var(--accent2)';
       const dt=fmtDate(l.created_at);
       const tags=[];
-      if (l.guest_name)   tags.push(`<span class="log-tag">👤 ${l.guest_name}</span>`);
-      if (l.machine_name) tags.push(`<span class="log-tag">⚙ ${l.machine_name}</span>`);
-      if (l.user_name)    tags.push(`<span class="log-tag">◈ ${l.user_name}</span>`);
+      if (l.guest_name)        tags.push(`<span class="log-tag">👤 ${l.guest_name}</span>`);
+      if (l.machine_name)      tags.push(`<span class="log-tag">⚙ ${l.machine_name}</span>`);
+      if (l.user_name)         tags.push(`<span class="log-tag">◈ ${l.user_name}</span>`);
+      if (l.meta?.ip)          tags.push(`<span class="log-tag">🌐 ${l.meta.ip}</span>`);
       return `<div class="log-entry">
         <div class="log-time">${dt}</div>
         <div class="log-dot" style="background:${color}"></div>
@@ -3008,15 +3247,6 @@ async function loadLog() {
   };
 
   render('full-log');
-  const dashLog=document.getElementById('dash-log');
-  if (dashLog) {
-    if (!logs.length) { dashLog.innerHTML='<div class="log-entry"><div class="log-content" style="color:var(--text-dim)">Keine Aktivität</div></div>'; return; }
-    dashLog.innerHTML=logs.slice(0,5).map(l=>{
-      const color=logColors[l.type]||'var(--accent2)';
-      const dt=fmtDate(l.created_at);
-      return `<div class="log-entry"><div class="log-time">${dt}</div><div class="log-dot" style="background:${color}"></div><div class="log-content">${l.message}</div></div>`;
-    }).join('');
-  }
 }
 
 function resetLogFilters() {
@@ -3082,14 +3312,14 @@ if (_ltParam) {
       token = res.access_token;
       localStorage.setItem('ms_token', token);
       history.replaceState(null, '', window.location.pathname);
-      GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=u.role==='admin'?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } });
+      GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=u.role==='admin'?'':'none';document.getElementById('nav-backup').style.display=u.role==='admin'?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } });
     } else {
       document.getElementById('login-error').textContent='Ungültiger Login-Link.';
       document.getElementById('login-error').style.display='block';
     }
   });
 } else if (token) {
-  GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=u.role==='admin'?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
+  GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=u.role==='admin'?'':'none';document.getElementById('nav-backup').style.display=u.role==='admin'?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
 }
 document.getElementById('login-pass').addEventListener('keydown',e=>{ if (e.key==='Enter') doLogin(); });
 setInterval(()=>{ if(document.querySelector('.nav-item.active')?.dataset.page==='log') loadLog(); },30000);
@@ -3117,12 +3347,15 @@ async function loadSettings() {
   document.getElementById('cfg-ntfy-server').value = s.ntfy_server ?? 'https://ntfy.sh';
   document.getElementById('cfg-ntfy-token').value = s.ntfy_token ?? '';
   document.getElementById('cfg-emergency-token').value = s.emergency_trigger_token ?? '';
-  document.getElementById('cfg-emergency-duration').value = s.emergency_duration_min ?? 0;
+  document.getElementById('cfg-emergency-duration').value = s.emergency_duration_sec ?? 0;
   document.getElementById('cfg-emergency-plug-ip').value = s.emergency_plug_ip ?? '';
   document.getElementById('cfg-emergency-plug-type').value = s.emergency_plug_type ?? '';
+  document.getElementById('cfg-emergency-plug-token').value = s.emergency_plug_token ?? '';
   document.getElementById('cfg-emergency-plug2-ip').value = s.emergency_plug2_ip ?? '';
   document.getElementById('cfg-emergency-plug2-type').value = s.emergency_plug2_type ?? '';
+  document.getElementById('cfg-emergency-plug2-token').value = s.emergency_plug2_token ?? '';
   document.getElementById('cfg-emergency-text').value = s.emergency_text ?? '';
+  document.getElementById('cfg-emergency-ntfy-message').value = s.emergency_ntfy_message ?? '';
   // Topic-Dropdown füllen und Auswahl setzen
   _emergencyNtfyTopicId = s.emergency_ntfy_topic_id;
   const h = s.jwt_expire_minutes >= 60
@@ -3149,13 +3382,16 @@ async function saveSettings() {
     ntfy_server:               document.getElementById('cfg-ntfy-server').value.trim() || 'https://ntfy.sh',
     ntfy_token:                document.getElementById('cfg-ntfy-token').value.trim() || null,
     emergency_trigger_token:   document.getElementById('cfg-emergency-token').value.trim() || null,
-    emergency_duration_min:    parseInt(document.getElementById('cfg-emergency-duration').value) || 0,
+    emergency_duration_sec:    parseInt(document.getElementById('cfg-emergency-duration').value) || 0,
     emergency_ntfy_topic_id:   parseInt(document.getElementById('cfg-emergency-topic').value) || null,
     emergency_plug_ip:         document.getElementById('cfg-emergency-plug-ip').value.trim() || null,
     emergency_plug_type:       document.getElementById('cfg-emergency-plug-type').value || null,
+    emergency_plug_token:      document.getElementById('cfg-emergency-plug-token').value.trim() || null,
     emergency_plug2_ip:        document.getElementById('cfg-emergency-plug2-ip').value.trim() || null,
     emergency_plug2_type:      document.getElementById('cfg-emergency-plug2-type').value || null,
+    emergency_plug2_token:     document.getElementById('cfg-emergency-plug2-token').value.trim() || null,
     emergency_text:            document.getElementById('cfg-emergency-text').value || null,
+    emergency_ntfy_message:    document.getElementById('cfg-emergency-ntfy-message').value || null,
   };
   const res = await PATCH('/settings', payload);
   if (res) { await loadSettings(); showToast('Einstellungen gespeichert', 'success'); }
@@ -3379,15 +3615,18 @@ async function loadPendingGuests() {
   const count   = document.getElementById('dash-pending-count');
   const badge   = document.getElementById('badge-pending');
 
+  const statPending = document.getElementById('stat-pending-reg');
   if (!data || !data.length) {
     section.style.display = 'none';
     badge.style.display = 'none';
+    if (statPending) statPending.textContent = '0';
     return;
   }
 
   section.style.display = 'block';
   count.textContent = `(${data.length})`;
   badge.style.display = '';
+  if (statPending) statPending.textContent = data.length;
 
   const thStyle = `font-family:var(--mono);font-size:10px;color:var(--text-dim);font-weight:400;text-align:left;padding-bottom:6px`;
   const rows = data.map(g => `<tr>
@@ -3727,6 +3966,8 @@ function renderDashboardMaintenance(data) {
   if (!section || !list) return;
 
   const urgent = data.filter(iv => iv.status === 'due' || iv.status === 'warning');
+  const statMaint = document.getElementById('stat-maint-due');
+  if (statMaint) statMaint.textContent = urgent.length;
   section.style.display = urgent.length ? 'block' : 'none';
   if (!urgent.length) return;
 
@@ -3961,11 +4202,19 @@ async function checkEmergencyStatus() {
 }
 
 async function cancelEmergency() {
-  const ok = await POST('/emergency/cancel', {});
-  if (ok) {
-    showToast('Notfall quittiert', 'success');
-    checkEmergencyStatus();
-  }
+  openModal('Notfall quittieren',
+    `<div class="form-group">
+      <label class="form-label">Kommentar <span style="color:var(--danger);font-weight:400">*</span></label>
+      <textarea class="form-input" id="cancel-comment" rows="3" placeholder="z.B. Fehlalarm, Ursache behoben…" style="resize:vertical"></textarea>
+    </div>`,
+    async () => {
+      const comment = document.getElementById('cancel-comment')?.value.trim() ?? '';
+      if (!comment) return showToast('Bitte einen Kommentar eingeben', 'warn');
+      const ok = await POST('/emergency/cancel', { comment });
+      if (ok) { closeModal(); showToast('Notfall quittiert', 'success'); checkEmergencyStatus(); }
+    },
+    'Quittieren'
+  );
 }
 
 // Emergency-Status alle 15s prüfen
@@ -3991,13 +4240,26 @@ async function loadNotificationsPage() {
     return `<div class="topic-card">
       <div class="topic-qr"><img src="${qrSrc}" alt="QR"></div>
       <div style="flex:1">
-        <div style="font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:.5px;margin-bottom:4px">${t.title}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div style="font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:.5px">${t.title}</div>
+          <button class="btn btn-ghost btn-sm" onclick="sendTestNotification(${t.id}, this)">Test senden</button>
+        </div>
         ${t.description ? `<div style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5">${t.description}</div>` : ''}
         <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-bottom:6px">TOPIC</div>
         <div style="font-family:var(--mono);font-size:13px;color:var(--accent2);word-break:break-all">${url}</div>
       </div>
     </div>`;
   }).join('');
+}
+
+async function sendTestNotification(id, btn) {
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '…';
+  const res = await POST(`/ntfy-topics/${id}/test`);
+  btn.disabled = false;
+  btn.textContent = orig;
+  if (res) showToast('Test-Benachrichtigung gesendet', 'success');
 }
 
 // Topics für Einstellungs-Dropdown und -Liste laden

@@ -14,7 +14,10 @@ Webbasiertes Verwaltungssystem für Makerspaces. Gäste werden per QR-Code an Ma
 - **QR-Code Workflow** — Gast-QR + Maschinen-QR → Plug schaltet ein
 - **Leerlauf-Automatik** — Plug schaltet bei Nichtbenutzung automatisch aus
 - **Maschinenpflege** — Wartungsintervalle mit Warnungen
-- **Aktivitätslog** — vollständiges Audit-Trail
+- **Warteliste** — Gäste stellen sich in die Warteschlange, ntfy-Benachrichtigung wenn Maschine frei wird
+- **Push-Benachrichtigungen** — ntfy-Integration für System-Events und persönliche Gast-Topics
+- **Notfall-Alarm** — physischer Auslöser (z.B. Shelly) startet Alarm, schaltet Sirene/Licht, sendet Push, Quittierung mit Kommentarpflicht
+- **Aktivitätslog** — vollständiges Audit-Trail inkl. IP-Adressen
 - **Backup / Restore** — JSON-Export und -Import aller Daten
 - **Smart Plug Support** — myStrom, Shelly Gen1 und Gen2
 
@@ -57,6 +60,8 @@ Mindestens anpassen:
 | `DB_ROOT_PASSWORD` | Sicheres Root-Passwort für MariaDB |
 | `DB_PASSWORD` | Datenbankpasswort für die App |
 | `JWT_SECRET` | Zufälliger String (mind. 32 Zeichen) |
+| `ALLOWED_ORIGINS` | Erlaubte CORS-Origins (kommagetrennt, z.B. `https://spacecaptain.example.com`) |
+| `TIMEZONE` | Zeitzone des Servers (z.B. `Europe/Zurich`, `Europe/Berlin`) |
 | `BACKUP_EMAIL` | E-Mail des Admin-Accounts für Backups |
 | `BACKUP_PASSWORD` | Passwort des Admin-Accounts |
 
@@ -283,14 +288,20 @@ spacecaptain/
 │       │   ├── machines.py     ← Maschinen + QR-Code PNG
 │       │   ├── permissions.py  ← Berechtigungs-Matrix
 │       │   ├── qr.py           ← QR-Scan, Plug-Steuerung
-│       │   ├── dashboard.py    ← Statistiken
+│       │   ├── dashboard.py    ← Statistiken + Aktivitätslog
 │       │   ├── maintenance.py  ← Wartungsintervalle
+│       │   ├── queue.py        ← Warteliste
+│       │   ├── ntfy_topics.py  ← System-ntfy-Topics
+│       │   ├── emergency.py    ← Notfall-Alarm
+│       │   ├── settings.py     ← Systemeinstellungen
 │       │   ├── backup.py       ← Export / Import
 │       │   └── guest_auth.py   ← Gast-Login, Passwort ändern
 │       └── services/
 │           ├── auth.py         ← JWT, Passwort-Hashing (bcrypt)
 │           ├── plug.py         ← Smart Plug HTTP API
 │           ├── session.py      ← Idle-Watcher, Plug-Polling
+│           ├── ntfy.py         ← Push-Benachrichtigungen (ntfy)
+│           ├── queue_service.py← Wartelisten-Logik, ntfy-Benachrichtigung
 │           ├── migrate.py      ← Datenbank-Migrationen
 │           └── logger.py       ← Aktivitätslog Helper
 ├── frontend/
@@ -309,9 +320,12 @@ spacecaptain/
 |----------|----------|--------------|
 | POST | `/api/auth/login` | Login (JSON: email + password) |
 | GET  | `/api/auth/me` | Aktuell eingeloggter User |
-| GET  | `/api/dashboard` | Statistiken |
-| GET  | `/api/log` | Aktivitätslog |
+| GET  | `/api/dashboard` | Operative Metriken (Sessions, Registrierungen, Wartung) |
+| GET  | `/api/log` | Aktivitätslog (Filter: guest_id, machine_id, type, date_from, date_to, search) |
 | GET/POST | `/api/guests` | Gäste verwalten |
+| POST | `/api/guests/register` | Gast-Selbstregistrierung (öffentlich) |
+| POST | `/api/guests/{id}/approve` | Registrierung freischalten (Admin) |
+| POST | `/api/guests/{id}/ntfy-test` | Test-Push an Gast-Topic senden |
 | GET/POST | `/api/machines` | Maschinen verwalten |
 | GET  | `/api/machines/{id}/qr.png` | QR-Code als PNG |
 | GET/POST | `/api/permissions` | Berechtigungs-Matrix |
@@ -319,6 +333,13 @@ spacecaptain/
 | POST | `/api/qr/scan` | QR-Scan → Plug EIN |
 | POST | `/api/qr/release` | Maschine freigeben → Plug AUS |
 | POST | `/api/qr/plug/toggle` | Plug manuell schalten (Admin) |
+| GET/POST | `/api/queue` | Warteliste verwalten |
+| GET/POST | `/api/ntfy-topics` | System-ntfy-Topics verwalten |
+| POST | `/api/ntfy-topics/{id}/test` | Test-Push an System-Topic senden |
+| GET  | `/api/emergency/status` | Notfall-Status abfragen |
+| POST | `/api/emergency/trigger` | Notfall-Alarm auslösen (Header: X-Emergency-Token) |
+| POST | `/api/emergency/cancel` | Notfall-Alarm quittieren (JWT, Pflichtkommentar) |
+| GET/POST | `/api/settings` | Systemeinstellungen lesen/schreiben |
 | GET  | `/api/backup/export` | Vollständiger JSON-Export (Admin) |
 | POST | `/api/backup/import` | Konfiguration importieren (Admin) |
 | GET/POST | `/api/maintenance/intervals` | Wartungsintervalle |

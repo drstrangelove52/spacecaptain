@@ -90,6 +90,7 @@ class GuestOut(GuestBase):
     permission_count: int = 0
     username: str = ""
     has_login_token: bool = False
+    ntfy_topic: Optional[str] = None
     # Included for validation only — never serialized
     login_token: Optional[str] = Field(default=None, exclude=True)
 

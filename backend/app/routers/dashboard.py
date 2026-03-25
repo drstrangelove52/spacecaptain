@@ -44,7 +44,8 @@ async def activity_log(
     guest_id:   Optional[int] = Query(None),
     machine_id: Optional[int] = Query(None),
     user_id:    Optional[int] = Query(None),
-    type:       Optional[str] = Query(None),
+    type:       Optional[str] = Query(None),   # einzelner Typ oder kommagetrennte Liste
+
     date_from:  Optional[str] = Query(None),   # ISO date "2025-01-01"
     date_to:    Optional[str] = Query(None),
     search:     Optional[str] = Query(None),
@@ -55,7 +56,12 @@ async def activity_log(
     if guest_id:   filters.append(ActivityLog.guest_id == guest_id)
     if machine_id: filters.append(ActivityLog.machine_id == machine_id)
     if user_id:    filters.append(ActivityLog.user_id == user_id)
-    if type:       filters.append(ActivityLog.type == type)
+    if type:
+        types = [t.strip() for t in type.split(",") if t.strip()]
+        if len(types) == 1:
+            filters.append(ActivityLog.type == types[0])
+        else:
+            filters.append(ActivityLog.type.in_(types))
     if date_from:
         try: filters.append(ActivityLog.created_at >= datetime.fromisoformat(date_from))
         except ValueError: pass
@@ -68,8 +74,10 @@ async def activity_log(
     q = select(ActivityLog)
     if filters:
         q = q.where(and_(*filters))
-    q = q.order_by(ActivityLog.created_at.desc()).limit(limit).offset(offset)
 
+    total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar() or 0
+
+    q = q.order_by(ActivityLog.created_at.desc()).limit(limit).offset(offset)
     result = await db.execute(q)
     logs = result.scalars().all()
 
@@ -93,7 +101,7 @@ async def activity_log(
             "machine_name": machines.get(l.machine_id) if l.machine_id else None,
             "user_name":    users.get(l.user_id)     if l.user_id    else None,
         })
-    return out
+    return {"total": total, "logs": out}
 
 
 @router.get("/log/filter-options")

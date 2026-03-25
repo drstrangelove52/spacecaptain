@@ -6,9 +6,10 @@ from typing import Optional
 from datetime import datetime
 
 from app.database import get_db
-from app.models import NtfyTopic
+from app.models import NtfyTopic, SystemSettings
 from app.routers.auth import get_current_user
 from app.services.auth import require_admin
+from app.services.ntfy import send_notification
 
 router = APIRouter(prefix="/ntfy-topics", tags=["ntfy"])
 
@@ -69,6 +70,32 @@ async def update_topic(
     await db.commit()
     await db.refresh(t)
     return _serialize(t)
+
+
+@router.post("/{topic_id}/test")
+async def test_topic(
+    topic_id: int,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    result = await db.execute(select(NtfyTopic).where(NtfyTopic.id == topic_id))
+    t = result.scalar_one_or_none()
+    if not t:
+        raise HTTPException(404, "Nicht gefunden")
+    cfg = await db.get(SystemSettings, 1)
+    server = (cfg.ntfy_server if cfg and cfg.ntfy_server else "https://ntfy.sh")
+    token = cfg.ntfy_token if cfg else None
+    ok = await send_notification(
+        server=server,
+        token=token,
+        topic=t.topic,
+        title="SpaceCaptain Test",
+        message=f"Test-Benachrichtigung für Topic «{t.title}»",
+        tags=["test_tube"],
+    )
+    if not ok:
+        raise HTTPException(502, "Benachrichtigung konnte nicht gesendet werden")
+    return {"ok": True}
 
 
 @router.delete("/{topic_id}")

@@ -42,6 +42,8 @@ class LogType(str, enum.Enum):
     maintenance_done = "maintenance_done"
     guest_registered = "guest_registered"
     guest_approved = "guest_approved"
+    emergency_triggered = "emergency_triggered"
+    emergency_cancelled = "emergency_cancelled"
 
 class SessionEndedBy(str, enum.Enum):
     guest = "guest"
@@ -85,6 +87,7 @@ class Guest(Base):
     created_at:    Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
     updated_at:    Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     login_token:   Mapped[Optional[str]]       = mapped_column(String(64), unique=True, nullable=True)
+    ntfy_topic:    Mapped[Optional[str]]       = mapped_column(String(80), unique=True, nullable=True)
     permissions:   Mapped[list["Permission"]] = relationship("Permission", back_populates="guest", cascade="all, delete-orphan")
     tokens:        Mapped[list["GuestToken"]] = relationship("GuestToken", back_populates="guest", cascade="all, delete-orphan")
 
@@ -209,12 +212,15 @@ class SystemSettings(Base):
     ntfy_token:                 Mapped[Optional[str]] = mapped_column(String(255), default=None)
     emergency_trigger_token:    Mapped[Optional[str]] = mapped_column(String(100), default=None)
     emergency_text:             Mapped[Optional[str]] = mapped_column(Text, default=None)
-    emergency_duration_min:     Mapped[int]  = mapped_column(Integer, default=0)
+    emergency_ntfy_message:     Mapped[Optional[str]] = mapped_column(Text, default=None)
+    emergency_duration_sec:     Mapped[int]  = mapped_column(Integer, default=0)
     emergency_ntfy_topic_id:    Mapped[Optional[int]] = mapped_column(Integer, default=None)
     emergency_plug_ip:          Mapped[Optional[str]] = mapped_column(String(100), default=None)
     emergency_plug_type:        Mapped[Optional[str]] = mapped_column(String(20), default=None)
+    emergency_plug_token:       Mapped[Optional[str]] = mapped_column(String(200), default=None)
     emergency_plug2_ip:         Mapped[Optional[str]] = mapped_column(String(100), default=None)
     emergency_plug2_type:       Mapped[Optional[str]] = mapped_column(String(20), default=None)
+    emergency_plug2_token:      Mapped[Optional[str]] = mapped_column(String(200), default=None)
 
 
 class NtfyTopic(Base):

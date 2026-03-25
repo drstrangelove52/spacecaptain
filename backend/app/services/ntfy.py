@@ -2,6 +2,7 @@
 ntfy.sh Notification Service
 Unterstützt ntfy.sh Cloud und selbst gehostete Instanzen.
 """
+import base64
 import httpx
 import logging
 
@@ -28,8 +29,17 @@ async def send_notification(
 
     server = server.rstrip("/")
     url = f"{server}/{topic}"
+    def _encode_header(value: str) -> str:
+        """RFC 2047 Base64-Enkodierung für Non-ASCII Header-Werte."""
+        try:
+            value.encode("ascii")
+            return value
+        except UnicodeEncodeError:
+            encoded = base64.b64encode(value.encode("utf-8")).decode("ascii")
+            return f"=?utf-8?b?{encoded}?="
+
     headers = {
-        "Title": title,
+        "Title": _encode_header(title),
         "Priority": priority,
     }
     if tags:

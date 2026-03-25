@@ -47,7 +47,7 @@ async def export_config(
     user_by_id    = {u.id: u.email     for u in users}
 
     return {
-        "version": "2.5",
+        "version": "2.6",
         "app_version": APP_VERSION,
         "exported_at": datetime.utcnow().isoformat(),
         "settings": {
@@ -70,11 +70,15 @@ async def export_config(
             "ntfy_token":              cfg.ntfy_token,
             "emergency_trigger_token": cfg.emergency_trigger_token,
             "emergency_text":          cfg.emergency_text,
-            "emergency_duration_min":  cfg.emergency_duration_min,
+            "emergency_duration_sec":  cfg.emergency_duration_sec,
             "emergency_plug_ip":       cfg.emergency_plug_ip,
             "emergency_plug_type":     cfg.emergency_plug_type,
-            "emergency_plug2_ip":      cfg.emergency_plug2_ip,
-            "emergency_plug2_type":    cfg.emergency_plug2_type,
+            "emergency_plug_token":     cfg.emergency_plug_token,
+            "emergency_plug2_ip":       cfg.emergency_plug2_ip,
+            "emergency_plug2_type":     cfg.emergency_plug2_type,
+            "emergency_plug2_token":    cfg.emergency_plug2_token,
+            "emergency_ntfy_message":   cfg.emergency_ntfy_message,
+            "emergency_ntfy_topic_id":  cfg.emergency_ntfy_topic_id,
         },
         "ntfy_topics": [{
             "key":         t.key,
@@ -90,7 +94,7 @@ async def export_config(
         "guests": [{
             "name": g.name, "username": g.username, "email": g.email,
             "phone": g.phone, "note": g.note, "is_active": g.is_active,
-            "password_hash": g.password_hash,
+            "password_hash": g.password_hash, "ntfy_topic": g.ntfy_topic,
         } for g in guests],
         "machines": [{
             "name": m.name, "category": m.category, "manufacturer": m.manufacturer,
@@ -191,9 +195,10 @@ async def import_config(
                       "ticker_text", "ticker_speed", "ticker_font_size",
                       "announcement", "announcement_font_size", "agb_text",
                       "ntfy_server", "ntfy_token",
-                      "emergency_trigger_token", "emergency_text", "emergency_duration_min",
-                      "emergency_plug_ip", "emergency_plug_type",
-                      "emergency_plug2_ip", "emergency_plug2_type"):
+                      "emergency_trigger_token", "emergency_text", "emergency_duration_sec",
+                      "emergency_plug_ip", "emergency_plug_type", "emergency_plug_token",
+                      "emergency_plug2_ip", "emergency_plug2_type", "emergency_plug2_token",
+                      "emergency_ntfy_message", "emergency_ntfy_topic_id"):
             if field in s:
                 setattr(cfg, field, s[field])
         await db.flush()
@@ -219,6 +224,7 @@ async def import_config(
             name=g["name"], username=g["username"], email=g.get("email"),
             phone=g.get("phone"), note=g.get("note"), is_active=g.get("is_active", True),
             password_hash=g.get("password_hash"),
+            ntfy_topic=g.get("ntfy_topic"),
         ))
         stats["guests"] += 1
 

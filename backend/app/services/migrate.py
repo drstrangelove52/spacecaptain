@@ -187,6 +187,9 @@ async def run_migrations(engine: AsyncEngine) -> None:
                                      "TEXT DEFAULT NULL")
 
         # ── v1.11: ntfy + emergency ───────────────────────────────────────────
+        await _extend_enum_if_needed(conn, "activity_log", "type", [
+            "emergency_triggered", "emergency_cancelled"
+        ])
         await _add_column_if_missing(conn, "system_settings", "ntfy_server",
                                      "VARCHAR(255) NOT NULL DEFAULT 'https://ntfy.sh'")
         await _add_column_if_missing(conn, "system_settings", "ntfy_token",
@@ -195,7 +198,12 @@ async def run_migrations(engine: AsyncEngine) -> None:
                                      "VARCHAR(100) DEFAULT NULL")
         await _add_column_if_missing(conn, "system_settings", "emergency_text",
                                      "TEXT DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "emergency_ntfy_message",
+                                     "TEXT DEFAULT NULL")
         await _add_column_if_missing(conn, "system_settings", "emergency_duration_min",
+                                     "INT NOT NULL DEFAULT 0")
+        # emergency_duration_min umbenannt zu emergency_duration_sec (v1.12)
+        await _add_column_if_missing(conn, "system_settings", "emergency_duration_sec",
                                      "INT NOT NULL DEFAULT 0")
         await _add_column_if_missing(conn, "system_settings", "emergency_ntfy_topic_id",
                                      "INT DEFAULT NULL")
@@ -203,10 +211,18 @@ async def run_migrations(engine: AsyncEngine) -> None:
                                      "VARCHAR(100) DEFAULT NULL")
         await _add_column_if_missing(conn, "system_settings", "emergency_plug_type",
                                      "VARCHAR(20) DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "emergency_plug_token",
+                                     "VARCHAR(200) DEFAULT NULL")
         await _add_column_if_missing(conn, "system_settings", "emergency_plug2_ip",
                                      "VARCHAR(100) DEFAULT NULL")
         await _add_column_if_missing(conn, "system_settings", "emergency_plug2_type",
                                      "VARCHAR(20) DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "emergency_plug2_token",
+                                     "VARCHAR(200) DEFAULT NULL")
+
+        # ── v1.13: ntfy_topic pro Gast ────────────────────────────────────────
+        await _add_column_if_missing(conn, "guests", "ntfy_topic",
+                                     "VARCHAR(80) DEFAULT NULL")
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS ntfy_topics (
                 id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
