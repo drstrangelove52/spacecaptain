@@ -221,6 +221,10 @@ class SystemSettings(Base):
     emergency_plug2_ip:         Mapped[Optional[str]] = mapped_column(String(100), default=None)
     emergency_plug2_type:       Mapped[Optional[str]] = mapped_column(String(20), default=None)
     emergency_plug2_token:      Mapped[Optional[str]] = mapped_column(String(200), default=None)
+    auto_backup_enabled:        Mapped[bool]          = mapped_column(Boolean, default=False)
+    auto_backup_hour:           Mapped[int]            = mapped_column(Integer, default=3)
+    auto_backup_minute:         Mapped[int]            = mapped_column(Integer, default=0)
+    auto_backup_keep:           Mapped[int]            = mapped_column(Integer, default=30)
 
 
 class NtfyTopic(Base):
@@ -253,16 +257,6 @@ class MachineQueue(Base):
     machine:     Mapped["Machine"]    = relationship("Machine")
     guest:       Mapped["Guest"]      = relationship("Guest")
 
-
-class PushSubscription(Base):
-    __tablename__ = "push_subscriptions"
-    id:         Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
-    guest_id:   Mapped[int]      = mapped_column(UINT(unsigned=True), ForeignKey("guests.id", ondelete="CASCADE"))
-    endpoint:   Mapped[str]      = mapped_column(String(500), nullable=False)
-    p256dh:     Mapped[str]      = mapped_column(String(255), nullable=False)
-    auth:       Mapped[str]      = mapped_column(String(64), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    guest:      Mapped["Guest"]  = relationship("Guest")
 
 
 class Announcement(Base):

@@ -415,13 +415,24 @@ async def session_stats(
     machine_id: Optional[int] = None,
     guest_id:   Optional[int] = None,
     days:       int = 30,
+    date_from:  Optional[str] = None,
+    date_to:    Optional[str] = None,
     db: AsyncSession = Depends(get_db),
 ):
     from sqlalchemy import and_
     from app.models import MachineSession
-    since = datetime.utcnow() - timedelta(days=days)
+    if date_from:
+        since = datetime.fromisoformat(date_from)
+    else:
+        since = datetime.utcnow() - timedelta(days=days)
+    if date_to:
+        until = datetime.fromisoformat(date_to) + timedelta(days=1)
+    else:
+        until = None
 
     filters = [MachineSession.started_at >= since]
+    if until:
+        filters.append(MachineSession.started_at < until)
     if machine_id: filters.append(MachineSession.machine_id == machine_id)
     if guest_id:   filters.append(MachineSession.guest_id == guest_id)
 

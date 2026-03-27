@@ -686,10 +686,12 @@ function hideDashboard() {
 async function showGuestDashboard() {
   document.getElementById('screen-dashboard').style.display='flex';
   document.getElementById('dash-user-label').textContent=S.username?'@'+S.username:'';
-  const [machines, myQueue] = await Promise.all([
+  const [machinesRaw, myQueueRaw] = await Promise.all([
     fetch('/api/guest/dashboard').then(r=>r.json()).catch(()=>[]),
     S.guestToken ? fetch(`${API}/queue/my?access_token=${encodeURIComponent(S.guestToken)}`).then(r=>r.json()).catch(()=>[]) : [],
   ]);
+  const machines = Array.isArray(machinesRaw) ? machinesRaw : [];
+  const myQueue  = Array.isArray(myQueueRaw)  ? myQueueRaw  : [];
   const myQueueMap = {};
   for (const e of myQueue) myQueueMap[e.machine_id] = e;
 
@@ -929,13 +931,6 @@ async function toggleQueue() {
     await refreshQueueStatus();
   } catch { alert('Verbindungsfehler'); }
   btn.disabled = false;
-}
-
-// Service Worker deregistrieren (Push entfernt)
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(regs => {
-    for (const r of regs) r.unregister();
-  });
 }
 
 init();

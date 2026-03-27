@@ -3,6 +3,7 @@ Schema-Migrationen — idempotent, laufen bei jedem Backend-Start.
 Nur ADD COLUMN / CREATE TABLE IF NOT EXISTS — nie destruktiv.
 """
 import logging
+import secrets
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -223,6 +224,8 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # ── v1.13: ntfy_topic pro Gast ────────────────────────────────────────
         await _add_column_if_missing(conn, "guests", "ntfy_topic",
                                      "VARCHAR(80) DEFAULT NULL")
+        # Bestehende Gäste ohne Topic nachträglich befüllen (einmalig)
+        await _backfill_guest_ntfy_topics(conn)
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS ntfy_topics (
                 id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -244,6 +247,16 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await conn.execute(text(
             "INSERT IGNORE INTO emergency_state (id, active) VALUES (1, 0)"
         ))
+
+        # ── v1.14: auto_backup ────────────────────────────────────────────────
+        await _add_column_if_missing(conn, "system_settings", "auto_backup_enabled",
+                                     "TINYINT(1) NOT NULL DEFAULT 0")
+        await _add_column_if_missing(conn, "system_settings", "auto_backup_hour",
+                                     "INT NOT NULL DEFAULT 3")
+        await _add_column_if_missing(conn, "system_settings", "auto_backup_minute",
+                                     "INT NOT NULL DEFAULT 0")
+        await _add_column_if_missing(conn, "system_settings", "auto_backup_keep",
+                                     "INT NOT NULL DEFAULT 30")
 
     log.info("Migrationen abgeschlossen")
 
@@ -283,3 +296,17 @@ async def _extend_enum_if_needed(conn, table: str, column: str, new_values: list
     enum_def = "ENUM(" + ",".join(f"'{v}'" for v in all_values) + ") NOT NULL"
     await conn.execute(text(f"ALTER TABLE `{table}` MODIFY COLUMN `{column}` {enum_def}"))
     log.info(f"Migration: {table}.{column} ENUM erweitert um {missing}")
+
+
+async def _backfill_guest_ntfy_topics(conn) -> None:
+    """Generiert ntfy-Topics für bestehende Gäste ohne Topic (einmalig, idempotent)."""
+    result = await conn.execute(text("SELECT id FROM guests WHERE ntfy_topic IS NULL"))
+    rows = result.fetchall()
+    if not rows:
+        return
+    for (guest_id,) in rows:
+        topic = f"sc-{secrets.token_urlsafe(12)}"
+        await conn.execute(text(
+            "UPDATE guests SET ntfy_topic = :topic WHERE id = :id AND ntfy_topic IS NULL"
+        ), {"topic": topic, "id": guest_id})
+    log.info(f"Migration: ntfy_topic für {len(rows)} bestehende Gäste nachgefüllt")

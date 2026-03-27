@@ -171,6 +171,8 @@
   .filter-label{font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase}
   .filter-input{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .15s;width:100%}
   .filter-input:focus{border-color:var(--accent)}
+  input[type="date"].filter-input::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.6;cursor:pointer}
+  input[type="date"].filter-input::-webkit-calendar-picker-indicator:hover{opacity:1}
   /* LOG */
   .log-entry{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(42,47,62,.5)}
   .log-entry:last-child{border-bottom:none}
@@ -485,7 +487,7 @@
       <div class="log-filters" style="margin-bottom:16px">
         <div class="filter-group"><label class="filter-label">Maschine</label><select class="filter-input" id="s-machine"><option value="">Alle Maschinen</option></select></div>
         <div class="filter-group"><label class="filter-label">Gast</label><select class="filter-input" id="s-guest"><option value="">Alle Gäste</option></select></div>
-        <div class="filter-group"><label class="filter-label">Zeitraum</label><select class="filter-input" id="s-days"><option value="7">Letzte 7 Tage</option><option value="30" selected>Letzte 30 Tage</option><option value="90">Letzte 90 Tage</option><option value="365">Letztes Jahr</option></select></div>
+        <div class="filter-group"><label class="filter-label">Zeitraum</label><div style="display:flex;gap:6px;align-items:center"><input type="date" class="filter-input" id="s-date-from" style="width:145px"><span style="color:var(--text-dim);font-size:12px">–</span><input type="date" class="filter-input" id="s-date-to" style="width:145px"></div></div>
         <div style="display:flex;align-items:flex-end"><button class="btn btn-primary btn-sm" onclick="loadStats()">Auswerten</button></div>
       </div>
       <!-- Summary Cards -->
@@ -552,29 +554,49 @@
     </div>
 
     <div class="page" id="page-backup">
-      <div class="section-header">
-        <div class="section-title">Backup <span>// EXPORT &amp; IMPORT</span></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:900px">
-        <!-- Export -->
-        <div class="card" style="padding:24px">
-          <div class="section-title" style="font-size:13px;margin-bottom:8px">Export</div>
-          <p style="color:var(--text-dim);font-size:12px;margin-bottom:16px;line-height:1.6">
-            Exportiert alle Lab Manager, Gäste, Maschinen und Berechtigungen als JSON-Datei.<br>
-            <strong style="color:var(--accent)">⚠ Enthält Passwort-Hashes — sicher aufbewahren.</strong>
-          </p>
-          <button class="btn btn-primary" onclick="doExport()">⬇ Konfiguration exportieren</button>
+      <div style="display:flex;flex-direction:column;gap:24px">
+        <!-- Manueller Export / Import -->
+        <div>
+          <div class="section-header">
+            <div class="section-title">Backup <span>// EXPORT &amp; IMPORT</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:900px">
+            <!-- Export -->
+            <div class="card" style="padding:24px">
+              <div class="section-title" style="font-size:13px;margin-bottom:8px">Export</div>
+              <p style="color:var(--text-dim);font-size:12px;margin-bottom:16px;line-height:1.6">
+                Exportiert alle Lab Manager, Gäste, Maschinen und Berechtigungen als JSON-Datei.<br>
+                <strong style="color:var(--accent)">⚠ Enthält Passwort-Hashes — sicher aufbewahren.</strong>
+              </p>
+              <button class="btn btn-primary" onclick="doExport()">⬇ Konfiguration exportieren</button>
+            </div>
+            <!-- Import -->
+            <div class="card" style="padding:24px">
+              <div class="section-title" style="font-size:13px;margin-bottom:8px">Import</div>
+              <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.6">
+                Importiert eine zuvor exportierte Konfiguration.
+              </p>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:12px">
+                <input type="checkbox" id="import-overwrite" style="width:15px;height:15px;accent-color:var(--accent)">
+                <span style="font-size:13px;color:var(--text-dim)">Bestehende Einträge überschreiben</span>
+              </label>
+              <input type="file" id="import-file" accept=".json" style="display:none" onchange="doImport(this)">
+              <button class="btn btn-ghost" onclick="document.getElementById('import-file').click()">⬆ JSON-Datei wählen &amp; importieren</button>
+              <div id="import-result" style="margin-top:12px;font-size:12px;font-family:var(--mono)"></div>
+            </div>
+          </div>
         </div>
-        <!-- Import -->
-        <div class="card" style="padding:24px">
-          <div class="section-title" style="font-size:13px;margin-bottom:8px">Import</div>
-          <p style="color:var(--text-dim);font-size:12px;margin-bottom:16px;line-height:1.6">
-            Importiert eine zuvor exportierte Konfiguration.<br>
-            Bestehende Einträge (gleiche Email/Username/QR-Token) werden übersprungen.
-          </p>
-          <input type="file" id="import-file" accept=".json" style="display:none" onchange="doImport(this)">
-          <button class="btn btn-ghost" onclick="document.getElementById('import-file').click()">⬆ JSON-Datei wählen &amp; importieren</button>
-          <div id="import-result" style="margin-top:12px;font-size:12px;font-family:var(--mono)"></div>
+
+        <!-- Automatische Backups -->
+        <div>
+          <div class="section-header">
+            <div class="section-title">Automatische Backups <span>// GESPEICHERTE DATEIEN</span></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" onclick="loadBackupFiles()">↺ Aktualisieren</button>
+              <button class="btn btn-primary btn-sm" onclick="createBackupNow()">+ Jetzt sichern</button>
+            </div>
+          </div>
+          <div id="backup-files-list"><div class="loading"><div class="spinner"></div>Laden…</div></div>
         </div>
       </div>
     </div>
@@ -591,23 +613,24 @@
           <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">SYSTEM</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
             <div class="form-group" style="margin:0">
-              <label class="form-label">NFC-Schreibgerät (ESP32-URL) <span style="color:var(--text-dim);font-weight:400">— leer = deaktiviert</span></label>
-              <input class="form-input" id="cfg-nfc-url" placeholder="http://10.10.1.59">
+              <label class="form-label">NFC-Schreibgerät</label>
+              <input class="form-input" id="cfg-nfc-url" placeholder="http://192.168.1.x">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">ESP32-URL · leer = deaktiviert</div>
             </div>
             <div class="form-group" style="margin:0">
-              <label class="form-label">Lab-Manager-Session <span style="color:var(--text-dim);font-weight:400">(Minuten)</span></label>
+              <label class="form-label">Lab-Manager-Session</label>
               <input class="form-input" id="cfg-jwt-min" type="number" min="5" max="1440" placeholder="480">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Aktuell: <span id="cfg-jwt-human">—</span> — gilt ab dem nächsten Login</div>
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Minuten · aktuell: <span id="cfg-jwt-human">—</span> — gilt ab dem nächsten Login</div>
             </div>
             <div class="form-group" style="margin:0">
-              <label class="form-label">Gast-Login-Link Gültigkeit <span style="color:var(--text-dim);font-weight:400">(Tage)</span></label>
+              <label class="form-label">Gast-Login-Link Gültigkeit</label>
               <input class="form-input" id="cfg-token-days" type="number" min="1" max="3650" placeholder="365">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Gilt für neu generierte Links.</div>
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Tage · gilt für neu generierte Links</div>
             </div>
             <div class="form-group" style="margin:0">
-              <label class="form-label">Warteliste Reservierungsfenster <span style="color:var(--text-dim);font-weight:400">(Minuten)</span></label>
+              <label class="form-label">Reservierungsfenster</label>
               <input class="form-input" id="cfg-queue-min" type="number" min="1" max="60" placeholder="5">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Zeit zum Einschalten nach Benachrichtigung.</div>
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Minuten · Zeit zum Einschalten nach Benachrichtigung</div>
             </div>
           </div>
           <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px">
@@ -629,16 +652,19 @@
           <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">DISPLAY</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
             <div class="form-group" style="margin:0">
-              <label class="form-label">TV-Display Aktualisierung <span style="color:var(--text-dim);font-weight:400">(s)</span></label>
+              <label class="form-label">TV-Display Aktualisierung</label>
               <input class="form-input" id="cfg-display-refresh" type="number" min="10" max="300" placeholder="30">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Sekunden</div>
             </div>
             <div class="form-group" style="margin:0">
-              <label class="form-label">Maschinen pro Seite <span style="color:var(--text-dim);font-weight:400">(TV)</span></label>
+              <label class="form-label">Maschinen pro Seite</label>
               <input class="form-input" id="cfg-display-page-size" type="number" min="1" max="50" placeholder="8">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">TV-Display</div>
             </div>
             <div class="form-group" style="margin:0">
-              <label class="form-label">Dashboard Aktualisierung <span style="color:var(--text-dim);font-weight:400">(s)</span></label>
+              <label class="form-label">Dashboard Aktualisierung</label>
               <input class="form-input" id="cfg-dashboard-refresh" type="number" min="5" max="300" placeholder="30">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Sekunden</div>
             </div>
           </div>
         </div>
@@ -652,17 +678,19 @@
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
             <div class="form-group" style="margin:0">
-              <label class="form-label">Mitteilungs-Karte Schriftgrösse <span style="color:var(--text-dim);font-weight:400">(px)</span></label>
+              <label class="form-label">Mitteilung Schriftgrösse</label>
               <input class="form-input" id="cfg-announcement-size" type="number" min="10" max="72" placeholder="20">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Pixel</div>
             </div>
             <div class="form-group" style="margin:0">
-              <label class="form-label">Lauftext Schriftgrösse <span style="color:var(--text-dim);font-weight:400">(px)</span></label>
+              <label class="form-label">Lauftext Schriftgrösse</label>
               <input class="form-input" id="cfg-ticker-size" type="number" min="10" max="72" placeholder="18">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Pixel</div>
             </div>
             <div class="form-group" style="margin:0">
-              <label class="form-label">Lauftext Geschwindigkeit <span style="color:var(--text-dim);font-weight:400">(px/s)</span></label>
+              <label class="form-label">Lauftext Geschwindigkeit</label>
               <input class="form-input" id="cfg-ticker-speed" type="number" min="20" max="400" placeholder="80">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Langsam: 40 · Normal: 80 · Schnell: 160</div>
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">px/s · Langsam: 40 · Normal: 80 · Schnell: 160</div>
             </div>
           </div>
         </div>
@@ -671,7 +699,7 @@
         <div class="table-wrap" style="padding:20px">
           <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">ALLGEMEINE GESCHÄFTSBEDINGUNGEN</div>
           <div class="form-group" style="margin:0">
-            <label class="form-label">AGB-Text <span style="color:var(--text-dim);font-weight:400">(Markdown — wird auf der Registrierungsseite angezeigt)</span></label>
+            <label class="form-label">AGB-Text <span style="color:var(--text-dim);font-weight:400">Markdown</span></label>
             <textarea class="form-input" id="cfg-agb-text" rows="8" placeholder="## Allgemeine Geschäftsbedingungen&#10;&#10;Bitte lies die folgenden Bedingungen sorgfältig..." style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
             <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Leer = keine AGB-Pflicht bei der Registrierung. Unterstützt Markdown: **fett**, *kursiv*, ## Überschriften, - Listen.</div>
           </div>
@@ -687,8 +715,9 @@
               <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Standard: https://ntfy.sh — für selbst gehostete Instanz anpassen.</div>
             </div>
             <div class="form-group" style="margin:0">
-              <label class="form-label">Auth-Token <span style="color:var(--text-dim);font-weight:400">(nur bei selbst gehosteter Instanz mit Auth)</span></label>
+              <label class="form-label">Auth-Token</label>
               <input class="form-input" id="cfg-ntfy-token" type="password" placeholder="leer = kein Token">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Nur bei selbst gehosteter Instanz mit Auth</div>
             </div>
           </div>
         </div>
@@ -698,12 +727,14 @@
           <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">NOTFALL-ALARM</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
             <div class="form-group" style="margin:0">
-              <label class="form-label">Trigger-Token <span style="color:var(--text-dim);font-weight:400">(Shelly X-Emergency-Token)</span></label>
-              <input class="form-input" id="cfg-emergency-token" type="password" placeholder="z.B. xK9pQ3rTvZ…">
+              <label class="form-label">Trigger-Token</label>
+              <input class="form-input" id="cfg-emergency-token" type="text" placeholder="z.B. xK9pQ3rTvZ…" autocomplete="off">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Shelly X-Emergency-Token</div>
             </div>
             <div class="form-group" style="margin:0">
-              <label class="form-label">Auto-Stop Sirene/Licht <span style="color:var(--text-dim);font-weight:400">(Sekunden, 0 = manuell)</span></label>
+              <label class="form-label">Auto-Stop Sirene/Licht</label>
               <input class="form-input" id="cfg-emergency-duration" type="number" min="0" max="3600" placeholder="0">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Sekunden · 0 = manuell</div>
             </div>
             <div class="form-group" style="margin:0">
               <label class="form-label">ntfy-Topic für Alarm</label>
@@ -728,7 +759,7 @@
                 </select>
               </div>
               <div class="form-group" style="margin:0">
-                <label class="form-label">Token <span style="color:var(--text-dim);font-weight:400">(myStrom: API-Token · Shelly: admin:passwort)</span></label>
+                <label class="form-label">Token</label>
                 <input class="form-input" id="cfg-emergency-plug-token" type="password" placeholder="leer = kein Token">
               </div>
             </div>
@@ -746,18 +777,21 @@
                 </select>
               </div>
               <div class="form-group" style="margin:0">
-                <label class="form-label">Token <span style="color:var(--text-dim);font-weight:400">(myStrom: API-Token · Shelly: admin:passwort)</span></label>
+                <label class="form-label">Token</label>
                 <input class="form-input" id="cfg-emergency-plug2-token" type="password" placeholder="leer = kein Token">
               </div>
             </div>
+            <div style="font-size:12px;color:var(--text-dim);margin-top:8px">Token: myStrom → API-Key · Shelly → user:passwort</div>
           </div>
           <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:16px">
             <div class="form-group" style="margin:0">
-              <label class="form-label">Notfall-Anzeigetext <span style="color:var(--text-dim);font-weight:400">(TV-Display während Alarm)</span></label>
+              <label class="form-label">Anzeigetext</label>
+              <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">TV-Display während Alarm</div>
               <textarea class="form-input" id="cfg-emergency-text" rows="4" placeholder="🚑 Notruf: 144&#10;🚒 Feuerwehr: 118&#10;☎ AED: Eingang Hauptgebäude" style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
             </div>
             <div class="form-group" style="margin:0">
-              <label class="form-label">ntfy-Nachricht <span style="color:var(--text-dim);font-weight:400">(Push-Benachrichtigung bei Auslösung — <code>{ts}</code> = Zeitstempel)</span></label>
+              <label class="form-label">ntfy-Nachricht</label>
+              <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px"><code>{ts}</code> = Zeitstempel der Auslösung</div>
               <textarea class="form-input" id="cfg-emergency-ntfy-message" rows="4" placeholder="Notfall-Alarm ausgelöst am {ts}. Bitte sofort reagieren." style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
             </div>
           </div>
@@ -771,6 +805,30 @@
           </div>
           <div id="cfg-topics-list" style="display:flex;flex-direction:column;gap:8px">
             <div style="color:var(--text-dim);font-size:13px">Laden…</div>
+          </div>
+        </div>
+
+        <!-- AUTO-BACKUP -->
+        <div class="table-wrap" style="padding:20px">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">AUTOMATISCHES BACKUP</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Automatisches Backup aktivieren</label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+                <input type="checkbox" id="cfg-auto-backup-enabled" style="width:16px;height:16px;cursor:pointer">
+                <span style="font-size:13px;color:var(--text-dim)">Täglich um die konfigurierte Stunde sichern</span>
+              </label>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Backup-Uhrzeit</label>
+              <input type="time" class="form-input" id="cfg-auto-backup-time" style="width:120px">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Lokale Serverzeit (TZ in .env)</div>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Aufbewahrung</label>
+              <input type="number" class="form-input" id="cfg-auto-backup-keep" min="1" max="365" style="width:100px">
+              <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Ältere Backups werden automatisch gelöscht. Speicherort: via BACKUP_DIR in .env</div>
+            </div>
           </div>
         </div>
 
@@ -1389,8 +1447,8 @@
                   <li><strong>ntfy-Nachrichtentext:</strong> Frei konfigurierbarer Text für die Push-Benachrichtigung. Platzhalter: <code>{ts}</code> wird durch Datum und Uhrzeit ersetzt.</li>
                 </ol>
                 <strong>Alarm quittieren:</strong> Im roten Banner oben auf der Lab-Manager-Seite auf «✓ Quittieren» klicken. Ein Kommentarfeld ist Pflicht. Quittierung sendet ebenfalls eine ntfy-Benachrichtigung und protokolliert den quittierenden Lab Manager.
-                <div class="help-tip"><strong>Testen:</strong> <code>curl -X POST /api/emergency/trigger -H "X-Emergency-Token: [token]"</code></div>
-                <div class="help-warn"><strong>Shelly konfigurieren:</strong> Im Shelly-Webinterface unter «Actions → Button pressed» eine HTTP-Action auf <code>POST /api/emergency/trigger</code> mit Header <code>X-Emergency-Token: [dein-token]</code> einrichten.</div>
+                <div class="help-tip"><strong>Testen:</strong> <code>curl -kX POST https://[deine-domain]/api/emergency/trigger -H "X-Emergency-Token: [token]"</code></div>
+                <div class="help-warn"><strong>Shelly konfigurieren:</strong> Im Shelly-Webinterface unter «Actions → Button pressed» eine HTTP-Action auf <code>POST https://[deine-domain]/api/emergency/trigger</code> mit Header <code>X-Emergency-Token: [dein-token]</code> einrichten.</div>
               </div>
             </div>
           </div>
@@ -1645,6 +1703,7 @@ async function doLogin() {
   if (currentUser) {
     document.getElementById('current-user-label').textContent=currentUser.name;
     document.getElementById('nav-settings').style.display = currentUser.role==='admin' ? '' : 'none';
+    document.getElementById('nav-backup').style.display   = currentUser.role==='admin' ? '' : 'none';
   }
   loadAll();
 }
@@ -1678,13 +1737,21 @@ function navigate(el) {
   document.getElementById('page-title').textContent=pageTitles[page]||page;
   document.getElementById('topbar-actions').innerHTML=pageActions[page]?pageActions[page]():'';
   if (page==='log') { loadLogFilterOptions(); loadLog(); }
-  if (page==='stats') loadStats();
+  if (page==='stats') {
+    if (!document.getElementById('s-date-from').value) {
+      const to = new Date(); const from = new Date(); from.setDate(from.getDate()-30);
+      document.getElementById('s-date-to').value   = to.toISOString().slice(0,10);
+      document.getElementById('s-date-from').value = from.toISOString().slice(0,10);
+    }
+    loadStats();
+  }
   if (page==='maintenance') loadMaintenance();
   if (page==='announcements') loadAnnouncements();
   if (page==='notifications') loadNotificationsPage();
   if (page==='dashboard' || page==='machines') refreshLiveData();
   if (page==='dashboard') { refreshMaintenanceOverview(); loadAdminQueues(); loadPendingGuests(); }
   if (page==='settings') { loadSettings(); loadTopicsForSettings(); }
+  if (page==='backup') loadBackupFiles();
 
   if (page==='help') initHelp();
 }
@@ -2112,11 +2179,24 @@ function renderGuests() {
   </tr>`).join('');
 }
 
+function _toUsername(str) {
+  return str.toLowerCase()
+    .replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss')
+    .replace(/[^a-z0-9.]/g,'');
+}
+function _suggestUsername() {
+  const fn = document.getElementById('f-fn')?.value.trim() ?? '';
+  const ln = document.getElementById('f-ln')?.value.trim() ?? '';
+  const unField = document.getElementById('f-un');
+  if (unField && (fn || ln))
+    unField.value = _toUsername(fn) + (fn && ln ? '.' : '') + _toUsername(ln);
+}
+
 function showAddGuest() {
   openModal('Gast hinzufügen',`
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Vorname</label><input class="form-input" id="f-fn" placeholder="Max"></div>
-      <div class="form-group"><label class="form-label">Nachname</label><input class="form-input" id="f-ln" placeholder="Mustermann"></div>
+      <div class="form-group"><label class="form-label">Vorname</label><input class="form-input" id="f-fn" placeholder="Max" oninput="_suggestUsername()"></div>
+      <div class="form-group"><label class="form-label">Nachname</label><input class="form-input" id="f-ln" placeholder="Mustermann" oninput="_suggestUsername()"></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Username <span style="color:var(--accent)">*</span></label><input class="form-input" id="f-un" placeholder="max.mustermann"></div>
@@ -2161,9 +2241,9 @@ function editGuest(id) {
     </div>
     ${g.ntfy_topic ? `
     <div style="border-top:2px solid rgba(255,255,255,0.15);margin-top:12px;padding-top:12px">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">NTFY BENACHRICHTIGUNGEN</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">NTFY BENACHRICHTIGUNGEN</div>
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-        <span style="font-family:var(--mono);font-size:12px;color:var(--accent2);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:4px 8px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.ntfy_topic}</span>
+        <span style="font-family:var(--mono);font-size:13px;color:var(--accent2);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:4px 8px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.ntfy_topic}</span>
         <button class="btn btn-ghost btn-sm" onclick="sendGuestTestNtfy(${g.id},'${g.ntfy_topic}',this)" type="button">▶ Test</button>
       </div>
     </div>` : ''
@@ -3356,6 +3436,11 @@ async function loadSettings() {
   document.getElementById('cfg-emergency-plug2-token').value = s.emergency_plug2_token ?? '';
   document.getElementById('cfg-emergency-text').value = s.emergency_text ?? '';
   document.getElementById('cfg-emergency-ntfy-message').value = s.emergency_ntfy_message ?? '';
+  document.getElementById('cfg-auto-backup-enabled').checked = !!s.auto_backup_enabled;
+  const bh = String(s.auto_backup_hour ?? 3).padStart(2,'0');
+  const bm = String(s.auto_backup_minute ?? 0).padStart(2,'0');
+  document.getElementById('cfg-auto-backup-time').value = `${bh}:${bm}`;
+  document.getElementById('cfg-auto-backup-keep').value = s.auto_backup_keep ?? 30;
   // Topic-Dropdown füllen und Auswahl setzen
   _emergencyNtfyTopicId = s.emergency_ntfy_topic_id;
   const h = s.jwt_expire_minutes >= 60
@@ -3392,6 +3477,10 @@ async function saveSettings() {
     emergency_plug2_token:     document.getElementById('cfg-emergency-plug2-token').value.trim() || null,
     emergency_text:            document.getElementById('cfg-emergency-text').value || null,
     emergency_ntfy_message:    document.getElementById('cfg-emergency-ntfy-message').value || null,
+    auto_backup_enabled:       document.getElementById('cfg-auto-backup-enabled').checked,
+    auto_backup_hour:          parseInt(document.getElementById('cfg-auto-backup-time').value.split(':')[0]) || 3,
+    auto_backup_minute:        parseInt(document.getElementById('cfg-auto-backup-time').value.split(':')[1]) || 0,
+    auto_backup_keep:          parseInt(document.getElementById('cfg-auto-backup-keep').value) || 30,
   };
   const res = await PATCH('/settings', payload);
   if (res) { await loadSettings(); showToast('Einstellungen gespeichert', 'success'); }
@@ -3464,7 +3553,12 @@ async function loadStats() {
     cache.machines.forEach(m=>{ const o=document.createElement('option'); o.value=m.id; o.textContent=m.name; mSel.appendChild(o); });
     cache.guests.forEach(g=>{ const o=document.createElement('option'); o.value=g.id; o.textContent=g.name; gSel.appendChild(o); });
   }
-  const params=new URLSearchParams({days:document.getElementById('s-days').value});
+  const params=new URLSearchParams();
+  const dateFrom=document.getElementById('s-date-from').value;
+  const dateTo=document.getElementById('s-date-to').value;
+  if (dateFrom) params.append('date_from', dateFrom);
+  if (dateTo)   params.append('date_to',   dateTo);
+  if (!dateFrom && !dateTo) params.append('days', '30');
   const mid=document.getElementById('s-machine').value;
   const gid=document.getElementById('s-guest').value;
   if (mid) params.append('machine_id',mid);
@@ -3570,16 +3664,88 @@ async function doImport(input) {
   try {
     const text = await file.text();
     const payload = JSON.parse(text);
-    const res = await POST('/backup/import', payload);
+    const overwrite = document.getElementById('import-overwrite').checked;
+    const res = await api('POST', `/backup/import${overwrite ? '?overwrite=true' : ''}`, payload);
     if (!res) { result.textContent = '❌ Import fehlgeschlagen'; return; }
     const s = res.imported;
-    result.innerHTML = `✅ Importiert: ${s.users} Benutzer, ${s.guests} Gäste, ${s.machines} Maschinen, ${s.permissions} Berechtigungen, ${s.sessions} Sessions, ${s.activity_log} Log-Einträge, ${s.maintenance_intervals||0} Wartungsintervalle, ${s.maintenance_records||0} Wartungsausführungen <span style="color:var(--text-dim)">(${s.skipped} übersprungen)</span>`;
+    result.innerHTML = `✅ Importiert: +${s.users} Benutzer, +${s.guests} Gäste, +${s.machines} Maschinen, +${s.permissions} Berechtigungen, +${s.sessions} Sessions, +${s.activity_log} Logs, ${s.updated||0} aktualisiert <span style="color:var(--text-dim)">(${s.skipped} übersprungen)</span>`;
     showToast('Import erfolgreich', 'success');
     await loadAll();
   } catch(e) {
     result.textContent = `❌ Fehler: ${e.message}`;
   }
   input.value = '';
+}
+
+async function loadBackupFiles() {
+  const el = document.getElementById('backup-files-list');
+  if (!el) return;
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>Laden…</div>';
+  const files = await GET('/backup/files');
+  if (!Array.isArray(files) || files.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:16px 0">Keine automatischen Backups vorhanden. Aktiviere automatisches Backup in den Einstellungen oder erstelle jetzt ein Backup.</div>';
+    return;
+  }
+  const rows = files.map(f => {
+    const dt = new Date(f.created_at + 'Z').toLocaleString('de-CH', {dateStyle:'short', timeStyle:'short'});
+    const kb = (f.size_bytes / 1024).toFixed(1);
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:12px">${f.filename}</td>
+      <td style="font-size:12px;color:var(--text-dim)">${dt}</td>
+      <td style="font-size:12px;color:var(--text-dim)">${kb} KB</td>
+      <td style="text-align:right">
+        <button class="btn btn-ghost btn-sm" onclick="downloadBackupFile('${f.filename}')">⬇ Download</button>
+        <button class="btn btn-ghost btn-sm" onclick="restoreBackupFile('${f.filename}')">↩ Restore</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteBackupFile('${f.filename}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<table class="data-table"><thead><tr><th>Datei</th><th>Erstellt</th><th>Grösse</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function createBackupNow() {
+  const res = await POST('/backup/files/create', {});
+  if (res && res.ok) {
+    showToast(`Backup erstellt: ${res.filename}`, 'success');
+    await loadBackupFiles();
+  }
+}
+
+async function downloadBackupFile(filename) {
+  const r = await fetch(`/api/backup/files/${encodeURIComponent(filename)}`, {
+    headers: token ? {Authorization: `Bearer ${token}`} : {}
+  });
+  if (!r.ok) { showToast('Download fehlgeschlagen', 'error'); return; }
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function restoreBackupFile(filename) {
+  if (!confirm(`Backup «${filename}» einspielen?`)) return;
+  const overwrite = confirm(
+    `Bestehende Einträge überschreiben?\n\n` +
+    `OK = Ja, überschreiben (Benutzer, Gäste, Maschinen etc. werden aktualisiert)\n` +
+    `Abbrechen = Nein, nur fehlende Einträge ergänzen`
+  );
+  const qs = overwrite ? '?overwrite=true' : '';
+  const res = await api('POST', `/backup/files/${encodeURIComponent(filename)}/restore${qs}`);
+  if (!res) return;
+  const s = res.imported;
+  const mode = overwrite ? 'überschreibend' : 'ergänzend';
+  showToast(`Restore (${mode}): +${s.users} Benutzer, +${s.guests} Gäste, +${s.machines} Maschinen, ${s.updated||0} aktualisiert, ${s.skipped} übersprungen`, 'success');
+  await loadAll();
+}
+
+async function deleteBackupFile(filename) {
+  if (!confirm(`Backup «${filename}» wirklich löschen?`)) return;
+  const res = await DELETE(`/backup/files/${encodeURIComponent(filename)}`);
+  if (res && res.ok) {
+    showToast('Backup gelöscht', 'success');
+    await loadBackupFiles();
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3630,20 +3796,29 @@ async function loadPendingGuests() {
 
   const thStyle = `font-family:var(--mono);font-size:10px;color:var(--text-dim);font-weight:400;text-align:left;padding-bottom:6px`;
   const rows = data.map(g => `<tr>
+    <td style="padding:8px 4px"><input type="checkbox" class="pending-cb" value="${g.id}"></td>
     <td><strong>${g.name}</strong></td>
     <td style="font-family:var(--mono)">${g.username}</td>
     <td style="font-family:var(--mono);color:var(--text-dim)">${g.email || '—'}</td>
     <td style="font-family:var(--mono);color:var(--text-dim)">${g.phone || '—'}</td>
     <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">${fmtDate(g.created_at)}</td>
     <td style="display:flex;gap:6px;padding:8px 16px">
-      <button class="btn btn-ghost btn-sm" style="color:var(--success)" onclick="approveGuest(${g.id})">✓ Freischalten</button>
-      <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deletePendingGuest(${g.id},'${g.name.replace(/'/g,"\\'")}')">✕ Ablehnen</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--success)" onclick="approveGuest(${g.id})">✓</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deletePendingGuest(${g.id},'${g.name.replace(/'/g,"\\'")}')">✕</button>
     </td>
   </tr>`).join('');
 
   list.innerHTML = `<div class="table-wrap" style="padding:16px">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <label style="font-size:13px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="pending-select-all" onchange="toggleAllPending(this.checked)"> Alle auswählen
+      </label>
+      <button class="btn btn-ghost btn-sm" style="color:var(--success)" onclick="approveSelectedGuests()">✓ Ausgewählte freischalten</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteSelectedGuests()">✕ Ausgewählte ablehnen</button>
+    </div>
     <table style="width:100%">
       <thead><tr>
+        <th style="${thStyle}"></th>
         <th style="${thStyle}">Name</th>
         <th style="${thStyle}">Benutzername</th>
         <th style="${thStyle}">E-Mail</th>
@@ -3656,6 +3831,28 @@ async function loadPendingGuests() {
   </div>`;
 }
 
+function toggleAllPending(checked) {
+  document.querySelectorAll('.pending-cb').forEach(cb => cb.checked = checked);
+}
+function _selectedPendingIds() {
+  return [...document.querySelectorAll('.pending-cb:checked')].map(cb => parseInt(cb.value));
+}
+async function approveSelectedGuests() {
+  const ids = _selectedPendingIds();
+  if (!ids.length) { showToast('Keine Einträge ausgewählt', 'warn'); return; }
+  await Promise.all(ids.map(id => api('POST', `/guests/${id}/approve`)));
+  showToast(`${ids.length} Gast${ids.length > 1 ? 'e' : ''} freigeschaltet`, 'success');
+  await loadPendingGuests();
+  const fresh = await apiSilent('GET', '/guests');
+  if (fresh) { cache.guests = fresh; renderGuests(); }
+}
+async function deleteSelectedGuests() {
+  const ids = _selectedPendingIds();
+  if (!ids.length) { showToast('Keine Einträge ausgewählt', 'warn'); return; }
+  await Promise.all(ids.map(id => api('DELETE', `/guests/${id}`)));
+  showToast(`${ids.length} Registrierung${ids.length > 1 ? 'en' : ''} abgelehnt`, 'warn');
+  await loadPendingGuests();
+}
 async function approveGuest(guestId) {
   const res = await api('POST', `/guests/${guestId}/approve`);
   if (res !== null) {

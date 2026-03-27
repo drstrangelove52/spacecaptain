@@ -22,16 +22,19 @@ CREATE TABLE IF NOT EXISTS users (
 -- Gäste
 -- --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS guests (
-    id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name          VARCHAR(100) NOT NULL,
-    username      VARCHAR(80)  NOT NULL UNIQUE,
-    email         VARCHAR(150) UNIQUE,
-    password_hash VARCHAR(255),
-    phone         VARCHAR(50),
-    note          TEXT,
-    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name             VARCHAR(100) NOT NULL,
+    username         VARCHAR(80)  NOT NULL UNIQUE,
+    email            VARCHAR(150) UNIQUE,
+    password_hash    VARCHAR(255),
+    phone            VARCHAR(50),
+    note             TEXT,
+    is_active        BOOLEAN      NOT NULL DEFAULT TRUE,
+    pending_approval TINYINT(1)   NOT NULL DEFAULT 0,
+    login_token      VARCHAR(64)  UNIQUE DEFAULT NULL,
+    ntfy_topic       VARCHAR(80)  UNIQUE DEFAULT NULL,
+    created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -70,6 +73,7 @@ CREATE TABLE IF NOT EXISTS machines (
     current_guest_id    INT UNSIGNED DEFAULT NULL,  -- gesetzt wenn Gast aktiv
     session_manager_id  INT UNSIGNED DEFAULT NULL,  -- gesetzt wenn Manager aktiv
     session_started_at  DATETIME DEFAULT NULL,
+    total_hours       FLOAT        NOT NULL DEFAULT 0,
     -- Sonstiges
     comment           TEXT,
     qr_token          VARCHAR(64) NOT NULL UNIQUE,
@@ -117,7 +121,8 @@ CREATE TABLE IF NOT EXISTS activity_log (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     type        ENUM('access_granted','access_denied','plug_on','plug_off',
                      'guest_created','guest_deleted','machine_created','machine_deleted',
-                     'permission_granted','permission_revoked','login','guest_login','error','idle_off','session_started') NOT NULL,
+                     'permission_granted','permission_revoked','login','guest_login',
+                     'error','idle_off','session_started','maintenance_due','maintenance_done') NOT NULL,
     guest_id    INT UNSIGNED,
     machine_id  INT UNSIGNED,
     user_id     INT UNSIGNED,
@@ -184,22 +189,94 @@ CREATE TABLE IF NOT EXISTS maintenance_records (
     performed_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     hours_at_execution  FLOAT        DEFAULT NULL,
     notes               TEXT         DEFAULT NULL,
+    name                VARCHAR(200) DEFAULT NULL,
     created_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (interval_id)  REFERENCES maintenance_intervals(id) ON DELETE CASCADE,
     FOREIGN KEY (machine_id)   REFERENCES machines(id)              ON DELETE CASCADE,
     FOREIGN KEY (performed_by) REFERENCES users(id)                 ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Kumulierte Betriebsstunden pro Maschine
+-- Kumulierte Betriebsstunden pro Maschine (Upgrade bestehender DBs)
 ALTER TABLE machines ADD COLUMN IF NOT EXISTS total_hours FLOAT NOT NULL DEFAULT 0 AFTER session_started_at;
 
--- Neue LogTypes
-ALTER TABLE activity_log MODIFY COLUMN type ENUM(
-    'access_granted','access_denied','plug_on','plug_off',
-    'guest_created','guest_deleted','machine_created','machine_deleted',
-    'permission_granted','permission_revoked','login','guest_login',
-    'error','idle_off','session_started','maintenance_due','maintenance_done'
-) NOT NULL;
-
--- Login-Token für Lab Manager
+-- Login-Token für Lab Manager (Upgrade bestehender DBs)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS login_token VARCHAR(64) UNIQUE DEFAULT NULL;
+
+-- Neue Gast-Spalten (für Upgrades bestehender Datenbanken)
+ALTER TABLE guests ADD COLUMN IF NOT EXISTS pending_approval TINYINT(1)  NOT NULL DEFAULT 0;
+ALTER TABLE guests ADD COLUMN IF NOT EXISTS login_token      VARCHAR(64) UNIQUE DEFAULT NULL;
+ALTER TABLE guests ADD COLUMN IF NOT EXISTS ntfy_topic       VARCHAR(80) UNIQUE DEFAULT NULL;
+ALTER TABLE maintenance_records ADD COLUMN IF NOT EXISTS name VARCHAR(200) DEFAULT NULL;
+
+-- ── Systemeinstellungen ────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS system_settings (
+    id                        INT UNSIGNED PRIMARY KEY DEFAULT 1,
+    nfc_writer_url            VARCHAR(255) NOT NULL DEFAULT '',
+    jwt_expire_minutes        INT          NOT NULL DEFAULT 480,
+    guest_token_days          INT          NOT NULL DEFAULT 365,
+    modal_backdrop_input      TINYINT(1)   NOT NULL DEFAULT 1,
+    modal_backdrop_display    TINYINT(1)   NOT NULL DEFAULT 1,
+    queue_reservation_minutes INT          NOT NULL DEFAULT 5,
+    display_refresh_seconds   INT          NOT NULL DEFAULT 30,
+    display_page_size         INT          NOT NULL DEFAULT 8,
+    dashboard_refresh_seconds INT          NOT NULL DEFAULT 30,
+    ticker_text               TEXT         DEFAULT NULL,
+    ticker_speed              INT          NOT NULL DEFAULT 80,
+    ticker_font_size          INT          NOT NULL DEFAULT 18,
+    announcement              TEXT         DEFAULT NULL,
+    announcement_font_size    INT          NOT NULL DEFAULT 20,
+    agb_text                  TEXT         DEFAULT NULL,
+    ntfy_server               VARCHAR(255) NOT NULL DEFAULT 'https://ntfy.sh',
+    ntfy_token                VARCHAR(255) DEFAULT NULL,
+    emergency_trigger_token   VARCHAR(100) DEFAULT NULL,
+    emergency_text            TEXT         DEFAULT NULL,
+    emergency_ntfy_message    TEXT         DEFAULT NULL,
+    emergency_duration_sec    INT          NOT NULL DEFAULT 0,
+    emergency_ntfy_topic_id   INT          DEFAULT NULL,
+    emergency_plug_ip         VARCHAR(100) DEFAULT NULL,
+    emergency_plug_type       VARCHAR(20)  DEFAULT NULL,
+    emergency_plug_token      VARCHAR(200) DEFAULT NULL,
+    emergency_plug2_ip        VARCHAR(100) DEFAULT NULL,
+    emergency_plug2_type      VARCHAR(20)  DEFAULT NULL,
+    emergency_plug2_token     VARCHAR(200) DEFAULT NULL,
+    auto_backup_enabled       TINYINT(1)   NOT NULL DEFAULT 0,
+    auto_backup_hour          INT          NOT NULL DEFAULT 3,
+    auto_backup_minute        INT          NOT NULL DEFAULT 0,
+    auto_backup_keep          INT          NOT NULL DEFAULT 30
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO system_settings (id) VALUES (1);
+
+-- ── Warteliste ─────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS machine_queue (
+    id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    machine_id   INT UNSIGNED NOT NULL,
+    guest_id     INT UNSIGNED NOT NULL,
+    status       ENUM('waiting','notified','done','expired') NOT NULL DEFAULT 'waiting',
+    joined_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    notified_at  DATETIME DEFAULT NULL,
+    expires_at   DATETIME DEFAULT NULL,
+    UNIQUE KEY uq_machine_guest (machine_id, guest_id),
+    FOREIGN KEY (machine_id) REFERENCES machines(id) ON DELETE CASCADE,
+    FOREIGN KEY (guest_id)   REFERENCES guests(id)   ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── ntfy-Topics ────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ntfy_topics (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `key`       VARCHAR(50)  NOT NULL UNIQUE,
+    topic       VARCHAR(200) NOT NULL,
+    title       VARCHAR(200) NOT NULL,
+    description TEXT         DEFAULT NULL,
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── Notfall-Zustand ────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS emergency_state (
+    id           INT UNSIGNED PRIMARY KEY DEFAULT 1,
+    active       TINYINT(1)   NOT NULL DEFAULT 0,
+    triggered_at DATETIME     DEFAULT NULL,
+    triggered_by VARCHAR(100) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO emergency_state (id, active) VALUES (1, 0);

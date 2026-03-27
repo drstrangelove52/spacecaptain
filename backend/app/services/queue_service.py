@@ -4,7 +4,7 @@ Wartelisten-Service: Verwaltet die Warteliste wenn eine Maschine frei wird.
 import logging
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
 from app.models import MachineQueue, QueueStatus, Guest, Machine
 
@@ -69,3 +69,11 @@ async def expire_stale_notifications(db: AsyncSession, reservation_minutes: int)
         machine_ids = {e.machine_id for e in expired}
         for mid in machine_ids:
             await notify_next_in_queue(db, mid, reservation_minutes)
+
+    # Abgeschlossene Einträge (done/expired) löschen
+    await db.execute(
+        delete(MachineQueue).where(
+            MachineQueue.status.in_([QueueStatus.done, QueueStatus.expired])
+        )
+    )
+    await db.commit()

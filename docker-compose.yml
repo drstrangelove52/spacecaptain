@@ -45,6 +45,7 @@ services:
       - spacecaptain_net
     volumes:
       - ./backend:/app
+      - ${BACKUP_DIR:-./backups}:/app/backups
 
   frontend:
     image: nginx:alpine

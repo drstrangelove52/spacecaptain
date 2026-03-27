@@ -40,6 +40,10 @@ class SettingsOut(BaseModel):
     emergency_plug2_ip: Optional[str] = None
     emergency_plug2_type: Optional[str] = None
     emergency_plug2_token: Optional[str] = None
+    auto_backup_enabled: bool = False
+    auto_backup_hour: int = 3
+    auto_backup_minute: int = 0
+    auto_backup_keep: int = 30
 
     class Config:
         from_attributes = True
@@ -74,6 +78,10 @@ class SettingsUpdate(BaseModel):
     emergency_plug2_ip: Optional[str] = None
     emergency_plug2_type: Optional[str] = None
     emergency_plug2_token: Optional[str] = None
+    auto_backup_enabled: Optional[bool] = None
+    auto_backup_hour: Optional[int] = None
+    auto_backup_minute: Optional[int] = None
+    auto_backup_keep: Optional[int] = None
 
 
 @router.get("/public")
@@ -163,6 +171,14 @@ async def update_settings(
         row.emergency_plug2_type = payload.emergency_plug2_type or None
     if payload.emergency_plug2_token is not None:
         row.emergency_plug2_token = payload.emergency_plug2_token or None
+    if payload.auto_backup_enabled is not None:
+        row.auto_backup_enabled = payload.auto_backup_enabled
+    if payload.auto_backup_hour is not None:
+        row.auto_backup_hour = max(0, min(23, payload.auto_backup_hour))
+    if payload.auto_backup_minute is not None:
+        row.auto_backup_minute = max(0, min(59, payload.auto_backup_minute))
+    if payload.auto_backup_keep is not None:
+        row.auto_backup_keep = max(1, payload.auto_backup_keep)
     await db.commit()
     await db.refresh(row)
     return row

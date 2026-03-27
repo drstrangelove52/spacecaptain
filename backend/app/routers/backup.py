@@ -3,9 +3,10 @@ Export / Import — Konfiguration + Logs
 Passwort-Hashes werden mitexportiert — Backup-Datei sicher aufbewahren!
 """
 from datetime import datetime
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, inspect
 
 from app.database import get_db
 from app.models import (
@@ -15,20 +16,23 @@ from app.models import (
 )
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
+from app.services.backup_service import BACKUP_DIR, _list_backup_files
 from app.config import APP_VERSION
 
 router = APIRouter(prefix="/backup", tags=["backup"])
+
+
+def _validate_filename(filename: str) -> None:
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Ungültiger Dateiname")
 
 
 def _iso(dt):
     return dt.isoformat() if dt else None
 
 
-@router.get("/export")
-async def export_config(
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
-):
+async def _build_export_data(db: AsyncSession) -> dict:
+    """Erstellt die Export-Datenstruktur (wird von Export-Endpoint und Auto-Backup genutzt)."""
     cfg        = await get_system_settings(db)
     users      = (await db.execute(select(User))).scalars().all()
     guests     = (await db.execute(select(Guest))).scalars().all()
@@ -51,34 +55,9 @@ async def export_config(
         "app_version": APP_VERSION,
         "exported_at": datetime.utcnow().isoformat(),
         "settings": {
-            "nfc_writer_url":          cfg.nfc_writer_url,
-            "jwt_expire_minutes":      cfg.jwt_expire_minutes,
-            "guest_token_days":        cfg.guest_token_days,
-            "modal_backdrop_input":    cfg.modal_backdrop_input,
-            "modal_backdrop_display":  cfg.modal_backdrop_display,
-            "queue_reservation_minutes": cfg.queue_reservation_minutes,
-            "display_refresh_seconds":   cfg.display_refresh_seconds,
-            "display_page_size":         cfg.display_page_size,
-            "dashboard_refresh_seconds": cfg.dashboard_refresh_seconds,
-            "ticker_text":               cfg.ticker_text,
-            "ticker_speed":            cfg.ticker_speed,
-            "ticker_font_size":        cfg.ticker_font_size,
-            "announcement":            cfg.announcement,
-            "announcement_font_size":  cfg.announcement_font_size,
-            "agb_text":                cfg.agb_text,
-            "ntfy_server":             cfg.ntfy_server,
-            "ntfy_token":              cfg.ntfy_token,
-            "emergency_trigger_token": cfg.emergency_trigger_token,
-            "emergency_text":          cfg.emergency_text,
-            "emergency_duration_sec":  cfg.emergency_duration_sec,
-            "emergency_plug_ip":       cfg.emergency_plug_ip,
-            "emergency_plug_type":     cfg.emergency_plug_type,
-            "emergency_plug_token":     cfg.emergency_plug_token,
-            "emergency_plug2_ip":       cfg.emergency_plug2_ip,
-            "emergency_plug2_type":     cfg.emergency_plug2_type,
-            "emergency_plug2_token":    cfg.emergency_plug2_token,
-            "emergency_ntfy_message":   cfg.emergency_ntfy_message,
-            "emergency_ntfy_topic_id":  cfg.emergency_ntfy_topic_id,
+            col.key: getattr(cfg, col.key)
+            for col in inspect(SystemSettings).mapper.column_attrs
+            if col.key != "id"
         },
         "ntfy_topics": [{
             "key":         t.key,
@@ -166,12 +145,85 @@ async def export_config(
     }
 
 
-@router.post("/import")
-async def import_config(
-    payload: dict,
+@router.get("/export")
+async def export_config(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
 ):
+    return await _build_export_data(db)
+
+
+@router.get("/files")
+async def list_backup_files(
+    _: User = Depends(require_admin),
+):
+    files_with_stat = [(f, f.stat()) for f in reversed(_list_backup_files())]
+    return [
+        {
+            "filename": f.name,
+            "size_bytes": st.st_size,
+            "created_at": datetime.utcfromtimestamp(st.st_mtime).isoformat(),
+        }
+        for f, st in files_with_stat
+    ]
+
+
+@router.get("/files/{filename}")
+async def download_backup_file(
+    filename: str,
+    _: User = Depends(require_admin),
+):
+    _validate_filename(filename)
+    path = BACKUP_DIR / filename
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="Datei nicht gefunden")
+    return FileResponse(path, media_type="application/json", filename=filename)
+
+
+@router.delete("/files/{filename}")
+async def delete_backup_file(
+    filename: str,
+    _: User = Depends(require_admin),
+):
+    _validate_filename(filename)
+    path = BACKUP_DIR / filename
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="Datei nicht gefunden")
+    path.unlink()
+    return {"ok": True}
+
+
+@router.post("/files/create")
+async def create_backup_now(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Erstellt sofort ein Backup (manuell ausgelöst)."""
+    from app.services.backup_service import _create_backup, _cleanup_old_backups
+    cfg = await get_system_settings(db)
+    path = await _create_backup(db)
+    _cleanup_old_backups(cfg.auto_backup_keep)
+    return {"ok": True, "filename": path.name}
+
+
+@router.post("/files/{filename}/restore")
+async def restore_from_file(
+    filename: str,
+    overwrite: bool = False,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Startet einen Restore direkt aus einer gespeicherten Backup-Datei."""
+    _validate_filename(filename)
+    path = BACKUP_DIR / filename
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="Datei nicht gefunden")
+    import json as _json
+    payload = _json.loads(path.read_text(encoding="utf-8"))
+    return await _do_import(payload, db, overwrite=overwrite, source_filename=filename)
+
+
+async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, source_filename: str = "Backup") -> dict:
     # KOMPATIBILITÄTSREGEL — Backups älterer Versionen müssen immer importierbar bleiben:
     #   • Neue Settings-Felder: einfach zur Feldliste hinzufügen — der `if field in s`-Guard
     #     überspringt sie automatisch wenn sie im Backup fehlen.
@@ -182,32 +234,32 @@ async def import_config(
     backup_version = payload.get("version", "unbekannt")
 
     stats = {"users": 0, "guests": 0, "machines": 0, "permissions": 0,
-             "sessions": 0, "activity_log": 0,
-             "maintenance_intervals": 0, "maintenance_records": 0, "skipped": 0}
+             "sessions": 0, "activity_log": 0, "announcements": 0, "ntfy_topics": 0,
+             "maintenance_intervals": 0, "maintenance_records": 0, "skipped": 0, "updated": 0}
 
     # ── Systemeinstellungen ────────────────────────────────
     if s := payload.get("settings"):
         cfg = await get_system_settings(db)
-        for field in ("nfc_writer_url", "jwt_expire_minutes", "guest_token_days",
-                      "modal_backdrop_input", "modal_backdrop_display",
-                      "queue_reservation_minutes", "display_refresh_seconds",
-                      "display_page_size", "dashboard_refresh_seconds",
-                      "ticker_text", "ticker_speed", "ticker_font_size",
-                      "announcement", "announcement_font_size", "agb_text",
-                      "ntfy_server", "ntfy_token",
-                      "emergency_trigger_token", "emergency_text", "emergency_duration_sec",
-                      "emergency_plug_ip", "emergency_plug_type", "emergency_plug_token",
-                      "emergency_plug2_ip", "emergency_plug2_type", "emergency_plug2_token",
-                      "emergency_ntfy_message", "emergency_ntfy_topic_id"):
-            if field in s:
-                setattr(cfg, field, s[field])
+        valid_fields = {col.key for col in inspect(SystemSettings).mapper.column_attrs if col.key != "id"}
+        for field, value in s.items():
+            if field in valid_fields:
+                setattr(cfg, field, value)
         await db.flush()
 
     # ── Benutzer ──────────────────────────────────────────
-    existing_emails = {u.email for u in (await db.execute(select(User))).scalars().all()}
+    existing_users = {u.email: u for u in (await db.execute(select(User))).scalars().all()}
     for u in payload.get("users", []):
-        if u.get("email") in existing_emails:
-            stats["skipped"] += 1; continue
+        if u.get("email") in existing_users:
+            if overwrite:
+                row = existing_users[u["email"]]
+                row.name = u["name"]; row.role = u.get("role", row.role)
+                row.phone = u.get("phone"); row.area = u.get("area")
+                row.is_active = u.get("is_active", row.is_active)
+                row.password_hash = u.get("password_hash", row.password_hash)
+                stats["updated"] += 1
+            else:
+                stats["skipped"] += 1
+            continue
         db.add(User(
             name=u["name"], email=u["email"], role=u.get("role", "manager"),
             phone=u.get("phone"), area=u.get("area"), is_active=u.get("is_active", True),
@@ -216,10 +268,20 @@ async def import_config(
         stats["users"] += 1
 
     # ── Gäste ─────────────────────────────────────────────
-    existing_usernames = {g.username for g in (await db.execute(select(Guest))).scalars().all()}
+    existing_guests = {g.username: g for g in (await db.execute(select(Guest))).scalars().all()}
     for g in payload.get("guests", []):
-        if g.get("username") in existing_usernames:
-            stats["skipped"] += 1; continue
+        if g.get("username") in existing_guests:
+            if overwrite:
+                row = existing_guests[g["username"]]
+                row.name = g["name"]; row.email = g.get("email")
+                row.phone = g.get("phone"); row.note = g.get("note")
+                row.is_active = g.get("is_active", row.is_active)
+                row.password_hash = g.get("password_hash", row.password_hash)
+                row.ntfy_topic = g.get("ntfy_topic", row.ntfy_topic)
+                stats["updated"] += 1
+            else:
+                stats["skipped"] += 1
+            continue
         db.add(Guest(
             name=g["name"], username=g["username"], email=g.get("email"),
             phone=g.get("phone"), note=g.get("note"), is_active=g.get("is_active", True),
@@ -231,10 +293,23 @@ async def import_config(
     await db.flush()
 
     # ── Maschinen ─────────────────────────────────────────
-    existing_tokens = {m.qr_token for m in (await db.execute(select(Machine))).scalars().all()}
+    existing_machines = {m.qr_token: m for m in (await db.execute(select(Machine))).scalars().all()}
     for m in payload.get("machines", []):
-        if m.get("qr_token") in existing_tokens:
-            stats["skipped"] += 1; continue
+        if m.get("qr_token") in existing_machines:
+            if overwrite:
+                row = existing_machines[m["qr_token"]]
+                row.name = m["name"]; row.category = m.get("category", row.category)
+                row.manufacturer = m.get("manufacturer"); row.model = m.get("model")
+                row.location = m.get("location"); row.status = m.get("status", row.status)
+                row.plug_type = m.get("plug_type", row.plug_type); row.plug_ip = m.get("plug_ip")
+                row.plug_extra = m.get("plug_extra"); row.plug_token = m.get("plug_token")
+                row.idle_power_w = m.get("idle_power_w"); row.idle_timeout_min = m.get("idle_timeout_min")
+                row.training_required = m.get("training_required", row.training_required)
+                row.comment = m.get("comment")
+                stats["updated"] += 1
+            else:
+                stats["skipped"] += 1
+            continue
         db.add(Machine(
             name=m["name"], category=m.get("category", "Sonstiges"),
             manufacturer=m.get("manufacturer"), model=m.get("model"),
@@ -254,16 +329,35 @@ async def import_config(
     user_map    = {u.email:    u.id  for u in (await db.execute(select(User))).scalars().all()}
 
     # ── Berechtigungen ────────────────────────────────────
-    existing_perms = {
-        (p.guest_id, p.machine_id)
+    existing_perms_map = {
+        (p.guest_id, p.machine_id): p
         for p in (await db.execute(select(Permission))).scalars().all()
     }
     for p in payload.get("permissions", []):
         gid = guest_map.get(p.get("guest_username"))
         mid = machine_map.get(p.get("machine_qr_token"))
-        if not gid or not mid or (gid, mid) in existing_perms:
+        if not gid or not mid:
             stats["skipped"] += 1; continue
-        db.add(Permission(guest_id=gid, machine_id=mid, is_blocked=p.get("is_blocked", False)))
+        restored_blocked = p.get("is_blocked", False)
+        if (gid, mid) in existing_perms_map:
+            if overwrite:
+                row = existing_perms_map[(gid, mid)]
+                old_blocked = row.is_blocked
+                row.is_blocked = restored_blocked
+                stats["updated"] += 1
+                if old_blocked != restored_blocked:
+                    log_type = LogType.permission_revoked if restored_blocked else LogType.permission_granted
+                    db.add(ActivityLog(
+                        type=log_type,
+                        message=f"Berechtigung wiederhergestellt aus {source_filename}",
+                        meta={"comment": f"Wiederhergestellt aus {source_filename}"},
+                        guest_id=gid,
+                        machine_id=mid,
+                    ))
+            else:
+                stats["skipped"] += 1
+            continue
+        db.add(Permission(guest_id=gid, machine_id=mid, is_blocked=restored_blocked))
         stats["permissions"] += 1
 
     # ── Sessions ──────────────────────────────────────────
@@ -306,7 +400,8 @@ async def import_config(
     # ── Wartungsintervalle ────────────────────────────────
     # Bestehende Intervalle laden (name + machine_id als Schlüssel)
     existing_intervals = (await db.execute(select(MaintenanceInterval))).scalars().all()
-    existing_iv_keys = {(iv.machine_id, iv.name) for iv in existing_intervals}
+    existing_iv_map = {(iv.machine_id, iv.name): iv for iv in existing_intervals}
+    existing_iv_keys = existing_iv_map.keys()
     # Map: export_id → neue oder bestehende DB-id
     interval_id_map: dict[int, int] = {}
     # Bestehende Intervalle ebenfalls in die Map aufnehmen (für Records)
@@ -321,7 +416,21 @@ async def import_config(
         if not mid:
             stats["skipped"] += 1; continue
         if (mid, iv["name"]) in existing_iv_keys:
-            stats["skipped"] += 1; continue
+            if overwrite:
+                existing_iv = existing_iv_map.get((mid, iv["name"]))
+                if existing_iv:
+                    existing_iv.description = iv.get("description")
+                    existing_iv.interval_hours = iv.get("interval_hours")
+                    existing_iv.interval_days = iv.get("interval_days")
+                    existing_iv.warning_hours = iv.get("warning_hours")
+                    existing_iv.warning_days = iv.get("warning_days")
+                    existing_iv.is_active = iv.get("is_active", existing_iv.is_active)
+                    if iv.get("_export_id"):
+                        interval_id_map[iv["_export_id"]] = existing_iv.id
+                    stats["updated"] += 1
+            else:
+                stats["skipped"] += 1
+            continue
         new_iv = MaintenanceInterval(
             machine_id=mid,
             name=iv["name"],
@@ -398,26 +507,24 @@ async def import_config(
             recur_valid_until=_date.fromisoformat(a["recur_valid_until"]) if a.get("recur_valid_until") else None,
             created_at=datetime.fromisoformat(a["created_at"]) if a.get("created_at") else datetime.utcnow(),
         ))
-        if "announcements" not in stats:
-            stats["announcements"] = 0
         stats["announcements"] += 1
 
     # ── ntfy Topics ───────────────────────────────────────
-    existing_topic_keys = {
-        t.key for t in (await db.execute(select(NtfyTopic))).scalars().all()
-    }
+    existing_topics = {t.key: t for t in (await db.execute(select(NtfyTopic))).scalars().all()}
     for t in payload.get("ntfy_topics", []):
-        if t.get("key") in existing_topic_keys:
-            stats["skipped"] += 1; continue
-        existing_topic_keys.add(t["key"])
+        if t.get("key") in existing_topics:
+            if overwrite:
+                row = existing_topics[t["key"]]
+                row.topic = t["topic"]; row.title = t["title"]
+                row.description = t.get("description")
+                stats["updated"] += 1
+            else:
+                stats["skipped"] += 1
+            continue
         db.add(NtfyTopic(
-            key=t["key"],
-            topic=t["topic"],
-            title=t["title"],
-            description=t.get("description"),
+            key=t["key"], topic=t["topic"],
+            title=t["title"], description=t.get("description"),
         ))
-        if "ntfy_topics" not in stats:
-            stats["ntfy_topics"] = 0
         stats["ntfy_topics"] += 1
 
     # ── Activity Log ──────────────────────────────────────
@@ -446,3 +553,13 @@ async def import_config(
 
     await db.commit()
     return {"ok": True, "imported": stats, "backup_version": backup_version}
+
+
+@router.post("/import")
+async def import_config(
+    payload: dict,
+    overwrite: bool = False,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    return await _do_import(payload, db, overwrite=overwrite)

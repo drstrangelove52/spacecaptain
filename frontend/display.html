@@ -317,24 +317,35 @@ function startPageTimer() {
   _pageTimer = setInterval(() => renderPage(_currentPage + 1), PAGE_INTERVAL);
 }
 
+function fetchWithTimeout(url, timeoutMs = 8000) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), timeoutMs);
+  return fetch(url, {signal: ctrl.signal}).finally(() => clearTimeout(id));
+}
+
 async function loadData() {
-  const [machines, queues] = await Promise.all([
-    fetch(`${API}/guest/dashboard`).then(r=>r.json()).catch(()=>[]),
-    fetch(`${API}/queue`).then(r=>r.json()).catch(()=>[]),
-  ]);
+  try {
+    const [machines, queues] = await Promise.all([
+      fetchWithTimeout(`${API}/guest/dashboard`).then(r=>r.json()).catch(()=>[]),
+      fetchWithTimeout(`${API}/queue`).then(r=>r.json()).catch(()=>[]),
+    ]);
 
-  _allMachines = machines;
-  _allQueues = {};
-  for (const q of queues) {
-    if (!_allQueues[q.machine_id]) _allQueues[q.machine_id] = [];
-    _allQueues[q.machine_id].push(q);
+    _allMachines = Array.isArray(machines) ? machines : [];
+    _allQueues = {};
+    for (const q of (Array.isArray(queues) ? queues : [])) {
+      if (!_allQueues[q.machine_id]) _allQueues[q.machine_id] = [];
+      _allQueues[q.machine_id].push(q);
+    }
+
+    renderPage(_currentPage);
+    startPageTimer();
+
+    document.getElementById('last-update').textContent =
+      'Zuletzt: ' + new Date().toLocaleTimeString('de-CH', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  } catch (e) {
+    document.getElementById('last-update').textContent =
+      '⚠ Verbindungsfehler — ' + new Date().toLocaleTimeString('de-CH', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
   }
-
-  renderPage(_currentPage);
-  startPageTimer();
-
-  document.getElementById('last-update').textContent =
-    'Zuletzt: ' + new Date().toLocaleTimeString('de-CH', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
 
 async function initDisplay() {
