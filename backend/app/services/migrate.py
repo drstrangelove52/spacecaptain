@@ -258,6 +258,9 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "system_settings", "auto_backup_keep",
                                      "INT NOT NULL DEFAULT 30")
 
+        # ── v1.15: Shelly Gen2/Gen3/Gen4 ─────────────────────────────────────
+        await _extend_enum_if_needed(conn, "machines", "plug_type", ["shelly_gen2"])
+
     log.info("Migrationen abgeschlossen")
 
 

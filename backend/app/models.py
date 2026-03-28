@@ -20,6 +20,7 @@ class MachineStatus(str, enum.Enum):
 class PlugType(str, enum.Enum):
     mystrom = "mystrom"
     shelly = "shelly"
+    shelly_gen2 = "shelly_gen2"
     none = "none"
 
 class LogType(str, enum.Enum):

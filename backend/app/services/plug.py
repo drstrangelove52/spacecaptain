@@ -1,7 +1,9 @@
 """
 Smart Plug Integration — myStrom & Shelly
-myStrom: Token via "Token"-Header
-Shelly:  Gen1-API (/relay/0), Digest-Auth via plug_token="admin:passwort"
+myStrom:     Token via "Token"-Header
+Shelly Gen1: /relay/0, Digest-Auth via plug_token="admin:passwort"
+Shelly Gen2+: RPC-API /rpc/Switch.Set, Digest-Auth via plug_token="admin:passwort"
+              Gilt für Gen2, Gen3, Gen4 — alle nutzen dieselbe RPC-API.
 """
 import httpx
 from typing import Tuple
@@ -27,8 +29,9 @@ async def switch_plug(machine, action: str) -> Tuple[bool, str]:
     if machine.plug_type == "none" or not machine.plug_ip:
         return True, "Kein Smart Plug konfiguriert"
 
-    ip   = machine.plug_ip
+    ip    = machine.plug_ip
     onoff = "on" if action == "on" else "off"
+    label = "EIN" if action == "on" else "AUS"
 
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT) as client:
@@ -37,18 +40,27 @@ async def switch_plug(machine, action: str) -> Tuple[bool, str]:
                 state = "1" if action == "on" else "0"
                 r = await client.get(
                     f"http://{ip}/relay?state={state}",
-                    headers=_mystrom_headers(machine)
+                    headers=_mystrom_headers(machine),
                 )
                 r.raise_for_status()
-                return True, f"myStrom: {'EIN' if action == 'on' else 'AUS'}"
+                return True, f"myStrom: {label}"
 
             elif machine.plug_type == "shelly":
                 r = await client.get(
                     f"http://{ip}/relay/0?turn={onoff}",
-                    auth=_shelly_auth(machine)
+                    auth=_shelly_auth(machine),
                 )
                 r.raise_for_status()
-                return True, f"Shelly: {'EIN' if action == 'on' else 'AUS'}"
+                return True, f"Shelly: {label}"
+
+            elif machine.plug_type == "shelly_gen2":
+                r = await client.post(
+                    f"http://{ip}/rpc/Switch.Set",
+                    json={"id": 0, "on": action == "on"},
+                    auth=_shelly_auth(machine),
+                )
+                r.raise_for_status()
+                return True, f"Shelly Gen2+: {label}"
 
     except httpx.TimeoutException:
         return False, f"Timeout — Plug nicht erreichbar ({ip})"
@@ -72,7 +84,7 @@ async def get_plug_status(machine) -> dict:
             if machine.plug_type == "mystrom":
                 r = await client.get(
                     f"http://{ip}/report",
-                    headers=_mystrom_headers(machine)
+                    headers=_mystrom_headers(machine),
                 )
                 r.raise_for_status()
                 data = r.json()
@@ -83,19 +95,12 @@ async def get_plug_status(machine) -> dict:
                 }
 
             elif machine.plug_type == "shelly":
-                r = await client.get(
-                    f"http://{ip}/relay/0",
-                    auth=_shelly_auth(machine)
-                )
+                r = await client.get(f"http://{ip}/relay/0", auth=_shelly_auth(machine))
                 r.raise_for_status()
                 relay = r.json()
-                # Verbrauch kommt vom separaten /meter/0 Endpoint
                 power_w = None
                 try:
-                    rm = await client.get(
-                        f"http://{ip}/meter/0",
-                        auth=_shelly_auth(machine)
-                    )
+                    rm = await client.get(f"http://{ip}/meter/0", auth=_shelly_auth(machine))
                     if rm.status_code == 200:
                         power_w = rm.json().get("power", None)
                 except Exception:
@@ -104,6 +109,20 @@ async def get_plug_status(machine) -> dict:
                     "supported": True,
                     "on":      relay.get("ison", False),
                     "power_w": power_w,
+                }
+
+            elif machine.plug_type == "shelly_gen2":
+                r = await client.get(
+                    f"http://{ip}/rpc/Switch.GetStatus",
+                    params={"id": 0},
+                    auth=_shelly_auth(machine),
+                )
+                r.raise_for_status()
+                data = r.json()
+                return {
+                    "supported": True,
+                    "on":      data.get("output", False),
+                    "power_w": data.get("apower", None),
                 }
 
     except Exception:

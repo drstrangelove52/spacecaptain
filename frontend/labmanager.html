@@ -2525,7 +2525,8 @@ function showAddMachine() {
       <select class="form-input" id="mc-plug" onchange="updatePlugUI()">
         <option value="none">Kein Smart Plug</option>
         <option value="mystrom">myStrom Switch</option>
-        <option value="shelly">Shelly</option>
+        <option value="shelly">Shelly Gen1</option>
+        <option value="shelly_gen2">Shelly Gen2 / Gen3 / Gen4</option>
       </select>
     </div>
     <div id="mc-plug-ip-row" style="display:none">
@@ -2562,7 +2563,7 @@ function showAddMachine() {
     const plug_type=plugSel;
     const plug_extra=null;
     const rawToken=document.getElementById('mc-plugtoken')?.value.trim()||'';
-    const plug_token=rawToken?(plugSel==='shelly'?`admin:${rawToken}`:rawToken):null;
+    const plug_token=rawToken?(['shelly','shelly_gen2'].includes(plugSel)?`admin:${rawToken}`:rawToken):null;
     const idle_w=document.getElementById('mc-idlew')?.value;
     const idle_t=document.getElementById('mc-idlet')?.value;
     const training_required=document.getElementById('mc-training')?.checked??true;
@@ -2588,16 +2589,17 @@ function editMachine(id) {
       <select class="form-input" id="e-plug" onchange="updateEditPlugUI()">
         <option value="none" ${curPlugSel==='none'?'selected':''}>Kein Smart Plug</option>
         <option value="mystrom" ${curPlugSel==='mystrom'?'selected':''}>myStrom Switch</option>
-        <option value="shelly" ${curPlugSel==='shelly'?'selected':''}>Shelly</option>
+        <option value="shelly" ${curPlugSel==='shelly'?'selected':''}>Shelly Gen1</option>
+        <option value="shelly_gen2" ${curPlugSel==='shelly_gen2'?'selected':''}>Shelly Gen2 / Gen3 / Gen4</option>
       </select>
     </div>
     <div id="e-plug-ip-row" style="display:${showPlug?'block':'none'}">
       <div class="form-group"><label class="form-label">IP-Adresse</label><input class="form-input" id="e-plugip" value="${m.plug_ip||''}" placeholder="192.168.1.100"></div>
       <div id="e-token-row" style="display:${showPlug?'block':'none'}">
         <div class="form-group">
-          <label class="form-label" id="e-token-label">${curPlugSel==='shelly'?'Passwort':'API-Token'} <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
-          <input class="form-input" id="e-plugtoken" type="password" value="${curPlugSel==='shelly'?(m.plug_token||'').replace(/^admin:/,''):m.plug_token||''}" placeholder="${curPlugSel==='shelly'?'Shelly-Passwort':'myStrom API-Token'}">
-          <div style="font-size:11px;color:var(--text-dim);margin-top:4px" id="e-token-hint">${curPlugSel==='shelly'?'Digest Auth — Benutzername ist immer "admin"':'Wird als Token-Header mitgeschickt'}</div>
+          <label class="form-label" id="e-token-label">${['shelly','shelly_gen2'].includes(curPlugSel)?'Passwort':'API-Token'} <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
+          <input class="form-input" id="e-plugtoken" type="password" value="${['shelly','shelly_gen2'].includes(curPlugSel)?(m.plug_token||'').replace(/^admin:/,''):m.plug_token||''}" placeholder="${['shelly','shelly_gen2'].includes(curPlugSel)?'Shelly-Passwort':'myStrom API-Token'}">
+          <div style="font-size:11px;color:var(--text-dim);margin-top:4px" id="e-token-hint">${['shelly','shelly_gen2'].includes(curPlugSel)?'Digest Auth — Benutzername ist immer "admin"':'Wird als Token-Header mitgeschickt'}</div>
         </div>
       </div>
     </div>
@@ -2623,7 +2625,7 @@ function editMachine(id) {
     const plug_type=plugSel;
     const plug_extra=null;
     const rawToken=document.getElementById('e-plugtoken')?.value.trim()||'';
-    const plug_token=rawToken?(plugSel==='shelly'?`admin:${rawToken}`:rawToken):undefined;
+    const plug_token=rawToken?(['shelly','shelly_gen2'].includes(plugSel)?`admin:${rawToken}`:rawToken):undefined;
     const idle_w=document.getElementById('e-idlew')?.value;
     const idle_t=document.getElementById('e-idlet')?.value;
     const poll_s=document.getElementById('e-poll')?.value;
@@ -2638,16 +2640,14 @@ function editMachine(id) {
 function updatePlugUI() {
   const v=document.getElementById('mc-plug')?.value;
   const show=v&&v!=='none';
-  const isMystrom=v==='mystrom';
-  const isShelly=v==='shelly';
-  const hints={mystrom:'myStrom Switch — IP + optionaler API-Token.',shelly:'Shelly — IP + optionales Passwort für Digest Auth.'};
+  const isShelly=['shelly','shelly_gen2'].includes(v);
+  const hints={mystrom:'myStrom Switch — IP + optionaler API-Token.',shelly:'Shelly Gen1 — IP + optionales Passwort für Digest Auth.',shelly_gen2:'Shelly Gen2 / Gen3 / Gen4 — IP + optionales Passwort für Digest Auth.'};
   const ipRow=document.getElementById('mc-plug-ip-row');
   const idleRow=document.getElementById('mc-idle-row');
   const tokenRow=document.getElementById('mc-token-row');
   if (ipRow) ipRow.style.display=show?'block':'none';
   if (idleRow) idleRow.style.display=show?'block':'none';
-  if (tokenRow) tokenRow.style.display=(isMystrom||isShelly)?'block':'none';
-  // Label und Placeholder dynamisch anpassen
+  if (tokenRow) tokenRow.style.display=show?'block':'none';
   const lbl=document.querySelector('#mc-token-row .form-label');
   const inp=document.getElementById('mc-plugtoken');
   const hint=document.getElementById('mc-token-hint');
@@ -2661,7 +2661,7 @@ function updatePlugUI() {
 function updateEditPlugUI() {
   const v=document.getElementById('e-plug')?.value;
   const show=v&&v!=='none';
-  const isShelly=v==='shelly';
+  const isShelly=['shelly','shelly_gen2'].includes(v);
   const ipRow=document.getElementById('e-plug-ip-row');
   const idleRow=document.getElementById('e-idle-row');
   const tokenRow=document.getElementById('e-token-row');

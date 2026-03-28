@@ -60,10 +60,10 @@ CREATE TABLE IF NOT EXISTS machines (
     model             VARCHAR(100),
     location          VARCHAR(200),
     status            ENUM('online','offline','maintenance') NOT NULL DEFAULT 'online',
-    -- Smart Plug (nur myStrom und Shelly)
-    plug_type         ENUM('mystrom','shelly','none') NOT NULL DEFAULT 'none',
+    -- Smart Plug (myStrom, Shelly Gen1, Shelly Gen2/Gen3/Gen4)
+    plug_type         ENUM('mystrom','shelly','shelly_gen2','none') NOT NULL DEFAULT 'none',
     plug_ip           VARCHAR(50),
-    plug_extra        VARCHAR(255),   -- Shelly: 'gen2' für Plus/Pro Modelle
+    plug_extra        VARCHAR(255),
     plug_token        VARCHAR(255),   -- myStrom: API-Token (X-Auth-Token)
     -- Leerlauf-Automatik
     idle_power_w      FLOAT DEFAULT NULL,   -- Leerlaufleistung in Watt
@@ -154,7 +154,7 @@ ALTER TABLE machines ADD COLUMN IF NOT EXISTS plug_poll_interval_sec INT UNSIGNE
 ALTER TABLE machines ADD COLUMN IF NOT EXISTS current_guest_id   INT UNSIGNED DEFAULT NULL AFTER idle_timeout_min;
 ALTER TABLE machines ADD COLUMN IF NOT EXISTS session_manager_id INT UNSIGNED DEFAULT NULL AFTER current_guest_id;
 ALTER TABLE machines ADD COLUMN IF NOT EXISTS session_started_at DATETIME    DEFAULT NULL AFTER session_manager_id;
-ALTER TABLE machines MODIFY COLUMN IF EXISTS plug_type ENUM('mystrom','shelly','none') NOT NULL DEFAULT 'none';
+ALTER TABLE machines MODIFY COLUMN IF EXISTS plug_type ENUM('mystrom','shelly','shelly_gen2','none') NOT NULL DEFAULT 'none';
 
 -- v2.11: session_started LogType für Aktivitätslog
 ALTER TABLE activity_log MODIFY COLUMN type ENUM(
