@@ -12,17 +12,17 @@ Fragen oder Ideen? → [GitHub Issue erstellen](https://github.com/drstrangelove
 
 ## Features
 
-- **Gästeverwaltung** — Registrierung, Login, Passwort ändern
-- **Maschinenverwaltung** — Status, Kategorien, Smart Plug Anbindung
-- **Berechtigungs-Matrix** — welcher Gast darf welche Maschine nutzen
-- **QR-Code & NFC Workflow** — Gast scannt Maschinen-QR oder tippt NFC-Tag → Plug schaltet ein
-- **Leerlauf-Automatik** — Plug schaltet bei Nichtbenutzung automatisch aus
-- **Maschinenpflege** — Wartungsintervalle mit Warnungen
-- **Warteliste** — Gäste stellen sich in die Warteschlange, ntfy-Benachrichtigung wenn Maschine frei wird
-- **Push-Benachrichtigungen** — ntfy-Integration für System-Events und persönliche Gast-Topics
-- **Notfall-Alarm** — Auslöser startet Alarm, schaltet Plugs aus, sendet Push, Quittierung mit Kommentarpflicht
+- **Gästeverwaltung** — Gäste anlegen, Selbstregistrierung mit Freischaltung, Login per Passwort oder Token-Link
+- **Maschinenverwaltung** — Maschinen mit Kategorien, Standort, Smart Plug, Leerlauf-Automatik und Betriebsstunden-Tracking
+- **Berechtigungs-Matrix** — Zugriffsrechte pro Gast und Maschine mit Sperren, Kommentaren und Verlauf
+- **QR-Code & NFC-Tags** — Maschinenfreigabe per QR- oder NFC-Scan mit dem Smartphone
+- **Leerlauf-Automatik** — Plug schaltet automatisch aus wenn die Maschine den konfigurierten Verbrauchsschwellwert unterschreitet
+- **Maschinenpflege** — Wartungsintervalle nach Betriebsstunden oder Kalendertagen mit Vorwarnung, Dokumentation und Verlauf
+- **Warteliste** — Gäste reihen sich ein und werden per Push benachrichtigt wenn die Maschine frei wird
+- **Push-Benachrichtigungen** — ntfy-Integration mit persönlichem Topic pro Gast und konfigurierbaren System-Topics für Lab Manager
+- **Notfall-Alarm** — Auslösung per physischem Knopf, schaltet Alarm-Plug ein (Sirene/Licht), benachrichtigt alle Gäste per Push
 - **Aktivitätslog** — vollständiges Audit-Trail inkl. IP-Adressen
-- **Backup / Restore** — JSON-Export und -Import aller Daten (automatisch täglich oder manuell)
+- **Backup / Restore** — automatisches tägliches oder manuelles JSON-Backup aller Daten, Import mit Overwrite- oder Merge-Modus
 - **Smart Plug Support** — myStrom, Shelly Gen1, Shelly Gen2/Gen3/Gen4
 
 ## Stack
