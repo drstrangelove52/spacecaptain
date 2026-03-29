@@ -332,7 +332,7 @@ Einstellung im UI). SpaceCaptain leitet den Auftrag dann an den ESP32 weiter.
 ## Projektstruktur (PlatformIO empfohlen)
 
 ```
-spacecaptain-nfc-writer/
+nfc-writer/
 ├── platformio.ini
 ├── src/
 │   ├── main.cpp
