@@ -6,6 +6,10 @@
 
 Webbasiertes Verwaltungssystem für Makerspaces. Gäste werden per QR-Code an Maschinen freigeschaltet, Smart Plugs schalten automatisch ein und aus.
 
+Fragen oder Ideen? → [GitHub Issue erstellen](https://github.com/drstrangelove52/spacecaptain/issues) &nbsp;·&nbsp; Projekt nützlich? → [Ko-fi Spende](https://ko-fi.com/pobli) ☕
+
+---
+
 ## Features
 
 - **Gästeverwaltung** — Registrierung, Login, Passwort ändern
@@ -350,12 +354,8 @@ Nutzung, Weitergabe und Modifikation sind für **nicht-kommerzielle Zwecke** fre
 
 ---
 
-## Kontakt & Fragen
+## Kontakt & Unterstützung
 
 Fragen, Ideen oder Fehler gerne als [GitHub Issue](https://github.com/drstrangelove52/spacecaptain/issues) melden.
 
----
-
-## Projekt unterstützen
-
-SpaceCaptain wird in der Freizeit entwickelt. Über eine kleine Spende freue ich mich sehr — sie hilft, das Projekt weiterzuentwickeln.
+SpaceCaptain wird in der Freizeit entwickelt — über eine kleine [Ko-fi Spende](https://ko-fi.com/pobli) freue ich mich sehr ☕
