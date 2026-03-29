@@ -965,6 +965,11 @@
           <a href="mailto:martin.nigg@makerspace.li" style="color:var(--accent2);font-size:13px;margin-top:8px;display:inline-block">Frage stellen →</a>
         </div>
 
+        <!-- ═══════════════════════════════════════════════════════════════
+             HILFE-KATEGORIEN — Reihenfolge: täglicher Betrieb → Kommunikation
+             → Notfall → Auswertung → Infrastruktur → Administration
+             ═══════════════════════════════════════════════════════════════ -->
+
         <!-- ── Erste Schritte ── -->
         <div class="help-cat" id="help-cat-start">
           <div class="help-cat-header" onclick="toggleHelpCat('start')">
@@ -1246,6 +1251,194 @@
           </div>
         </div>
 
+        <!-- ── Mitteilungen ── -->
+        <div class="help-cat" id="help-cat-announcements">
+          <div class="help-cat-header" onclick="toggleHelpCat('announcements')">
+            <span class="help-cat-icon">📢</span>
+            <span class="help-cat-title">Mitteilungen</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Mitteilung erstellen</div>
+              <div class="help-article-body">
+                Sidebar → <strong>Mitteilungen</strong> → «+ Neue Mitteilung».
+                <ul style="margin-top:8px">
+                  <li><strong>Einmalig:</strong> gilt von einem Start- bis Endzeitpunkt</li>
+                  <li><strong>Wiederkehrend:</strong> gilt an bestimmten Wochentagen zu festgelegten Zeiten — ideal für regelmässige Öffnungszeiten oder Kurshinweise</li>
+                  <li><strong>Anzeigetyp Banner:</strong> erscheint als farbiger Balken auf dem Display und der Gästeseite</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Ankündigung (Display-Overlay)</div>
+              <div class="help-article-body">
+                Zusätzlich zu den terminierten Mitteilungen gibt es in <strong>Einstellungen → Display</strong> ein statisches Ankündigungs-Textfeld und einen Lauftext-Ticker. Diese erscheinen dauerhaft auf der Display-Seite bis sie gelöscht werden.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Benachrichtigungen ── -->
+        <div class="help-cat" id="help-cat-notifications">
+          <div class="help-cat-header" onclick="toggleHelpCat('notifications')">
+            <span class="help-cat-icon">🔔</span>
+            <span class="help-cat-title">Benachrichtigungen</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Wie Benachrichtigungen funktionieren</div>
+              <div class="help-article-body">
+                SpaceCaptain nutzt <strong>ntfy</strong> für Push-Benachrichtigungen. Jeder Gast erhält automatisch ein eigenes ntfy-Topic. Benachrichtigungen werden ausgelöst, wenn:
+                <ul style="margin-top:8px">
+                  <li>Eine Maschine in der Warteschlange frei wird («Du bist dran!»)</li>
+                  <li>Ein Notfall-Alarm ausgelöst wird</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">ntfy einrichten (Einstellungen)</div>
+              <div class="help-article-body">
+                Sidebar → <strong>Einstellungen → Benachrichtigungen</strong>:
+                <ol style="margin-top:8px">
+                  <li><strong>ntfy-Server:</strong> Standard ist <code>https://ntfy.sh</code>. Eigenen Server einsetzen für mehr Datenschutz.</li>
+                  <li><strong>ntfy-Token:</strong> Nur nötig wenn der Server eine Authentifizierung verlangt</li>
+                </ol>
+                <div class="help-tip"><strong>Tipp:</strong> Für produktiven Betrieb empfiehlt sich ein selbst gehosteter ntfy-Server, damit keine Gästedaten an externe Dienste übermittelt werden.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Gast mit ntfy verbinden</div>
+              <div class="help-article-body">
+                Jeder Gast hat ein eigenes Topic (sichtbar in der Gästedetail-Ansicht). Der Gast installiert die <strong>ntfy-App</strong> (iOS/Android) oder öffnet die Web-Oberfläche und abonniert sein Topic. Danach erhält er automatisch Benachrichtigungen.
+                <div class="help-tip">Das Topic-URL wird dem Gast auch direkt in der Gäste-App unter «Einstellungen» als QR-Code angezeigt.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Notfall-Alarm ── -->
+        <div class="help-cat" id="help-cat-emergency">
+          <div class="help-cat-header" onclick="toggleHelpCat('emergency')">
+            <span class="help-cat-icon">🚨</span>
+            <span class="help-cat-title">Notfall-Alarm</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Notfall-Alarm konfigurieren</div>
+              <div class="help-article-body">
+                Sidebar → <strong>Einstellungen → Notfall-Alarm</strong>:
+                <ul style="margin-top:8px">
+                  <li><strong>Auslöse-Token:</strong> Geheimes Token — wer dieses kennt, kann den Alarm auslösen (z.B. via QR-Code an der Tür)</li>
+                  <li><strong>Anzeigetext:</strong> Wird gross auf der Display-Seite angezeigt wenn der Alarm aktiv ist</li>
+                  <li><strong>ntfy-Nachricht:</strong> Wird an alle Gäste und konfigurierte ntfy-Topics gesendet</li>
+                  <li><strong>Dauer:</strong> Wie lange der Alarm automatisch aktiv bleibt (0 = manuell quittieren)</li>
+                  <li><strong>Smart Plug 1 &amp; 2:</strong> Optionaler Plug der beim Alarm <em>ausgeschaltet</em> wird (z.B. Hauptstromversorgung)</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Alarm auslösen</div>
+              <div class="help-article-body">
+                Der Alarm kann auf drei Wegen ausgelöst werden:
+                <ol style="margin-top:8px">
+                  <li><strong>Gäste-App:</strong> Roter «Notfall»-Button auf der Startseite</li>
+                  <li><strong>QR-Code:</strong> URL mit dem Auslöse-Token als QR-Code ausdrucken und im Lab aufhängen</li>
+                  <li><strong>Lab Manager:</strong> Direkt über die Einstellungsseite (Testauslösung)</li>
+                </ol>
+                <div class="help-warn"><strong>Wichtig:</strong> Beim Auslösen werden sofort alle konfigurierten Smart Plugs ausgeschaltet und die Benachrichtigung versandt. Der Alarm erscheint gross auf allen Display-Seiten.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Alarm quittieren</div>
+              <div class="help-article-body">
+                Sidebar → <strong>Einstellungen → Notfall-Alarm</strong> → «Alarm quittieren». Es wird ein Kommentar und der Name des quittierenden Lab Managers ins Aktivitätslog eingetragen. Die Smart Plugs werden <em>nicht</em> automatisch wieder eingeschaltet — dies muss manuell erfolgen.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Statistiken ── -->
+        <div class="help-cat" id="help-cat-stats">
+          <div class="help-cat-header" onclick="toggleHelpCat('stats')">
+            <span class="help-cat-icon">📊</span>
+            <span class="help-cat-title">Statistiken</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Maschinennutzung auswerten</div>
+              <div class="help-article-body">
+                Sidebar → <strong>Statistiken</strong>. Die Übersicht zeigt pro Maschine:
+                <ul style="margin-top:8px">
+                  <li><strong>Gesamtstunden:</strong> Kumulierte Betriebszeit seit Inbetriebnahme</li>
+                  <li><strong>Sessions:</strong> Anzahl abgeschlossener Nutzungssitzungen</li>
+                  <li><strong>Energieverbrauch:</strong> Summe in Wh (nur wenn Smart Plug mit Verbrauchsmessung)</li>
+                  <li><strong>Aktivste Nutzer:</strong> Rangliste der Gäste nach Nutzungszeit</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Zeitraum filtern</div>
+              <div class="help-article-body">
+                Die Statistiken können nach Zeitraum gefiltert werden (letzte 7 Tage, 30 Tage, 90 Tage oder benutzerdefinierter Datumsbereich). Die kumulierten Betriebsstunden (<code>total_hours</code>) auf der Maschinen-Übersicht zeigen hingegen immer die Gesamtsumme seit Beginn.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Aktivitätslog ── -->
+        <div class="help-cat" id="help-cat-log">
+          <div class="help-cat-header" onclick="toggleHelpCat('log')">
+            <span class="help-cat-icon">📋</span>
+            <span class="help-cat-title">Aktivitätslog</span>
+            <span class="help-cat-chevron">▼</span>
+          </div>
+          <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Log-Typen</div>
+              <div class="help-article-body">
+                Jeder Eintrag hat einen Typ. Folgende Typen existieren:
+                <table style="width:100%;margin-top:8px;font-size:13px;border-collapse:collapse">
+                  <thead><tr style="border-bottom:1px solid var(--border)">
+                    <th style="text-align:left;padding:4px 8px;font-family:var(--mono);font-size:11px;color:var(--text-dim)">Typ</th>
+                    <th style="text-align:left;padding:4px 8px;font-family:var(--mono);font-size:11px;color:var(--text-dim)">Bedeutung</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">session_started</td><td style="padding:4px 8px">Maschinen-Session gestartet (Gast)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">session_ended</td><td style="padding:4px 8px">Session beendet (manuell oder automatisch)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">access_granted</td><td style="padding:4px 8px">Zugang zur Maschine gewährt</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">access_denied</td><td style="padding:4px 8px">Zugangsverweigerung (keine Berechtigung)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">plug_on / plug_off</td><td style="padding:4px 8px">Smart Plug ein-/ausgeschaltet</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">guest_created</td><td style="padding:4px 8px">Gast durch Lab Manager angelegt</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">guest_registered</td><td style="padding:4px 8px">Gast hat sich selbst registriert</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">guest_login</td><td style="padding:4px 8px">Gast-Login (Passwort oder Token-Link)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">session_started (LM)</td><td style="padding:4px 8px">Session durch Lab Manager gestartet</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">maintenance_due</td><td style="padding:4px 8px">Wartungsintervall fällig</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">maintenance_done</td><td style="padding:4px 8px">Wartung als durchgeführt markiert</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">emergency_triggered</td><td style="padding:4px 8px">Notfall-Alarm ausgelöst (mit IP-Adresse)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">emergency_cancelled</td><td style="padding:4px 8px">Notfall-Alarm quittiert (mit Kommentar und Name)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">error</td><td style="padding:4px 8px">Fehler (z.B. Plug nicht erreichbar)</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Filtern und Suchen</div>
+              <div class="help-article-body">
+                Der Log kann gefiltert werden nach: Gast, Maschine, Typ, Datumsbereich und Freitext-Suche.
+                <ul style="margin-top:8px">
+                  <li>Der Filter «🚨 Notfall» zeigt Alarm-Auslösungen und -Quittierungen gemeinsam</li>
+                  <li>Es werden maximal 200 Einträge angezeigt; die Gesamtzahl der Treffer erscheint oben</li>
+                  <li>Für Notfall-Einträge wird die auslösende IP-Adresse und der quittierenden Lab Manager angezeigt</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- ── Display & Kiosk ── -->
         <div class="help-cat" id="help-cat-display">
           <div class="help-cat-header" onclick="toggleHelpCat('display')">
@@ -1441,103 +1634,6 @@
                 <ul style="margin-top:8px">
                   <li>Leer lassen = keine AGB-Pflicht</li>
                   <li>Markdown unterstützt: <code>**fett**</code>, <code>*kursiv*</code>, <code>## Überschriften</code>, <code>- Listen</code></li>
-                </ul>
-              </div>
-            </div>
-            <div class="help-article">
-              <div class="help-article-title">Benachrichtigungen (ntfy) — System-Topics</div>
-              <div class="help-article-body">
-                SpaceCaptain kann Push-Benachrichtigungen über <strong>ntfy</strong> versenden. ntfy ist ein kostenloser, open-source Benachrichtigungsdienst ohne Kontoregistrierung.
-                <ul style="margin-top:8px">
-                  <li><strong>Server-URL:</strong> Standard ist <code>https://ntfy.sh</code>. Für selbst gehostete Instanzen die eigene URL eintragen.</li>
-                  <li><strong>Auth-Token:</strong> Nur bei selbst gehosteten Instanzen mit Authentifizierung erforderlich.</li>
-                </ul>
-                System-Topics (z.B. für den Notfall-Alarm) werden unter <strong>Einstellungen → NTFY Topics</strong> verwaltet. Pro Topic kann eine Test-Benachrichtigung verschickt werden.
-                <div class="help-tip"><strong>App installieren:</strong> Die ntfy-App ist kostenlos für iOS und Android. Topic per QR-Code auf der Benachrichtigungen-Seite abonnieren.</div>
-              </div>
-            </div>
-            <div class="help-article">
-              <div class="help-article-title">Benachrichtigungen (ntfy) — Gast-Topics</div>
-              <div class="help-article-body">
-                Jeder Gast erhält automatisch ein persönliches ntfy-Topic (Format: <code>sc-xxxxxxxxxxxxxxxx</code>). Das Topic wird nach dem Login auf der Gäste-Seite angezeigt und kann mit einem Tipp kopiert werden.
-                <ul style="margin-top:8px">
-                  <li><strong>Wo sichtbar:</strong> Gäste-Seite (index.html) → Scan-Screen → Abschnitt «Benachrichtigungen (ntfy)»</li>
-                  <li><strong>Verwendung:</strong> Gast trägt das Topic in die ntfy-App ein → erhält automatisch eine Benachrichtigung wenn er in der Warteliste an die Reihe kommt</li>
-                  <li><strong>Test-Nachricht:</strong> Im LabManager → Gast bearbeiten → Abschnitt «NTFY Benachrichtigungen» → «▶ Test»</li>
-                </ul>
-                <div class="help-tip"><strong>Sicherheit:</strong> Das Topic ist zufällig generiert (16 Zeichen, URL-sicher) und für Dritte nicht erratbar. Nur der Gast selbst kennt es.</div>
-              </div>
-            </div>
-            <div class="help-article">
-              <div class="help-article-title">Notfall-Alarm</div>
-              <div class="help-article-body">
-                Der Notfall-Alarm wird durch einen physischen Knopf (z.B. grosser roter Not-Aus-Knopf via Shelly 1 Mini) ausgelöst und:
-                <ul style="margin-top:8px">
-                  <li>Schaltet konfigurierte Smart Plugs ein (Sirene, Blinklicht)</li>
-                  <li>Zeigt einen Notfallbildschirm mit konfigurierbarem Text auf dem TV-Display</li>
-                  <li>Sendet eine Push-Benachrichtigung an das konfigurierte ntfy-Topic</li>
-                  <li>Protokolliert das Ereignis (mit IP-Adresse) im Aktivitätslog</li>
-                </ul>
-                <strong>Konfiguration:</strong>
-                <ol style="margin-top:8px">
-                  <li><strong>Trigger-Token:</strong> Geheimes Token, das am Shelly als HTTP-Action-Header <code>X-Emergency-Token</code> konfiguriert wird</li>
-                  <li><strong>Auto-Stop (Sekunden):</strong> Sirene und Licht schalten sich nach der konfigurierten Zeit automatisch aus (Display bleibt bis zur manuellen Quittierung)</li>
-                  <li><strong>Smart Plugs:</strong> IP-Adresse, Typ (Shelly/myStrom) und optionaler Auth-Token für Sirene und Blinklicht separat konfigurierbar</li>
-                  <li><strong>Anzeigetext:</strong> Erscheint auf dem TV-Display während des Alarms (z.B. Notrufnummern)</li>
-                  <li><strong>ntfy-Nachrichtentext:</strong> Frei konfigurierbarer Text für die Push-Benachrichtigung. Platzhalter: <code>{ts}</code> wird durch Datum und Uhrzeit ersetzt.</li>
-                </ol>
-                <strong>Alarm quittieren:</strong> Im roten Banner oben auf der Lab-Manager-Seite auf «✓ Quittieren» klicken. Ein Kommentarfeld ist Pflicht. Quittierung sendet ebenfalls eine ntfy-Benachrichtigung und protokolliert den quittierenden Lab Manager.
-                <div class="help-tip"><strong>Testen:</strong> <code>curl -kX POST https://[deine-domain]/api/emergency/trigger -H "X-Emergency-Token: [token]"</code></div>
-                <div class="help-warn"><strong>Shelly konfigurieren:</strong> Im Shelly-Webinterface unter «Actions → Button pressed» eine HTTP-Action auf <code>POST https://[deine-domain]/api/emergency/trigger</code> mit Header <code>X-Emergency-Token: [dein-token]</code> einrichten.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── Aktivitätslog ── -->
-        <div class="help-cat" id="help-cat-log">
-          <div class="help-cat-header" onclick="toggleHelpCat('log')">
-            <span class="help-cat-icon">📋</span>
-            <span class="help-cat-title">Aktivitätslog</span>
-            <span class="help-cat-chevron">▼</span>
-          </div>
-          <div class="help-cat-body">
-            <div class="help-article">
-              <div class="help-article-title">Log-Typen</div>
-              <div class="help-article-body">
-                Jeder Eintrag hat einen Typ. Folgende Typen existieren:
-                <table style="width:100%;margin-top:8px;font-size:13px;border-collapse:collapse">
-                  <thead><tr style="border-bottom:1px solid var(--border)">
-                    <th style="text-align:left;padding:4px 8px;font-family:var(--mono);font-size:11px;color:var(--text-dim)">Typ</th>
-                    <th style="text-align:left;padding:4px 8px;font-family:var(--mono);font-size:11px;color:var(--text-dim)">Bedeutung</th>
-                  </tr></thead>
-                  <tbody>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">session_started</td><td style="padding:4px 8px">Maschinen-Session gestartet (Gast)</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">session_ended</td><td style="padding:4px 8px">Session beendet (manuell oder automatisch)</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">access_granted</td><td style="padding:4px 8px">Zugang zur Maschine gewährt</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">access_denied</td><td style="padding:4px 8px">Zugangsverweigerung (keine Berechtigung)</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">plug_on / plug_off</td><td style="padding:4px 8px">Smart Plug ein-/ausgeschaltet</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">guest_created</td><td style="padding:4px 8px">Gast durch Lab Manager angelegt</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">guest_registered</td><td style="padding:4px 8px">Gast hat sich selbst registriert</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">guest_login</td><td style="padding:4px 8px">Gast-Login (Passwort oder Token-Link)</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">session_started (LM)</td><td style="padding:4px 8px">Session durch Lab Manager gestartet</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">maintenance_due</td><td style="padding:4px 8px">Wartungsintervall fällig</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">maintenance_done</td><td style="padding:4px 8px">Wartung als durchgeführt markiert</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">emergency_triggered</td><td style="padding:4px 8px">Notfall-Alarm ausgelöst (mit IP-Adresse)</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">emergency_cancelled</td><td style="padding:4px 8px">Notfall-Alarm quittiert (mit Kommentar und Name)</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">error</td><td style="padding:4px 8px">Fehler (z.B. Plug nicht erreichbar)</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div class="help-article">
-              <div class="help-article-title">Filtern und Suchen</div>
-              <div class="help-article-body">
-                Der Log kann gefiltert werden nach: Gast, Maschine, Typ, Datumsbereich und Freitext-Suche.
-                <ul style="margin-top:8px">
-                  <li>Der Filter «🚨 Notfall» zeigt Alarm-Auslösungen und -Quittierungen gemeinsam</li>
-                  <li>Es werden maximal 200 Einträge angezeigt; die Gesamtzahl der Treffer erscheint oben</li>
-                  <li>Für Notfall-Einträge wird die auslösende IP-Adresse und der quittierenden Lab Manager angezeigt</li>
                 </ul>
               </div>
             </div>
