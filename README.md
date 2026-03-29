@@ -16,10 +16,10 @@ Webbasiertes Verwaltungssystem für Makerspaces. Gäste werden per QR-Code an Ma
 - **Maschinenpflege** — Wartungsintervalle mit Warnungen
 - **Warteliste** — Gäste stellen sich in die Warteschlange, ntfy-Benachrichtigung wenn Maschine frei wird
 - **Push-Benachrichtigungen** — ntfy-Integration für System-Events und persönliche Gast-Topics
-- **Notfall-Alarm** — physischer Auslöser (z.B. Shelly) startet Alarm, schaltet Sirene/Licht, sendet Push, Quittierung mit Kommentarpflicht
+- **Notfall-Alarm** — Auslöser startet Alarm, schaltet Plugs aus, sendet Push, Quittierung mit Kommentarpflicht
 - **Aktivitätslog** — vollständiges Audit-Trail inkl. IP-Adressen
-- **Backup / Restore** — JSON-Export und -Import aller Daten
-- **Smart Plug Support** — myStrom, Shelly Gen1 und Gen2
+- **Backup / Restore** — JSON-Export und -Import aller Daten (automatisch täglich oder manuell)
+- **Smart Plug Support** — myStrom, Shelly Gen1, Shelly Gen2/Gen3/Gen4
 
 ## Stack
 
@@ -39,13 +39,13 @@ Webbasiertes Verwaltungssystem für Makerspaces. Gäste werden per QR-Code an Ma
 
 - Docker und Docker Compose
 - Git
-- Port 80 frei (änderbar via `HTTP_PORT` in `.env`)
+- Port 80 und 443 frei (änderbar via `HTTP_PORT` / `HTTPS_PORT` in `.env`)
 
 ### Erstinstallation
 
 ```bash
 # Repository klonen
-git clone git@github.com:drstrangelove52/spacecaptain.git
+git clone https://github.com/drstrangelove52/spacecaptain.git
 cd spacecaptain
 
 # Umgebungsvariablen konfigurieren
@@ -60,10 +60,8 @@ Mindestens anpassen:
 | `DB_ROOT_PASSWORD` | Sicheres Root-Passwort für MariaDB |
 | `DB_PASSWORD` | Datenbankpasswort für die App |
 | `JWT_SECRET` | Zufälliger String (mind. 32 Zeichen) |
-| `ALLOWED_ORIGINS` | Erlaubte CORS-Origins (kommagetrennt, z.B. `https://spacecaptain.example.com`) |
+| `ALLOWED_ORIGINS` | Erlaubte CORS-Origins (kommagetrennt, z.B. `https://192.168.1.100`) |
 | `TIMEZONE` | Zeitzone des Servers (z.B. `Europe/Zurich`, `Europe/Berlin`) |
-| `BACKUP_EMAIL` | E-Mail des Admin-Accounts für Backups |
-| `BACKUP_PASSWORD` | Passwort des Admin-Accounts |
 
 JWT Secret generieren:
 ```bash
@@ -75,7 +73,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 docker compose up -d --build
 
 # Logs prüfen
-docker compose logs -f spacecaptain_backend
+docker compose logs -f backend
 ```
 
 ### Erster Login
@@ -85,6 +83,32 @@ docker compose logs -f spacecaptain_backend
 - **Passwort**: `admin1234`
 
 > **Passwort sofort nach dem ersten Login ändern!**
+
+---
+
+## HTTPS einrichten
+
+Nginx ist als Reverse Proxy konfiguriert und unterstützt TLS. Das Skript `gencert.sh` erstellt ein selbstsigniertes Zertifikat:
+
+```bash
+bash gencert.sh <hostname-oder-ip>
+
+# Beispiele:
+bash gencert.sh spacecaptain.local
+bash gencert.sh 192.168.1.100
+```
+
+Das Zertifikat wird in `certs/cert.pem` und `certs/key.pem` abgelegt (gültig 10 Jahre). Danach `ALLOWED_ORIGINS` in der `.env` auf `https://` umstellen und die Container neu starten:
+
+```bash
+docker compose up -d
+```
+
+Für ein offizielles Zertifikat (z.B. Let's Encrypt) einfach `cert.pem` und `key.pem` in `certs/` ersetzen und Nginx neu laden:
+
+```bash
+docker exec spacecaptain_proxy nginx -s reload
+```
 
 ---
 
@@ -102,56 +126,34 @@ Der Frontend-Code (HTML/JS) ist als Volume eingebunden und wird durch `git pull`
 
 ---
 
-## Automatisches Backup
+## Backup & Restore
 
-Das Skript `backup.sh` exportiert alle Daten über die API und speichert sie als komprimierte JSON-Datei.
+### Automatisches Backup
 
-### Konfiguration in `.env`
+SpaceCaptain sichert die Daten täglich automatisch als JSON-Datei. Konfiguration unter **Einstellungen → Automatisches Backup**:
 
-```bash
-BACKUP_EMAIL=admin@spacecaptain.local   # Admin-Account
-BACKUP_PASSWORD=sicheres_passwort
+- **Uhrzeit** — Zeitpunkt der täglichen Sicherung (Standard: 03:00)
+- **Aufbewahrung** — Anzahl Backups (Standard: 30 ≈ 1 Monat)
 
-# Optional:
-# BACKUP_DIR=/opt/spacecaptain/backups  # Standard: ./backups/
-# BACKUP_KEEP=30                        # Anzahl Backups (Standard: 30)
-```
+Das Backup-Verzeichnis wird via `BACKUP_DIR` in der `.env` konfiguriert (Standard: `./backups`). NFS-Shares werden unterstützt — einfach den gemounteten Pfad eintragen.
 
-### Cron-Job einrichten (täglich 03:00 Uhr)
+### Manuelles Backup
+
+Sidebar → **Backup** → «Jetzt sichern», oder über die API:
 
 ```bash
-crontab -e
-```
-
-```
-0 3 * * * /opt/spacecaptain/backup.sh >> /opt/spacecaptain/backups/backup.log 2>&1
-```
-
-### Backup manuell ausführen
-
-```bash
-bash /opt/spacecaptain/backup.sh
-```
-
-### Wiederherstellung
-
-Backups können über die Web-Oberfläche unter **Backup & Restore → Import** eingespielt werden, oder per API:
-
-```bash
-# Backup entpacken
-gunzip -c backups/spacecaptain-backup-2026-01-15_03-00-00.json.gz > restore.json
-
-# Über die API importieren
 TOKEN=$(curl -sf -X POST http://localhost/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@spacecaptain.local","password":"..."}' \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
 
-curl -sf -X POST http://localhost/api/backup/import \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d @restore.json
+curl -sf -X GET http://localhost/api/backup/export \
+  -H "Authorization: Bearer $TOKEN" -o backup.json
 ```
+
+### Wiederherstellung
+
+Backups können über die Web-Oberfläche unter **Backup → Restore** eingespielt werden.
 
 > Das Backup enthält Passwort-Hashes und Plug-Tokens — Dateien sicher aufbewahren.
 
@@ -166,15 +168,14 @@ Gast-QR              Maschinen-QR           API prüft         Steckdose
 
 ### Setup
 
-1. **Maschine anlegen** — Frontend → Maschinen → Neue Maschine
-2. **Gast anlegen** — Frontend → Gäste → Neuer Gast
-3. **Berechtigung erteilen** — Frontend → Berechtigungen → Gast × Maschine aktivieren
-4. **Gast-QR generieren** — Frontend → QR-System → Gast-QR → ausdrucken oder teilen
-5. **Maschinen-QR aufhängen** — Frontend → QR-System → Maschinen-QR → bei der Maschine aufhängen
+1. **Maschine anlegen** — Sidebar → Maschinen → Neue Maschine
+2. **Gast anlegen** — Sidebar → Gäste → Neuer Gast
+3. **Berechtigung erteilen** — Sidebar → Berechtigungen → Gast × Maschine aktivieren
+4. **Maschinen-QR aufhängen** — Sidebar → Maschinen → QR-Code drucken
 
 ### Ablauf für den Gast
 
-1. Gast-App öffnen (`http://<server-ip>`) und mit Gast-QR einloggen
+1. Gäste-App öffnen (`https://<server-ip>`) und einloggen
 2. Maschinen-QR scannen → Berechtigung wird geprüft
 3. Steckdose schaltet ein, Session wird protokolliert
 4. Nach der Nutzung: **Ausschalten** tippen → Steckdose schaltet aus
@@ -183,7 +184,7 @@ Gast-QR              Maschinen-QR           API prüft         Steckdose
 
 ## Smart Plug Konfiguration
 
-Plugs werden pro Maschine konfiguriert (Frontend → Maschinen → bearbeiten).
+Plugs werden pro Maschine konfiguriert (Sidebar → Maschinen → bearbeiten).
 
 ### myStrom Switch
 
@@ -192,7 +193,6 @@ Plugs werden pro Maschine konfiguriert (Frontend → Maschinen → bearbeiten).
 | Plug Typ  | `mystrom` |
 | IP        | z.B. `192.168.1.50` |
 | Token     | API-Token aus myStrom-App (optional) |
-| Extra     | leer |
 
 ### Shelly Plug / Plug S (Gen1)
 
@@ -200,15 +200,15 @@ Plugs werden pro Maschine konfiguriert (Frontend → Maschinen → bearbeiten).
 |-----------|------|
 | Plug Typ  | `shelly` |
 | IP        | z.B. `192.168.1.51` |
-| Extra     | leer |
+| Passwort  | Nur wenn HTTP-Auth aktiviert: `user:passwort` |
 
-### Shelly Plus / Pro (Gen2)
+### Shelly Plus / Pro / Mini (Gen2/Gen3/Gen4)
 
 | Feld      | Wert |
 |-----------|------|
-| Plug Typ  | `shelly` |
-| IP        | z.B. `192.168.1.51` |
-| Extra     | `gen2` |
+| Plug Typ  | `shelly_gen2` |
+| IP        | z.B. `192.168.1.52` |
+| Passwort  | Nur wenn HTTP-Auth aktiviert: `user:passwort` |
 
 ### Ohne Smart Plug
 
@@ -218,7 +218,7 @@ Plugs werden pro Maschine konfiguriert (Frontend → Maschinen → bearbeiten).
 
 Sessions werden trotzdem protokolliert, der Plug wird nur nicht geschaltet.
 
-### Netzwerk-Anforderung
+### Netzwerk-Empfehlung
 
 Das Backend muss die Plugs direkt per HTTP erreichen können. Empfohlen: Plugs in einem separaten IoT-VLAN, das nur vom SpaceCaptain-Server erreichbar ist.
 
@@ -237,10 +237,10 @@ Internet    →  IoT-VLAN             →  GESPERRT
 docker compose ps
 
 # Logs verfolgen
-docker compose logs -f spacecaptain_backend
+docker compose logs -f backend
 
-# System neu starten (ohne Datenverlust)
-docker compose restart
+# Backend neu starten
+docker compose restart backend
 
 # In den Backend-Container einloggen
 docker exec -it spacecaptain_backend bash
@@ -262,6 +262,7 @@ spacecaptain/
 ├── docker-compose.yml          ← Container-Orchestrierung
 ├── .env.example                ← Konfigurationsvorlage
 ├── .env                        ← lokale Konfiguration (nicht im Git)
+├── gencert.sh                  ← Selbstsigniertes TLS-Zertifikat generieren
 ├── db/
 │   └── init.sql                ← Datenbankschema + Default-Admin
 ├── backend/
@@ -294,14 +295,18 @@ spacecaptain/
 │           ├── session.py      ← Idle-Watcher, Plug-Polling
 │           ├── ntfy.py         ← Push-Benachrichtigungen (ntfy)
 │           ├── queue_service.py← Wartelisten-Logik, ntfy-Benachrichtigung
+│           ├── backup_service.py← Auto-Backup, Cleanup
 │           ├── migrate.py      ← Datenbank-Migrationen
 │           └── logger.py       ← Aktivitätslog Helper
 ├── frontend/
 │   ├── index.html              ← Gäste-App (PWA)
 │   └── labmanager.html         ← Admin / Lab Manager Interface
-└── nginx/
-    ├── proxy.conf              ← Reverse Proxy (Port 80 → Backend/Frontend)
-    └── nginx.conf              ← Frontend Static Files
+├── nginx/
+│   ├── proxy.conf              ← Reverse Proxy (Port 80/443 → Backend/Frontend)
+│   └── nginx.conf              ← Frontend Static Files
+└── certs/
+    ├── cert.pem                ← TLS-Zertifikat (nicht im Git)
+    └── key.pem                 ← TLS-Schlüssel (nicht im Git)
 ```
 
 ---
@@ -316,24 +321,20 @@ spacecaptain/
 | GET  | `/api/log` | Aktivitätslog (Filter: guest_id, machine_id, type, date_from, date_to, search) |
 | GET/POST | `/api/guests` | Gäste verwalten |
 | POST | `/api/guests/register` | Gast-Selbstregistrierung (öffentlich) |
-| POST | `/api/guests/{id}/approve` | Registrierung freischalten (Admin) |
-| POST | `/api/guests/{id}/ntfy-test` | Test-Push an Gast-Topic senden |
+| POST | `/api/guests/{id}/approve` | Registrierung freischalten |
 | GET/POST | `/api/machines` | Maschinen verwalten |
 | GET  | `/api/machines/{id}/qr.png` | QR-Code als PNG |
 | GET/POST | `/api/permissions` | Berechtigungs-Matrix |
-| POST | `/api/qr/guest-login/{id}` | Gast-Token generieren |
 | POST | `/api/qr/scan` | QR-Scan → Plug EIN |
 | POST | `/api/qr/release` | Maschine freigeben → Plug AUS |
-| POST | `/api/qr/plug/toggle` | Plug manuell schalten (Admin) |
 | GET/POST | `/api/queue` | Warteliste verwalten |
 | GET/POST | `/api/ntfy-topics` | System-ntfy-Topics verwalten |
-| POST | `/api/ntfy-topics/{id}/test` | Test-Push an System-Topic senden |
 | GET  | `/api/emergency/status` | Notfall-Status abfragen |
 | POST | `/api/emergency/trigger` | Notfall-Alarm auslösen (Header: X-Emergency-Token) |
 | POST | `/api/emergency/cancel` | Notfall-Alarm quittieren (JWT, Pflichtkommentar) |
-| GET/POST | `/api/settings` | Systemeinstellungen lesen/schreiben |
-| GET  | `/api/backup/export` | Vollständiger JSON-Export (Admin) |
-| POST | `/api/backup/import` | Konfiguration importieren (Admin) |
+| GET/PATCH | `/api/settings` | Systemeinstellungen lesen/schreiben |
+| GET  | `/api/backup/export` | Vollständiger JSON-Export |
+| POST | `/api/backup/import` | Konfiguration importieren |
 | GET/POST | `/api/maintenance/intervals` | Wartungsintervalle |
 | GET/POST | `/api/maintenance/records` | Wartungsausführungen |
 
