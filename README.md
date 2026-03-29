@@ -350,6 +350,12 @@ Nutzung, Weitergabe und Modifikation sind für **nicht-kommerzielle Zwecke** fre
 
 ---
 
+## Kontakt & Fragen
+
+Fragen, Ideen oder Fehler gerne als [GitHub Issue](https://github.com/drstrangelove52/spacecaptain/issues) melden.
+
+---
+
 ## Projekt unterstützen
 
 SpaceCaptain wird in der Freizeit entwickelt. Über eine kleine Spende freue ich mich sehr — sie hilft, das Projekt weiterzuentwickeln.
