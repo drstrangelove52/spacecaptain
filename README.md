@@ -15,7 +15,7 @@ Fragen oder Ideen? → [GitHub Issue erstellen](https://github.com/drstrangelove
 - **Gästeverwaltung** — Registrierung, Login, Passwort ändern
 - **Maschinenverwaltung** — Status, Kategorien, Smart Plug Anbindung
 - **Berechtigungs-Matrix** — welcher Gast darf welche Maschine nutzen
-- **QR-Code Workflow** — Gast-QR + Maschinen-QR → Plug schaltet ein
+- **QR-Code & NFC Workflow** — Gast scannt Maschinen-QR oder tippt NFC-Tag → Plug schaltet ein
 - **Leerlauf-Automatik** — Plug schaltet bei Nichtbenutzung automatisch aus
 - **Maschinenpflege** — Wartungsintervalle mit Warnungen
 - **Warteliste** — Gäste stellen sich in die Warteschlange, ntfy-Benachrichtigung wenn Maschine frei wird
@@ -163,11 +163,13 @@ Backups können über die Web-Oberfläche unter **Backup → Restore** eingespie
 
 ---
 
-## QR-Code Workflow
+## QR-Code & NFC Workflow
+
+Jede Maschine hat einen eindeutigen Token — hinterlegt als QR-Code-Aufkleber oder auf einem NFC-Tag. Der Gast identifiziert sich über die Gäste-App, die API prüft die Berechtigung und schaltet den Plug.
 
 ```
-Gast-QR              Maschinen-QR           API prüft         Steckdose
-[Login-Token]   →    [Maschinen-Token]  →   Berechtigung  →   EIN / AUS
+Gast (eingeloggt)    Maschinen-QR / NFC-Tag     API prüft         Steckdose
+[Session-Token]  →   [Maschinen-Token]       →  Berechtigung  →   EIN / AUS
 ```
 
 ### Setup
@@ -175,14 +177,23 @@ Gast-QR              Maschinen-QR           API prüft         Steckdose
 1. **Maschine anlegen** — Sidebar → Maschinen → Neue Maschine
 2. **Gast anlegen** — Sidebar → Gäste → Neuer Gast
 3. **Berechtigung erteilen** — Sidebar → Berechtigungen → Gast × Maschine aktivieren
-4. **Maschinen-QR aufhängen** — Sidebar → Maschinen → QR-Code drucken
+4. **QR-Code aufhängen** — Sidebar → Maschinen → QR-Code drucken und bei der Maschine befestigen
+5. **Optional: NFC-Tag beschreiben** — NFC-Writer (`/nfc-setup`) mit ESP32 + PN532 einrichten, Tag an die Maschine kleben
 
 ### Ablauf für den Gast
 
 1. Gäste-App öffnen (`https://<server-ip>`) und einloggen
-2. Maschinen-QR scannen → Berechtigung wird geprüft
-3. Steckdose schaltet ein, Session wird protokolliert
+2. Maschinen-QR mit der Kamera scannen **oder** NFC-Tag antippen
+3. Berechtigung wird geprüft — Steckdose schaltet ein, Session wird protokolliert
 4. Nach der Nutzung: **Ausschalten** tippen → Steckdose schaltet aus
+
+### QR vs. NFC
+
+| | QR-Code | NFC-Tag |
+|---|---|---|
+| Hardware | keiner (Smartphone-Kamera) | ESP32 + PN532 (NFC-Writer) |
+| Aufwand | minimal | einmalige Einrichtung des Writers |
+| Vorteil | sofort einsatzbereit | schneller (antippen statt scannen) |
 
 ---
 
