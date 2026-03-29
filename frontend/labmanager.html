@@ -1513,27 +1513,47 @@
           </div>
           <div class="help-cat-body">
             <div class="help-article">
-              <div class="help-article-title">Backup erstellen</div>
+              <div class="help-article-title">Automatisches Backup</div>
               <div class="help-article-body">
-                Sidebar → <strong>Backup</strong> → «Exportieren». Es wird eine JSON-Datei heruntergeladen mit: Einstellungen, Benutzer (inkl. Passwort-Hashes), Gäste, Maschinen, Berechtigungen, Sessions, Wartungsintervalle, Wartungshistorie und Aktivitätslog.
-                <div class="help-warn"><strong>Sicherheit:</strong> Die Backup-Datei enthält Passwort-Hashes. Sicher aufbewahren und nicht per E-Mail versenden.</div>
+                SpaceCaptain erstellt täglich automatisch ein Backup — sofern aktiviert. Konfiguration unter <strong>Einstellungen → Automatisches Backup</strong>:
+                <ul>
+                  <li><strong>Aktivieren:</strong> Häkchen setzen</li>
+                  <li><strong>Uhrzeit:</strong> Zeitpunkt der täglichen Sicherung (z.B. 03:00)</li>
+                  <li><strong>Aufbewahrung:</strong> Anzahl Backups, die gespeichert bleiben (Standard: 30 ≈ 1 Monat)</li>
+                </ul>
+                Das Backup-Verzeichnis wird via <code>BACKUP_DIR</code> in der <code>.env</code> konfiguriert. Standard: <code>./backups</code>. NFS-Shares werden unterstützt — einfach den gemounteten Pfad eintragen.
+                <div class="help-tip"><strong>Tipp:</strong> Manuell kann jederzeit über Sidebar → <strong>Backup</strong> → «Jetzt sichern» ein Backup ausgelöst werden.</div>
               </div>
             </div>
             <div class="help-article">
-              <div class="help-article-title">Backup einspielen (Restore)</div>
+              <div class="help-article-title">Backup herunterladen</div>
               <div class="help-article-body">
-                <ol>
-                  <li>Sidebar → <strong>Backup</strong> → «Datei wählen»</li>
-                  <li>Backup-JSON auswählen → «Importieren»</li>
-                  <li>Das System importiert alle Daten und überspringt bereits vorhandene Einträge (keine Duplikate)</li>
-                </ol>
-                <div class="help-tip"><strong>Tipp:</strong> Der Import ist additiv — bestehende Daten werden nicht überschrieben oder gelöscht. Ideal für Migrationen auf einen neuen Server.</div>
+                Sidebar → <strong>Backup</strong> → in der Dateiliste auf <strong>⬇ Download</strong> klicken. Die Datei wird als JSON heruntergeladen.
+                <div class="help-warn"><strong>Sicherheit:</strong> Backup-Dateien enthalten Passwort-Hashes. Sicher aufbewahren und nicht per E-Mail versenden.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Restore aus gespeichertem Backup</div>
+              <div class="help-article-body">
+                Sidebar → <strong>Backup</strong> → in der Dateiliste auf <strong>↩ Restore</strong> klicken.
+                <br><br>Es gibt zwei Modi:
+                <ul>
+                  <li><strong>Additiv (Standard):</strong> Nur neue Einträge werden importiert — bestehende Daten bleiben unverändert. Ideal für Migrationen auf einen neuen Server.</li>
+                  <li><strong>Überschreiben:</strong> Bestehende Einträge werden mit den Werten aus dem Backup aktualisiert. Nützlich um einen früheren Zustand wiederherzustellen.</li>
+                </ul>
+                <div class="help-tip"><strong>Tipp:</strong> Sessions und Aktivitätslog werden nie überschrieben — sie sind reine Verlaufsdaten.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Restore aus externer Datei (Import)</div>
+              <div class="help-article-body">
+                Sidebar → <strong>Backup</strong> → Abschnitt «Manueller Import» → JSON-Datei auswählen → «Importieren». Auch hier ist «Bestehende Einträge überschreiben» wählbar.
               </div>
             </div>
             <div class="help-article">
               <div class="help-article-title">Was ist im Backup enthalten?</div>
               <div class="help-article-body">
-                <strong>Enthalten:</strong> Alle Stammdaten, Sessions, Logs, Wartungshistorie, Einstellungen.<br>
+                <strong>Enthalten:</strong> Einstellungen, Benutzer, Gäste, Maschinen, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Mitteilungen, ntfy-Topics.<br><br>
                 <strong>Nicht enthalten:</strong> Aktive Warteschlangen-Einträge und NFC-Gast-Tokens (temporäre Laufzeitdaten, die nach einem Restore automatisch neu erstellt werden).
               </div>
             </div>
