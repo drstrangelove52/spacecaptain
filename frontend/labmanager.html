@@ -1350,11 +1350,11 @@
               <div class="help-article-body">
                 Sidebar → <strong>Einstellungen → Notfall-Alarm</strong>:
                 <ul style="margin-top:8px">
-                  <li><strong>Auslöse-Token:</strong> Geheimes Token — wer dieses kennt, kann den Alarm auslösen (z.B. via QR-Code an der Tür)</li>
+                  <li><strong>Auslöse-Token:</strong> Geheimes Token für den physischen Auslöse-Knopf (z.B. Shelly-Button)</li>
                   <li><strong>Anzeigetext:</strong> Wird gross auf der Display-Seite angezeigt wenn der Alarm aktiv ist</li>
-                  <li><strong>ntfy-Nachricht:</strong> Wird an alle Gäste und konfigurierte ntfy-Topics gesendet</li>
+                  <li><strong>ntfy-Nachricht:</strong> Wird an konfigurierte Lab-Manager-Topics gesendet</li>
                   <li><strong>Dauer:</strong> Wie lange der Alarm automatisch aktiv bleibt (0 = manuell quittieren)</li>
-                  <li><strong>Smart Plug 1 &amp; 2:</strong> Optionaler Plug der beim Alarm <em>ausgeschaltet</em> wird (z.B. Hauptstromversorgung)</li>
+                  <li><strong>Smart Plug 1 &amp; 2:</strong> Werden beim Alarm <em>eingeschaltet</em> — z.B. Sirene und Blinklicht</li>
                 </ul>
               </div>
             </div>
@@ -1367,7 +1367,7 @@
                   <li><strong>QR-Code:</strong> URL mit dem Auslöse-Token als QR-Code ausdrucken und im Lab aufhängen</li>
                   <li><strong>Lab Manager:</strong> Direkt über die Einstellungsseite (Testauslösung)</li>
                 </ol>
-                <div class="help-warn"><strong>Wichtig:</strong> Beim Auslösen werden sofort alle konfigurierten Smart Plugs ausgeschaltet und die Benachrichtigung versandt. Der Alarm erscheint gross auf allen Display-Seiten.</div>
+                <div class="help-warn"><strong>Wichtig:</strong> Beim Auslösen werden sofort die konfigurierten Smart Plugs (Sirene/Blinklicht) eingeschaltet, Lab Manager per ntfy benachrichtigt und der Alarm auf allen Display-Seiten angezeigt.</div>
               </div>
             </div>
             <div class="help-article">

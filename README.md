@@ -20,7 +20,7 @@ Fragen oder Ideen? → [GitHub Issue erstellen](https://github.com/drstrangelove
 - **Maschinenpflege** — Wartungsintervalle nach Betriebsstunden oder Kalendertagen mit Vorwarnung, Dokumentation und Verlauf
 - **Warteliste** — Gäste reihen sich ein und werden per Push benachrichtigt wenn die Maschine frei wird
 - **Push-Benachrichtigungen** — ntfy-Integration mit persönlichem Topic pro Gast und konfigurierbaren System-Topics für Lab Manager
-- **Notfall-Alarm** — Auslösung per physischem Knopf, schaltet Alarm-Plug ein (Sirene/Licht), benachrichtigt alle Gäste per Push
+- **Notfall-Alarm** — Auslösung per physischem Knopf, schaltet Sirene und Blinklicht ein, benachrichtigt Lab Manager per Push
 - **Aktivitätslog** — vollständiges Audit-Trail inkl. IP-Adressen
 - **Backup / Restore** — automatisches tägliches oder manuelles JSON-Backup aller Daten, Import mit Overwrite- oder Merge-Modus
 - **Smart Plug Support** — myStrom, Shelly Gen1, Shelly Gen2/Gen3/Gen4
