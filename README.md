@@ -4,7 +4,7 @@
   <img src="SpaceCaptain.svg" alt="SpaceCaptain Logo" height="120">
 </p>
 
-Webbasiertes Verwaltungssystem für Makerspaces. Gäste werden per QR-Code an Maschinen freigeschaltet, Smart Plugs schalten automatisch ein und aus.
+SpaceCaptain ist das Verwaltungssystem für deinen Makerspace — Berechtigungen, Maschinensteuerung per Smart Plug und Maschinenpflege in einer App.
 
 Fragen oder Ideen? → [GitHub Issue erstellen](https://github.com/drstrangelove52/spacecaptain/issues) &nbsp;·&nbsp; Projekt nützlich? → [Ko-fi Spende](https://ko-fi.com/pobli) ☕
 
