@@ -62,6 +62,9 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 ```bash
+# TLS-Zertifikat erstellen (Pflicht — ohne Zertifikat startet Nginx nicht)
+bash gencert.sh <server-ip>
+
 # Container bauen und starten
 docker compose up -d --build
 
