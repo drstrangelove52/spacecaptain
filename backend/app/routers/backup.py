@@ -401,7 +401,7 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
     # Bestehende Intervalle laden (name + machine_id als Schlüssel)
     existing_intervals = (await db.execute(select(MaintenanceInterval))).scalars().all()
     existing_iv_map = {(iv.machine_id, iv.name): iv for iv in existing_intervals}
-    existing_iv_keys = existing_iv_map.keys()
+    existing_iv_keys = set(existing_iv_map.keys())
     # Map: export_id → neue oder bestehende DB-id
     interval_id_map: dict[int, int] = {}
     # Bestehende Intervalle ebenfalls in die Map aufnehmen (für Records)
