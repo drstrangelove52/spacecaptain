@@ -88,23 +88,17 @@ docker compose logs -f spacecaptain_backend
 
 ---
 
-## Update / Rebuild
-
-Das Skript `rebuild.sh` holt die aktuelle Version von Git und startet die Container neu. Alle Daten werden dabei gelöscht.
+## Update
 
 ```bash
-# Mit externer .env (z.B. nach Passwortänderung oder Neuinstallation)
-sudo bash /opt/spacecaptain/rebuild.sh /pfad/zur/.env
+# Code holen
+git pull
 
-# .env liegt bereits im Projektordner
-sudo bash /opt/spacecaptain/rebuild.sh
+# Backend neu starten (Migrationen laufen automatisch beim Start)
+docker compose up -d --build backend
 ```
 
-Das Skript führt folgende Schritte aus:
-1. `git pull` (als normaler User, SSH-Keys werden berücksichtigt)
-2. `.env` kopieren (falls Pfad angegeben)
-3. Container stoppen und Volumes löschen (`down -v --rmi all`)
-4. Container neu bauen und starten (`up -d --build`)
+Der Frontend-Code (HTML/JS) ist als Volume eingebunden und wird durch `git pull` sofort aktualisiert — kein Neustart nötig. DB-Migrationen laufen automatisch beim Backend-Start.
 
 ---
 
@@ -268,8 +262,6 @@ spacecaptain/
 ├── docker-compose.yml          ← Container-Orchestrierung
 ├── .env.example                ← Konfigurationsvorlage
 ├── .env                        ← lokale Konfiguration (nicht im Git)
-├── rebuild.sh                  ← Update-Skript (git pull + Neustart)
-├── backup.sh                   ← Backup-Skript mit Rotation
 ├── db/
 │   └── init.sql                ← Datenbankschema + Default-Admin
 ├── backend/
