@@ -344,7 +344,7 @@ Interaktive Dokumentation: `http://<server-ip>/docs`
 
 ## Lizenz
 
-© 2024 Martin Nigg — veröffentlicht unter der **[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)**.
+© 2026 Martin Nigg — veröffentlicht unter der **[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)**.
 
 Nutzung, Weitergabe und Modifikation sind für **nicht-kommerzielle Zwecke** frei erlaubt. Jede kommerzielle Nutzung ist ohne ausdrückliche Genehmigung untersagt.
 
