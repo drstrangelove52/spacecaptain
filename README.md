@@ -78,7 +78,7 @@ docker compose logs -f backend
 
 ### Erster Login
 
-- **URL**: `http://<server-ip>`
+- **URL**: `https://<server-ip>/labmanager`
 - **E-Mail**: `admin@spacecaptain.local`
 - **Passwort**: `admin1234`
 
