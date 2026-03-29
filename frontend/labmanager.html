@@ -1366,6 +1366,31 @@
               </div>
             </div>
             <div class="help-article">
+              <div class="help-article-title">Shelly-Button konfigurieren</div>
+              <div class="help-article-body">
+                Der Shelly muss beim Tastendruck einen HTTP-POST an den SpaceCaptain-Server senden.
+                <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin:12px 0;font-family:var(--mono);font-size:12px;line-height:1.8">
+                  <div style="color:var(--text-dim);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Endpunkt</div>
+                  <div style="color:var(--accent2)">POST https://&lt;server-ip&gt;/api/emergency/trigger</div>
+                  <div style="color:var(--text-dim);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:10px 0 6px">Header</div>
+                  <div style="color:var(--accent2)">X-Emergency-Token: &lt;dein-token&gt;</div>
+                </div>
+                <strong style="color:var(--text)">Shelly Gen2/Gen3/Gen4 (Plus, Pro, Mini):</strong>
+                <ol style="margin-top:8px;line-height:2">
+                  <li>Shelly-Web-UI öffnen → <strong>Scripts</strong> → Neues Script erstellen</li>
+                  <li>Beim Tastendruck <code>Shelly.call("HTTP.Post", ...)</code> mit URL und Header aufrufen</li>
+                  <li>Alternativ: <strong>Actions → Button turned ON</strong> → URL eintragen (nur ohne Custom-Header)</li>
+                </ol>
+                <strong style="color:var(--text)">Shelly Gen1:</strong>
+                <ol style="margin-top:8px;line-height:2">
+                  <li>Shelly-Web-UI öffnen → <strong>Actions → Button turned ON</strong></li>
+                  <li>URL eintragen: <code>https://&lt;server-ip&gt;/api/emergency/trigger</code></li>
+                  <li>Custom-Header werden von Gen1 nicht unterstützt — Token muss als Query-Parameter übergeben werden (serverseitige Anpassung erforderlich)</li>
+                </ol>
+                <div class="help-tip"><strong>Tipp:</strong> Für Gen2+ empfiehlt sich ein Script, da damit der Header <code>X-Emergency-Token</code> korrekt mitgesendet werden kann.</div>
+              </div>
+            </div>
+            <div class="help-article">
               <div class="help-article-title">Alarm quittieren</div>
               <div class="help-article-body">
                 Sidebar → <strong>Einstellungen → Notfall-Alarm</strong> → «Alarm quittieren». Es wird ein Kommentar und der Name des quittierenden Lab Managers ins Aktivitätslog eingetragen. Die Smart Plugs werden <em>nicht</em> automatisch wieder eingeschaltet — dies muss manuell erfolgen.
