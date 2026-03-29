@@ -783,6 +783,11 @@
             </div>
             <div style="font-size:12px;color:var(--text-dim);margin-top:8px">Token: myStrom → API-Key · Shelly → user:passwort</div>
           </div>
+          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+            <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;letter-spacing:1px">TEST-BEFEHL (curl)</div>
+            <pre id="emergency-curl-preview" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;font-family:var(--mono);font-size:12px;color:var(--accent2);line-height:1.7;overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin:0">curl -X POST https://&lt;server-ip&gt;/api/emergency/trigger \
+  -H "X-Emergency-Token: &lt;token&gt;"</pre>
+          </div>
           <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:16px">
             <div class="form-group" style="margin:0">
               <label class="form-label">Anzeigetext</label>
@@ -3625,6 +3630,16 @@ setInterval(()=>{ if(document.querySelector('.nav-item.active')?.dataset.page===
 // ═══════════════════════════════════════════════════════
 // EINSTELLUNGEN
 // ═══════════════════════════════════════════════════════
+function _updateEmergencyCurlPreview() {
+  const token = document.getElementById('cfg-emergency-token')?.value.trim() || '<token>';
+  const origin = window.location.origin;
+  document.getElementById('emergency-curl-preview').textContent =
+    `curl -X POST ${origin}/api/emergency/trigger \\\n  -H "X-Emergency-Token: ${token}"`;
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('cfg-emergency-token')
+    ?.addEventListener('input', _updateEmergencyCurlPreview);
+});
 async function loadSettings() {
   const s = await GET('/settings');
   if (!s) return;
@@ -3646,6 +3661,7 @@ async function loadSettings() {
   document.getElementById('cfg-ntfy-server').value = s.ntfy_server ?? 'https://ntfy.sh';
   document.getElementById('cfg-ntfy-token').value = s.ntfy_token ?? '';
   document.getElementById('cfg-emergency-token').value = s.emergency_trigger_token ?? '';
+  _updateEmergencyCurlPreview();
   document.getElementById('cfg-emergency-duration').value = s.emergency_duration_sec ?? 0;
   document.getElementById('cfg-emergency-plug-ip').value = s.emergency_plug_ip ?? '';
   document.getElementById('cfg-emergency-plug-type').value = s.emergency_plug_type ?? '';
