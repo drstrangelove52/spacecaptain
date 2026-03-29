@@ -1628,6 +1628,30 @@
               </div>
             </div>
             <div class="help-article">
+              <div class="help-article-title">Gast-Token-Gültigkeit</div>
+              <div class="help-article-body">
+                Bestimmt wie lange ein per E-Mail versendeter Login-Link (Token-URL) für Gäste gültig ist — in Tagen. Standard: 365 Tage. Nach Ablauf muss ein neuer Link generiert werden (Gästedetail → «Login-Link»).
+                <div class="help-tip">Für sicherheitssensible Umgebungen empfiehlt sich ein kürzerer Wert, z.B. 30 Tage.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Dashboard-Aktualisierung</div>
+              <div class="help-article-body">
+                Intervall (in Sekunden) in dem das Lab-Manager-Dashboard automatisch neu lädt. Standard: 30 Sekunden. Bei sehr vielen Maschinen oder langsamen Verbindungen kann ein höherer Wert die Last reduzieren.
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Modal-Verhalten (Backdrop)</div>
+              <div class="help-article-body">
+                Steuert ob ein Klick auf den abgedunkelten Hintergrund (Backdrop) ein offenes Fenster schliesst:
+                <ul style="margin-top:8px">
+                  <li><strong>Eingabe-Modals:</strong> Formulare zum Anlegen/Bearbeiten — Standard: ein (Klick schliesst)</li>
+                  <li><strong>Anzeige-Modals:</strong> Detailansichten ohne Formular — Standard: ein</li>
+                </ul>
+                Deaktivieren verhindert versehentliches Schliessen bei ungespeicherten Eingaben.
+              </div>
+            </div>
+            <div class="help-article">
               <div class="help-article-title">Allgemeine Geschäftsbedingungen (AGB)</div>
               <div class="help-article-body">
                 Unter <strong>Einstellungen → Allgemeine Geschäftsbedingungen</strong> kann ein AGB-Text im Markdown-Format hinterlegt werden. Ist ein Text vorhanden, erscheint auf der Registrierungsseite eine Pflicht-Checkbox — Gäste müssen die AGB vor der Registrierung akzeptieren.
