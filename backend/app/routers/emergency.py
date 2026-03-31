@@ -3,7 +3,7 @@ Notfall-Alarm — Trigger, Cancel, Status
 """
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -19,6 +19,7 @@ from app.services.logger import log as activity_log
 from app.services.system_settings import get_system_settings
 from app.services.ntfy import send_notification
 from app.services.plug import switch_plug
+from app.config import APP_TIMEZONE
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/emergency", tags=["emergency"])
@@ -105,7 +106,7 @@ async def trigger_emergency(request: Request, db: AsyncSession = Depends(get_db)
         )
         ntfy_topic = result.scalar_one_or_none()
         if ntfy_topic:
-            ts = state.triggered_at.strftime("%d.%m.%Y %H:%M")
+            ts = state.triggered_at.replace(tzinfo=timezone.utc).astimezone(APP_TIMEZONE).strftime("%d.%m.%Y %H:%M")
             default_msg = f"Notfall-Alarm ausgelöst am {ts}. Bitte sofort reagieren."
             ntfy_msg = (cfg.emergency_ntfy_message or default_msg).replace("{ts}", ts)
             await send_notification(
@@ -159,7 +160,7 @@ async def cancel_emergency(
         )
         ntfy_topic = result.scalar_one_or_none()
         if ntfy_topic:
-            ts = datetime.utcnow().strftime("%d.%m.%Y %H:%M")
+            ts = datetime.now(APP_TIMEZONE).strftime("%d.%m.%Y %H:%M")
             msg = f"Notfall quittiert um {ts} von {current_user.name}."
             if body.comment:
                 msg += f"\nKommentar: {body.comment}"

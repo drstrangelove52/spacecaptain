@@ -279,7 +279,7 @@
     <div class="nav-item" data-page="stats" onclick="navigate(this)"><span class="nav-icon">📈</span> Statistiken</div>
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
     <div class="nav-item" data-page="announcements" onclick="navigate(this)"><span class="nav-icon">📢</span> Mitteilungen</div>
-    <div class="nav-item" data-page="notifications" onclick="navigate(this)"><span class="nav-icon">🔔</span> Benachrichtigungen</div>
+    <div class="nav-item" id="nav-notifications" data-page="notifications" onclick="navigate(this)"><span class="nav-icon">🔔</span> Benachrichtigungen</div>
     <div class="nav-item" data-page="backup" onclick="navigate(this)" id="nav-backup" style="display:none"><span class="nav-icon">💾</span> Backup</div>
     <div class="nav-item" data-page="settings" onclick="navigate(this)" id="nav-settings" style="display:none"><span class="nav-icon">⚙️</span> Einstellungen</div>
     <div class="nav-item" data-page="info" onclick="navigate(this)"><span class="nav-icon">ℹ️</span> Info</div>
@@ -1941,8 +1941,9 @@ async function doLogin() {
   currentUser = await GET('/auth/me');
   if (currentUser) {
     document.getElementById('current-user-label').textContent=currentUser.name;
-    document.getElementById('nav-settings').style.display = currentUser.role==='admin' ? '' : 'none';
-    document.getElementById('nav-backup').style.display   = currentUser.role==='admin' ? '' : 'none';
+    document.getElementById('nav-settings').style.display      = currentUser.role==='admin' ? '' : 'none';
+    document.getElementById('nav-backup').style.display        = currentUser.role==='admin' ? '' : 'none';
+    document.getElementById('nav-notifications').style.display = currentUser.role==='admin' ? '' : 'none';
   }
   loadAll();
 }
@@ -2074,8 +2075,8 @@ function annMeta(a) {
       range = ` &nbsp;·&nbsp; ${a.recur_valid_from||'?'} bis ${a.recur_valid_until||'offen'}`;
     return `🔁 ${days}${time ? ' &nbsp;·&nbsp; ' + time : ''}${range}`;
   } else {
-    const from = a.start_at ? fmtDate(a.start_at) : 'sofort';
-    const to   = a.end_at   ? fmtDate(a.end_at)   : 'dauerhaft';
+    const from = a.start_at ? fmtLocalDate(a.start_at) : 'sofort';
+    const to   = a.end_at   ? fmtLocalDate(a.end_at)   : 'dauerhaft';
     return `📅 ${from} → ${to}`;
   }
 }
@@ -2243,6 +2244,16 @@ function fmtDate(isoStr) {
     day:'2-digit', month:'2-digit', year:'numeric',
     hour:'2-digit', minute:'2-digit',
     timeZone: 'Europe/Zurich'
+  });
+}
+function fmtLocalDate(isoStr) {
+  // Für Zeiten die bereits als Lokalzeit gespeichert sind (z.B. Mitteilungen)
+  if (!isoStr) return '—';
+  const d = new Date(isoStr.replace(' ', 'T'));
+  if (isNaN(d)) return isoStr;
+  return d.toLocaleString('de-CH', {
+    day:'2-digit', month:'2-digit', year:'numeric',
+    hour:'2-digit', minute:'2-digit'
   });
 }
 
@@ -3631,14 +3642,14 @@ if (_ltParam) {
       token = res.access_token;
       localStorage.setItem('ms_token', token);
       history.replaceState(null, '', window.location.pathname);
-      GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=u.role==='admin'?'':'none';document.getElementById('nav-backup').style.display=u.role==='admin'?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } });
+      GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=u.role==='admin'?'':'none';document.getElementById('nav-backup').style.display=u.role==='admin'?'':'none';document.getElementById('nav-notifications').style.display=u.role==='admin'?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } });
     } else {
       document.getElementById('login-error').textContent='Ungültiger Login-Link.';
       document.getElementById('login-error').style.display='block';
     }
   });
 } else if (token) {
-  GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=u.role==='admin'?'':'none';document.getElementById('nav-backup').style.display=u.role==='admin'?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
+  GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=u.role==='admin'?'':'none';document.getElementById('nav-backup').style.display=u.role==='admin'?'':'none';document.getElementById('nav-notifications').style.display=u.role==='admin'?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
 }
 document.getElementById('login-pass').addEventListener('keydown',e=>{ if (e.key==='Enter') doLogin(); });
 setInterval(()=>{ if(document.querySelector('.nav-item.active')?.dataset.page==='log') loadLog(); },30000);
