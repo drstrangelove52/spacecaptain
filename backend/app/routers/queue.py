@@ -7,9 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from app.database import get_db
-from app.models import MachineQueue, Machine, Guest, Permission, QueueStatus, User
+from app.models import MachineQueue, Machine, Guest, Permission, QueueStatus, User, LogType
 from app.services.system_settings import get_system_settings
 from app.services.auth import get_current_user
+from app.services.logger import log as activity_log
 
 router = APIRouter(prefix="/queue", tags=["queue"])
 
@@ -106,6 +107,9 @@ async def join_queue(
     entries = pos_res.scalars().all()
     position = next((i + 1 for i, e in enumerate(entries) if e.guest_id == guest_id), len(entries))
 
+    await activity_log(db, LogType.queue_joined,
+                       f"Gast {guest_id} tritt Warteliste für Maschine {machine_id} bei (Position {position})",
+                       guest_id=guest_id, machine_id=machine_id)
     return {"ok": True, "position": position}
 
 
@@ -130,6 +134,9 @@ async def leave_queue(
         )
     )
     await db.commit()
+    await activity_log(db, LogType.queue_left,
+                       f"Gast {guest_id} verlässt Warteliste für Maschine {machine_id}",
+                       guest_id=guest_id, machine_id=machine_id)
     return {"ok": True}
 
 
@@ -201,15 +208,20 @@ async def admin_get_queues(
 async def admin_remove_queue_entry(
     entry_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Entfernt einen Wartelisten-Eintrag (Manager/Admin)."""
     result = await db.execute(select(MachineQueue).where(MachineQueue.id == entry_id))
     entry = result.scalar_one_or_none()
     if not entry:
         raise HTTPException(404, "Eintrag nicht gefunden")
+    guest_id = entry.guest_id
+    machine_id = entry.machine_id
     await db.delete(entry)
     await db.commit()
+    await activity_log(db, LogType.queue_left,
+                       f"Gast {guest_id} aus Warteliste für Maschine {machine_id} entfernt (durch {current_user.name})",
+                       guest_id=guest_id, machine_id=machine_id, user_id=current_user.id)
     return {"ok": True}
 
 
@@ -218,7 +230,7 @@ async def admin_add_to_queue(
     machine_id: int,
     guest_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Fügt einen Gast zur Warteliste hinzu (Manager/Admin)."""
     machine_res = await db.execute(select(Machine).where(Machine.id == machine_id))
@@ -244,4 +256,7 @@ async def admin_add_to_queue(
     entry = MachineQueue(machine_id=machine_id, guest_id=guest_id)
     db.add(entry)
     await db.commit()
+    await activity_log(db, LogType.queue_joined,
+                       f"Gast {guest.name} zur Warteliste für Maschine {machine.name} hinzugefügt (durch {current_user.name})",
+                       guest_id=guest_id, machine_id=machine_id, user_id=current_user.id)
     return {"ok": True}

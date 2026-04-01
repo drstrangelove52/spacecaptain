@@ -6,8 +6,9 @@ from typing import Optional
 from datetime import datetime, date, time
 
 from app.database import get_db
-from app.models import Announcement
+from app.models import Announcement, LogType
 from app.routers.auth import get_current_user
+from app.services.logger import log as activity_log
 from app.config import APP_TIMEZONE
 
 router = APIRouter(prefix="/announcements", tags=["announcements"])
@@ -123,12 +124,14 @@ async def active_announcements(db: AsyncSession = Depends(get_db)):
 async def create_announcement(
     body: AnnouncementIn,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     ann = Announcement(**body.model_dump())
     db.add(ann)
     await db.commit()
     await db.refresh(ann)
+    await activity_log(db, LogType.announcement_created,
+                       f"Mitteilung erstellt: «{ann.text[:60]}»", user_id=current_user.id)
     return _serialize(ann)
 
 
@@ -137,7 +140,7 @@ async def update_announcement(
     ann_id: int,
     body: AnnouncementIn,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     result = await db.execute(select(Announcement).where(Announcement.id == ann_id))
     ann = result.scalar_one_or_none()
@@ -147,6 +150,8 @@ async def update_announcement(
         setattr(ann, k, v)
     await db.commit()
     await db.refresh(ann)
+    await activity_log(db, LogType.announcement_updated,
+                       f"Mitteilung aktualisiert: «{ann.text[:60]}»", user_id=current_user.id)
     return _serialize(ann)
 
 
@@ -154,12 +159,15 @@ async def update_announcement(
 async def delete_announcement(
     ann_id: int,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     result = await db.execute(select(Announcement).where(Announcement.id == ann_id))
     ann = result.scalar_one_or_none()
     if not ann:
         raise HTTPException(404, "Nicht gefunden")
+    text_preview = ann.text[:60]
     await db.delete(ann)
     await db.commit()
+    await activity_log(db, LogType.announcement_deleted,
+                       f"Mitteilung gelöscht: «{text_preview}»", user_id=current_user.id)
     return {"ok": True}

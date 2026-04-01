@@ -17,6 +17,7 @@ from app.models import (
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
 from app.services.backup_service import BACKUP_DIR, _list_backup_files
+from app.services.logger import log as activity_log
 from app.config import APP_VERSION
 
 router = APIRouter(prefix="/backup", tags=["backup"])
@@ -148,9 +149,12 @@ async def _build_export_data(db: AsyncSession) -> dict:
 @router.get("/export")
 async def export_config(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ):
-    return await _build_export_data(db)
+    data = await _build_export_data(db)
+    await activity_log(db, LogType.backup_exported,
+                       "Backup manuell exportiert", user_id=current_user.id)
+    return data
 
 
 @router.get("/files")
@@ -196,13 +200,15 @@ async def delete_backup_file(
 @router.post("/files/create")
 async def create_backup_now(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ):
     """Erstellt sofort ein Backup (manuell ausgelöst)."""
     from app.services.backup_service import _create_backup, _cleanup_old_backups
     cfg = await get_system_settings(db)
     path = await _create_backup(db)
     _cleanup_old_backups(cfg.auto_backup_keep)
+    await activity_log(db, LogType.backup_exported,
+                       f"Backup manuell erstellt: {path.name}", user_id=current_user.id)
     return {"ok": True, "filename": path.name}
 
 
@@ -211,7 +217,7 @@ async def restore_from_file(
     filename: str,
     overwrite: bool = False,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ):
     """Startet einen Restore direkt aus einer gespeicherten Backup-Datei."""
     _validate_filename(filename)
@@ -220,7 +226,10 @@ async def restore_from_file(
         raise HTTPException(status_code=404, detail="Datei nicht gefunden")
     import json as _json
     payload = _json.loads(path.read_text(encoding="utf-8"))
-    return await _do_import(payload, db, overwrite=overwrite, source_filename=filename)
+    result = await _do_import(payload, db, overwrite=overwrite, source_filename=filename)
+    await activity_log(db, LogType.backup_imported,
+                       f"Backup wiederhergestellt: {filename}", user_id=current_user.id)
+    return result
 
 
 async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, source_filename: str = "Backup") -> dict:
@@ -560,6 +569,9 @@ async def import_config(
     payload: dict,
     overwrite: bool = False,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ):
-    return await _do_import(payload, db, overwrite=overwrite)
+    result = await _do_import(payload, db, overwrite=overwrite)
+    await activity_log(db, LogType.backup_imported,
+                       "Backup importiert (Upload)", user_id=current_user.id)
+    return result

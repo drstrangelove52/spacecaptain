@@ -45,6 +45,18 @@ class LogType(str, enum.Enum):
     guest_approved = "guest_approved"
     emergency_triggered = "emergency_triggered"
     emergency_cancelled = "emergency_cancelled"
+    settings_changed = "settings_changed"
+    announcement_created = "announcement_created"
+    announcement_updated = "announcement_updated"
+    announcement_deleted = "announcement_deleted"
+    ntfy_topic_created = "ntfy_topic_created"
+    ntfy_topic_updated = "ntfy_topic_updated"
+    ntfy_topic_deleted = "ntfy_topic_deleted"
+    queue_joined = "queue_joined"
+    queue_left = "queue_left"
+    queue_notified = "queue_notified"
+    backup_exported = "backup_exported"
+    backup_imported = "backup_imported"
 
 class SessionEndedBy(str, enum.Enum):
     guest = "guest"

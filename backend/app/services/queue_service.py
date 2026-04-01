@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
-from app.models import MachineQueue, QueueStatus, Guest, Machine
+from app.models import MachineQueue, QueueStatus, Guest, Machine, LogType
 
 log = logging.getLogger(__name__)
 
@@ -48,6 +48,14 @@ async def notify_next_in_queue(db: AsyncSession, machine_id: int, reservation_mi
             )
     except Exception as e:
         log.warning(f"Queue: ntfy-Benachrichtigung fehlgeschlagen für Gast {entry.guest_id}: {e}")
+
+    try:
+        from app.services.logger import log as activity_log
+        await activity_log(db, LogType.queue_notified,
+                           f"Gast {entry.guest_id} benachrichtigt für Maschine {machine_id}",
+                           guest_id=entry.guest_id, machine_id=machine_id)
+    except Exception as e:
+        log.warning(f"Queue: Aktivitätslog fehlgeschlagen: {e}")
 
 
 async def expire_stale_notifications(db: AsyncSession, reservation_minutes: int) -> None:

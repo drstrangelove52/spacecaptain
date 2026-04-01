@@ -6,10 +6,11 @@ from typing import Optional
 from datetime import datetime
 
 from app.database import get_db
-from app.models import NtfyTopic, SystemSettings
+from app.models import NtfyTopic, SystemSettings, LogType
 from app.routers.auth import get_current_user
 from app.services.auth import require_admin
 from app.services.ntfy import send_notification
+from app.services.logger import log as activity_log
 
 router = APIRouter(prefix="/ntfy-topics", tags=["ntfy"])
 
@@ -45,12 +46,14 @@ async def list_topics(
 async def create_topic(
     body: NtfyTopicIn,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_admin),
+    current_user=Depends(require_admin),
 ):
     t = NtfyTopic(**body.model_dump())
     db.add(t)
     await db.commit()
     await db.refresh(t)
+    await activity_log(db, LogType.ntfy_topic_created,
+                       f"ntfy-Topic erstellt: «{t.title}»", user_id=current_user.id)
     return _serialize(t)
 
 
@@ -59,7 +62,7 @@ async def update_topic(
     topic_id: int,
     body: NtfyTopicIn,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_admin),
+    current_user=Depends(require_admin),
 ):
     result = await db.execute(select(NtfyTopic).where(NtfyTopic.id == topic_id))
     t = result.scalar_one_or_none()
@@ -69,6 +72,8 @@ async def update_topic(
         setattr(t, k, v)
     await db.commit()
     await db.refresh(t)
+    await activity_log(db, LogType.ntfy_topic_updated,
+                       f"ntfy-Topic aktualisiert: «{t.title}»", user_id=current_user.id)
     return _serialize(t)
 
 
@@ -102,12 +107,15 @@ async def test_topic(
 async def delete_topic(
     topic_id: int,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_admin),
+    current_user=Depends(require_admin),
 ):
     result = await db.execute(select(NtfyTopic).where(NtfyTopic.id == topic_id))
     t = result.scalar_one_or_none()
     if not t:
         raise HTTPException(404, "Nicht gefunden")
+    title = t.title
     await db.delete(t)
     await db.commit()
+    await activity_log(db, LogType.ntfy_topic_deleted,
+                       f"ntfy-Topic gelöscht: «{title}»", user_id=current_user.id)
     return {"ok": True}

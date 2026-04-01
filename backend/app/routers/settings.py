@@ -4,9 +4,10 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import User
+from app.models import User, LogType
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
+from app.services.logger import log as activity_log
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -112,7 +113,7 @@ async def read_settings(
 async def update_settings(
     payload: SettingsUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ):
     row = await get_system_settings(db)
     if payload.nfc_writer_url is not None:
@@ -181,4 +182,6 @@ async def update_settings(
         row.auto_backup_keep = max(1, payload.auto_backup_keep)
     await db.commit()
     await db.refresh(row)
+    await activity_log(db, LogType.settings_changed,
+                       "Systemeinstellungen geändert", user_id=current_user.id)
     return row

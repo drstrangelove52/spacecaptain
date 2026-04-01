@@ -261,6 +261,15 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # ── v1.15: Shelly Gen2/Gen3/Gen4 ─────────────────────────────────────
         await _extend_enum_if_needed(conn, "machines", "plug_type", ["shelly_gen2"])
 
+        # ── v1.16: Aktivitätslog für alle fehlenden Aktionen ─────────────────
+        await _extend_enum_if_needed(conn, "activity_log", "type", [
+            "settings_changed",
+            "announcement_created", "announcement_updated", "announcement_deleted",
+            "ntfy_topic_created", "ntfy_topic_updated", "ntfy_topic_deleted",
+            "queue_joined", "queue_left", "queue_notified",
+            "backup_exported", "backup_imported",
+        ])
+
     log.info("Migrationen abgeschlossen")
 
 
