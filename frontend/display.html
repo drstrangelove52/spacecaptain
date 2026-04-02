@@ -115,6 +115,10 @@
 
 <script>
 const API = '/api';
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 const machineIcons = {Laser:'⚡',CNC:'⚙','3D-Druck':'🖨',Holz:'🪚',Metall:'🔩',Elektronik:'🔌',Textil:'🧵',Sonstiges:'🔧'};
 
 function formatDur(min) {
@@ -290,7 +294,7 @@ function renderPage(page) {
 
   // Ankündigungen auf allen Seiten
   (window._announcements || []).forEach(text => {
-    html += `<div class="announcement-card"><div class="announcement-inner"><div class="announcement-icon">📢</div><div style="flex:1"><div class="announcement-text" style="font-size:${window._announcementFontSize||20}px">${text.replace(/</g,'&lt;')}</div></div></div></div>`;
+    html += `<div class="announcement-card"><div class="announcement-inner"><div class="announcement-icon">📢</div><div style="flex:1"><div class="announcement-text" style="font-size:${window._announcementFontSize||20}px">${escHtml(text)}</div></div></div></div>`;
   });
 
   if (!_allMachines.length) {

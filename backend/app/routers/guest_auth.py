@@ -16,6 +16,7 @@ from app.database import get_db
 from app.models import Guest, Machine, Permission, LogType, ActivityLog, User, MachineQueue, QueueStatus
 from app.config import get_settings
 from app.services import logger as log_svc
+from app.services.auth import get_current_user
 from app.config import APP_TIMEZONE
 
 def _local_iso(dt):
@@ -418,6 +419,7 @@ async def session_stats(
     date_from:  Optional[str] = None,
     date_to:    Optional[str] = None,
     db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     from sqlalchemy import and_
     from app.models import MachineSession

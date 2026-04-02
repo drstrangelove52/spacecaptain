@@ -260,6 +260,10 @@
 <script>
 const API = '/api';
 const machineIcons = {Laser:'⚡',CNC:'⚙','3D-Druck':'🖨',Holz:'🪚',Metall:'🔩',Elektronik:'🔌',Textil:'🧵',Sonstiges:'🔧'};
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
 let S = {
   machineToken:  null,
@@ -355,7 +359,7 @@ function renderMachineCard(containerId, m) {
     <div class="machine-icon">${icon}</div>
     <div class="machine-name">${m.name}</div>
     <div class="machine-meta">${m.category}${m.location && m.location !== '—' ? ' // ' + m.location : ''}</div>
-    ${m.comment ? `<div class="machine-comment">⚠ ${m.comment}</div>` : ''}
+    ${m.comment ? `<div class="machine-comment">⚠ ${escHtml(m.comment)}</div>` : ''}
     <div class="machine-status-row"><span class="status-badge ${sc}">${sl}</span>${plug}</div>
     ${sessionInfo}`;
 }
@@ -371,7 +375,7 @@ function renderLoginPreview(m) {
       <div style="flex:1">
         <div style="font-family:var(--display);font-size:18px;font-weight:700">${m.name}</div>
         <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px">${m.category}</div>
-        ${m.comment ? `<div style="font-size:12px;color:var(--accent);margin-top:4px">⚠ ${m.comment}</div>` : ''}
+        ${m.comment ? `<div style="font-size:12px;color:var(--accent);margin-top:4px">⚠ ${escHtml(m.comment)}</div>` : ''}
       </div>
       <span class="status-badge ${sc}">${sl}</span>
     </div>`;
@@ -704,10 +708,10 @@ async function showGuestDashboard() {
     const isMySession = inUse && m.current_guest_id === S.guestId;
     let statusHtml;
     if (m.status !== 'online') {
-      statusHtml = `<div style="font-family:var(--mono);font-size:11px;color:var(--accent)">⚠ ${m.status === 'maintenance' ? 'In Wartung' : 'Offline'}${m.comment?' · '+m.comment:''}</div>`;
+      statusHtml = `<div style="font-family:var(--mono);font-size:11px;color:var(--accent)">⚠ ${m.status === 'maintenance' ? 'In Wartung' : 'Offline'}${m.comment?' · '+escHtml(m.comment):''}</div>`;
     } else if (inUse) {
       const dur = m.session_duration_min != null ? ` · ${formatDur(m.session_duration_min)}` : '';
-      statusHtml = `<div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">● IN BENUTZUNG · ${m.current_guest_name||'?'}${dur}</div>`;
+      statusHtml = `<div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">● IN BENUTZUNG · ${escHtml(m.current_guest_name||'?')}${dur}</div>`;
       if (m.power_w) statusHtml += `<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">${Math.round(m.power_w)} W</div>`;
     } else if (m.plug_supported && m.plug_error === 'unreachable') {
       statusHtml = `<div style="font-family:var(--mono);font-size:11px;color:var(--accent)">⚠ ADAPTER OFFLINE</div>`;
