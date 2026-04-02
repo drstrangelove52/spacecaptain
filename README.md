@@ -35,6 +35,8 @@ Fragen oder Ideen? → [GitHub Issue erstellen](https://github.com/drstrangelove
 - Git
 - Port 80 und 443 frei (änderbar via `HTTP_PORT` / `HTTPS_PORT` in `.env`)
 
+> **Sicherheitshinweis:** SpaceCaptain ist für den Betrieb in einem internen Netzwerk (LAN) konzipiert. Eine direkte Erreichbarkeit aus dem Internet wird nicht empfohlen. Für externen Zugriff sollte ein VPN (z.B. WireGuard) vorgeschaltet werden.
+
 ### Erstinstallation
 
 ```bash
