@@ -29,7 +29,7 @@ if apt-cache policy chromium-browser 2>/dev/null | grep -q "Candidate: [0-9]"; t
 else
     CHROMIUM_PKG="chromium"
 fi
-sudo apt-get install -y -qq "$CHROMIUM_PKG" unclutter
+sudo apt-get install -y -qq "$CHROMIUM_PKG" unclutter fonts-noto-color-emoji
 
 # Screensaver / Display-Blank deaktivieren
 echo "[2/4] Display-Blank deaktivieren..."
