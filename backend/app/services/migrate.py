@@ -278,8 +278,8 @@ async def _add_column_if_missing(conn, table: str, column: str, definition: str)
     result = await conn.execute(text(
         "SELECT COUNT(*) FROM information_schema.COLUMNS "
         "WHERE TABLE_SCHEMA = DATABASE() "
-        f"AND TABLE_NAME = '{table}' AND COLUMN_NAME = '{column}'"
-    ))
+        "AND TABLE_NAME = :table AND COLUMN_NAME = :column"
+    ), {"table": table, "column": column})
     if result.scalar() == 0:
         await conn.execute(text(f"ALTER TABLE `{table}` ADD COLUMN `{column}` {definition}"))
         log.info(f"Migration: {table}.{column} hinzugefügt")
@@ -290,8 +290,8 @@ async def _extend_enum_if_needed(conn, table: str, column: str, new_values: list
     result = await conn.execute(text(
         "SELECT COLUMN_TYPE FROM information_schema.COLUMNS "
         "WHERE TABLE_SCHEMA = DATABASE() "
-        f"AND TABLE_NAME = '{table}' AND COLUMN_NAME = '{column}'"
-    ))
+        "AND TABLE_NAME = :table AND COLUMN_NAME = :column"
+    ), {"table": table, "column": column})
     row = result.fetchone()
     if not row:
         return

@@ -84,7 +84,7 @@ Gibt den aktuellen Gerätezustand zurück.
 {
   "status": "ready",
   "device": "SpaceCaptain NFC Writer",
-  "ip": "10.10.1.xxx"
+  "ip": "<nfc-writer-ip>"
 }
 ```
 
@@ -99,7 +99,7 @@ Startet einen Schreibauftrag. Der ESP32 wartet danach auf einen NFC-Tag.
 **Request (JSON):**
 ```json
 {
-  "url": "https://10.10.1.245/?m=abc123def456",
+  "url": "https://<server-ip>/?m=abc123def456",
   "label": "Lasercutter XL-40"
 }
 ```
@@ -141,7 +141,7 @@ um das Ergebnis zu erfahren.
 {
   "status": "success",
   "message": "Tag erfolgreich beschrieben",
-  "url": "https://10.10.1.245/?m=abc123def456"
+  "url": "https://<server-ip>/?m=abc123def456"
 }
 ```
 
@@ -173,7 +173,7 @@ NDEF URI Records verwenden einen 1-Byte-Präfix zur Kompression:
 | `0x03` | `http://` |
 | `0x04` | `https://` |
 
-Für SpaceCaptain-URLs (`https://10.10.1.245/...`) → Präfix `0x04`, Rest der URL dahinter.
+Für SpaceCaptain-URLs (`https://<server-ip>/...`) → Präfix `0x04`, Rest der URL dahinter.
 
 ### Adafruit PN532 Bibliothek (Arduino)
 
@@ -262,18 +262,18 @@ void writeUrl(const String& url) {
 
 **Maschinen-Tags:**
 ```
-https://10.10.1.245/?m={qr_token}
+https://<server-ip>/?m={qr_token}
 ```
-Beispiel: `https://10.10.1.245/?m=a1b2c3d4e5f6...`
+Beispiel: `https://<server-ip>/?m=a1b2c3d4e5f6...`
 
 **Login-Link-Tags (Gast):**
 ```
-https://10.10.1.245/?lt={login_token}
+https://<server-ip>/?lt={login_token}
 ```
 
 **Login-Link-Tags (Lab Manager):**
 ```
-https://10.10.1.245/labmanager.html?lt={login_token}
+https://<server-ip>/labmanager.html?lt={login_token}
 ```
 
 ### API-Endpoint (wird noch implementiert)
@@ -282,11 +282,11 @@ SpaceCaptain wird folgenden Endpoint bereitstellen, über den der Lab Manager
 einen Schreibauftrag auslöst:
 
 ```
-POST https://10.10.1.245/api/nfc/write
+POST https://<server-ip>/api/nfc/write
 Authorization: Bearer {jwt_token}
 
 {
-  "url":   "https://10.10.1.245/?m=abc123",
+  "url":   "https://<server-ip>/?m=abc123",
   "label": "Lasercutter XL-40"
 }
 ```
