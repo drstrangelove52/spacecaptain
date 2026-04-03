@@ -27,6 +27,14 @@ Fragen oder Ideen? → [GitHub Issue erstellen](https://github.com/drstrangelove
 
 ---
 
+## Screenshots
+
+| Dashboard (Lab Manager) | Gäste-Seite |
+|:---:|:---:|
+| ![Dashboard](docs/screenshots/spacecaptain_dashboard.png) | ![Gäste-Seite](docs/screenshots/spacecaptain_guests.png) |
+
+---
+
 ## Installation
 
 ### Voraussetzungen
