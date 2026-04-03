@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SpaceCaptain Kiosk Setup
-# Usage: curl -s https://your-host/raspi-setup.sh | bash -s https://your-host/display
+# Usage: curl -sk https://your-host/raspi-setup.sh | bash -s https://your-host/display
+# Hinweis: -k ist nötig bei selbstsignierten Zertifikaten (Standard-Setup mit gencert.sh)
 
 set -e
 
@@ -20,10 +21,15 @@ echo "=== SpaceCaptain Kiosk Setup ==="
 echo "URL: $URL"
 echo ""
 
-# Chromium installieren
+# Chromium installieren (Paketname je nach OS-Version unterschiedlich)
 echo "[1/4] Chromium installieren..."
 sudo apt-get update -qq
-sudo apt-get install -y -qq chromium-browser unclutter
+if apt-cache show chromium-browser &>/dev/null; then
+    CHROMIUM_PKG="chromium-browser"
+else
+    CHROMIUM_PKG="chromium"
+fi
+sudo apt-get install -y -qq "$CHROMIUM_PKG" unclutter
 
 # Screensaver / Display-Blank deaktivieren
 echo "[2/4] Display-Blank deaktivieren..."
@@ -54,7 +60,7 @@ cat > "$AUTOSTART_DIR/spacecaptain-kiosk.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=SpaceCaptain Kiosk
-Exec=chromium-browser --kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=x11 "$URL"
+Exec=$CHROMIUM_PKG --kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=x11 "$URL"
 Hidden=false
 X-GNOME-Autostart-enabled=true
 EOF

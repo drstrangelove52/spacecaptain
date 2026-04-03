@@ -235,7 +235,7 @@
   <script>
     function buildCmd() {
       const origin = window.location.origin;
-      return `curl -s ${origin}/raspi-setup.sh | bash -s ${origin}/display`;
+      return `curl -sk ${origin}/raspi-setup.sh | bash -s ${origin}/display`;
     }
 
     document.getElementById('cmd-text').textContent = buildCmd();
