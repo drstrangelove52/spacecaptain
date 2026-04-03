@@ -86,19 +86,7 @@ docker compose logs -f backend
 
 ## HTTPS einrichten
 
-Das Skript `gencert.sh` erstellt ein selbstsigniertes Zertifikat:
-
-```bash
-bash gencert.sh 192.168.1.100   # IP-Adresse des Servers
-```
-
-Das Zertifikat wird in `certs/cert.pem` und `certs/key.pem` abgelegt (gültig 10 Jahre). Danach die Container neu starten:
-
-```bash
-docker compose up -d
-```
-
-Für ein offizielles Zertifikat (z.B. Let's Encrypt) einfach `cert.pem` und `key.pem` in `certs/` ersetzen und Nginx neu laden:
+Das selbstsignierte Zertifikat (erstellt via `gencert.sh`) liegt in `certs/cert.pem` und `certs/key.pem`. Für ein offizielles Zertifikat (z.B. Let's Encrypt) diese beiden Dateien einfach ersetzen und Nginx neu laden:
 
 ```bash
 docker exec spacecaptain_proxy nginx -s reload
