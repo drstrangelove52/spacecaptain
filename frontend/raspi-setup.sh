@@ -60,7 +60,7 @@ cat > "$AUTOSTART_DIR/spacecaptain-kiosk.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=SpaceCaptain Kiosk
-Exec=$CHROMIUM_PKG --kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=x11 "$URL"
+Exec=$CHROMIUM_PKG --kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=x11 --password-store=basic "$URL"
 Hidden=false
 X-GNOME-Autostart-enabled=true
 EOF
