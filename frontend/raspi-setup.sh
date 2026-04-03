@@ -24,7 +24,7 @@ echo ""
 # Chromium installieren (Paketname je nach OS-Version unterschiedlich)
 echo "[1/4] Chromium installieren..."
 sudo apt-get update -qq
-if apt-cache show chromium-browser &>/dev/null; then
+if apt-cache policy chromium-browser 2>/dev/null | grep -q "Candidate: [0-9]"; then
     CHROMIUM_PKG="chromium-browser"
 else
     CHROMIUM_PKG="chromium"
