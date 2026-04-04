@@ -39,8 +39,15 @@ oder Login-Link), legt einen NFC-Tag ans PN532-Modul — fertig.
 
 ### NFC-Tags
 
-NTAG213 (144 Byte Nutzlast) ist ausreichend.
-Die zu schreibende URL hat max. ~80 Zeichen — passt problemlos.
+NTAG213, NTAG215 und NTAG216 werden unterstützt. Die Firmware erkennt den Tag-Typ automatisch und nutzt die verfügbare Kapazität.
+
+| Tag | Nutzlast |
+|---|---|
+| NTAG213 | 144 Bytes |
+| NTAG215 | 504 Bytes |
+| NTAG216 | 888 Bytes |
+
+Für SpaceCaptain-URLs (~80 Zeichen) reicht NTAG213 problemlos. MIFARE Classic wird **nicht** unterstützt.
 
 ---
 
@@ -220,7 +227,7 @@ void writeNdefUrl(const String& url) {
 
     ndef.push_back(0xFE);           // Terminator TLV
 
-    // Auf Tag schreiben (NTAG213: ab Seite 4, je 4 Byte pro Seite)
+    // Auf Tag schreiben (ab Seite 4, je 4 Byte pro Seite — NTAG213/215/216)
     // ... (siehe vollständige Implementierung unten)
 }
 ```
@@ -353,8 +360,37 @@ lib_deps  =
     adafruit/Adafruit PN532
     bblanchon/ArduinoJson
     esphome/ESPAsyncWebServer-esphome
+    fastled/FastLED
+    tzapu/WiFiManager
 monitor_speed = 115200
 ```
+
+---
+
+## Erreichbarkeit
+
+Der ESP32 ist nach dem ersten Boot unter `http://nfc-writer.local` erreichbar (mDNS). Alternativ über die IP-Adresse, die beim Start auf dem Serial Monitor ausgegeben wird.
+
+In SpaceCaptain unter **Einstellungen → NFC-Schreibgerät** die URL eintragen:
+```
+http://nfc-writer.local
+```
+
+---
+
+## OTA-Updates (Firmware via WLAN flashen)
+
+Nach der ersten USB-Installation können Firmware-Updates kabellos eingespielt werden:
+
+```bash
+# PlatformIO
+pio run --target upload --upload-port nfc-writer.local
+
+# oder mit esptool / espota
+python espota.py -i nfc-writer.local -f .pio/build/esp32dev/firmware.bin
+```
+
+Während des OTA-Updates leuchtet die LED **weiss**. Nach Abschluss **grün**, bei Fehler **rot**.
 
 ---
 
@@ -364,14 +400,3 @@ monitor_speed = 115200
 - Keine Authentifizierung auf dem ESP32 nötig (Netzwerk-Isolation reicht)
 - SpaceCaptain prüft die Berechtigung bevor er den Schreibauftrag weiterleitet
 - NFC-Tags können überschrieben werden — kein Passwortschutz nötig für diesen Anwendungsfall
-
----
-
-## Offene Punkte (SpaceCaptain-seitig, wird separat implementiert)
-
-- [ ] Konfiguration der ESP32-IP in SpaceCaptain (`.env` oder UI-Einstellung)
-- [ ] Button "NFC-Tag beschreiben" neben "QR-Code anzeigen" in der Maschinen-Ansicht
-- [ ] Polling von `/result` im Frontend während Schreibvorgang
-- [ ] Proxy-Endpoint `POST /api/nfc/write` (SpaceCaptain → ESP32)
-
-Diese Punkte werden auf dem Ubuntu-Server implementiert, sobald die ESP32-Firmware steht.

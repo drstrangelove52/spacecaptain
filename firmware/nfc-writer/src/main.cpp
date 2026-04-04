@@ -2,6 +2,8 @@
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <FastLED.h>
+#include <ArduinoOTA.h>
+#include <ESPmDNS.h>
 #include "config.h"
 #include "nfc_writer.h"
 #include "web_server.h"
@@ -83,11 +85,36 @@ static void connectWifi() {
     Serial.printf("[WiFi] Verbunden – IP: %s\n", WiFi.localIP().toString().c_str());
 }
 
+// ─── OTA einrichten ──────────────────────────────────────────────────────────
+
+static void setupOta() {
+    ArduinoOTA.setHostname(MDNS_HOSTNAME);
+
+    ArduinoOTA.onStart([]() {
+        Serial.println("[OTA] Update startet...");
+        ledColor(CRGB::White);
+    });
+    ArduinoOTA.onEnd([]() {
+        Serial.println("[OTA] Update abgeschlossen");
+        ledColor(CRGB::Green);
+    });
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+        Serial.printf("[OTA] %u%%\n", progress * 100 / total);
+    });
+    ArduinoOTA.onError([](ota_error_t error) {
+        Serial.printf("[OTA] Fehler [%u]\n", error);
+        ledColor(CRGB::Red);
+    });
+
+    ArduinoOTA.begin();
+    Serial.printf("[OTA] Bereit – Hostname: %s\n", MDNS_HOSTNAME);
+}
+
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
 void setup() {
     Serial.begin(115200);
-    Serial.println("\n[Boot] SpaceCaptain NFC Writer startet...");
+    Serial.printf("\n[Boot] SpaceCaptain NFC Writer v%s startet...\n", FIRMWARE_VERSION);
 
     // WS2812B initialisieren
     FastLED.addLeds<WS2812B, LED_PIN, GRB>(_led, 1);
@@ -95,6 +122,16 @@ void setup() {
     ledsOff();
 
     connectWifi();
+
+    // mDNS starten (nfc-writer.local)
+    if (MDNS.begin(MDNS_HOSTNAME)) {
+        MDNS.addService("http", "tcp", 80);
+        Serial.printf("[mDNS] %s.local erreichbar\n", MDNS_HOSTNAME);
+    } else {
+        Serial.println("[mDNS] Start fehlgeschlagen");
+    }
+
+    setupOta();
 
     if (!nfcWriter.begin()) {
         Serial.println("[Boot] PN532 nicht gefunden – Neustart in 5s");
@@ -110,11 +147,30 @@ void setup() {
 // ─── Loop ─────────────────────────────────────────────────────────────────────
 
 void loop() {
-    // WLAN-Verbindung überwachen
+    // OTA-Updates verarbeiten
+    ArduinoOTA.handle();
+
+    // WLAN-Verbindung überwachen — Reconnect vor Neustart versuchen
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("[WiFi] Verbindung verloren – Neustart...");
-        delay(1000);
-        ESP.restart();
+        Serial.println("[WiFi] Verbindung verloren – versuche Reconnect...");
+        ledColor(CRGB::Purple);
+        WiFi.reconnect();
+
+        uint32_t t = millis();
+        while (WiFi.status() != WL_CONNECTED && millis() - t < WIFI_RECONNECT_TIMEOUT_MS) {
+            ArduinoOTA.handle();
+            delay(500);
+        }
+
+        if (WiFi.status() != WL_CONNECTED) {
+            Serial.println("[WiFi] Reconnect fehlgeschlagen – Neustart");
+            delay(1000);
+            ESP.restart();
+        }
+
+        Serial.printf("[WiFi] Reconnect erfolgreich – IP: %s\n",
+                      WiFi.localIP().toString().c_str());
+        appState.state = DeviceState::READY;
     }
 
     // LED aktualisieren
@@ -147,6 +203,11 @@ void loop() {
                 appState.errorMsg = "Schreibfehler";
                 appState.state    = DeviceState::ERROR;
                 Serial.println("[Main] Schreibfehler");
+                break;
+            case NfcWriteResult::WRONG_TAG_TYPE:
+                appState.errorMsg = "Falscher Tag-Typ — bitte NTAG213/215/216 verwenden";
+                appState.state    = DeviceState::ERROR;
+                Serial.println("[Main] Falscher Tag-Typ");
                 break;
         }
 

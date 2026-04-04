@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost"
 
     # NFC-Schreibgerät (ESP32)
-    nfc_writer_url: str = ""  # z.B. http://192.168.1.50 — leer = deaktiviert
+    nfc_writer_url: str = ""  # z.B. http://nfc-writer.local oder http://192.168.1.50 — leer = deaktiviert
 
     @property
     def database_url(self) -> str:

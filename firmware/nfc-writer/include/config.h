@@ -1,11 +1,18 @@
 #pragma once
 
+// ─── Firmware-Version ─────────────────────────────────────────────────────────
+#define FIRMWARE_VERSION "1.1.0"
+
 // ─── WLAN ─────────────────────────────────────────────────────────────────────
 // Credentials werden über WiFiManager konfiguriert (kein Hardcoding nötig).
 // AP-Name beim ersten Boot:
 #define WIFI_AP_NAME  "SpaceCaptain-NFC"
 #define WIFI_AP_PASS  ""           // leer = offenes AP (für einfaches Onboarding)
 #define WIFI_TIMEOUT  180          // Sekunden, bis AP-Modus aufgegeben wird
+#define WIFI_RECONNECT_TIMEOUT_MS 15000  // ms Reconnect-Versuch vor Neustart
+
+// ─── mDNS ─────────────────────────────────────────────────────────────────────
+#define MDNS_HOSTNAME "nfc-writer"  // erreichbar als nfc-writer.local
 
 // ─── NFC / PN532 (I2C) ────────────────────────────────────────────────────────
 #define PN532_SDA     21

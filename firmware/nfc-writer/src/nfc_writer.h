@@ -7,8 +7,9 @@
 // Ergebnis eines Schreibvorgangs
 enum class NfcWriteResult {
     SUCCESS,
-    TIMEOUT,    // Kein Tag innerhalb des Zeitlimits erkannt
-    WRITE_ERROR // Tag erkannt, Schreiben fehlgeschlagen
+    TIMEOUT,         // Kein Tag innerhalb des Zeitlimits erkannt
+    WRITE_ERROR,     // Tag erkannt, Schreiben fehlgeschlagen
+    WRONG_TAG_TYPE   // Kein NTAG213/215/216 (z.B. MIFARE Classic)
 };
 
 class NfcWriter {

@@ -2,6 +2,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 #include <WiFi.h>
+#include <ESPmDNS.h>
 
 // ─── Konstruktor ──────────────────────────────────────────────────────────────
 
@@ -77,8 +78,10 @@ void NfcHttpServer::handleGetStatus(AsyncWebServerRequest* req) {
             break;
     }
 
-    doc["device"] = "SpaceCaptain NFC Writer";
-    doc["ip"]     = WiFi.localIP().toString();
+    doc["device"]  = "SpaceCaptain NFC Writer";
+    doc["version"] = FIRMWARE_VERSION;
+    doc["ip"]      = WiFi.localIP().toString();
+    doc["mdns"]    = String(MDNS_HOSTNAME) + ".local";
 
     String body;
     serializeJson(doc, body);
@@ -169,6 +172,7 @@ void NfcHttpServer::handleGetResult(AsyncWebServerRequest* req) {
             doc["status"]  = "success";
             doc["message"] = "Tag erfolgreich beschrieben";
             doc["url"]     = _state.resultUrl;
+            doc["label"]   = _state.pendingLabel;
             break;
         case DeviceState::ERROR:
             doc["status"]  = "error";
