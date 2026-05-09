@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS machines (
     category          VARCHAR(50)  NOT NULL DEFAULT 'Sonstiges',
     manufacturer      VARCHAR(100),
     model             VARCHAR(100),
+    serial_number     VARCHAR(100),
     location          VARCHAR(200),
     status            ENUM('online','offline','maintenance') NOT NULL DEFAULT 'online',
     -- Smart Plug (myStrom, Shelly Gen1, Shelly Gen2/Gen3/Gen4)

@@ -261,6 +261,10 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # ── v1.15: Shelly Gen2/Gen3/Gen4 ─────────────────────────────────────
         await _extend_enum_if_needed(conn, "machines", "plug_type", ["shelly_gen2"])
 
+        # ── v1.17: Seriennummer auf machines ─────────────────────────────────
+        await _add_column_if_missing(conn, "machines", "serial_number",
+                                     "VARCHAR(100) DEFAULT NULL")
+
         # ── v1.16: Aktivitätslog für alle fehlenden Aktionen ─────────────────
         await _extend_enum_if_needed(conn, "activity_log", "type", [
             "settings_changed",

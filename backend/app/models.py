@@ -122,6 +122,7 @@ class Machine(Base):
     category:           Mapped[str]             = mapped_column(String(50), default="Sonstiges")
     manufacturer:       Mapped[Optional[str]]   = mapped_column(String(100))
     model:              Mapped[Optional[str]]   = mapped_column(String(100))
+    serial_number:      Mapped[Optional[str]]   = mapped_column(String(100))
     location:           Mapped[Optional[str]]   = mapped_column(String(200))
     status:             Mapped[MachineStatus]   = mapped_column(Enum(MachineStatus), default=MachineStatus.online)
     plug_type:          Mapped[PlugType]        = mapped_column(Enum(PlugType), default=PlugType.none)

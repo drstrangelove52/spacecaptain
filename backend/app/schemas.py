@@ -109,6 +109,7 @@ class MachineBase(BaseModel):
     category: str = "Sonstiges"
     manufacturer: Optional[str] = None
     model: Optional[str] = None
+    serial_number: Optional[str] = None
     location: Optional[str] = None
     status: MachineStatus = MachineStatus.online
     plug_type: PlugType = PlugType.none
@@ -129,6 +130,7 @@ class MachineUpdate(BaseModel):
     category: Optional[str] = None
     manufacturer: Optional[str] = None
     model: Optional[str] = None
+    serial_number: Optional[str] = None
     location: Optional[str] = None
     status: Optional[MachineStatus] = None
     plug_type: Optional[PlugType] = None

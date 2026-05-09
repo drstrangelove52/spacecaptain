@@ -1985,7 +1985,7 @@ const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',mach
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button> <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`,
-  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`,
+  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`,
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
   maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`,
   announcements:()=>`<button class="btn btn-primary" onclick="showAddAnnouncement()">+ Neue Mitteilung</button>`,
@@ -2706,6 +2706,24 @@ function setMachineView(v){
   filterMachines();
 }
 
+function exportMachinesCsv(){
+  const cols=['ID','Name','Kategorie','Hersteller','Modell','Seriennummer','Standort','Status','Schulung','Smart Plug','Kommentar'];
+  const esc=v=>v==null?'':'"'+String(v).replace(/"/g,'""')+'"';
+  const rows=cache.machines.map(m=>[
+    m.id, esc(m.name), esc(m.category), esc(m.manufacturer), esc(m.model),
+    esc(m.serial_number), esc(m.location), m.status,
+    m.training_required===false?'Nein':'Ja',
+    m.plug_type==='none'?'—':esc(m.plug_type+(m.plug_ip?' '+m.plug_ip:'')),
+    esc(m.comment)
+  ].join(';'));
+  const bom='﻿';
+  const csv=bom+cols.join(';')+'\n'+rows.join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`spacecaptain-inventar-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
 function filterMachines() {
   const q=(document.getElementById('machine-search')?.value||'').toLowerCase();
   const cat=document.getElementById('machine-filter-cat')?.value||'';
@@ -2794,6 +2812,7 @@ function _machineTable(machines) {
       <td style="color:var(--text-mid)">${m.category}</td>
       <td style="color:var(--text-mid)">${escHtml(m.manufacturer||'—')}</td>
       <td style="color:var(--text-mid)">${escHtml(m.model||'—')}</td>
+      <td style="color:var(--text-mid)">${escHtml(m.serial_number||'—')}</td>
       <td style="color:var(--text-mid)">${escHtml(m.location||'—')}</td>
       <td>${session}</td>
       <td>${plug}</td>
@@ -2806,7 +2825,7 @@ function _machineTable(machines) {
   }).join('');
   return `<table class="machine-table">
     <thead><tr>
-      <th></th><th>Name</th><th>Kategorie</th><th>Hersteller</th><th>Modell</th><th>Standort</th><th>Session</th><th>Plug</th><th>Aktionen</th>
+      <th></th><th>Name</th><th>Kategorie</th><th>Hersteller</th><th>Modell</th><th>Seriennummer</th><th>Standort</th><th>Session</th><th>Plug</th><th>Aktionen</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
@@ -2852,7 +2871,10 @@ function showAddMachine() {
       <div class="form-group"><label class="form-label">Hersteller</label><input class="form-input" id="mc-mfr"></div>
       <div class="form-group"><label class="form-label">Modell</label><input class="form-input" id="mc-model"></div>
     </div>
-    <div class="form-group"><label class="form-label">Standort</label><input class="form-input" id="mc-loc" placeholder="Raum A"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="mc-serial" placeholder="SN-123456"></div>
+      <div class="form-group"><label class="form-label">Standort</label><input class="form-input" id="mc-loc" placeholder="Raum A"></div>
+    </div>
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="mc-comment" rows="2" placeholder="z.B. Linse verschmutzt, bitte melden"></textarea></div>
     <hr style="border-color:var(--border);margin:16px 0">
     <div class="form-group"><label class="form-label">Smart Plug</label>
@@ -2901,7 +2923,7 @@ function showAddMachine() {
     const idle_w=document.getElementById('mc-idlew')?.value;
     const idle_t=document.getElementById('mc-idlet')?.value;
     const training_required=document.getElementById('mc-training')?.checked??true;
-    const res=await POST('/machines',{name,category:document.getElementById('mc-cat').value,status:document.getElementById('mc-status').value,manufacturer:document.getElementById('mc-mfr').value.trim(),model:document.getElementById('mc-model').value.trim(),location:document.getElementById('mc-loc').value.trim(),comment:document.getElementById('mc-comment').value.trim()||null,plug_type,plug_ip:document.getElementById('mc-plugip')?.value.trim()||null,plug_extra,plug_token,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,training_required});
+    const res=await POST('/machines',{name,category:document.getElementById('mc-cat').value,status:document.getElementById('mc-status').value,manufacturer:document.getElementById('mc-mfr').value.trim()||null,model:document.getElementById('mc-model').value.trim()||null,serial_number:document.getElementById('mc-serial').value.trim()||null,location:document.getElementById('mc-loc').value.trim(),comment:document.getElementById('mc-comment').value.trim()||null,plug_type,plug_ip:document.getElementById('mc-plugip')?.value.trim()||null,plug_extra,plug_token,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,training_required});
     if (res) { closeModal(); await loadAll(); showToast(`${res.name} hinzugefügt!`,'success'); }
   });
 }
@@ -2920,7 +2942,10 @@ function editMachine(id) {
       <div class="form-group"><label class="form-label">Hersteller</label><input class="form-input" id="e-mfr" value="${escHtml(m.manufacturer||'')}"></div>
       <div class="form-group"><label class="form-label">Modell</label><input class="form-input" id="e-model" value="${escHtml(m.model||'')}"></div>
     </div>
-    <div class="form-group"><label class="form-label">Standort</label><input class="form-input" id="e-loc" value="${escHtml(m.location||'')}"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="e-serial" value="${escHtml(m.serial_number||'')}"></div>
+      <div class="form-group"><label class="form-label">Standort</label><input class="form-input" id="e-loc" value="${escHtml(m.location||'')}"></div>
+    </div>
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="e-comment" rows="2" placeholder="z.B. Linse verschmutzt">${m.comment||''}</textarea></div>
     <hr style="border-color:var(--border);margin:16px 0">
     <div class="form-group"><label class="form-label">Smart Plug</label>
@@ -2968,7 +2993,7 @@ function editMachine(id) {
     const idle_t=document.getElementById('e-idlet')?.value;
     const poll_s=document.getElementById('e-poll')?.value;
     const training_required=document.getElementById('e-training')?.checked??true;
-    const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,manufacturer:document.getElementById('e-mfr').value.trim()||null,model:document.getElementById('e-model').value.trim()||null,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,plug_type,plug_ip:document.getElementById('e-plugip')?.value.trim()||null,plug_extra,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required};
+    const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,manufacturer:document.getElementById('e-mfr').value.trim()||null,model:document.getElementById('e-model').value.trim()||null,serial_number:document.getElementById('e-serial').value.trim()||null,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,plug_type,plug_ip:document.getElementById('e-plugip')?.value.trim()||null,plug_extra,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required};
     if (plug_token!==undefined) payload.plug_token=plug_token;
     const res=await PATCH(`/machines/${id}`,payload);
     if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
