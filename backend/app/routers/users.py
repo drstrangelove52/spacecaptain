@@ -43,7 +43,7 @@ async def create_user(
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    await log_svc.log(db, LogType.guest_created, f"Lab Manager {user.name} erstellt", user_id=current.id)
+    await log_svc.log(db, LogType.user_created, f"Lab Manager {user.name} erstellt", user_id=current.id)
     return user
 
 
@@ -77,6 +77,13 @@ async def update_user(
 
     await db.commit()
     await db.refresh(user)
+    changed = list(payload.model_dump(exclude_unset=True, exclude={"password"}).keys())
+    if payload.password:
+        changed.append("password")
+    await log_svc.log(db, LogType.user_updated,
+                      f"Lab Manager {user.name} bearbeitet",
+                      user_id=current.id,
+                      meta={"changed": changed, "target_user_id": user_id})
     return user
 
 

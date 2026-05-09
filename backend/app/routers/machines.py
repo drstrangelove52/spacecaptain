@@ -224,10 +224,15 @@ async def update_machine(
     machine = result.scalar_one_or_none()
     if not machine:
         raise HTTPException(404, "Maschine nicht gefunden")
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    for field, value in changes.items():
         setattr(machine, field, value)
     await db.commit()
     await db.refresh(machine)
+    await log_svc.log(db, LogType.machine_updated,
+                      f"Maschine {machine.name} bearbeitet",
+                      machine_id=machine.id, user_id=current.id,
+                      meta={"changed": list(changes.keys())})
     return await _machine_out(machine, db)
 
 

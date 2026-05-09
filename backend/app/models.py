@@ -57,6 +57,10 @@ class LogType(str, enum.Enum):
     queue_notified = "queue_notified"
     backup_exported = "backup_exported"
     backup_imported = "backup_imported"
+    user_created = "user_created"
+    user_updated = "user_updated"
+    guest_updated = "guest_updated"
+    machine_updated = "machine_updated"
 
 class SessionEndedBy(str, enum.Enum):
     guest = "guest"

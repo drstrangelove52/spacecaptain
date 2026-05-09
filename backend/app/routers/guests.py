@@ -182,6 +182,13 @@ async def update_guest(
         guest.password_hash = _hash(payload.password)
     await db.commit()
     await db.refresh(guest)
+    changed = list(update_data.keys())
+    if payload.password:
+        changed.append("password")
+    await log_svc.log(db, LogType.guest_updated,
+                      f"Gast {guest.name} bearbeitet",
+                      guest_id=guest.id, user_id=current.id,
+                      meta={"changed": changed})
     return await _guest_out(guest, db)
 
 

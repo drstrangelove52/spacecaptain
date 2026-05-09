@@ -265,6 +265,11 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "machines", "serial_number",
                                      "VARCHAR(100) DEFAULT NULL")
 
+        # ── v1.18: Aktivitätslog für Update-Aktionen ─────────────────────────
+        await _extend_enum_if_needed(conn, "activity_log", "type", [
+            "user_created", "user_updated", "guest_updated", "machine_updated",
+        ])
+
         # ── v1.16: Aktivitätslog für alle fehlenden Aktionen ─────────────────
         await _extend_enum_if_needed(conn, "activity_log", "type", [
             "settings_changed",
