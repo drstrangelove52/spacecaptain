@@ -288,15 +288,15 @@ async def run_migrations(engine: AsyncEngine) -> None:
         result = await conn.execute(text("SELECT COUNT(*) FROM machine_categories"))
         if result.scalar() == 0:
             await conn.execute(text("""
-                INSERT INTO machine_categories (name, icon, sort_order) VALUES
-                ('Laser',      '⚡', 1),
-                ('CNC',        '⚙', 2),
-                ('3D-Druck',   '🖨', 3),
-                ('Holz',       '🪚', 4),
-                ('Metall',     '🔩', 5),
-                ('Elektronik', '🔌', 6),
-                ('Textil',     '🧵', 7),
-                ('Sonstiges',  '🔧', 8)
+                INSERT INTO machine_categories (name, icon, sort_order, created_at) VALUES
+                ('Laser',      '⚡', 1, NOW()),
+                ('CNC',        '⚙', 2, NOW()),
+                ('3D-Druck',   '🖨', 3, NOW()),
+                ('Holz',       '🪚', 4, NOW()),
+                ('Metall',     '🔩', 5, NOW()),
+                ('Elektronik', '🔌', 6, NOW()),
+                ('Textil',     '🧵', 7, NOW()),
+                ('Sonstiges',  '🔧', 8, NOW())
             """))
 
     log.info("Migrationen abgeschlossen")
