@@ -91,6 +91,13 @@
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
   /* MACHINE CARDS */
   .machine-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+  .machine-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:24px}
+  .machine-table th{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;padding:8px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+  .machine-table td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+  .machine-table tr:hover td{background:rgba(255,255,255,.02)}
+  .view-toggle{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px}
+  .view-toggle button{background:none;border:none;padding:4px 10px;cursor:pointer;border-radius:3px;color:var(--text-dim);font-size:15px;line-height:1}
+  .view-toggle button.active{background:rgba(255,255,255,.08);color:var(--text)}
   .machine-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px;cursor:pointer;position:relative;overflow:hidden;transition:border-color .2s}
   .machine-card:hover{border-color:var(--accent)}
   .machine-card.online::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 24px 24px 0;border-color:transparent var(--success) transparent transparent}
@@ -393,9 +400,13 @@
           <option value="maintenance">Wartung</option>
         </select>
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('machine-search').value='';document.getElementById('machine-filter-cat').value='';document.getElementById('machine-filter-status').value='';filterMachines()">✕ Reset</button>
+        <div class="view-toggle">
+          <button id="view-grid-btn" title="Kachelansicht" onclick="setMachineView('grid')">⊞</button>
+          <button id="view-table-btn" title="Tabellenansicht" onclick="setMachineView('table')">≡</button>
+        </div>
       </div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:10px" id="machine-filter-count"></div>
-      <div class="machine-grid" id="machine-grid"><div class="loading"><div class="spinner"></div>Laden…</div></div>
+      <div id="machine-grid"><div class="loading"><div class="spinner"></div>Laden…</div></div>
     </div>
 
     <!-- PERMISSIONS — neue Ansicht -->
@@ -2682,12 +2693,25 @@ const machineIcons={Laser:'⚡',CNC:'⚙','3D-Druck':'🖨',Holz:'🪚',Metall:'
 const MACHINE_CATEGORIES=Object.keys(machineIcons);
 (()=>{const s=document.getElementById('machine-filter-cat');MACHINE_CATEGORIES.forEach(c=>{const o=document.createElement('option');o.textContent=c;s.appendChild(o);});})();
 
+let _machineView=localStorage.getItem('machineView')||'grid';
+(()=>{
+  document.getElementById('view-grid-btn').classList.toggle('active',_machineView==='grid');
+  document.getElementById('view-table-btn').classList.toggle('active',_machineView==='table');
+})();
+function setMachineView(v){
+  _machineView=v;
+  localStorage.setItem('machineView',v);
+  document.getElementById('view-grid-btn').classList.toggle('active',v==='grid');
+  document.getElementById('view-table-btn').classList.toggle('active',v==='table');
+  filterMachines();
+}
+
 function filterMachines() {
   const q=(document.getElementById('machine-search')?.value||'').toLowerCase();
   const cat=document.getElementById('machine-filter-cat')?.value||'';
   const statusF=document.getElementById('machine-filter-status')?.value||'';
   let filtered=cache.machines.filter(m=>{
-    if (q && !m.name.toLowerCase().includes(q) && !(m.location||'').toLowerCase().includes(q)) return false;
+    if (q && !m.name.toLowerCase().includes(q) && !(m.location||'').toLowerCase().includes(q) && !(m.manufacturer||'').toLowerCase().includes(q) && !(m.model||'').toLowerCase().includes(q)) return false;
     if (cat && m.category!==cat) return false;
     if (statusF==='inuse' && !m.in_use) return false;
     else if (statusF && statusF!=='inuse' && m.status!==statusF) return false;
@@ -2700,62 +2724,108 @@ function filterMachines() {
 
 function renderMachines() { filterMachines(); }
 
+function _machineSessionHtml(m) {
+  if (m.current_guest_name) {
+    const dur=m.session_duration_min!=null?` // ${formatDuration(m.session_duration_min)}`:'';
+    return `<div style="background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px">
+      <span style="color:var(--accent2)">● IN BENUTZUNG</span>
+      <span style="color:var(--text-mid);margin-left:8px">${escHtml(m.current_guest_name)}${dur}</span>
+    </div>`;
+  } else if (m.status==='online') {
+    if (m.plug_type!=='none' && m.plug_error==='unreachable')
+      return `<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--accent)">⚠ ADAPTER NICHT ERREICHBAR</div>`;
+    return `<div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--success)">● VERFÜGBAR</div>`;
+  }
+  return '';
+}
+
+function _machineCard(m) {
+  const icon=machineIcons[m.category]||'🔧';
+  const statusColor=m.status==='online'?'var(--success)':m.status==='maintenance'?'var(--accent)':'var(--text-dim)';
+  const sessionHtml=_machineSessionHtml(m);
+  let idleBadge=''; let idleClass='';
+  if (m.idle_state==='idle_warning') {
+    const remaining=m.idle_timeout_min && m.idle_since_min!=null?Math.max(0,Math.ceil(m.idle_timeout_min-m.idle_since_min)):'?';
+    idleBadge=`<div class="idle-badge warning">⚠ LEERLAUF — Abschaltung in <span class="countdown">${remaining} min</span></div>`;
+    idleClass='idle-warning';
+  } else if (m.idle_state==='idle') {
+    const since=m.idle_since_min!=null?` seit ${Math.floor(m.idle_since_min)} min`:'';
+    idleBadge=`<div class="idle-badge caution">⏱ LEERLAUF${since}</div>`;
+    idleClass='idle-caution';
+  }
+  const mfrModel=[m.manufacturer,m.model].filter(Boolean).join(' · ');
+  return `<div class="machine-card ${m.status} ${idleClass}" id="mc-${m.id}">
+    <div class="machine-icon">${icon}</div>
+    <div class="machine-name">${escHtml(m.name)}${m.training_required===false?'<span style="font-family:var(--mono);font-size:9px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3);border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle">OFFEN</span>':''}</div>
+    <div class="machine-cat">${m.category}${m.location?' // '+escHtml(m.location):''}</div>
+    ${mfrModel?`<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px">${escHtml(mfrModel)}</div>`:''}
+    ${m.comment?`<div class="machine-comment" style="display:block">⚠ ${escHtml(m.comment)}</div>`:''}
+    ${sessionHtml}
+    <div class="machine-stats">
+      <div class="machine-stat"><strong style="color:${statusColor}">${m.status}</strong>Status</div>
+      ${m.plug_type!=='none'?`<div class="machine-stat"><strong style="color:${m.plug_on?'var(--success)':'var(--text-dim)'}">${m.plug_on==null?'—':m.plug_on?'EIN':'AUS'}</strong>Steckdose</div>`:''}
+      ${m.plug_type!=='none'?`<div class="machine-stat"><strong style="color:var(--accent2)">${m.power_w!=null?Math.round(m.power_w)+' W':'— W'}</strong>Verbrauch</div>`:''}
+    </div>
+    ${idleBadge}
+    ${m.plug_type!=='none'&&m.status==='online'?`<div style="display:flex;gap:6px;margin-bottom:8px;margin-top:${idleBadge?'8':'0'}px">
+      <button class="btn ${m.plug_on?'btn-success-outline':'btn-success'} btn-sm" onclick="managerSwitchMachine(${m.id},'on',this)" style="flex:1;justify-content:center">⚡ EIN</button>
+      <button class="btn ${m.plug_on?'btn-danger-filled':'btn-danger'} btn-sm" onclick="managerSwitchMachine(${m.id},'off',this)" style="flex:1;justify-content:center">○ AUS</button>
+    </div>`:''}
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="editMachine(${m.id})">✏ Bearbeiten</button>
+      <button class="btn btn-ghost btn-sm" onclick="openQRModal(${m.id})">▦ QR/NFC</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>
+    </div>
+  </div>`;
+}
+
+function _machineTable(machines) {
+  const rows=machines.map(m=>{
+    const icon=machineIcons[m.category]||'🔧';
+    const statusDot=m.status==='online'?'var(--success)':m.status==='maintenance'?'var(--accent)':'var(--text-dim)';
+    const session=m.current_guest_name
+      ?`<span style="color:var(--accent2)">● ${escHtml(m.current_guest_name)}${m.session_duration_min!=null?' ('+formatDuration(m.session_duration_min)+')':''}</span>`
+      :m.status==='online'?`<span style="color:var(--text-dim)">—</span>`:'';
+    const plug=m.plug_type==='none'?'<span style="color:var(--text-dim)">—</span>'
+      :`<span style="color:${m.plug_on?'var(--success)':'var(--text-dim)'}">${m.plug_on==null?'—':m.plug_on?'EIN':'AUS'}${m.power_w!=null?' · '+Math.round(m.power_w)+' W':''}</span>`;
+    return `<tr>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusDot}"></span></td>
+      <td><span style="font-size:14px;margin-right:6px">${icon}</span><strong>${escHtml(m.name)}</strong>${m.training_required===false?'<span style="font-family:var(--mono);font-size:9px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3);border-radius:3px;padding:1px 4px;margin-left:6px">OFFEN</span>':''}</td>
+      <td style="color:var(--text-mid)">${m.category}</td>
+      <td style="color:var(--text-mid)">${escHtml(m.manufacturer||'—')}</td>
+      <td style="color:var(--text-mid)">${escHtml(m.model||'—')}</td>
+      <td style="color:var(--text-mid)">${escHtml(m.location||'—')}</td>
+      <td>${session}</td>
+      <td>${plug}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="editMachine(${m.id})">✏</button>
+        <button class="btn btn-ghost btn-sm" onclick="openQRModal(${m.id})">▦</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+  return `<table class="machine-table">
+    <thead><tr>
+      <th></th><th>Name</th><th>Kategorie</th><th>Hersteller</th><th>Modell</th><th>Standort</th><th>Session</th><th>Plug</th><th>Aktionen</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
 function renderMachinesFiltered(machines) {
   const grid=document.getElementById('machine-grid');
-  if (!machines.length) { grid.innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px">Keine Maschinen gefunden.</div>'; return; }
-  grid.innerHTML=machines.map(m=>{
-    const icon=machineIcons[m.category]||'🔧';
-    const statusColor=m.status==='online'?'var(--success)':m.status==='maintenance'?'var(--accent)':'var(--text-dim)';
-    // Aktive Session
-    let sessionHtml='';
-    if (m.current_guest_name) {
-      const dur=m.session_duration_min!=null?` // ${formatDuration(m.session_duration_min)}`:'';
-      sessionHtml=`<div style="background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px">
-        <span style="color:var(--accent2)">● IN BENUTZUNG</span>
-        <span style="color:var(--text-mid);margin-left:8px">${m.current_guest_name}${dur}</span>
-      </div>`;
-    } else if (m.status==='online') {
-      if (m.plug_type!=='none' && m.plug_error==='unreachable') {
-        sessionHtml=`<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--accent)">⚠ ADAPTER NICHT ERREICHBAR</div>`;
-      } else {
-        sessionHtml=`<div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--success)">● VERFÜGBAR</div>`;
-      }
-    }
-    // Leerlauf-Badge
-    let idleBadge=''; let idleClass='';
-    if (m.idle_state==='idle_warning') {
-      const remaining=m.idle_timeout_min && m.idle_since_min!=null
-        ? Math.max(0,Math.ceil(m.idle_timeout_min-m.idle_since_min)) : '?';
-      idleBadge=`<div class="idle-badge warning">⚠ LEERLAUF — Abschaltung in <span class="countdown">${remaining} min</span></div>`;
-      idleClass='idle-warning';
-    } else if (m.idle_state==='idle') {
-      const since=m.idle_since_min!=null?` seit ${Math.floor(m.idle_since_min)} min`:'';
-      idleBadge=`<div class="idle-badge caution">⏱ LEERLAUF${since}</div>`;
-      idleClass='idle-caution';
-    }
-    return `<div class="machine-card ${m.status} ${idleClass}" id="mc-${m.id}">
-      <div class="machine-icon">${icon}</div>
-      <div class="machine-name">${m.name}${m.training_required===false?'<span style="font-family:var(--mono);font-size:9px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3);border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle">OFFEN</span>':''}</div>
-      <div class="machine-cat">${m.category}${m.location?' // '+m.location:''}</div>
-      ${m.comment?`<div class="machine-comment" style="display:block">⚠ ${m.comment}</div>`:''}
-      ${sessionHtml}
-      <div class="machine-stats">
-        <div class="machine-stat"><strong style="color:${statusColor}">${m.status}</strong>Status</div>
-        ${m.plug_type!=='none'?`<div class="machine-stat"><strong style="color:${m.plug_on?'var(--success)':'var(--text-dim)'}">${m.plug_on==null?'—':m.plug_on?'EIN':'AUS'}</strong>Steckdose</div>`:''}
-        ${m.plug_type!=='none'?`<div class="machine-stat"><strong style="color:var(--accent2)">${m.power_w!=null?Math.round(m.power_w)+' W':'— W'}</strong>Verbrauch</div>`:''}
-      </div>
-      ${idleBadge}
-      ${m.plug_type!=='none'&&m.status==='online'?`<div style="display:flex;gap:6px;margin-bottom:8px;margin-top:${idleBadge?'8':'0'}px">
-        <button class="btn ${m.plug_on?'btn-success-outline':'btn-success'} btn-sm" onclick="managerSwitchMachine(${m.id},'on',this)" style="flex:1;justify-content:center">⚡ EIN</button>
-        <button class="btn ${m.plug_on?'btn-danger-filled':'btn-danger'} btn-sm" onclick="managerSwitchMachine(${m.id},'off',this)" style="flex:1;justify-content:center">○ AUS</button>
-      </div>`:''}
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" onclick="editMachine(${m.id})">✏ Bearbeiten</button>
-        <button class="btn btn-ghost btn-sm" onclick="openQRModal(${m.id})">▦ QR/NFC</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>
-      </div>
-    </div>`;
-  }).join('');
+  if (!machines.length) {
+    grid.className='';
+    grid.innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:20px">Keine Maschinen gefunden.</div>';
+    return;
+  }
+  if (_machineView==='table') {
+    grid.className='';
+    grid.innerHTML=_machineTable(machines);
+  } else {
+    grid.className='machine-grid';
+    grid.innerHTML=machines.map(_machineCard).join('');
+  }
 }
 
 function formatDuration(min) {
@@ -2841,12 +2911,16 @@ function editMachine(id) {
   const curPlugSel=m.plug_type;
   const showPlug=curPlugSel!=='none';
   openModal('Maschine bearbeiten',`
-    <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${m.name}"></div>
+    <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${escHtml(m.name)}"></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="e-cat">${MACHINE_CATEGORIES.map(c=>`<option ${m.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
       <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-status"><option value="online" ${m.status==='online'?'selected':''}>online</option><option value="offline" ${m.status==='offline'?'selected':''}>offline</option><option value="maintenance" ${m.status==='maintenance'?'selected':''}>maintenance</option></select></div>
     </div>
-    <div class="form-group"><label class="form-label">Standort</label><input class="form-input" id="e-loc" value="${m.location||''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Hersteller</label><input class="form-input" id="e-mfr" value="${escHtml(m.manufacturer||'')}"></div>
+      <div class="form-group"><label class="form-label">Modell</label><input class="form-input" id="e-model" value="${escHtml(m.model||'')}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Standort</label><input class="form-input" id="e-loc" value="${escHtml(m.location||'')}"></div>
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="e-comment" rows="2" placeholder="z.B. Linse verschmutzt">${m.comment||''}</textarea></div>
     <hr style="border-color:var(--border);margin:16px 0">
     <div class="form-group"><label class="form-label">Smart Plug</label>
@@ -2894,7 +2968,7 @@ function editMachine(id) {
     const idle_t=document.getElementById('e-idlet')?.value;
     const poll_s=document.getElementById('e-poll')?.value;
     const training_required=document.getElementById('e-training')?.checked??true;
-    const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,plug_type,plug_ip:document.getElementById('e-plugip')?.value.trim()||null,plug_extra,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required};
+    const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,manufacturer:document.getElementById('e-mfr').value.trim()||null,model:document.getElementById('e-model').value.trim()||null,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,plug_type,plug_ip:document.getElementById('e-plugip')?.value.trim()||null,plug_extra,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required};
     if (plug_token!==undefined) payload.plug_token=plug_token;
     const res=await PATCH(`/machines/${id}`,payload);
     if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
