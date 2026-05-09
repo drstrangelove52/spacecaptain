@@ -92,7 +92,8 @@
   /* MACHINE CARDS */
   .machine-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:24px}
   .machine-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:24px}
-  .machine-table th{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;padding:8px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+  .machine-table th{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;padding:8px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap;user-select:none}
+  .machine-table th[onclick]:hover{color:var(--text-mid)}
   .machine-table td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
   .machine-table tr:hover td{background:rgba(255,255,255,.02)}
   .view-toggle{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px}
@@ -2694,6 +2695,7 @@ const MACHINE_CATEGORIES=Object.keys(machineIcons);
 (()=>{const s=document.getElementById('machine-filter-cat');MACHINE_CATEGORIES.forEach(c=>{const o=document.createElement('option');o.textContent=c;s.appendChild(o);});})();
 
 let _machineView=localStorage.getItem('machineView')||'grid';
+let _machineSort={col:null,dir:1};
 (()=>{
   document.getElementById('view-grid-btn').classList.toggle('active',_machineView==='grid');
   document.getElementById('view-table-btn').classList.toggle('active',_machineView==='table');
@@ -2737,7 +2739,18 @@ function filterMachines() {
   });
   const countEl=document.getElementById('machine-filter-count');
   if (countEl) countEl.textContent=(q||cat||statusF)?`${filtered.length} von ${cache.machines.length} Maschinen`:'' ;
-  renderMachinesFiltered([...filtered].sort((a,b)=>a.name.localeCompare(b.name,"de")));
+  const sorted=[...filtered];
+  const {col,dir}=_machineSort;
+  if (col) {
+    sorted.sort((a,b)=>{
+      const av=(a[col]||'').toString().toLowerCase();
+      const bv=(b[col]||'').toString().toLowerCase();
+      return av.localeCompare(bv,'de')*dir;
+    });
+  } else {
+    sorted.sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  }
+  renderMachinesFiltered(sorted);
 }
 
 function renderMachines() { filterMachines(); }
@@ -2797,6 +2810,19 @@ function _machineCard(m) {
   </div>`;
 }
 
+function sortMachineTable(col) {
+  if (_machineSort.col===col) _machineSort.dir*=-1;
+  else _machineSort={col,dir:1};
+  filterMachines();
+}
+
+function _machineTableTh(label, col) {
+  const active=_machineSort.col===col;
+  const arrow=active?(_machineSort.dir===1?' ▲':' ▼'):'';
+  const style=active?'color:var(--text-light);cursor:pointer':'cursor:pointer';
+  return `<th style="${style}" onclick="sortMachineTable('${col}')">${label}${arrow}</th>`;
+}
+
 function _machineTable(machines) {
   const rows=machines.map(m=>{
     const icon=machineIcons[m.category]||'🔧';
@@ -2825,7 +2851,14 @@ function _machineTable(machines) {
   }).join('');
   return `<table class="machine-table">
     <thead><tr>
-      <th></th><th>Name</th><th>Kategorie</th><th>Hersteller</th><th>Modell</th><th>Seriennummer</th><th>Standort</th><th>Session</th><th>Plug</th><th>Aktionen</th>
+      <th></th>
+      ${_machineTableTh('Name','name')}
+      ${_machineTableTh('Kategorie','category')}
+      ${_machineTableTh('Hersteller','manufacturer')}
+      ${_machineTableTh('Modell','model')}
+      ${_machineTableTh('Seriennummer','serial_number')}
+      ${_machineTableTh('Standort','location')}
+      <th>Session</th><th>Plug</th><th>Aktionen</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
