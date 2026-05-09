@@ -12,6 +12,7 @@ from app.routers import queue as queue_router
 from app.routers import announcements as announcements_router
 from app.routers import ntfy_topics as ntfy_topics_router
 from app.routers import emergency as emergency_router
+from app.routers import categories as categories_router
 from app.services.session import idle_watcher, plug_watcher, queue_watcher
 from app.services.backup_service import backup_watcher
 
@@ -104,3 +105,4 @@ app.include_router(queue_router.router,    prefix="/api")
 app.include_router(announcements_router.router, prefix="/api")
 app.include_router(ntfy_topics_router.router,   prefix="/api")
 app.include_router(emergency_router.router,     prefix="/api")
+app.include_router(categories_router.router,    prefix="/api")

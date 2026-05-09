@@ -203,6 +203,27 @@ class LogOut(BaseModel):
         from_attributes = True
 
 
+# ── Machine Categories ────────────────────────────────────
+class MachineCategoryOut(BaseModel):
+    id: int
+    name: str
+    icon: str
+    sort_order: int
+
+    class Config:
+        from_attributes = True
+
+class MachineCategoryCreate(BaseModel):
+    name: str
+    icon: str = "🔧"
+    sort_order: int = 0
+
+class MachineCategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    icon: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
 # ── Dashboard ─────────────────────────────────────────────
 class DashboardStats(BaseModel):
     total_guests: int

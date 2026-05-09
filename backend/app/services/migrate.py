@@ -274,6 +274,31 @@ async def run_migrations(engine: AsyncEngine) -> None:
             "backup_exported", "backup_imported",
         ])
 
+        # ── v1.17: Maschinenkategorien ────────────────────────────────────────
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS machine_categories (
+                id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name        VARCHAR(50)  NOT NULL UNIQUE,
+                icon        VARCHAR(10)  NOT NULL DEFAULT '🔧',
+                sort_order  INT          NOT NULL DEFAULT 0,
+                created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
+        # Standardkategorien eintragen — nur wenn Tabelle noch leer
+        result = await conn.execute(text("SELECT COUNT(*) FROM machine_categories"))
+        if result.scalar() == 0:
+            await conn.execute(text("""
+                INSERT INTO machine_categories (name, icon, sort_order) VALUES
+                ('Laser',      '⚡', 1),
+                ('CNC',        '⚙', 2),
+                ('3D-Druck',   '🖨', 3),
+                ('Holz',       '🪚', 4),
+                ('Metall',     '🔩', 5),
+                ('Elektronik', '🔌', 6),
+                ('Textil',     '🧵', 7),
+                ('Sonstiges',  '🔧', 8)
+            """))
+
     log.info("Migrationen abgeschlossen")
 
 

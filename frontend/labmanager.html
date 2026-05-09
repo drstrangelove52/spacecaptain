@@ -214,6 +214,7 @@
   .form-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;color:var(--text);font-family:var(--body);font-size:15px;outline:none;transition:border-color .15s}
   .form-input:focus{border-color:var(--accent)}
   textarea.form-input{resize:vertical}
+  .form-input-sm{padding:5px 8px;font-size:13px}
   .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .modal-footer{padding:16px 24px;border-top:2px solid rgba(255,255,255,0.15);display:flex;justify-content:flex-end;gap:10px}
   .plug-hint{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.6;padding:8px;background:var(--bg);border-radius:4px;border:1px solid var(--border)}
@@ -1911,7 +1912,7 @@ function escHtml(s) {
 }
 let token = localStorage.getItem('ms_token') || '';
 let currentUser = null;
-let cache = { guests:[], machines:[], users:[], permissions:[] };
+let cache = { guests:[], machines:[], users:[], permissions:[], categories:[] };
 let clientSettings = { modal_backdrop_input: true, modal_backdrop_display: true };
 let selectedPermGuestId = null;
 let selectedPermMachineId = null;
@@ -1986,7 +1987,7 @@ const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',mach
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button> <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`,
-  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`,
+  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button> <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`,
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
   maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`,
   announcements:()=>`<button class="btn btn-primary" onclick="showAddAnnouncement()">+ Neue Mitteilung</button>`,
@@ -2285,9 +2286,10 @@ function fmtLocalDate(isoStr) {
 
 async function loadAll() {
   // Basis-Daten zuerst laden und sofort rendern (kein Plug-Status nötig)
-  const [guests,users,machines,perms,stats] = await Promise.all([
-    GET('/guests'),GET('/users'),GET('/machines'),GET('/permissions'),GET('/dashboard')
+  const [guests,users,machines,perms,stats,cats] = await Promise.all([
+    GET('/guests'),GET('/users'),GET('/machines'),GET('/permissions'),GET('/dashboard'),GET('/categories')
   ]);
+  if (cats) { cache.categories=cats; _refreshCatFilter(); }
   if (guests)   cache.guests   = guests;
   if (users)    cache.users    = users;
   if (machines) cache.machines = machines;
@@ -2690,9 +2692,70 @@ async function deleteLM(id,name) {
 // ═══════════════════════════════════════════════════════
 // MACHINES
 // ═══════════════════════════════════════════════════════
-const machineIcons={Laser:'⚡',CNC:'⚙','3D-Druck':'🖨',Holz:'🪚',Metall:'🔩',Elektronik:'🔌',Textil:'🧵',Sonstiges:'🔧'};
-const MACHINE_CATEGORIES=Object.keys(machineIcons);
-(()=>{const s=document.getElementById('machine-filter-cat');MACHINE_CATEGORIES.forEach(c=>{const o=document.createElement('option');o.textContent=c;s.appendChild(o);});})();
+function _catIcon(name){const c=cache.categories.find(x=>x.name===name);return c?c.icon:'🔧';}
+function _catOptions(selected=''){return cache.categories.map(c=>`<option value="${escHtml(c.name)}"${c.name===selected?' selected':''}>${escHtml(c.icon)} ${escHtml(c.name)}</option>`).join('');}
+function _refreshCatFilter(){const s=document.getElementById('machine-filter-cat');if(!s)return;const cur=s.value;s.innerHTML='<option value="">Alle Kategorien</option>'+cache.categories.map(c=>`<option value="${escHtml(c.name)}"${c.name===cur?' selected':''}>${escHtml(c.icon)} ${escHtml(c.name)}</option>`).join('');}
+async function loadCategories(){const data=await GET('/categories');if(data){cache.categories=data;_refreshCatFilter();}}
+
+function _renderCatList(){
+  return cache.categories.map(c=>`
+    <tr id="cat-row-${c.id}">
+      <td style="font-size:20px;text-align:center;width:40px">${escHtml(c.icon)}</td>
+      <td><input class="form-input form-input-sm" id="cat-name-${c.id}" value="${escHtml(c.name)}" style="width:140px"></td>
+      <td><input class="form-input form-input-sm" id="cat-icon-${c.id}" value="${escHtml(c.icon)}" style="width:60px;text-align:center" placeholder="🔧" maxlength="4"></td>
+      <td><input class="form-input form-input-sm" id="cat-order-${c.id}" type="number" value="${c.sort_order}" style="width:60px"></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="saveCategory(${c.id})">💾</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCategory(${c.id},'${escHtml(c.name)}')">✕</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function showCategoriesModal(){
+  openModal('Kategorien verwalten',`
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">
+        <th style="padding:4px 8px"></th>
+        <th style="padding:4px 8px">Name</th>
+        <th style="padding:4px 8px">Icon</th>
+        <th style="padding:4px 8px">Reihenfolge</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="cat-list">${_renderCatList()}</tbody>
+    </table>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px">NEUE KATEGORIE</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input class="form-input" id="new-cat-name" placeholder="Name" style="width:140px">
+        <input class="form-input" id="new-cat-icon" placeholder="🔧" maxlength="4" style="width:60px;text-align:center">
+        <button class="btn btn-primary btn-sm" onclick="addCategory()">+ Hinzufügen</button>
+      </div>
+    </div>
+  `);
+}
+
+async function saveCategory(id){
+  const name=document.getElementById(`cat-name-${id}`)?.value.trim();
+  const icon=document.getElementById(`cat-icon-${id}`)?.value.trim()||'🔧';
+  const sort_order=parseInt(document.getElementById(`cat-order-${id}`)?.value)||0;
+  if(!name){showToast('Name darf nicht leer sein','warn');return;}
+  const res=await PATCH(`/categories/${id}`,{name,icon,sort_order});
+  if(res){await loadCategories();showToast('Gespeichert!','success');document.getElementById('cat-list').innerHTML=_renderCatList();}
+}
+
+async function addCategory(){
+  const name=document.getElementById('new-cat-name')?.value.trim();
+  const icon=document.getElementById('new-cat-icon')?.value.trim()||'🔧';
+  if(!name){showToast('Name darf nicht leer sein','warn');return;}
+  const res=await POST('/categories',{name,icon,sort_order:cache.categories.length});
+  if(res){await loadCategories();document.getElementById('cat-list').innerHTML=_renderCatList();document.getElementById('new-cat-name').value='';document.getElementById('new-cat-icon').value='';showToast(`${name} hinzugefügt`,'success');}
+}
+
+async function deleteCategory(id,name){
+  if(!confirm(`Kategorie „${name}" wirklich löschen?`))return;
+  const res=await DELETE(`/categories/${id}`);
+  if(res){await loadCategories();document.getElementById('cat-list').innerHTML=_renderCatList();showToast(`${name} gelöscht`,'warn');}
+}
 
 let _machineView=localStorage.getItem('machineView')||'grid';
 let _machineSort={col:null,dir:1};
@@ -2771,7 +2834,7 @@ function _machineSessionHtml(m) {
 }
 
 function _machineCard(m) {
-  const icon=machineIcons[m.category]||'🔧';
+  const icon=_catIcon(m.category);
   const statusColor=m.status==='online'?'var(--success)':m.status==='maintenance'?'var(--accent)':'var(--text-dim)';
   const sessionHtml=_machineSessionHtml(m);
   let idleBadge=''; let idleClass='';
@@ -2825,7 +2888,7 @@ function _machineTableTh(label, col) {
 
 function _machineTable(machines) {
   const rows=machines.map(m=>{
-    const icon=machineIcons[m.category]||'🔧';
+    const icon=_catIcon(m.category);
     const statusDot=m.status==='online'?'var(--success)':m.status==='maintenance'?'var(--accent)':'var(--text-dim)';
     const session=m.current_guest_name
       ?`<span style="color:var(--accent2)">● ${escHtml(m.current_guest_name)}${m.session_duration_min!=null?' ('+formatDuration(m.session_duration_min)+')':''}</span>`
@@ -2897,7 +2960,7 @@ function showAddMachine() {
   openModal('Maschine hinzufügen',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="mc-name" placeholder="Lasercutter XL-40"></div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="mc-cat">${MACHINE_CATEGORIES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="mc-cat">${_catOptions()}</select></div>
       <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="mc-status"><option value="online">online</option><option value="offline">offline</option><option value="maintenance">maintenance</option></select></div>
     </div>
     <div class="form-row">
@@ -2968,7 +3031,7 @@ function editMachine(id) {
   openModal('Maschine bearbeiten',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${escHtml(m.name)}"></div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="e-cat">${MACHINE_CATEGORIES.map(c=>`<option ${m.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="e-cat">${_catOptions(m.category)}</select></div>
       <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-status"><option value="online" ${m.status==='online'?'selected':''}>online</option><option value="offline" ${m.status==='offline'?'selected':''}>offline</option><option value="maintenance" ${m.status==='maintenance'?'selected':''}>maintenance</option></select></div>
     </div>
     <div class="form-row">
@@ -3119,7 +3182,7 @@ function renderPermMachineList(filter='') {
   if (!filtered.length) { el.innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:11px;padding:16px">Keine Maschinen gefunden</div>'; return; }
   const statusColor = m => m.status==='online'?'var(--success)':m.status==='maintenance'?'var(--accent)':'var(--text-dim)';
   el.innerHTML = filtered.map(m=>{
-    const icon = machineIcons[m.category]||'🔧';
+    const icon = _catIcon(m.category);
     const isOpen = m.training_required === false;
     const permCount = isOpen
       ? cache.permissions.filter(p=>p.machine_id===m.id&&p.is_blocked).length
@@ -3329,7 +3392,7 @@ async function selectPermGuest(guestId) {
     return;
   }
   permHistory = await GET(`/permissions/history?guest_id=${guestId}`) || {};
-  const icon=m=>machineIcons[m.category]||'🔧';
+  const icon=m=>_catIcon(m.category);
   const sortedMachines=[...cache.machines].sort((a,b)=>a.name.localeCompare(b.name,'de'));
   document.getElementById('perm-detail-body').innerHTML=sortedMachines.map(m=>{
     const isOpen = m.training_required === false;

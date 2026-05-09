@@ -259,6 +259,15 @@ class EmergencyState(Base):
     triggered_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
 
+class MachineCategory(Base):
+    __tablename__ = "machine_categories"
+    id:         Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name:       Mapped[str]           = mapped_column(String(50), unique=True, nullable=False)
+    icon:       Mapped[str]           = mapped_column(String(10), default="🔧")
+    sort_order: Mapped[int]           = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class MachineQueue(Base):
     __tablename__ = "machine_queue"
     id:          Mapped[int]          = mapped_column(Integer, primary_key=True, autoincrement=True)

@@ -272,6 +272,25 @@ CREATE TABLE IF NOT EXISTS ntfy_topics (
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ── Maschinenkategorien ───────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS machine_categories (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(50)  NOT NULL UNIQUE,
+    icon        VARCHAR(10)  NOT NULL DEFAULT '🔧',
+    sort_order  INT          NOT NULL DEFAULT 0,
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO machine_categories (name, icon, sort_order) VALUES
+    ('Laser',      '⚡', 1),
+    ('CNC',        '⚙', 2),
+    ('3D-Druck',   '🖨', 3),
+    ('Holz',       '🪚', 4),
+    ('Metall',     '🔩', 5),
+    ('Elektronik', '🔌', 6),
+    ('Textil',     '🧵', 7),
+    ('Sonstiges',  '🔧', 8);
+
 -- ── Notfall-Zustand ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS emergency_state (
     id           INT UNSIGNED PRIMARY KEY DEFAULT 1,
