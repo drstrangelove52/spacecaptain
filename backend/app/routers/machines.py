@@ -125,6 +125,9 @@ async def list_machines_live(
                 "id": m.id,
                 "name": m.name,
                 "category": m.category,
+                "manufacturer": m.manufacturer,
+                "model": m.model,
+                "serial_number": m.serial_number,
                 "location": m.location,
                 "status": m.status,
                 "comment": m.comment,
@@ -158,6 +161,7 @@ async def list_machines_live(
             # Nur Plug-Daten fehlen — Session-State aus DB korrekt zurückgeben
             out.append({
                 "id": m.id, "name": m.name, "category": m.category,
+                "manufacturer": m.manufacturer, "model": m.model, "serial_number": m.serial_number,
                 "location": m.location, "status": m.status,
                 "comment": m.comment, "plug_type": m.plug_type,
                 "qr_token": m.qr_token,
