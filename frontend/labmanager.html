@@ -2699,36 +2699,31 @@ async function loadCategories(){const data=await GET('/categories');if(data){cac
 
 function _renderCatList(){
   return cache.categories.map(c=>`
-    <tr id="cat-row-${c.id}">
-      <td style="font-size:20px;text-align:center;width:40px">${escHtml(c.icon)}</td>
-      <td><input class="form-input form-input-sm" id="cat-name-${c.id}" value="${escHtml(c.name)}" style="width:140px"></td>
-      <td><input class="form-input form-input-sm" id="cat-icon-${c.id}" value="${escHtml(c.icon)}" style="width:60px;text-align:center" placeholder="🔧" maxlength="4"></td>
-      <td><input class="form-input form-input-sm" id="cat-order-${c.id}" type="number" value="${c.sort_order}" style="width:60px"></td>
-      <td style="white-space:nowrap">
-        <button class="btn btn-ghost btn-sm" onclick="saveCategory(${c.id})">💾</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteCategory(${c.id},'${escHtml(c.name)}')">✕</button>
-      </td>
-    </tr>`).join('');
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:18px;width:26px;text-align:center;flex-shrink:0">${escHtml(c.icon)}</span>
+      <input class="form-input form-input-sm" id="cat-name-${c.id}" value="${escHtml(c.name)}" placeholder="Name" style="flex:1;min-width:0">
+      <input class="form-input form-input-sm" id="cat-icon-${c.id}" value="${escHtml(c.icon)}" placeholder="🔧" maxlength="4" style="width:52px;text-align:center;flex-shrink:0">
+      <input class="form-input form-input-sm" id="cat-order-${c.id}" type="number" value="${c.sort_order}" title="Reihenfolge" style="width:52px;flex-shrink:0">
+      <button class="btn btn-ghost btn-sm" onclick="saveCategory(${c.id})" title="Speichern">💾</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteCategory(${c.id},'${escHtml(c.name)}')" title="Löschen">✕</button>
+    </div>`).join('');
 }
 
 async function showCategoriesModal(){
   openModal('Kategorien verwalten',`
-    <table style="width:100%;border-collapse:collapse">
-      <thead><tr style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">
-        <th style="padding:4px 8px"></th>
-        <th style="padding:4px 8px">Name</th>
-        <th style="padding:4px 8px">Icon</th>
-        <th style="padding:4px 8px">Reihenfolge</th>
-        <th></th>
-      </tr></thead>
-      <tbody id="cat-list">${_renderCatList()}</tbody>
-    </table>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);display:flex;gap:8px;margin-bottom:6px;padding-left:34px">
+      <span style="flex:1">NAME</span>
+      <span style="width:52px;text-align:center">ICON</span>
+      <span style="width:52px;text-align:center">POS</span>
+      <span style="width:66px"></span>
+    </div>
+    <div id="cat-list">${_renderCatList()}</div>
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px">NEUE KATEGORIE</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input class="form-input" id="new-cat-name" placeholder="Name" style="width:140px">
-        <input class="form-input" id="new-cat-icon" placeholder="🔧" maxlength="4" style="width:60px;text-align:center">
-        <button class="btn btn-primary btn-sm" onclick="addCategory()">+ Hinzufügen</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="form-input form-input-sm" id="new-cat-name" placeholder="Name" style="flex:1;min-width:0">
+        <input class="form-input form-input-sm" id="new-cat-icon" placeholder="🔧" maxlength="4" style="width:52px;text-align:center;flex-shrink:0">
+        <button class="btn btn-primary btn-sm" onclick="addCategory()" style="flex-shrink:0">+ Hinzufügen</button>
       </div>
     </div>
   `);
