@@ -2701,22 +2701,25 @@ function _showEmojiPicker(inputId){
   const rect=inp.getBoundingClientRect();
   const d=document.createElement('div');
   d.id='_emoji-picker';
-  d.style.cssText=`position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;display:flex;flex-wrap:wrap;gap:4px;width:260px;box-shadow:0 8px 32px rgba(0,0,0,.5)`;
-  const top=rect.bottom+4;
-  const left=Math.min(rect.left, window.innerWidth-270);
-  d.style.top=top+'px';
-  d.style.left=left+'px';
+  d.style.cssText='position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px;display:flex;flex-wrap:wrap;gap:2px;width:220px;box-shadow:0 8px 32px rgba(0,0,0,.5)';
   _CAT_EMOJIS.forEach(e=>{
     const b=document.createElement('button');
     b.type='button';
     b.textContent=e;
-    b.style.cssText='font-size:20px;background:none;border:none;cursor:pointer;padding:4px;border-radius:4px;line-height:1';
+    b.style.cssText='font-size:16px;background:none;border:none;cursor:pointer;padding:3px 4px;border-radius:4px;line-height:1';
     b.onmouseenter=()=>b.style.background='rgba(255,255,255,.1)';
     b.onmouseleave=()=>b.style.background='none';
     b.onclick=()=>{inp.value=e;inp.dispatchEvent(new Event('input'));_closeEmojiPicker();};
     d.appendChild(b);
   });
   document.body.appendChild(d);
+  const left=Math.min(rect.left, window.innerWidth-230);
+  const spaceBelow=window.innerHeight-rect.bottom-8;
+  const spaceAbove=rect.top-8;
+  const h=d.offsetHeight;
+  d.style.left=left+'px';
+  if(spaceBelow>=h||spaceBelow>=spaceAbove){d.style.top=(rect.bottom+4)+'px';}
+  else{d.style.top=(rect.top-h-4)+'px';}
   setTimeout(()=>document.addEventListener('click',_emojiOutside,{once:true}),0);
 }
 function _closeEmojiPicker(){document.getElementById('_emoji-picker')?.remove();}
