@@ -97,7 +97,11 @@
 <body>
 
 <div class="header">
-  <img src="/SpaceCaptain.svg" class="header-logo" alt="SpaceCaptain"><span class="header-title">SpaceCaptain</span>
+  <img src="/SpaceCaptain.svg" class="header-logo" alt="SpaceCaptain">
+  <div style="display:flex;flex-direction:column;gap:2px">
+    <span class="header-title">SpaceCaptain</span>
+    <span id="header-space-name" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px"></span>
+  </div>
   <div class="header-user" id="header-user"></div>
 </div>
 
@@ -246,7 +250,11 @@
 <!-- GÄSTE-DASHBOARD -->
 <div class="screen" id="screen-dashboard" style="position:fixed;inset:0;background:var(--bg);overflow-y:auto;z-index:100;display:none;flex-direction:column">
   <div class="header" style="flex-shrink:0">
-    <img src="/SpaceCaptain.svg" class="header-logo" alt="SpaceCaptain"><span class="header-title">SpaceCaptain</span>
+    <img src="/SpaceCaptain.svg" class="header-logo" alt="SpaceCaptain">
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <span class="header-title">SpaceCaptain</span>
+      <span id="dash-space-name" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px"></span>
+    </div>
     <div class="header-user" id="dash-user-label"></div>
   </div>
   <div style="max-width:480px;width:100%;margin:0 auto;padding:20px 16px;display:flex;flex-direction:column;gap:12px;flex:1">
@@ -813,6 +821,7 @@ async function doChangePassword() {
 
 
 async function init() {
+  fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){document.getElementById('header-space-name').textContent=n;document.getElementById('dash-space-name').textContent=n;}}).catch(()=>{});
   S.machineToken = getParam('m');
   const loginToken = getParam('lt');  // persönlicher Login-Token
 

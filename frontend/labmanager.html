@@ -261,7 +261,7 @@
       <img src="/SpaceCaptain.svg" class="login-logo" alt="SpaceCaptain">
       <div>
         <div class="login-logo-name">SpaceCaptain</div>
-        <div class="login-sub">Navigating Creativity</div>
+        <div class="login-sub" id="login-space-sub">Navigating Creativity</div>
       </div>
     </div>
     <div class="login-error" id="login-error"></div>
@@ -273,7 +273,7 @@
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
-  <div class="logo"><img src="/SpaceCaptain.svg" class="logo-img" alt="SpaceCaptain"><div><div class="logo-mark">SpaceCaptain</div><div class="logo-sub">Navigating Creativity</div><div id="app-version-sidebar" style="margin-top:4px;font-family:var(--mono);font-size:11px;color:var(--accent);opacity:.85;letter-spacing:1px"></div></div></div>
+  <div class="logo"><img src="/SpaceCaptain.svg" class="logo-img" alt="SpaceCaptain"><div><div class="logo-mark">SpaceCaptain</div><div class="logo-sub" id="sidebar-space-sub">Navigating Creativity</div><div id="app-version-sidebar" style="margin-top:4px;font-family:var(--mono);font-size:11px;color:var(--accent);opacity:.85;letter-spacing:1px"></div></div></div>
   <nav class="nav">
     <div class="nav-section">ÜBERSICHT</div>
     <div class="nav-item active" data-page="dashboard" onclick="navigate(this)"><span class="nav-icon">📊</span> Dashboard <span class="nav-badge nav-badge-danger" id="badge-pending" style="display:none">!</span></div>
@@ -625,6 +625,11 @@
         <div class="table-wrap" style="padding:20px">
           <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">SYSTEM</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Makerspace-Name</label>
+              <input class="form-input" id="cfg-space-name" placeholder="z.B. FabLab Musterstadt">
+              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Wird auf allen Seiten unter dem SpaceCaptain-Logo angezeigt</div>
+            </div>
             <div class="form-group" style="margin:0">
               <label class="form-label">NFC-Schreibgerät</label>
               <input class="form-input" id="cfg-nfc-url" placeholder="http://nfc-writer.local">
@@ -3890,6 +3895,7 @@ if (_ltParam) {
   GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=u.role==='admin'?'':'none';document.getElementById('nav-backup').style.display=u.role==='admin'?'':'none';document.getElementById('nav-notifications').style.display=u.role==='admin'?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
 }
 document.getElementById('login-pass').addEventListener('keydown',e=>{ if (e.key==='Enter') doLogin(); });
+fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){document.getElementById('login-space-sub').textContent=n;document.getElementById('sidebar-space-sub').textContent=n;}}).catch(()=>{});
 setInterval(()=>{ if(document.querySelector('.nav-item.active')?.dataset.page==='log') loadLog(); },30000);
 // ═══════════════════════════════════════════════════════
 // EINSTELLUNGEN
@@ -3948,6 +3954,9 @@ async function loadSettings() {
   const bm = String(s.auto_backup_minute ?? 0).padStart(2,'0');
   document.getElementById('cfg-auto-backup-time').value = `${bh}:${bm}`;
   document.getElementById('cfg-auto-backup-keep').value = s.auto_backup_keep ?? 30;
+  document.getElementById('cfg-space-name').value = s.space_name ?? '';
+  const _sn = s.space_name || '';
+  if (_sn) { document.getElementById('sidebar-space-sub').textContent = _sn; document.getElementById('login-space-sub').textContent = _sn; }
   // Topic-Dropdown füllen und Auswahl setzen
   _emergencyNtfyTopicId = s.emergency_ntfy_topic_id;
   const h = s.jwt_expire_minutes >= 60
@@ -3988,6 +3997,7 @@ async function saveSettings() {
     auto_backup_hour:          parseInt(document.getElementById('cfg-auto-backup-time').value.split(':')[0]) || 3,
     auto_backup_minute:        parseInt(document.getElementById('cfg-auto-backup-time').value.split(':')[1]) || 0,
     auto_backup_keep:          parseInt(document.getElementById('cfg-auto-backup-keep').value) || 30,
+    space_name:                document.getElementById('cfg-space-name').value.trim(),
   };
   const res = await PATCH('/settings', payload);
   if (res) { await loadSettings(); showToast('Einstellungen gespeichert', 'success'); }

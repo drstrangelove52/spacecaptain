@@ -74,7 +74,7 @@
   <img src="/SpaceCaptain.svg" class="logo" alt="SpaceCaptain">
   <div>
     <div class="header-title">SPACECAPTAIN</div>
-    <div class="header-sub">NAVIGATING CREATIVITY</div>
+    <div class="header-sub" id="header-sub">NAVIGATING CREATIVITY</div>
   </div>
   <div style="margin-left:auto;display:flex;align-items:center;gap:28px">
     <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
@@ -365,6 +365,7 @@ async function initDisplay() {
     window._tickerSpeed = s.ticker_speed || 80;
     window._tickerFontSize = s.ticker_font_size || 18;
     window._announcementFontSize = s.announcement_font_size || 20;
+    if (s.space_name) document.getElementById('header-sub').textContent = s.space_name.toUpperCase();
   } catch {}
   await loadAnnouncements();
   loadData();

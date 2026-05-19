@@ -243,6 +243,7 @@ class SystemSettings(Base):
     auto_backup_hour:           Mapped[int]            = mapped_column(Integer, default=3)
     auto_backup_minute:         Mapped[int]            = mapped_column(Integer, default=0)
     auto_backup_keep:           Mapped[int]            = mapped_column(Integer, default=30)
+    space_name:                 Mapped[str]            = mapped_column(String(100), default="")
 
 
 class NtfyTopic(Base):

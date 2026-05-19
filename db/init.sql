@@ -243,7 +243,8 @@ CREATE TABLE IF NOT EXISTS system_settings (
     auto_backup_enabled       TINYINT(1)   NOT NULL DEFAULT 0,
     auto_backup_hour          INT          NOT NULL DEFAULT 3,
     auto_backup_minute        INT          NOT NULL DEFAULT 0,
-    auto_backup_keep          INT          NOT NULL DEFAULT 30
+    auto_backup_keep          INT          NOT NULL DEFAULT 30,
+    space_name                VARCHAR(100) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT IGNORE INTO system_settings (id) VALUES (1);

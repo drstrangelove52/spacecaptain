@@ -45,6 +45,7 @@ class SettingsOut(BaseModel):
     auto_backup_hour: int = 3
     auto_backup_minute: int = 0
     auto_backup_keep: int = 30
+    space_name: str = ""
 
     class Config:
         from_attributes = True
@@ -83,6 +84,7 @@ class SettingsUpdate(BaseModel):
     auto_backup_hour: Optional[int] = None
     auto_backup_minute: Optional[int] = None
     auto_backup_keep: Optional[int] = None
+    space_name: Optional[str] = None
 
 
 @router.get("/public")
@@ -98,6 +100,7 @@ async def read_settings_public(db: AsyncSession = Depends(get_db)):
         "announcement": s.announcement or "",
         "announcement_font_size": s.announcement_font_size,
         "agb_text": s.agb_text or "",
+        "space_name": s.space_name or "",
     }
 
 
@@ -180,6 +183,8 @@ async def update_settings(
         row.auto_backup_minute = max(0, min(59, payload.auto_backup_minute))
     if payload.auto_backup_keep is not None:
         row.auto_backup_keep = max(1, payload.auto_backup_keep)
+    if payload.space_name is not None:
+        row.space_name = payload.space_name.strip()
     await db.commit()
     await db.refresh(row)
     await activity_log(db, LogType.settings_changed,

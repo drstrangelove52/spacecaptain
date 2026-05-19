@@ -279,6 +279,10 @@ async def run_migrations(engine: AsyncEngine) -> None:
             "backup_exported", "backup_imported",
         ])
 
+        # ── v1.19: Makerspace-Name ────────────────────────────────────────────────
+        await _add_column_if_missing(conn, "system_settings", "space_name",
+                                     "VARCHAR(100) NOT NULL DEFAULT ''")
+
         # ── v1.17: Maschinenkategorien ────────────────────────────────────────
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS machine_categories (
