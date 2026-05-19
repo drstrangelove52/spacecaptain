@@ -121,6 +121,7 @@ class MachineBase(BaseModel):
     plug_poll_interval_sec: Optional[int] = 60
     training_required: bool = True
     comment: Optional[str] = None
+    safety_notes: Optional[str] = None
 
 class MachineCreate(MachineBase):
     pass
@@ -142,6 +143,7 @@ class MachineUpdate(BaseModel):
     plug_poll_interval_sec: Optional[int] = None
     training_required: Optional[bool] = None
     comment: Optional[str] = None
+    safety_notes: Optional[str] = None
 
 class MachineOut(MachineBase):
     id: int

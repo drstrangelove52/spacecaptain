@@ -178,7 +178,7 @@
     <div id="ctrl-idle-warning" style="display:none"></div>
     <!-- Berechtigt -->
     <div id="ctrl-granted" style="display:none;flex-direction:column;gap:12px">
-      <button class="btn-big btn-on"  id="btn-on"  onclick="switchMachine('on')">⚡ EINSCHALTEN</button>
+      <button class="btn-big btn-on"  id="btn-on"  onclick="handleTurnOn()">⚡ EINSCHALTEN</button>
       <button class="btn-big btn-off" id="btn-off" onclick="switchMachine('off')">○ AUSSCHALTEN</button>
     </div>
 
@@ -220,6 +220,24 @@
     </div>
   </div>
 
+</div>
+
+<!-- SICHERHEITSHINWEISE -->
+<div id="screen-safety" style="position:fixed;inset:0;background:var(--bg);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px">
+  <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:18px">
+    <div style="text-align:center">
+      <div style="font-size:48px;margin-bottom:8px">⚠️</div>
+      <div style="font-family:var(--display);font-size:22px;font-weight:900;color:var(--accent);letter-spacing:2px">SICHERHEIT</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-top:4px" id="safety-machine-name"></div>
+    </div>
+    <div id="safety-notes-text" style="background:rgba(244,166,34,.06);border:1px solid rgba(244,166,34,.3);border-left:3px solid var(--accent);border-radius:8px;padding:16px 18px;font-size:14px;color:var(--text-mid);line-height:1.9;white-space:pre-wrap"></div>
+    <label style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:14px 16px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+      <input type="checkbox" id="safety-cb" onchange="document.getElementById('safety-btn').disabled=!this.checked" style="width:20px;height:20px;accent-color:var(--accent);cursor:pointer;flex-shrink:0">
+      <span style="font-size:13px;color:var(--text);line-height:1.4">Ich habe die Sicherheitshinweise gelesen und befolge sie</span>
+    </label>
+    <button id="safety-btn" class="btn-big btn-on" disabled onclick="confirmSafety()">⚡ EINSCHALTEN</button>
+    <button class="btn-secondary" onclick="document.getElementById('screen-safety').style.display='none'">← Abbrechen</button>
+  </div>
 </div>
 
 <!-- PASSWORT ÄNDERN -->
@@ -630,6 +648,24 @@ function goBackToDashboard() {
   showScreen('scan');
   // Dashboard direkt zeigen
   showGuestDashboard();
+}
+
+// ── Sicherheitshinweis vor Einschalten ────────────────
+function handleTurnOn() {
+  if (S.machine && S.machine.safety_notes) {
+    document.getElementById('safety-machine-name').textContent = S.machine.name.toUpperCase();
+    document.getElementById('safety-notes-text').textContent = S.machine.safety_notes;
+    document.getElementById('safety-cb').checked = false;
+    document.getElementById('safety-btn').disabled = true;
+    document.getElementById('screen-safety').style.display = 'flex';
+  } else {
+    switchMachine('on');
+  }
+}
+
+function confirmSafety() {
+  document.getElementById('screen-safety').style.display = 'none';
+  switchMachine('on');
 }
 
 // ── Switch ────────────────────────────────────────────

@@ -142,6 +142,7 @@ class Machine(Base):
     session_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
     total_hours:        Mapped[float]            = mapped_column(Float, default=0.0)
     comment:            Mapped[Optional[str]]   = mapped_column(Text)
+    safety_notes:       Mapped[Optional[str]]   = mapped_column(Text, default=None)
     qr_token:           Mapped[str]             = mapped_column(String(64), unique=True, nullable=False)
     created_at:         Mapped[datetime]        = mapped_column(DateTime, default=datetime.utcnow)
     updated_at:         Mapped[datetime]        = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -96,6 +96,7 @@ async def _machine_detail(machine: Machine) -> dict:
         "location":        machine.location or "—",
         "status":          machine.status,
         "comment":         machine.comment,
+        "safety_notes":    machine.safety_notes,
         "plug_type":       machine.plug_type,
         "plug_on":         plug_state.get("on"),
         "plug_supported":  plug_state.get("supported", False),

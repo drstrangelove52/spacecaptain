@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS machines (
     total_hours       FLOAT        NOT NULL DEFAULT 0,
     -- Sonstiges
     comment           TEXT,
+    safety_notes      TEXT DEFAULT NULL,
     qr_token          VARCHAR(64) NOT NULL UNIQUE,
     created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

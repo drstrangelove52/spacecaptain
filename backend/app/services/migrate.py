@@ -13,6 +13,10 @@ log = logging.getLogger(__name__)
 async def run_migrations(engine: AsyncEngine) -> None:
     async with engine.begin() as conn:
 
+        # ── v1.20: Sicherheitshinweise pro Maschine ───────────────────────────
+        await _add_column_if_missing(conn, "machines", "safety_notes",
+                                     "TEXT DEFAULT NULL")
+
         # ── v2.12: total_hours auf machines ──────────────────────────────────
         await _add_column_if_missing(conn, "machines", "total_hours",
                                      "FLOAT NOT NULL DEFAULT 0 AFTER session_started_at")
