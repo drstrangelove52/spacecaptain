@@ -420,6 +420,22 @@
 
     <!-- PLUG-POOL -->
     <div class="page" id="page-plugs">
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <div class="search-wrap" style="flex:1;min-width:200px"><span class="search-icon">🔍</span><input class="search-input" id="plug-search" placeholder="Name, IP, Notiz…" oninput="filterPlugs()"></div>
+        <select class="filter-input" id="plug-filter-type" onchange="filterPlugs()" style="width:150px">
+          <option value="">Alle Typen</option>
+          <option value="mystrom">myStrom</option>
+          <option value="shelly">Shelly Gen1</option>
+          <option value="shelly_gen2">Shelly Gen2+</option>
+        </select>
+        <select class="filter-input" id="plug-filter-assign" onchange="filterPlugs()" style="width:140px">
+          <option value="">Frei &amp; zugewiesen</option>
+          <option value="free">Nur freie</option>
+          <option value="assigned">Nur zugewiesene</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('plug-search').value='';document.getElementById('plug-filter-type').value='';document.getElementById('plug-filter-assign').value='';filterPlugs()">✕ Reset</button>
+      </div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:10px" id="plug-filter-count"></div>
       <div id="plug-list"><div class="loading"><div class="spinner"></div>Laden…</div></div>
     </div>
 
@@ -5113,6 +5129,7 @@ async function deleteTopic(id) {
 // PLUG-POOL
 // ═══════════════════════════════════════════════════════
 let _plugs = [];
+let _plugSort = {col: null, dir: 1};
 
 function _plugTypeLabel(t) {
   return {mystrom:'myStrom',shelly:'Shelly Gen1',shelly_gen2:'Shelly Gen2+'}[t] || t;
@@ -5125,11 +5142,58 @@ async function loadPlugs() {
   renderPlugs();
 }
 
+function sortPlugTable(col) {
+  if (_plugSort.col === col) _plugSort.dir *= -1;
+  else _plugSort = {col, dir: 1};
+  filterPlugs();
+}
+
+function _plugTh(label, col) {
+  const active = _plugSort.col === col;
+  const arrow = active ? (_plugSort.dir === 1 ? ' ▲' : ' ▼') : '';
+  const style = active ? 'color:var(--text-light);cursor:pointer' : 'cursor:pointer';
+  return `<th style="${style}" onclick="sortPlugTable('${col}')">${label}${arrow}</th>`;
+}
+
+function filterPlugs() {
+  const q = (document.getElementById('plug-search')?.value || '').toLowerCase();
+  const typeF = document.getElementById('plug-filter-type')?.value || '';
+  const assignF = document.getElementById('plug-filter-assign')?.value || '';
+
+  let filtered = _plugs.filter(p => {
+    if (q && !p.name.toLowerCase().includes(q) && !(p.plug_ip||'').toLowerCase().includes(q) && !(p.notes||'').toLowerCase().includes(q)) return false;
+    if (typeF && p.plug_type !== typeF) return false;
+    if (assignF === 'free' && p.machine_id) return false;
+    if (assignF === 'assigned' && !p.machine_id) return false;
+    return true;
+  });
+
+  const countEl = document.getElementById('plug-filter-count');
+  if (countEl) countEl.textContent = (q || typeF || assignF) ? `${filtered.length} von ${_plugs.length} Plugs` : '';
+
+  const sorted = [...filtered];
+  const {col, dir} = _plugSort;
+  if (col) {
+    sorted.sort((a, b) => {
+      const av = (col === 'machine_name' ? (a.machine_name || '') : (a[col] || '')).toString().toLowerCase();
+      const bv = (col === 'machine_name' ? (b.machine_name || '') : (b[col] || '')).toString().toLowerCase();
+      return av.localeCompare(bv, 'de') * dir;
+    });
+  } else {
+    sorted.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  }
+  renderPlugsFiltered(sorted);
+}
+
 function renderPlugs() {
-  const el = document.getElementById('plug-list');
-  if (!el) return;
   const _pb = document.getElementById('badge-plugs');
   if (_pb) { _pb.textContent = _plugs.length; _pb.style.display = ''; }
+  filterPlugs();
+}
+
+function renderPlugsFiltered(plugs) {
+  const el = document.getElementById('plug-list');
+  if (!el) return;
   if (!_plugs.length) {
     el.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--text-dim)">
       <div style="font-size:32px;margin-bottom:12px">🔌</div>
@@ -5138,12 +5202,16 @@ function renderPlugs() {
     </div>`;
     return;
   }
+  if (!plugs.length) {
+    el.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-dim)">Keine Plugs gefunden.</div>`;
+    return;
+  }
   el.innerHTML = `<table class="data-table" style="width:100%">
     <thead><tr>
-      <th>Name</th><th>Typ</th><th>IP-Adresse</th><th>Auth</th><th>Zugewiesen an</th><th></th>
+      ${_plugTh('Name','name')}${_plugTh('Typ','plug_type')}${_plugTh('IP-Adresse','plug_ip')}<th>Token</th>${_plugTh('Zugewiesen an','machine_name')}<th></th>
     </tr></thead>
     <tbody>
-    ${_plugs.map(p => `<tr>
+    ${plugs.map(p => `<tr>
       <td><strong>${escHtml(p.name)}</strong>${p.notes?`<div style="font-size:11px;color:var(--text-dim);margin-top:2px">${escHtml(p.notes)}</div>`:''}</td>
       <td><span class="badge badge-gray">${_plugTypeLabel(p.plug_type)}</span></td>
       <td><code style="font-size:12px;background:var(--surface2);padding:2px 6px;border-radius:4px">${escHtml(p.plug_ip)}</code></td>
