@@ -3223,7 +3223,7 @@ function showAddMachine() {
     <div class="form-group"><label class="form-label">Smart Plug</label>
       <select class="form-input" id="mc-plug-pool" onchange="updateMcIdleRow()">
         <option value="">— Kein Smart Plug —</option>
-        ${(_plugs||[]).map(p=>`<option value="${p.id}">${escHtml(p.name)} · ${_plugTypeLabel(p.plug_type)} · ${escHtml(p.plug_ip)}</option>`).join('')}
+        ${(_plugs||[]).map(p=>{const others=(p.machines||[]).map(m=>m.name).join(', ');return`<option value="${p.id}">${escHtml(p.name)} · ${_plugTypeLabel(p.plug_type)} · ${escHtml(p.plug_ip)}${others?` ⚠ auch: ${escHtml(others)}`:''}</option>`;}).join('')}
       </select>
       ${!(_plugs&&_plugs.length)?`<div style="font-size:11px;color:var(--text-dim);margin-top:4px">Pool ist leer — <a href="#" onclick="navigateTo('plugs');closeModal();return false" style="color:var(--accent)">Plugs verwalten →</a></div>`:''}
     </div>
@@ -3248,6 +3248,11 @@ function showAddMachine() {
     const name=document.getElementById('mc-name').value.trim();
     if (!name) { showToast('Name erforderlich','error'); return; }
     const plugId=document.getElementById('mc-plug-pool').value;
+    if (plugId) {
+      const selPlug=_plugs.find(p=>p.id===parseInt(plugId));
+      const others=(selPlug?.machines||[]).map(m=>m.name);
+      if (others.length>0 && !confirm(`Plug «${selPlug.name}» ist bereits «${others.join(', ')}» zugewiesen.\nBeide Maschinen schalten dann gleichzeitig.\nTrotzdem zuweisen?`)) return;
+    }
     const idle_w=document.getElementById('mc-idlew')?.value;
     const idle_t=document.getElementById('mc-idlet')?.value;
     const poll_s=document.getElementById('mc-poll')?.value;
@@ -3283,7 +3288,7 @@ function editMachine(id) {
     <div class="form-group"><label class="form-label">Smart Plug</label>
       <select class="form-input" id="e-plug-pool" onchange="updateEditIdleRow()">
         <option value="">— Kein Smart Plug —</option>
-        ${(_plugs||[]).map(p=>`<option value="${p.id}" ${m.plug_id===p.id?'selected':''}>${escHtml(p.name)} · ${_plugTypeLabel(p.plug_type)} · ${escHtml(p.plug_ip)}</option>`).join('')}
+        ${(_plugs||[]).map(p=>{const others=(p.machines||[]).filter(x=>x.id!==m.id).map(x=>x.name).join(', ');return`<option value="${p.id}" ${m.plug_id===p.id?'selected':''}>${escHtml(p.name)} · ${_plugTypeLabel(p.plug_type)} · ${escHtml(p.plug_ip)}${others?` ⚠ auch: ${escHtml(others)}`:''}</option>`;}).join('')}
       </select>
       ${m.plug_ip&&!m.plug_id?`<div style="font-size:11px;color:var(--accent);margin-top:4px">⚠ Direkt konfigurierter Plug (${escHtml(m.plug_ip)}) — im Pool anlegen und hier zuweisen.</div>`:''}
       ${!(_plugs&&_plugs.length)?`<div style="font-size:11px;color:var(--text-dim);margin-top:4px">Pool ist leer — <a href="#" onclick="navigateTo('plugs');closeModal();return false" style="color:var(--accent)">Plugs verwalten →</a></div>`:''}
@@ -3310,10 +3315,13 @@ function editMachine(id) {
     const oldPlugId=m.plug_id?String(m.plug_id):'';
     if (newPlugId!==oldPlugId) {
       if (newPlugId) {
+        const selPlug=_plugs.find(p=>p.id===parseInt(newPlugId));
+        const others=(selPlug?.machines||[]).filter(x=>x.id!==id).map(x=>x.name);
+        if (others.length>0 && !confirm(`Plug «${selPlug.name}» ist bereits «${others.join(', ')}» zugewiesen.\nBeide Maschinen schalten dann gleichzeitig.\nTrotzdem zuweisen?`)) return;
         await POST(`/plugs/${newPlugId}/assign?machine_id=${id}`,{});
       } else {
-        const curPlug=_plugs.find(p=>p.machine_id===id);
-        if (curPlug) await POST(`/plugs/${curPlug.id}/unassign`,{});
+        const curPlug=_plugs.find(p=>(p.machines||[]).some(x=>x.id===id));
+        if (curPlug) await POST(`/plugs/${curPlug.id}/unassign?machine_id=${id}`,{});
       }
     }
     const idle_w=document.getElementById('e-idlew')?.value;
@@ -5268,8 +5276,8 @@ function filterPlugs() {
   let filtered = _plugs.filter(p => {
     if (q && !p.name.toLowerCase().includes(q) && !(p.plug_ip||'').toLowerCase().includes(q) && !(p.notes||'').toLowerCase().includes(q)) return false;
     if (typeF && p.plug_type !== typeF) return false;
-    if (assignF === 'free' && p.machine_id) return false;
-    if (assignF === 'assigned' && !p.machine_id) return false;
+    if (assignF === 'free' && p.machines && p.machines.length > 0) return false;
+    if (assignF === 'assigned' && (!p.machines || p.machines.length === 0)) return false;
     return true;
   });
 
@@ -5280,8 +5288,8 @@ function filterPlugs() {
   const {col, dir} = _plugSort;
   if (col) {
     sorted.sort((a, b) => {
-      const av = (col === 'machine_name' ? (a.machine_name || '') : (a[col] || '')).toString().toLowerCase();
-      const bv = (col === 'machine_name' ? (b.machine_name || '') : (b[col] || '')).toString().toLowerCase();
+      const av = (col === 'machine_name' ? (a.machines&&a.machines[0]?.name||'') : (a[col]||'')).toString().toLowerCase();
+      const bv = (col === 'machine_name' ? (b.machines&&b.machines[0]?.name||'') : (b[col]||'')).toString().toLowerCase();
       return av.localeCompare(bv, 'de') * dir;
     });
   } else {
@@ -5321,15 +5329,15 @@ function renderPlugsFiltered(plugs) {
       <td><span class="badge badge-gray">${_plugTypeLabel(p.plug_type)}</span></td>
       <td><code style="font-size:12px;background:var(--surface2);padding:2px 6px;border-radius:4px">${escHtml(p.plug_ip)}</code></td>
       <td>${p.plug_token?'<span style="color:var(--text-dim)">••••••</span>':'<span style="color:var(--text-dim)">—</span>'}</td>
-      <td>${p.machine_id
-        ? `<span style="color:var(--success)">✓ ${escHtml(p.machine_name||'Maschine')}</span>`
+      <td>${(p.machines&&p.machines.length)
+        ? p.machines.map(m=>`<span style="color:var(--success);display:block">✓ ${escHtml(m.name)}</span>`).join('')
         : '<span style="color:var(--text-dim)">— frei —</span>'
       }</td>
       <td style="white-space:nowrap;text-align:right">
-        ${!p.machine_id ? `<button class="btn btn-ghost btn-sm" onclick="testSwitchPlug(${p.id},'on')" title="Test: EIN schalten" style="color:var(--success)">▶ EIN</button>
+        ${!(p.machines&&p.machines.length) ? `<button class="btn btn-ghost btn-sm" onclick="testSwitchPlug(${p.id},'on')" title="Test: EIN schalten" style="color:var(--success)">▶ EIN</button>
         <button class="btn btn-ghost btn-sm" onclick="testSwitchPlug(${p.id},'off')" title="Test: AUS schalten" style="color:var(--text-dim)">■ AUS</button>` : ''}
         <button class="btn btn-ghost btn-sm" onclick="showEditPlug(${p.id})" title="Bearbeiten">✏️</button>
-        <button class="btn btn-ghost btn-sm" onclick="deletePlug(${p.id})" ${p.machine_id?'disabled title="Zuerst Zuweisung bei der Maschine aufheben"':''} style="${p.machine_id?'opacity:.4':''};color:var(--error)">🗑</button>
+        <button class="btn btn-ghost btn-sm" onclick="deletePlug(${p.id})" ${(p.machines&&p.machines.length)?'disabled title="Zuerst alle Zuweisungen aufheben"':''} style="${(p.machines&&p.machines.length)?'opacity:.4':''};color:var(--error)">🗑</button>
       </td>
     </tr>`).join('')}
     </tbody>

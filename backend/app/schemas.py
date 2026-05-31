@@ -250,8 +250,7 @@ class PlugOut(BaseModel):
     plug_token: Optional[str] = None
     notes: Optional[str] = None
     created_at: datetime
-    machine_id: Optional[int] = None
-    machine_name: Optional[str] = None
+    machines: list = []  # [{id, name}, ...]
 
     class Config:
         from_attributes = True
