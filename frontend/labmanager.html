@@ -5221,6 +5221,8 @@ function renderPlugsFiltered(plugs) {
         : '<span style="color:var(--text-dim)">— frei —</span>'
       }</td>
       <td style="white-space:nowrap;text-align:right">
+        ${!p.machine_id ? `<button class="btn btn-ghost btn-sm" onclick="testSwitchPlug(${p.id},'on')" title="Test: EIN schalten" style="color:var(--success)">▶ EIN</button>
+        <button class="btn btn-ghost btn-sm" onclick="testSwitchPlug(${p.id},'off')" title="Test: AUS schalten" style="color:var(--text-dim)">■ AUS</button>` : ''}
         <button class="btn btn-ghost btn-sm" onclick="showEditPlug(${p.id})" title="Bearbeiten">✏️</button>
         <button class="btn btn-ghost btn-sm" onclick="deletePlug(${p.id})" ${p.machine_id?'disabled title="Zuerst Zuweisung bei der Maschine aufheben"':''} style="${p.machine_id?'opacity:.4':''};color:var(--error)">🗑</button>
       </td>
@@ -5287,6 +5289,17 @@ async function deletePlug(id) {
   if (!res) return;
   await loadPlugs();
   showToast('Plug gelöscht', 'warn');
+}
+
+async function testSwitchPlug(id, action) {
+  const p = _plugs.find(x=>x.id===id);
+  const res = await POST(`/plugs/${id}/switch?action=${action}`, {});
+  if (!res) return;
+  if (res.ok) {
+    showToast(`${escHtml(p?.name||'Plug')}: ${action==='on'?'Eingeschaltet ▶':'Ausgeschaltet ■'}`, 'success');
+  } else {
+    showToast(res.message || 'Fehler beim Schalten', 'error');
+  }
 }
 
 

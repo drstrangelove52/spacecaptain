@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -7,6 +8,7 @@ from app.database import get_db
 from app.models import Plug, Machine, User, PlugType
 from app.schemas import PlugCreate, PlugUpdate, PlugOut
 from app.services.auth import get_current_user
+from app.services.plug import switch_plug
 
 router = APIRouter(prefix="/plugs", tags=["plugs"])
 
@@ -147,3 +149,32 @@ async def unassign_plug(
 
     await db.commit()
     return {"ok": True}
+
+
+@router.post("/{plug_id}/switch")
+async def test_switch_plug(
+    plug_id: int,
+    action: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Schaltet einen freien Plug zum Test — nur wenn noch keiner Maschine zugewiesen."""
+    result = await db.execute(select(Plug).where(Plug.id == plug_id))
+    plug = result.scalar_one_or_none()
+    if not plug:
+        raise HTTPException(404, "Plug nicht gefunden")
+
+    assigned = await db.execute(select(Machine.id).where(Machine.plug_id == plug_id))
+    if assigned.scalar_one_or_none():
+        raise HTTPException(400, "Plug ist einer Maschine zugewiesen — Test nur für freie Plugs")
+
+    if action not in ("on", "off"):
+        raise HTTPException(400, "action muss 'on' oder 'off' sein")
+
+    proxy = SimpleNamespace(
+        plug_type=plug.plug_type,
+        plug_ip=plug.plug_ip,
+        plug_token=plug.plug_token,
+    )
+    ok, msg = await switch_plug(proxy, action)
+    return {"ok": ok, "message": msg}
