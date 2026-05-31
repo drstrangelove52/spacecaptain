@@ -233,7 +233,6 @@ class PlugCreate(BaseModel):
     plug_type: str
     plug_ip: str
     plug_token: Optional[str] = None
-    plug_poll_interval_sec: int = 60
     notes: Optional[str] = None
 
 class PlugUpdate(BaseModel):
@@ -241,7 +240,6 @@ class PlugUpdate(BaseModel):
     plug_type: Optional[str] = None
     plug_ip: Optional[str] = None
     plug_token: Optional[str] = None
-    plug_poll_interval_sec: Optional[int] = None
     notes: Optional[str] = None
 
 class PlugOut(BaseModel):
@@ -250,7 +248,6 @@ class PlugOut(BaseModel):
     plug_type: str
     plug_ip: str
     plug_token: Optional[str] = None
-    plug_poll_interval_sec: int = 60
     notes: Optional[str] = None
     created_at: datetime
     machine_id: Optional[int] = None

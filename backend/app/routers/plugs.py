@@ -24,7 +24,6 @@ async def _plug_out(plug: Plug, db: AsyncSession) -> dict:
         "plug_type": plug.plug_type,
         "plug_ip": plug.plug_ip,
         "plug_token": plug.plug_token,
-        "plug_poll_interval_sec": plug.plug_poll_interval_sec,
         "notes": plug.notes,
         "created_at": plug.created_at,
         "machine_id": row[0] if row else None,
@@ -122,7 +121,6 @@ async def assign_plug(
     machine.plug_type = PlugType(plug.plug_type)
     machine.plug_ip = plug.plug_ip
     machine.plug_token = plug.plug_token
-    machine.plug_poll_interval_sec = plug.plug_poll_interval_sec or 60
 
     await db.commit()
     return {"ok": True}
