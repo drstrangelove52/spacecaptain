@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
 
-from app.config import get_settings, APP_VERSION
+from app.config import get_settings, APP_VERSION, BUILD_NR
 from app.database import engine, Base
 from app.services.migrate import run_migrations
 from app.routers import auth, users, guests, machines, permissions, qr, dashboard, guest_auth, backup, maintenance, nfc, plugs as plugs_router
@@ -87,7 +87,7 @@ app.add_middleware(
 
 @app.get("/api/version")
 async def get_version():
-    return {"version": APP_VERSION}
+    return {"version": APP_VERSION, "build": BUILD_NR}
 
 app.include_router(auth.router,         prefix="/api")
 app.include_router(users.router,        prefix="/api")

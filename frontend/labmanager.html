@@ -4047,11 +4047,11 @@ function filterTable(input,tableId) {
 // INIT
 // ═══════════════════════════════════════════════════════
 fetch('/api/version').then(r=>r.json()).then(d=>{
-  const v = `v${d.version}`;
+  const build = d.build ? ` · Build ${d.build}` : '';
   const s = document.getElementById('app-version-sidebar');
   const l = document.getElementById('app-version-login');
-  if (s) s.textContent = v;
-  if (l) l.textContent = `Version ${d.version}`;
+  if (s) s.textContent = `v${d.version}${build}`;
+  if (l) l.textContent = `Version ${d.version}${build}`;
 }).catch(()=>{});
 
 const _ltParam = new URLSearchParams(window.location.search).get('lt');
