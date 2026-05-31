@@ -3223,7 +3223,7 @@ function showAddMachine() {
     <div class="form-group"><label class="form-label">Smart Plug</label>
       <select class="form-input" id="mc-plug-pool" onchange="updateMcIdleRow()">
         <option value="">— Kein Smart Plug —</option>
-        ${(_plugs||[]).map(p=>{const others=(p.machines||[]).map(m=>m.name).join(', ');return`<option value="${p.id}">${escHtml(p.name)} · ${_plugTypeLabel(p.plug_type)} · ${escHtml(p.plug_ip)}${others?` ⚠ auch: ${escHtml(others)}`:''}</option>`;}).join('')}
+        ${[...(_plugs||[])].sort((a,b)=>a.name.localeCompare(b.name,'de')).map(p=>{const others=(p.machines||[]).map(m=>m.name).join(', ');return`<option value="${p.id}">${escHtml(p.name)} · ${_plugTypeLabel(p.plug_type)} · ${escHtml(p.plug_ip)}${others?` ⚠ auch: ${escHtml(others)}`:''}</option>`;}).join('')}
       </select>
       ${!(_plugs&&_plugs.length)?`<div style="font-size:11px;color:var(--text-dim);margin-top:4px">Pool ist leer — <a href="#" onclick="navigateTo('plugs');closeModal();return false" style="color:var(--accent)">Plugs verwalten →</a></div>`:''}
     </div>
@@ -3288,7 +3288,7 @@ function editMachine(id) {
     <div class="form-group"><label class="form-label">Smart Plug</label>
       <select class="form-input" id="e-plug-pool" onchange="updateEditIdleRow()">
         <option value="">— Kein Smart Plug —</option>
-        ${(_plugs||[]).map(p=>{const others=(p.machines||[]).filter(x=>x.id!==m.id).map(x=>x.name).join(', ');return`<option value="${p.id}" ${m.plug_id===p.id?'selected':''}>${escHtml(p.name)} · ${_plugTypeLabel(p.plug_type)} · ${escHtml(p.plug_ip)}${others?` ⚠ auch: ${escHtml(others)}`:''}</option>`;}).join('')}
+        ${[...(_plugs||[])].sort((a,b)=>a.name.localeCompare(b.name,'de')).map(p=>{const others=(p.machines||[]).filter(x=>x.id!==m.id).map(x=>x.name).join(', ');return`<option value="${p.id}" ${m.plug_id===p.id?'selected':''}>${escHtml(p.name)} · ${_plugTypeLabel(p.plug_type)} · ${escHtml(p.plug_ip)}${others?` ⚠ auch: ${escHtml(others)}`:''}</option>`;}).join('')}
       </select>
       ${m.plug_ip&&!m.plug_id?`<div style="font-size:11px;color:var(--accent);margin-top:4px">⚠ Direkt konfigurierter Plug (${escHtml(m.plug_ip)}) — im Pool anlegen und hier zuweisen.</div>`:''}
       ${!(_plugs&&_plugs.length)?`<div style="font-size:11px;color:var(--text-dim);margin-top:4px">Pool ist leer — <a href="#" onclick="navigateTo('plugs');closeModal();return false" style="color:var(--accent)">Plugs verwalten →</a></div>`:''}
