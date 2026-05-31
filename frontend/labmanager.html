@@ -924,7 +924,7 @@
           <div>
             <div style="font-family:var(--display);font-size:24px;font-weight:900;color:var(--accent);letter-spacing:2px">SpaceCaptain</div>
             <div id="app-version-login" style="font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px;margin-top:4px"></div>
-            <div style="font-size:13px;color:var(--text-mid);margin-top:8px;line-height:1.6">SpaceCaptain ist das Verwaltungssystem für deinen Makerspace — Berechtigungen, Maschinensteuerung per Smart Plug und Maschinenpflege in einer App.</div>
+            <div style="font-size:13px;color:var(--text-mid);margin-top:8px;line-height:1.6">SpaceCaptain ist das Verwaltungssystem für deinen Makerspace — Berechtigungen, Maschinensteuerung per Smart Plug, Plug-Pool-Verwaltung und Maschinenpflege in einer App.</div>
           </div>
         </div>
 
@@ -1996,7 +1996,7 @@
             <div class="help-article">
               <div class="help-article-title">Was ist im Backup enthalten?</div>
               <div class="help-article-body">
-                <strong>Enthalten:</strong> Einstellungen, Benutzer, Gäste, Maschinen, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Mitteilungen, ntfy-Topics.<br><br>
+                <strong>Enthalten:</strong> Einstellungen, Benutzer, Gäste, Maschinen, Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Mitteilungen, ntfy-Topics.<br><br>
                 <strong>Nicht enthalten:</strong> Aktive Warteschlangen-Einträge und NFC-Gast-Tokens (temporäre Laufzeitdaten, die nach einem Restore automatisch neu erstellt werden).
               </div>
             </div>
@@ -2024,7 +2024,7 @@
                 <ol>
                   <li>Smart Plug erreichbar? Browser öffnen, Plug-IP direkt aufrufen (<code>http://192.168.1.x</code>)</li>
                   <li>Plug im gleichen Netzwerk wie Server?</li>
-                  <li>IP-Adresse geändert? In den Maschineneinstellungen aktualisieren</li>
+                  <li>IP-Adresse geändert? Im Plug-Pool (Ausstattung → Plug-Pool → ✏) aktualisieren — Änderung wird automatisch auf die zugewiesene Maschine übertragen</li>
                   <li>Maschinen-Status auf «Online»?</li>
                 </ol>
                 <div class="help-tip"><strong>Tipp:</strong> Im Aktivitätslog sieht man Fehler beim Schalten mit genauer Fehlermeldung.</div>

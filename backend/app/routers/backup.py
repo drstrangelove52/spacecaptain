@@ -13,6 +13,7 @@ from app.models import (
     User, Guest, Machine, Permission,
     ActivityLog, MachineSession, LogType, SessionEndedBy,
     MaintenanceInterval, MaintenanceRecord, SystemSettings, Announcement, NtfyTopic,
+    Plug,
 )
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
@@ -45,14 +46,17 @@ async def _build_export_data(db: AsyncSession) -> dict:
     maint_recs = (await db.execute(select(MaintenanceRecord).order_by(MaintenanceRecord.id))).scalars().all()
     announcements = (await db.execute(select(Announcement).order_by(Announcement.id))).scalars().all()
     ntfy_topics   = (await db.execute(select(NtfyTopic).order_by(NtfyTopic.id))).scalars().all()
+    plugs         = (await db.execute(select(Plug).order_by(Plug.id))).scalars().all()
 
     # Stabile Referenzen statt IDs
     guest_by_id   = {g.id: g.username  for g in guests}
     machine_by_id = {m.id: m.qr_token  for m in machines}
     user_by_id    = {u.id: u.email     for u in users}
 
+    plug_by_id = {p.id: p.plug_ip for p in plugs}
+
     return {
-        "version": "2.6",
+        "version": "2.7",
         "app_version": APP_VERSION,
         "exported_at": datetime.utcnow().isoformat(),
         "settings": {
@@ -76,14 +80,23 @@ async def _build_export_data(db: AsyncSession) -> dict:
             "phone": g.phone, "note": g.note, "is_active": g.is_active,
             "password_hash": g.password_hash, "ntfy_topic": g.ntfy_topic,
         } for g in guests],
+        "plugs": [{
+            "name":       p.name,
+            "plug_type":  p.plug_type,
+            "plug_ip":    p.plug_ip,
+            "plug_token": p.plug_token,
+            "notes":      p.notes,
+        } for p in plugs],
         "machines": [{
             "name": m.name, "category": m.category, "manufacturer": m.manufacturer,
-            "model": m.model, "location": m.location, "status": m.status,
+            "model": m.model, "serial_number": m.serial_number,
+            "location": m.location, "status": m.status,
             "plug_type": m.plug_type, "plug_ip": m.plug_ip, "plug_extra": m.plug_extra,
-            "plug_token": m.plug_token, "idle_power_w": m.idle_power_w,
+            "plug_token": m.plug_token, "plug_pool_ip": plug_by_id.get(m.plug_id),
+            "idle_power_w": m.idle_power_w,
             "idle_timeout_min": m.idle_timeout_min, "plug_poll_interval_sec": m.plug_poll_interval_sec,
             "training_required": m.training_required, "total_hours": m.total_hours,
-            "comment": m.comment, "qr_token": m.qr_token,
+            "comment": m.comment, "safety_notes": m.safety_notes, "qr_token": m.qr_token,
         } for m in machines],
         "permissions": [{
             "guest_username":    guest_by_id.get(p.guest_id),
@@ -242,7 +255,7 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
     #   • Niemals breaking changes ohne Versions-Prüfung (payload.get("version")) einbauen.
     backup_version = payload.get("version", "unbekannt")
 
-    stats = {"users": 0, "guests": 0, "machines": 0, "permissions": 0,
+    stats = {"users": 0, "guests": 0, "machines": 0, "plugs": 0, "permissions": 0,
              "sessions": 0, "activity_log": 0, "announcements": 0, "ntfy_topics": 0,
              "maintenance_intervals": 0, "maintenance_records": 0, "skipped": 0, "updated": 0}
 
@@ -301,20 +314,52 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
 
     await db.flush()
 
+    # ── Plug-Pool ─────────────────────────────────────────
+    existing_plugs = {p.plug_ip: p for p in (await db.execute(select(Plug))).scalars().all()}
+    for p in payload.get("plugs", []):
+        if not p.get("plug_ip"):
+            continue
+        if p["plug_ip"] in existing_plugs:
+            if overwrite:
+                row = existing_plugs[p["plug_ip"]]
+                row.name = p.get("name", row.name)
+                row.plug_type = p.get("plug_type", row.plug_type)
+                row.plug_token = p.get("plug_token")
+                row.notes = p.get("notes")
+                stats["updated"] += 1
+            else:
+                stats["skipped"] += 1
+            continue
+        db.add(Plug(
+            name=p["name"], plug_type=p["plug_type"],
+            plug_ip=p["plug_ip"], plug_token=p.get("plug_token"),
+            notes=p.get("notes"),
+        ))
+        stats["plugs"] += 1
+
+    await db.flush()
+
+    # Plug-Map für Verlinkung mit Maschinen
+    plug_ip_map = {p.plug_ip: p.id for p in (await db.execute(select(Plug))).scalars().all()}
+
     # ── Maschinen ─────────────────────────────────────────
     existing_machines = {m.qr_token: m for m in (await db.execute(select(Machine))).scalars().all()}
     for m in payload.get("machines", []):
+        pool_ip = m.get("plug_pool_ip")
+        plug_id = plug_ip_map.get(pool_ip) if pool_ip else None
         if m.get("qr_token") in existing_machines:
             if overwrite:
                 row = existing_machines[m["qr_token"]]
                 row.name = m["name"]; row.category = m.get("category", row.category)
                 row.manufacturer = m.get("manufacturer"); row.model = m.get("model")
+                row.serial_number = m.get("serial_number")
                 row.location = m.get("location"); row.status = m.get("status", row.status)
                 row.plug_type = m.get("plug_type", row.plug_type); row.plug_ip = m.get("plug_ip")
                 row.plug_extra = m.get("plug_extra"); row.plug_token = m.get("plug_token")
+                row.plug_id = plug_id
                 row.idle_power_w = m.get("idle_power_w"); row.idle_timeout_min = m.get("idle_timeout_min")
                 row.training_required = m.get("training_required", row.training_required)
-                row.comment = m.get("comment")
+                row.comment = m.get("comment"); row.safety_notes = m.get("safety_notes")
                 stats["updated"] += 1
             else:
                 stats["skipped"] += 1
@@ -322,11 +367,14 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
         db.add(Machine(
             name=m["name"], category=m.get("category", "Sonstiges"),
             manufacturer=m.get("manufacturer"), model=m.get("model"),
+            serial_number=m.get("serial_number"),
             location=m.get("location"), status=m.get("status", "online"),
             plug_type=m.get("plug_type", "none"), plug_ip=m.get("plug_ip"),
             plug_extra=m.get("plug_extra"), plug_token=m.get("plug_token"),
+            plug_id=plug_id,
             idle_power_w=m.get("idle_power_w"), idle_timeout_min=m.get("idle_timeout_min"),
-            comment=m.get("comment"), qr_token=m["qr_token"],
+            comment=m.get("comment"), safety_notes=m.get("safety_notes"),
+            qr_token=m["qr_token"],
         ))
         stats["machines"] += 1
 
