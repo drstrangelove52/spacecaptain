@@ -5251,7 +5251,7 @@ function _plugTypeLabel(t) {
 function _plugOptionLabel(p, excludeMachineId) {
   const others = (p.machines||[]).filter(x=>x.id!==excludeMachineId).map(x=>x.name);
   let label = `${p.name} · ${_plugTypeLabel(p.plug_type)} · ${p.plug_ip}`;
-  if (others.length) label += `  →  bereits zugewiesen: ${others.join(', ')}`;
+  if (others.length) label += `  →  ${others.join(', ')}`;
   return label;
 }
 
