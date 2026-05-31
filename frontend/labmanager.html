@@ -288,7 +288,7 @@
     <div class="nav-item" data-page="labmanager" onclick="navigate(this)"><span class="nav-icon">🧑‍💼</span> Lab Manager <span class="nav-badge" id="badge-lm">0</span></div>
     <div class="nav-section">AUSSTATTUNG</div>
     <div class="nav-item" data-page="machines" onclick="navigate(this)"><span class="nav-icon">🏭</span> Maschinen <span class="nav-badge" id="badge-machines">0</span></div>
-    <div class="nav-item" data-page="plugs" onclick="navigate(this)"><span class="nav-icon">🔌</span> Plug-Pool <span class="nav-badge" id="badge-plugs" style="display:none">0</span></div>
+    <div class="nav-item" data-page="plugs" onclick="navigate(this)"><span class="nav-icon">🔌</span> Plug-Pool <span class="nav-badge" id="badge-plugs">0</span></div>
     <div class="nav-item" data-page="permissions" onclick="navigate(this)"><span class="nav-icon">🔑</span> Berechtigungen</div>
     <div class="nav-section">SYSTEM</div>
     <div class="nav-item" data-page="log" onclick="navigate(this)"><span class="nav-icon">📋</span> Aktivitätslog</div>
@@ -2385,7 +2385,11 @@ async function loadAll() {
   if (users)     cache.users    = users;
   if (machines)  cache.machines = machines;
   if (perms)     cache.permissions = perms;
-  if (plugsData) _plugs = plugsData;
+  if (plugsData) {
+    _plugs = plugsData;
+    const _pb = document.getElementById('badge-plugs');
+    if (_pb) { _pb.textContent = _plugs.length; _pb.style.display = ''; }
+  }
   if (stats) {
     document.getElementById('badge-guests').textContent   = stats.total_guests;
     document.getElementById('badge-lm').textContent       = stats.total_managers;
@@ -5124,6 +5128,8 @@ async function loadPlugs() {
 function renderPlugs() {
   const el = document.getElementById('plug-list');
   if (!el) return;
+  const _pb = document.getElementById('badge-plugs');
+  if (_pb) { _pb.textContent = _plugs.length; _pb.style.display = ''; }
   if (!_plugs.length) {
     el.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--text-dim)">
       <div style="font-size:32px;margin-bottom:12px">🔌</div>

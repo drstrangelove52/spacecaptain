@@ -28,6 +28,21 @@ async def run_migrations(engine: AsyncEngine) -> None:
         """))
         await _add_column_if_missing(conn, "machines", "plug_id",
                                      "INT UNSIGNED DEFAULT NULL")
+        # plug_poll_interval_sec: add if missing; also fix NOT NULL w/o DEFAULT
+        # (SQLAlchemy create_all creates columns without server-side DEFAULT)
+        await _add_column_if_missing(conn, "plugs", "plug_poll_interval_sec",
+                                     "INT UNSIGNED DEFAULT 60")
+        _fix_res = await conn.execute(text(
+            "SELECT COLUMN_DEFAULT FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='plugs' "
+            "AND COLUMN_NAME='plug_poll_interval_sec'"
+        ))
+        _fix_row = _fix_res.fetchone()
+        if _fix_row and _fix_row[0] is None:
+            await conn.execute(text(
+                "ALTER TABLE plugs MODIFY COLUMN plug_poll_interval_sec INT UNSIGNED NULL DEFAULT 60"
+            ))
+            log.info("Migration: plugs.plug_poll_interval_sec DEFAULT 60 gesetzt")
 
         # ── v1.20: Sicherheitshinweise pro Maschine ───────────────────────────
         await _add_column_if_missing(conn, "machines", "safety_notes",
