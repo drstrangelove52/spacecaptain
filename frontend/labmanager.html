@@ -5249,18 +5249,9 @@ function _plugTypeLabel(t) {
 }
 
 function _plugOptionLabel(p, excludeMachineId) {
-  const others = (p.machines||[]).filter(x=>x.id!==excludeMachineId).map(x=>{
-    const mc = cache.machines.find(c=>c.id===x.id);
-    return mc&&mc.in_use ? `${x.name} ● aktiv` : x.name;
-  });
-  const selfActive = excludeMachineId && (p.machines||[]).some(x=>{
-    if (x.id!==excludeMachineId) return false;
-    const mc=cache.machines.find(c=>c.id===x.id);
-    return mc&&mc.in_use;
-  });
-  let label=`${p.name} · ${_plugTypeLabel(p.plug_type)} · ${p.plug_ip}`;
-  if (selfActive)           label+=` ● IN BENUTZUNG`;
-  if (others.length)        label+=` ⚠ auch: ${others.join(', ')}`;
+  const others = (p.machines||[]).filter(x=>x.id!==excludeMachineId).map(x=>x.name);
+  let label = `${p.name} · ${_plugTypeLabel(p.plug_type)} · ${p.plug_ip}`;
+  if (others.length) label += `  →  bereits zugewiesen: ${others.join(', ')}`;
   return label;
 }
 
