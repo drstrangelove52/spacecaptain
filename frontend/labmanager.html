@@ -2377,14 +2377,15 @@ function fmtLocalDate(isoStr) {
 
 async function loadAll() {
   // Basis-Daten zuerst laden und sofort rendern (kein Plug-Status nötig)
-  const [guests,users,machines,perms,stats,cats] = await Promise.all([
-    GET('/guests'),GET('/users'),GET('/machines'),GET('/permissions'),GET('/dashboard'),GET('/categories')
+  const [guests,users,machines,perms,stats,cats,plugsData] = await Promise.all([
+    GET('/guests'),GET('/users'),GET('/machines'),GET('/permissions'),GET('/dashboard'),GET('/categories'),GET('/plugs')
   ]);
-  if (cats) { cache.categories=cats; _refreshCatFilter(); }
-  if (guests)   cache.guests   = guests;
-  if (users)    cache.users    = users;
-  if (machines) cache.machines = machines;
-  if (perms)    cache.permissions = perms;
+  if (cats)      { cache.categories=cats; _refreshCatFilter(); }
+  if (guests)    cache.guests   = guests;
+  if (users)     cache.users    = users;
+  if (machines)  cache.machines = machines;
+  if (perms)     cache.permissions = perms;
+  if (plugsData) _plugs = plugsData;
   if (stats) {
     document.getElementById('badge-guests').textContent   = stats.total_guests;
     document.getElementById('badge-lm').textContent       = stats.total_managers;
@@ -3095,23 +3096,11 @@ function showAddMachine() {
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="mc-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden&#10;Wird vor dem Einschalten als Pflicht-Bestätigung angezeigt."></textarea></div>
     <hr style="border-color:var(--border);margin:16px 0">
     <div class="form-group"><label class="form-label">Smart Plug</label>
-      <select class="form-input" id="mc-plug" onchange="updatePlugUI()">
-        <option value="none">Kein Smart Plug</option>
-        <option value="mystrom">myStrom Switch</option>
-        <option value="shelly">Shelly Gen1</option>
-        <option value="shelly_gen2">Shelly Gen2 / Gen3 / Gen4</option>
+      <select class="form-input" id="mc-plug-pool" onchange="updateMcIdleRow()">
+        <option value="">— Kein Smart Plug —</option>
+        ${(_plugs||[]).map(p=>`<option value="${p.id}">${escHtml(p.name)} · ${_plugTypeLabel(p.plug_type)} · ${escHtml(p.plug_ip)}</option>`).join('')}
       </select>
-    </div>
-    <div id="mc-plug-ip-row" style="display:none">
-      <div class="form-group"><label class="form-label">IP-Adresse des Plugs</label><input class="form-input" id="mc-plugip" placeholder="192.168.1.100"></div>
-      <div id="mc-token-row" style="display:none">
-        <div class="form-group">
-          <label class="form-label" id="mc-token-label">API-Token <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
-          <input class="form-input" id="mc-plugtoken" type="password" placeholder="myStrom API-Token">
-          <div style="font-size:11px;color:var(--text-dim);margin-top:4px" id="mc-token-hint">Wird als Token-Header mitgeschickt</div>
-        </div>
-      </div>
-      <div class="plug-hint" id="plug-hint"></div>
+      ${!(_plugs&&_plugs.length)?`<div style="font-size:11px;color:var(--text-dim);margin-top:4px">Pool ist leer — <a href="#" onclick="navigateTo('plugs');closeModal();return false" style="color:var(--accent)">Plugs verwalten →</a></div>`:''}
     </div>
     <div id="mc-idle-row" style="display:none">
       <hr style="border-color:var(--border);margin:16px 0">
@@ -3132,23 +3121,21 @@ function showAddMachine() {
   `, async()=>{
     const name=document.getElementById('mc-name').value.trim();
     if (!name) { showToast('Name erforderlich','error'); return; }
-    const plugSel=document.getElementById('mc-plug').value;
-    const plug_type=plugSel;
-    const plug_extra=null;
-    const rawToken=document.getElementById('mc-plugtoken')?.value.trim()||'';
-    const plug_token=rawToken?(['shelly','shelly_gen2'].includes(plugSel)?`admin:${rawToken}`:rawToken):null;
+    const plugId=document.getElementById('mc-plug-pool').value;
     const idle_w=document.getElementById('mc-idlew')?.value;
     const idle_t=document.getElementById('mc-idlet')?.value;
     const training_required=document.getElementById('mc-training')?.checked??true;
-    const res=await POST('/machines',{name,category:document.getElementById('mc-cat').value,status:document.getElementById('mc-status').value,manufacturer:document.getElementById('mc-mfr').value.trim()||null,model:document.getElementById('mc-model').value.trim()||null,serial_number:document.getElementById('mc-serial').value.trim()||null,location:document.getElementById('mc-loc').value.trim(),comment:document.getElementById('mc-comment').value.trim()||null,safety_notes:document.getElementById('mc-safety').value.trim()||null,plug_type,plug_ip:document.getElementById('mc-plugip')?.value.trim()||null,plug_extra,plug_token,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,training_required});
-    if (res) { closeModal(); await loadAll(); showToast(`${res.name} hinzugefügt!`,'success'); }
+    const res=await POST('/machines',{name,category:document.getElementById('mc-cat').value,status:document.getElementById('mc-status').value,manufacturer:document.getElementById('mc-mfr').value.trim()||null,model:document.getElementById('mc-model').value.trim()||null,serial_number:document.getElementById('mc-serial').value.trim()||null,location:document.getElementById('mc-loc').value.trim(),comment:document.getElementById('mc-comment').value.trim()||null,safety_notes:document.getElementById('mc-safety').value.trim()||null,plug_type:'none',idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,training_required});
+    if (res) {
+      if (plugId) await POST(`/plugs/${plugId}/assign?machine_id=${res.id}`,{});
+      closeModal(); await loadAll(); showToast(`${res.name} hinzugefügt!`,'success');
+    }
   });
 }
 
 function editMachine(id) {
   const m=cache.machines.find(x=>x.id===id); if (!m) return;
-  const curPlugSel=m.plug_type;
-  const showPlug=curPlugSel!=='none';
+  const showPlug=!!(m.plug_id||(m.plug_type&&m.plug_type!=='none'));
   openModal('Maschine bearbeiten',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${escHtml(m.name)}"></div>
     <div class="form-row">
@@ -3167,22 +3154,12 @@ function editMachine(id) {
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="e-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden">${m.safety_notes||''}</textarea></div>
     <hr style="border-color:var(--border);margin:16px 0">
     <div class="form-group"><label class="form-label">Smart Plug</label>
-      <select class="form-input" id="e-plug" onchange="updateEditPlugUI()">
-        <option value="none" ${curPlugSel==='none'?'selected':''}>Kein Smart Plug</option>
-        <option value="mystrom" ${curPlugSel==='mystrom'?'selected':''}>myStrom Switch</option>
-        <option value="shelly" ${curPlugSel==='shelly'?'selected':''}>Shelly Gen1</option>
-        <option value="shelly_gen2" ${curPlugSel==='shelly_gen2'?'selected':''}>Shelly Gen2 / Gen3 / Gen4</option>
+      <select class="form-input" id="e-plug-pool" onchange="updateEditIdleRow()">
+        <option value="">— Kein Smart Plug —</option>
+        ${(_plugs||[]).map(p=>`<option value="${p.id}" ${m.plug_id===p.id?'selected':''}>${escHtml(p.name)} · ${_plugTypeLabel(p.plug_type)} · ${escHtml(p.plug_ip)}</option>`).join('')}
       </select>
-    </div>
-    <div id="e-plug-ip-row" style="display:${showPlug?'block':'none'}">
-      <div class="form-group"><label class="form-label">IP-Adresse</label><input class="form-input" id="e-plugip" value="${m.plug_ip||''}" placeholder="192.168.1.100"></div>
-      <div id="e-token-row" style="display:${showPlug?'block':'none'}">
-        <div class="form-group">
-          <label class="form-label" id="e-token-label">${['shelly','shelly_gen2'].includes(curPlugSel)?'Passwort':'API-Token'} <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
-          <input class="form-input" id="e-plugtoken" type="password" value="${['shelly','shelly_gen2'].includes(curPlugSel)?(m.plug_token||'').replace(/^admin:/,''):m.plug_token||''}" placeholder="${['shelly','shelly_gen2'].includes(curPlugSel)?'Shelly-Passwort':'myStrom API-Token'}">
-          <div style="font-size:11px;color:var(--text-dim);margin-top:4px" id="e-token-hint">${['shelly','shelly_gen2'].includes(curPlugSel)?'Digest Auth — Benutzername ist immer "admin"':'Wird als Token-Header mitgeschickt'}</div>
-        </div>
-      </div>
+      ${m.plug_ip&&!m.plug_id?`<div style="font-size:11px;color:var(--accent);margin-top:4px">⚠ Direkt konfigurierter Plug (${escHtml(m.plug_ip)}) — im Pool anlegen und hier zuweisen.</div>`:''}
+      ${!(_plugs&&_plugs.length)?`<div style="font-size:11px;color:var(--text-dim);margin-top:4px">Pool ist leer — <a href="#" onclick="navigateTo('plugs');closeModal();return false" style="color:var(--accent)">Plugs verwalten →</a></div>`:''}
     </div>
     <div id="e-idle-row" style="display:${showPlug?'block':'none'}">
       <hr style="border-color:var(--border);margin:16px 0">
@@ -3190,7 +3167,6 @@ function editMachine(id) {
       <div class="form-row">
         <div class="form-group"><label class="form-label">Leerlaufleistung (W)</label><input class="form-input" id="e-idlew" type="number" step="0.1" value="${m.idle_power_w||''}" placeholder="z.B. 5.0"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Unter diesem Wert = Leerlauf</div></div>
         <div class="form-group"><label class="form-label">Timeout (Minuten)</label><input class="form-input" id="e-idlet" type="number" value="${m.idle_timeout_min||''}" placeholder="z.B. 10"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Dann automatisch abschalten</div></div>
-        <div class="form-group"><label class="form-label">Poll-Intervall (Sekunden)</label><input class="form-input" id="e-poll" type="number" min="10" value="${m.plug_poll_interval_sec??60}" placeholder="60"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Wie oft der Schaltzustand geprüft wird (min. 10s)</div></div>
       </div>
     </div>
     <hr style="border-color:var(--border);margin:16px 0">
@@ -3202,59 +3178,34 @@ function editMachine(id) {
       </div>
     </div>
   `, async()=>{
-    const plugSel=document.getElementById('e-plug').value;
-    const plug_type=plugSel;
-    const plug_extra=null;
-    const rawToken=document.getElementById('e-plugtoken')?.value.trim()||'';
-    const plug_token=rawToken?(['shelly','shelly_gen2'].includes(plugSel)?`admin:${rawToken}`:rawToken):undefined;
+    const newPlugId=document.getElementById('e-plug-pool').value;
+    const oldPlugId=m.plug_id?String(m.plug_id):'';
+    if (newPlugId!==oldPlugId) {
+      if (newPlugId) {
+        await POST(`/plugs/${newPlugId}/assign?machine_id=${id}`,{});
+      } else {
+        const curPlug=_plugs.find(p=>p.machine_id===id);
+        if (curPlug) await POST(`/plugs/${curPlug.id}/unassign`,{});
+      }
+    }
     const idle_w=document.getElementById('e-idlew')?.value;
     const idle_t=document.getElementById('e-idlet')?.value;
-    const poll_s=document.getElementById('e-poll')?.value;
     const training_required=document.getElementById('e-training')?.checked??true;
-    const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,manufacturer:document.getElementById('e-mfr').value.trim()||null,model:document.getElementById('e-model').value.trim()||null,serial_number:document.getElementById('e-serial').value.trim()||null,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,safety_notes:document.getElementById('e-safety').value.trim()||null,plug_type,plug_ip:document.getElementById('e-plugip')?.value.trim()||null,plug_extra,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required};
-    if (plug_token!==undefined) payload.plug_token=plug_token;
+    const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,manufacturer:document.getElementById('e-mfr').value.trim()||null,model:document.getElementById('e-model').value.trim()||null,serial_number:document.getElementById('e-serial').value.trim()||null,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,safety_notes:document.getElementById('e-safety').value.trim()||null,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,training_required};
     const res=await PATCH(`/machines/${id}`,payload);
     if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
   });
 }
 
-function updatePlugUI() {
-  const v=document.getElementById('mc-plug')?.value;
-  const show=v&&v!=='none';
-  const isShelly=['shelly','shelly_gen2'].includes(v);
-  const hints={mystrom:'myStrom Switch — IP + optionaler API-Token.',shelly:'Shelly Gen1 — IP + optionales Passwort für Digest Auth.',shelly_gen2:'Shelly Gen2 / Gen3 / Gen4 — IP + optionales Passwort für Digest Auth.'};
-  const ipRow=document.getElementById('mc-plug-ip-row');
-  const idleRow=document.getElementById('mc-idle-row');
-  const tokenRow=document.getElementById('mc-token-row');
-  if (ipRow) ipRow.style.display=show?'block':'none';
-  if (idleRow) idleRow.style.display=show?'block':'none';
-  if (tokenRow) tokenRow.style.display=show?'block':'none';
-  const lbl=document.querySelector('#mc-token-row .form-label');
-  const inp=document.getElementById('mc-plugtoken');
-  const hint=document.getElementById('mc-token-hint');
-  if (lbl) lbl.childNodes[0].textContent=isShelly?'Passwort ':'API-Token ';
-  if (inp) inp.placeholder=isShelly?'Shelly-Passwort':'myStrom API-Token';
-  if (hint) hint.textContent=isShelly?'Digest Auth — Benutzername ist immer "admin"':'Wird als Token-Header mitgeschickt';
-  const plugHint=document.getElementById('plug-hint');
-  if (plugHint) plugHint.textContent=hints[v]||'';
+function updateMcIdleRow() {
+  const v=document.getElementById('mc-plug-pool')?.value;
+  const el=document.getElementById('mc-idle-row');
+  if (el) el.style.display=v?'block':'none';
 }
-
-function updateEditPlugUI() {
-  const v=document.getElementById('e-plug')?.value;
-  const show=v&&v!=='none';
-  const isShelly=['shelly','shelly_gen2'].includes(v);
-  const ipRow=document.getElementById('e-plug-ip-row');
-  const idleRow=document.getElementById('e-idle-row');
-  const tokenRow=document.getElementById('e-token-row');
-  if (ipRow) ipRow.style.display=show?'block':'none';
-  if (idleRow) idleRow.style.display=show?'block':'none';
-  if (tokenRow) tokenRow.style.display=show?'block':'none';
-  const lbl=document.getElementById('e-token-label');
-  const inp=document.getElementById('e-plugtoken');
-  const hint=document.getElementById('e-token-hint');
-  if (lbl) lbl.childNodes[0].textContent=isShelly?'Passwort ':'API-Token ';
-  if (inp) inp.placeholder=isShelly?'Shelly-Passwort':'myStrom API-Token';
-  if (hint) hint.textContent=isShelly?'Digest Auth — Benutzername ist immer "admin"':'Wird als Token-Header mitgeschickt';
+function updateEditIdleRow() {
+  const v=document.getElementById('e-plug-pool')?.value;
+  const el=document.getElementById('e-idle-row');
+  if (el) el.style.display=v?'block':'none';
 }
 
 async function deleteMachine(id,name) {
@@ -5193,10 +5144,8 @@ function renderPlugs() {
         : '<span style="color:var(--text-dim)">— frei —</span>'
       }</td>
       <td style="white-space:nowrap;text-align:right">
-        <button class="btn btn-ghost btn-sm" onclick="showAssignPlug(${p.id})" title="Maschine zuweisen">🔗 Zuweisen</button>
-        ${p.machine_id?`<button class="btn btn-ghost btn-sm" onclick="unassignPlug(${p.id})" title="Zuweisung aufheben">✕</button>`:''}
         <button class="btn btn-ghost btn-sm" onclick="showEditPlug(${p.id})" title="Bearbeiten">✏️</button>
-        <button class="btn btn-ghost btn-sm" onclick="deletePlug(${p.id})" ${p.machine_id?'disabled title="Zuerst Zuweisung aufheben"':''} style="${p.machine_id?'opacity:.4':''};color:var(--error)">🗑</button>
+        <button class="btn btn-ghost btn-sm" onclick="deletePlug(${p.id})" ${p.machine_id?'disabled title="Zuerst Zuweisung bei der Maschine aufheben"':''} style="${p.machine_id?'opacity:.4':''};color:var(--error)">🗑</button>
       </td>
     </tr>`).join('')}
     </tbody>
@@ -5266,44 +5215,6 @@ async function deletePlug(id) {
   showToast('Plug gelöscht', 'warn');
 }
 
-function showAssignPlug(id) {
-  const p = _plugs.find(x=>x.id===id);
-  if (!p) return;
-  document.getElementById('assign-plug-id').value = id;
-  document.getElementById('assign-plug-name').textContent = p.name;
-  const sel = document.getElementById('assign-machine-select');
-  sel.innerHTML = '<option value="">— Maschine wählen —</option>' +
-    (cache.machines||[]).map(m=>`<option value="${m.id}">${escHtml(m.name)}</option>`).join('');
-  if (p.machine_id) sel.value = p.machine_id;
-  document.getElementById('plug-assign-modal').style.display = 'flex';
-}
-
-function closeAssignModal(e) {
-  if (e && e.target.id !== 'plug-assign-modal') return;
-  document.getElementById('plug-assign-modal').style.display = 'none';
-}
-
-async function doAssignPlug() {
-  const plugId = document.getElementById('assign-plug-id').value;
-  const machineId = document.getElementById('assign-machine-select').value;
-  if (!machineId) return showToast('Bitte eine Maschine wählen', 'warn');
-  const res = await POST(`/plugs/${plugId}/assign?machine_id=${machineId}`, {});
-  if (!res) return;
-  document.getElementById('plug-assign-modal').style.display = 'none';
-  await loadPlugs();
-  await refreshLiveData();
-  showToast('Plug zugewiesen', 'success');
-}
-
-async function unassignPlug(id) {
-  const p = _plugs.find(x=>x.id===id);
-  if (!confirm(`Zuweisung von "${p?.name}" aufheben?`)) return;
-  const res = await POST(`/plugs/${id}/unassign`, {});
-  if (!res) return;
-  await loadPlugs();
-  await refreshLiveData();
-  showToast('Zuweisung aufgehoben', 'warn');
-}
 
 </script>
 
@@ -5353,32 +5264,6 @@ async function unassignPlug(id) {
   </div>
 </div>
 
-<!-- Plug-Assign-Modal -->
-<div class="modal-overlay" id="plug-assign-modal" onclick="closeAssignModal(event)" style="display:none">
-  <div class="modal" style="max-width:400px">
-    <div class="modal-header">
-      <div class="modal-title">Plug zuweisen</div>
-      <button class="modal-close" onclick="document.getElementById('plug-assign-modal').style.display='none'">✕</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="assign-plug-id">
-      <div style="margin-bottom:16px;font-size:13px;color:var(--text-mid)">
-        Plug <strong id="assign-plug-name"></strong> einer Maschine zuweisen.<br>
-        <span style="font-size:11px;color:var(--text-dim)">Plug-Typ, IP und Token werden automatisch auf die Maschine übertragen.</span>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Maschine</label>
-        <select class="form-input" id="assign-machine-select">
-          <option value="">— Maschine wählen —</option>
-        </select>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="document.getElementById('plug-assign-modal').style.display='none'">Abbrechen</button>
-      <button class="btn btn-primary" onclick="doAssignPlug()">Zuweisen</button>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
