@@ -143,6 +143,7 @@ class Machine(Base):
     total_hours:        Mapped[float]            = mapped_column(Float, default=0.0)
     comment:            Mapped[Optional[str]]   = mapped_column(Text)
     safety_notes:       Mapped[Optional[str]]   = mapped_column(Text, default=None)
+    plug_id:            Mapped[Optional[int]]   = mapped_column(Integer, ForeignKey("plugs.id", ondelete="SET NULL"), default=None)
     qr_token:           Mapped[str]             = mapped_column(String(64), unique=True, nullable=False)
     created_at:         Mapped[datetime]        = mapped_column(DateTime, default=datetime.utcnow)
     updated_at:         Mapped[datetime]        = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -272,6 +273,18 @@ class MachineCategory(Base):
     icon:       Mapped[str]           = mapped_column(String(10), default="🔧")
     sort_order: Mapped[int]           = mapped_column(Integer, default=0)
     created_at: Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Plug(Base):
+    __tablename__ = "plugs"
+    id:                     Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name:                   Mapped[str]           = mapped_column(String(100), nullable=False)
+    plug_type:              Mapped[str]           = mapped_column(String(20), nullable=False)
+    plug_ip:                Mapped[str]           = mapped_column(String(50), nullable=False)
+    plug_token:             Mapped[Optional[str]] = mapped_column(String(255), default=None)
+    plug_poll_interval_sec: Mapped[int]           = mapped_column(Integer, default=60)
+    notes:                  Mapped[Optional[str]] = mapped_column(Text, default=None)
+    created_at:             Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class MachineQueue(Base):

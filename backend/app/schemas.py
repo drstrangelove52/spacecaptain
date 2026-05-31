@@ -153,6 +153,7 @@ class MachineOut(MachineBase):
     current_guest_id: Optional[int] = None
     session_manager_id: Optional[int] = None
     session_started_at: Optional[datetime] = None
+    plug_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -224,6 +225,39 @@ class MachineCategoryUpdate(BaseModel):
     name: Optional[str] = None
     icon: Optional[str] = None
     sort_order: Optional[int] = None
+
+
+# ── Plug Pool ─────────────────────────────────────────────
+class PlugCreate(BaseModel):
+    name: str
+    plug_type: str
+    plug_ip: str
+    plug_token: Optional[str] = None
+    plug_poll_interval_sec: int = 60
+    notes: Optional[str] = None
+
+class PlugUpdate(BaseModel):
+    name: Optional[str] = None
+    plug_type: Optional[str] = None
+    plug_ip: Optional[str] = None
+    plug_token: Optional[str] = None
+    plug_poll_interval_sec: Optional[int] = None
+    notes: Optional[str] = None
+
+class PlugOut(BaseModel):
+    id: int
+    name: str
+    plug_type: str
+    plug_ip: str
+    plug_token: Optional[str] = None
+    plug_poll_interval_sec: int = 60
+    notes: Optional[str] = None
+    created_at: datetime
+    machine_id: Optional[int] = None
+    machine_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 
 # ── Dashboard ─────────────────────────────────────────────

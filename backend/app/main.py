@@ -6,7 +6,7 @@ import asyncio
 from app.config import get_settings, APP_VERSION
 from app.database import engine, Base
 from app.services.migrate import run_migrations
-from app.routers import auth, users, guests, machines, permissions, qr, dashboard, guest_auth, backup, maintenance, nfc
+from app.routers import auth, users, guests, machines, permissions, qr, dashboard, guest_auth, backup, maintenance, nfc, plugs as plugs_router
 from app.routers import settings as settings_router
 from app.routers import queue as queue_router
 from app.routers import announcements as announcements_router
@@ -106,3 +106,4 @@ app.include_router(announcements_router.router, prefix="/api")
 app.include_router(ntfy_topics_router.router,   prefix="/api")
 app.include_router(emergency_router.router,     prefix="/api")
 app.include_router(categories_router.router,    prefix="/api")
+app.include_router(plugs_router.router,         prefix="/api")

@@ -288,6 +288,7 @@
     <div class="nav-item" data-page="labmanager" onclick="navigate(this)"><span class="nav-icon">🧑‍💼</span> Lab Manager <span class="nav-badge" id="badge-lm">0</span></div>
     <div class="nav-section">AUSSTATTUNG</div>
     <div class="nav-item" data-page="machines" onclick="navigate(this)"><span class="nav-icon">🏭</span> Maschinen <span class="nav-badge" id="badge-machines">0</span></div>
+    <div class="nav-item" data-page="plugs" onclick="navigate(this)"><span class="nav-icon">🔌</span> Plug-Pool <span class="nav-badge" id="badge-plugs" style="display:none">0</span></div>
     <div class="nav-item" data-page="permissions" onclick="navigate(this)"><span class="nav-icon">🔑</span> Berechtigungen</div>
     <div class="nav-section">SYSTEM</div>
     <div class="nav-item" data-page="log" onclick="navigate(this)"><span class="nav-icon">📋</span> Aktivitätslog</div>
@@ -415,6 +416,11 @@
       </div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:10px" id="machine-filter-count"></div>
       <div id="machine-grid"><div class="loading"><div class="spinner"></div>Laden…</div></div>
+    </div>
+
+    <!-- PLUG-POOL -->
+    <div class="page" id="page-plugs">
+      <div id="plug-list"><div class="loading"><div class="spinner"></div>Laden…</div></div>
     </div>
 
     <!-- PERMISSIONS — neue Ansicht -->
@@ -2054,12 +2060,13 @@ function doLogout() {
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Mitteilungen',notifications:'Benachrichtigungen',backup:'Backup & Restore',settings:'Einstellungen',info:'Info',help:'Hilfe & Dokumentation'};
+const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',plugs:'Plug-Pool',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Mitteilungen',notifications:'Benachrichtigungen',backup:'Backup & Restore',settings:'Einstellungen',info:'Info',help:'Hilfe & Dokumentation'};
 const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',machines:'machines',permissions:'permissions',maintenance:'maintenance',backup:'backup',settings:'settings'};
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button> <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`,
   machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button> <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`,
+  plugs:()=>`<button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`,
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
   maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`,
   announcements:()=>`<button class="btn btn-primary" onclick="showAddAnnouncement()">+ Neue Mitteilung</button>`,
@@ -2091,6 +2098,7 @@ function navigate(el) {
   if (page==='dashboard') { refreshMaintenanceOverview(); loadAdminQueues(); loadPendingGuests(); }
   if (page==='settings') { loadSettings(); loadTopicsForSettings(); }
   if (page==='backup') loadBackupFiles();
+  if (page==='plugs') loadPlugs();
 
   if (page==='help') initHelp();
 }
@@ -5142,6 +5150,235 @@ async function deleteTopic(id) {
   if (res !== null) { showToast('Topic gelöscht', 'warn'); loadTopicsForSettings(); }
 }
 
+// ═══════════════════════════════════════════════════════
+// PLUG-POOL
+// ═══════════════════════════════════════════════════════
+let _plugs = [];
+
+function _plugTypeLabel(t) {
+  return {mystrom:'myStrom',shelly:'Shelly Gen1',shelly_gen2:'Shelly Gen2+'}[t] || t;
+}
+
+async function loadPlugs() {
+  const data = await GET('/plugs');
+  if (!data) return;
+  _plugs = data;
+  renderPlugs();
+}
+
+function renderPlugs() {
+  const el = document.getElementById('plug-list');
+  if (!el) return;
+  if (!_plugs.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--text-dim)">
+      <div style="font-size:32px;margin-bottom:12px">🔌</div>
+      <div style="margin-bottom:16px">Noch keine Plugs im Pool.</div>
+      <button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>
+    </div>`;
+    return;
+  }
+  el.innerHTML = `<table class="data-table" style="width:100%">
+    <thead><tr>
+      <th>Name</th><th>Typ</th><th>IP-Adresse</th><th>Auth</th><th>Poll</th><th>Zugewiesen an</th><th></th>
+    </tr></thead>
+    <tbody>
+    ${_plugs.map(p => `<tr>
+      <td><strong>${escHtml(p.name)}</strong>${p.notes?`<div style="font-size:11px;color:var(--text-dim);margin-top:2px">${escHtml(p.notes)}</div>`:''}</td>
+      <td><span class="badge badge-gray">${_plugTypeLabel(p.plug_type)}</span></td>
+      <td><code style="font-size:12px;background:var(--surface2);padding:2px 6px;border-radius:4px">${escHtml(p.plug_ip)}</code></td>
+      <td>${p.plug_token?'<span style="color:var(--text-dim)">••••••</span>':'<span style="color:var(--text-dim)">—</span>'}</td>
+      <td style="color:var(--text-dim);font-size:12px">${p.plug_poll_interval_sec}s</td>
+      <td>${p.machine_id
+        ? `<span style="color:var(--success)">✓ ${escHtml(p.machine_name||'Maschine')}</span>`
+        : '<span style="color:var(--text-dim)">— frei —</span>'
+      }</td>
+      <td style="white-space:nowrap;text-align:right">
+        <button class="btn btn-ghost btn-sm" onclick="showAssignPlug(${p.id})" title="Maschine zuweisen">🔗 Zuweisen</button>
+        ${p.machine_id?`<button class="btn btn-ghost btn-sm" onclick="unassignPlug(${p.id})" title="Zuweisung aufheben">✕</button>`:''}
+        <button class="btn btn-ghost btn-sm" onclick="showEditPlug(${p.id})" title="Bearbeiten">✏️</button>
+        <button class="btn btn-ghost btn-sm" onclick="deletePlug(${p.id})" ${p.machine_id?'disabled title="Zuerst Zuweisung aufheben"':''} style="${p.machine_id?'opacity:.4':''};color:var(--error)">🗑</button>
+      </td>
+    </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function showAddPlug() {
+  document.getElementById('plug-modal-title').textContent = 'Plug hinzufügen';
+  document.getElementById('plug-modal-id').value = '';
+  document.getElementById('plug-name').value = '';
+  document.getElementById('plug-type').value = 'shelly_gen2';
+  document.getElementById('plug-ip').value = '';
+  document.getElementById('plug-token').value = '';
+  document.getElementById('plug-poll').value = '60';
+  document.getElementById('plug-notes').value = '';
+  document.getElementById('plug-modal').style.display = 'flex';
+  setTimeout(()=>document.getElementById('plug-name').focus(), 50);
+}
+
+function showEditPlug(id) {
+  const p = _plugs.find(x=>x.id===id);
+  if (!p) return;
+  document.getElementById('plug-modal-title').textContent = 'Plug bearbeiten';
+  document.getElementById('plug-modal-id').value = p.id;
+  document.getElementById('plug-name').value = p.name;
+  document.getElementById('plug-type').value = p.plug_type;
+  document.getElementById('plug-ip').value = p.plug_ip;
+  document.getElementById('plug-token').value = '';
+  document.getElementById('plug-poll').value = p.plug_poll_interval_sec;
+  document.getElementById('plug-notes').value = p.notes||'';
+  document.getElementById('plug-modal').style.display = 'flex';
+}
+
+function closePlugModal(e) {
+  if (e && e.target.id !== 'plug-modal') return;
+  document.getElementById('plug-modal').style.display = 'none';
+}
+
+async function savePlug() {
+  const id = document.getElementById('plug-modal-id').value;
+  const name = document.getElementById('plug-name').value.trim();
+  const ip = document.getElementById('plug-ip').value.trim();
+  if (!name || !ip) return showToast('Name und IP sind Pflichtfelder', 'error');
+  const payload = {
+    name,
+    plug_type: document.getElementById('plug-type').value,
+    plug_ip: ip,
+    plug_poll_interval_sec: parseInt(document.getElementById('plug-poll').value)||60,
+    notes: document.getElementById('plug-notes').value.trim()||null,
+  };
+  const tokenVal = document.getElementById('plug-token').value.trim();
+  if (tokenVal) payload.plug_token = tokenVal;
+
+  const res = id ? await PATCH(`/plugs/${id}`, payload) : await POST('/plugs', payload);
+  if (!res) return;
+  document.getElementById('plug-modal').style.display = 'none';
+  await loadPlugs();
+  showToast(id ? 'Plug aktualisiert' : 'Plug hinzugefügt', 'success');
+}
+
+async function deletePlug(id) {
+  const p = _plugs.find(x=>x.id===id);
+  if (!confirm(`Plug "${p?.name}" wirklich löschen?`)) return;
+  const res = await DELETE(`/plugs/${id}`);
+  if (!res) return;
+  await loadPlugs();
+  showToast('Plug gelöscht', 'warn');
+}
+
+function showAssignPlug(id) {
+  const p = _plugs.find(x=>x.id===id);
+  if (!p) return;
+  document.getElementById('assign-plug-id').value = id;
+  document.getElementById('assign-plug-name').textContent = p.name;
+  const sel = document.getElementById('assign-machine-select');
+  sel.innerHTML = '<option value="">— Maschine wählen —</option>' +
+    (cache.machines||[]).map(m=>`<option value="${m.id}">${escHtml(m.name)}</option>`).join('');
+  if (p.machine_id) sel.value = p.machine_id;
+  document.getElementById('plug-assign-modal').style.display = 'flex';
+}
+
+function closeAssignModal(e) {
+  if (e && e.target.id !== 'plug-assign-modal') return;
+  document.getElementById('plug-assign-modal').style.display = 'none';
+}
+
+async function doAssignPlug() {
+  const plugId = document.getElementById('assign-plug-id').value;
+  const machineId = document.getElementById('assign-machine-select').value;
+  if (!machineId) return showToast('Bitte eine Maschine wählen', 'warn');
+  const res = await POST(`/plugs/${plugId}/assign?machine_id=${machineId}`, {});
+  if (!res) return;
+  document.getElementById('plug-assign-modal').style.display = 'none';
+  await loadPlugs();
+  await refreshLiveData();
+  showToast('Plug zugewiesen', 'success');
+}
+
+async function unassignPlug(id) {
+  const p = _plugs.find(x=>x.id===id);
+  if (!confirm(`Zuweisung von "${p?.name}" aufheben?`)) return;
+  const res = await POST(`/plugs/${id}/unassign`, {});
+  if (!res) return;
+  await loadPlugs();
+  await refreshLiveData();
+  showToast('Zuweisung aufgehoben', 'warn');
+}
+
 </script>
+
+<!-- Plug-Modal -->
+<div class="modal-overlay" id="plug-modal" onclick="closePlugModal(event)" style="display:none">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title" id="plug-modal-title">Plug hinzufügen</div>
+      <button class="modal-close" onclick="document.getElementById('plug-modal').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="plug-modal-id">
+      <div class="form-group">
+        <label class="form-label">Name *</label>
+        <input class="form-input" id="plug-name" placeholder="z.B. Plug-Laser-01">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Typ *</label>
+        <select class="form-input" id="plug-type">
+          <option value="shelly_gen2">Shelly Gen2/3/4</option>
+          <option value="shelly">Shelly Gen1</option>
+          <option value="mystrom">myStrom</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">IP-Adresse *</label>
+        <input class="form-input" id="plug-ip" placeholder="192.168.1.100">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Token / Auth <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
+        <input class="form-input" id="plug-token" type="password" placeholder="myStrom: API-Token · Shelly: admin:passwort">
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Beim Bearbeiten leer lassen um bestehenden Token zu behalten.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Poll-Intervall (Sekunden)</label>
+        <input class="form-input" id="plug-poll" type="number" value="60" min="10" max="3600">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notiz</label>
+        <textarea class="form-input" id="plug-notes" rows="2" placeholder="Optionale Notiz (Standort, Geräteinfo…)"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('plug-modal').style.display='none'">Abbrechen</button>
+      <button class="btn btn-primary" onclick="savePlug()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Plug-Assign-Modal -->
+<div class="modal-overlay" id="plug-assign-modal" onclick="closeAssignModal(event)" style="display:none">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title">Plug zuweisen</div>
+      <button class="modal-close" onclick="document.getElementById('plug-assign-modal').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="assign-plug-id">
+      <div style="margin-bottom:16px;font-size:13px;color:var(--text-mid)">
+        Plug <strong id="assign-plug-name"></strong> einer Maschine zuweisen.<br>
+        <span style="font-size:11px;color:var(--text-dim)">Plug-Typ, IP und Token werden automatisch auf die Maschine übertragen.</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Maschine</label>
+        <select class="form-input" id="assign-machine-select">
+          <option value="">— Maschine wählen —</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('plug-assign-modal').style.display='none'">Abbrechen</button>
+      <button class="btn btn-primary" onclick="doAssignPlug()">Zuweisen</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

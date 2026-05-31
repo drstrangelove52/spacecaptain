@@ -50,6 +50,20 @@ CREATE TABLE IF NOT EXISTS guest_tokens (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------
+-- Plug-Pool (vor machines, da machines plug_id referenziert)
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS plugs (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    plug_type VARCHAR(20) NOT NULL,
+    plug_ip VARCHAR(50) NOT NULL,
+    plug_token VARCHAR(255) DEFAULT NULL,
+    plug_poll_interval_sec INT UNSIGNED DEFAULT 60,
+    notes TEXT DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
 -- Maschinen
 -- --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS machines (
@@ -78,6 +92,7 @@ CREATE TABLE IF NOT EXISTS machines (
     -- Sonstiges
     comment           TEXT,
     safety_notes      TEXT DEFAULT NULL,
+    plug_id           INT UNSIGNED DEFAULT NULL,
     qr_token          VARCHAR(64) NOT NULL UNIQUE,
     created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

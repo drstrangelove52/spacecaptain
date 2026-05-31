@@ -13,6 +13,22 @@ log = logging.getLogger(__name__)
 async def run_migrations(engine: AsyncEngine) -> None:
     async with engine.begin() as conn:
 
+        # ── v1.21: Plug-Pool ──────────────────────────────────────────────────
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS plugs (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                plug_type VARCHAR(20) NOT NULL,
+                plug_ip VARCHAR(50) NOT NULL,
+                plug_token VARCHAR(255) DEFAULT NULL,
+                plug_poll_interval_sec INT UNSIGNED DEFAULT 60,
+                notes TEXT DEFAULT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
+        await _add_column_if_missing(conn, "machines", "plug_id",
+                                     "INT UNSIGNED DEFAULT NULL")
+
         # ── v1.20: Sicherheitshinweise pro Maschine ───────────────────────────
         await _add_column_if_missing(conn, "machines", "safety_notes",
                                      "TEXT DEFAULT NULL")
