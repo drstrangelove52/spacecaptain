@@ -1060,6 +1060,7 @@
             <div class="help-nav-item active" onclick="selectHelpCat('start')"><span class="help-nav-icon">🚀</span><span class="help-nav-label">Erste Schritte</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('guests')"><span class="help-nav-icon">👥</span><span class="help-nav-label">Gästeverwaltung</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('machines')"><span class="help-nav-icon">🏭</span><span class="help-nav-label">Maschinen</span></div>
+            <div class="help-nav-item" onclick="selectHelpCat('plugs')"><span class="help-nav-icon">🔌</span><span class="help-nav-label">Plug-Pool</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('permissions')"><span class="help-nav-icon">🔑</span><span class="help-nav-label">Berechtigungen</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('maintenance')"><span class="help-nav-icon">🔧</span><span class="help-nav-label">Maschinenpflege</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('announcements')"><span class="help-nav-icon">📢</span><span class="help-nav-label">Mitteilungen</span></div>
@@ -1242,15 +1243,17 @@
               </div>
             </div>
             <div class="help-article">
-              <div class="help-article-title">Smart Plug konfigurieren</div>
+              <div class="help-article-title">Smart Plug zuweisen</div>
               <div class="help-article-body">
-                Unterstützte Geräte: <strong>MyStrom</strong> und <strong>Shelly</strong>.
+                Smart Plugs werden zentral im <strong>Plug-Pool</strong> verwaltet und dann Maschinen zugewiesen.
                 <ol>
-                  <li>Maschine bearbeiten → Abschnitt «Smart Plug»</li>
-                  <li>Typ wählen (MyStrom / Shelly / Keiner)</li>
-                  <li>IP-Adresse des Plugs eingeben (im lokalen Netzwerk)</li>
-                  <li>Optional: Leerlauf-Schwellwert (Watt) und Timeout (Minuten) für automatisches Abschalten</li>
+                  <li>Sidebar → <strong>Ausstattung → Plug-Pool</strong> → Plug anlegen (falls noch nicht vorhanden)</li>
+                  <li>Sidebar → <strong>Maschinen</strong> → Maschine bearbeiten (✏)</li>
+                  <li>Abschnitt «Smart Plug» → Plug aus dem Pool auswählen</li>
+                  <li>Optional: Leerlauf-Schwellwert (Watt), Timeout (Minuten) und Poll-Intervall anpassen</li>
+                  <li>Speichern</li>
                 </ol>
+                <div class="help-tip"><strong>Tipp:</strong> Ein Plug kann immer nur einer Maschine zugewiesen sein. Ist er bereits vergeben, muss er zuerst bei der anderen Maschine abgewählt werden.</div>
                 <div class="help-warn"><strong>Hinweis:</strong> Der Smart Plug muss im gleichen Netzwerk wie der SpaceCaptain-Server erreichbar sein. Feste IP-Adresse empfohlen (DHCP-Reservierung im Router).</div>
               </div>
             </div>
@@ -1325,6 +1328,102 @@
                 </ol>
                 Beim nächsten Einschalten erscheint der Text in einem orangefarbenen Hinweis-Panel. Der Gast muss «Ich habe die Sicherheitshinweise gelesen und befolge sie» anhaken bevor der Einschaltenknopf aktiv wird.
                 <div class="help-tip"><strong>Tipp:</strong> Feld leer lassen = kein Bestätigungs-Dialog. Der normale Einschaltfluss wird nur bei befülltem Feld unterbrochen.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Plug-Pool ── -->
+            <div class="help-panel" id="help-panel-plugs">
+              <div class="help-panel-header"><span class="help-panel-icon">🔌</span><span class="help-panel-title">Plug-Pool</span></div>
+              <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Was ist der Plug-Pool?</div>
+              <div class="help-article-body">
+                Der Plug-Pool ist eine zentrale Verwaltung für alle Smart Plugs im Makerspace. Jeder Plug wird einmalig mit Name, Typ und IP-Adresse erfasst und kann danach beliebigen Maschinen zugewiesen werden. So müssen Verbindungsdaten nicht mehrfach gepflegt werden und der Überblick bleibt gewahrt — auch bei vielen Plugs.
+                <ul style="margin-top:10px">
+                  <li>Unterstützte Typen: <strong>myStrom</strong>, <strong>Shelly Gen1</strong>, <strong>Shelly Gen2/Gen3/Gen4</strong></li>
+                  <li>Ein Plug kann immer nur <strong>einer Maschine</strong> gleichzeitig zugewiesen sein</li>
+                  <li>Freie Plugs (ohne Zuweisung) können direkt aus dem Pool testweise geschaltet werden</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Plug hinzufügen</div>
+              <div class="help-article-body">
+                <ol>
+                  <li>Sidebar → <strong>Ausstattung → Plug-Pool</strong> → «+ Plug hinzufügen»</li>
+                  <li>Name eingeben (z.B. «Shelly Laser» oder «myStrom CNC»)</li>
+                  <li>Typ wählen: myStrom, Shelly Gen1 oder Shelly Gen2+</li>
+                  <li>IP-Adresse des Plugs eingeben</li>
+                  <li>Optional: Auth-Token (myStrom: API-Token; Shelly: <code>admin:passwort</code>)</li>
+                  <li>Optional: Notiz für interne Zwecke</li>
+                </ol>
+                <div class="help-tip"><strong>Tipp:</strong> Feste IP-Adressen im Router reservieren (DHCP-Reservierung), damit die Adressen nach einem Neustart gleich bleiben.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Auth-Token konfigurieren</div>
+              <div class="help-article-body">
+                <ul>
+                  <li><strong>myStrom:</strong> In der myStrom-App unter Einstellungen → API-Token einsehen. Token ins Feld «Auth-Token» eintragen.</li>
+                  <li><strong>Shelly Gen1:</strong> Wenn ein HTTP-Passwort in der Shelly-Web-UI gesetzt ist, Token im Format <code>admin:passwort</code> eintragen.</li>
+                  <li><strong>Shelly Gen2/Gen3/Gen4:</strong> Wenn ein Passwort gesetzt ist, Token im Format <code>admin:passwort</code> eintragen. Ohne Passwortschutz kann das Feld leer bleiben.</li>
+                </ul>
+                <div class="help-warn"><strong>Hinweis:</strong> Der Token wird in der Plug-Pool-Übersicht nie im Klartext angezeigt — nur ob einer hinterlegt ist (••••••) oder nicht (—).</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Plug einer Maschine zuweisen</div>
+              <div class="help-article-body">
+                Die Zuweisung erfolgt in der Maschinenkonfiguration — nicht im Plug-Pool selbst.
+                <ol>
+                  <li>Sidebar → <strong>Maschinen</strong> → Maschine bearbeiten (✏)</li>
+                  <li>Abschnitt «Smart Plug» → Plug aus dem Dropdown auswählen</li>
+                  <li>Speichern</li>
+                </ol>
+                Nach der Zuweisung erscheint der Maschinenname in der Plug-Pool-Tabelle unter «Zugewiesen an».
+                <div class="help-tip"><strong>Umzug:</strong> Plug einer anderen Maschine zuweisen — einfach in der neuen Maschine den Plug auswählen und speichern. Die vorherige Zuweisung wird automatisch aufgehoben.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Plug-Zuweisung aufheben</div>
+              <div class="help-article-body">
+                <ol>
+                  <li>Sidebar → <strong>Maschinen</strong> → Maschine bearbeiten (✏)</li>
+                  <li>Abschnitt «Smart Plug» → «— Kein Smart Plug —» auswählen</li>
+                  <li>Speichern</li>
+                </ol>
+                Der Plug erscheint danach in der Pool-Liste wieder als «— frei —» und kann anderen Maschinen zugewiesen oder gelöscht werden.
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Plug testweise schalten (Identifikation)</div>
+              <div class="help-article-body">
+                Um physisch festzustellen, welcher Plug im Regal welcher Steckdose entspricht, können freie Plugs direkt aus dem Pool ein- und ausgeschaltet werden.
+                <ol>
+                  <li>Sidebar → <strong>Ausstattung → Plug-Pool</strong></li>
+                  <li>In der Zeile eines freien Plugs (ohne Zuweisung): «▶ EIN» oder «■ AUS» klicken</li>
+                </ol>
+                <div class="help-warn"><strong>Nur für freie Plugs:</strong> Bereits zugewiesene Plugs können nur über die Maschinen-Session oder das Dashboard geschaltet werden. Das verhindert unbeabsichtigte Unterbrechungen laufender Sessions.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Plug löschen</div>
+              <div class="help-article-body">
+                Ein Plug kann nur gelöscht werden, wenn er keiner Maschine zugewiesen ist. Zuerst die Zuweisung in der Maschinenkonfiguration aufheben, dann im Plug-Pool auf 🗑 klicken.
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Filtern und sortieren</div>
+              <div class="help-article-body">
+                Die Plug-Pool-Liste kann gefiltert werden nach:
+                <ul style="margin-top:8px">
+                  <li><strong>Freitext:</strong> Name, IP-Adresse oder Notiz</li>
+                  <li><strong>Typ:</strong> myStrom / Shelly Gen1 / Shelly Gen2+</li>
+                  <li><strong>Zuweisung:</strong> nur freie oder nur zugewiesene Plugs</li>
+                </ul>
+                Ein Klick auf einen Spaltenkopf (Name, Typ, IP-Adresse, Zugewiesen an) sortiert die Liste auf- oder absteigend.
               </div>
             </div>
           </div>
