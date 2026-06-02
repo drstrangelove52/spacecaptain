@@ -289,7 +289,7 @@
     <div class="nav-section">AUSSTATTUNG</div>
     <div class="nav-item" data-page="machines" onclick="navigate(this)"><span class="nav-icon">🏭</span> Maschinen <span class="nav-badge" id="badge-machines">0</span></div>
     <div class="nav-item" data-page="plugs" onclick="navigate(this)"><span class="nav-icon">🔌</span> Plug-Pool <span class="nav-badge" id="badge-plugs">0</span></div>
-    <div class="nav-item" data-page="automations" onclick="navigate(this)"><span class="nav-icon">⚡</span> Automationen <span class="nav-badge" id="badge-automations" style="display:none">0</span></div>
+    <div class="nav-item" data-page="automations" onclick="navigate(this)"><span class="nav-icon">⚡</span> Automationen <span class="nav-badge" id="badge-automations">0</span></div>
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
     <div class="nav-item" data-page="permissions" onclick="navigate(this)"><span class="nav-icon">🔑</span> Berechtigungen</div>
     <div class="nav-section">SYSTEM</div>
@@ -4642,10 +4642,7 @@ function filterAutomations() {
 
 function renderAutomations() {
   const badge = document.getElementById('badge-automations');
-  if (badge) {
-    badge.textContent = _automations.length;
-    badge.style.display = _automations.length ? '' : 'none';
-  }
+  if (badge) { badge.textContent = _automations.length; }
   filterAutomations();
 }
 
