@@ -76,7 +76,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 bash gencert.sh <server-ip>
 
 # Container bauen und starten
-docker compose up -d --build
+BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build
 
 # Logs prüfen
 docker compose logs -f backend
@@ -106,10 +106,12 @@ docker exec spacecaptain_proxy nginx -s reload
 
 ```bash
 git pull
-docker compose up -d --build backend
+BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build backend
 ```
 
 DB-Migrationen laufen automatisch beim Backend-Start.
+
+> **`BUILD_NR`** setzt eine monoton steigende Build-Nummer, die im Sidebar-Footer sichtbar ist (`v1.xx · Build 123`). So ist auf einen Blick erkennbar, ob zwei Server auf demselben Stand sind. Ohne diesen Prefix läuft SpaceCaptain normal — die Build-Nummer wird dann nur nicht angezeigt.
 
 ---
 
@@ -133,7 +135,7 @@ docker exec -it spacecaptain_db mariadb -u spacecaptain -p spacecaptain
 
 # Kompletten Neustart (⚠️ löscht alle Daten!)
 docker compose down -v
-docker compose up -d --build
+BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build
 ```
 
 ---

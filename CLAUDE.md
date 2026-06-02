@@ -84,14 +84,14 @@ Beim Overwrite-Restore: falls `is_blocked` sich ändert, wird ein neuer `Activit
 ## Häufige Befehle
 
 ```bash
-# Starten
-docker compose up -d
+# Starten (mit Build-Nummer im Sidebar-Footer)
+BUILD_NR=$(git rev-list --count HEAD) docker compose up -d
 
 # Backend-Logs beobachten
 docker compose logs -f backend
 
 # Neu bauen (nach Dependency-Änderungen)
-docker compose up -d --build backend
+BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build backend
 
 # DB-Shell
 docker compose exec db mariadb -u spacecaptain -p spacecaptain

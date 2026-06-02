@@ -67,4 +67,6 @@ Maschine
 
 ## Versionen und Änderungen
 
-Die aktuelle Systemversion ist jederzeit im Sidebar-Footer des Lab-Manager-Dashboards sichtbar.
+Die aktuelle Systemversion und Build-Nummer sind jederzeit im Sidebar-Footer des Lab-Manager-Dashboards sichtbar (`v1.xx · Build 123`).
+
+Die Build-Nummer wird beim Start mit `BUILD_NR=$(git rev-list --count HEAD) docker compose up -d` gesetzt und steigt mit jedem Commit monoton an. Über die Build-Nummer lässt sich auf einen Blick prüfen, ob zwei Server auf demselben Stand sind.
