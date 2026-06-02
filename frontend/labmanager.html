@@ -2734,9 +2734,9 @@ function renderDashboard() {
     const isActive = inUse;
     let dotColor = 'var(--text-dim)'; // offline/unknown
     let borderColor = 'var(--border)';
-    if (m.status === 'maintenance') { dotColor = 'var(--accent)'; borderColor = 'rgba(244,166,34,.3)'; }
-    else if (isActive)              { dotColor = 'var(--success)'; borderColor = 'rgba(34,197,94,.3)'; }
-    else if (m.status === 'online') { dotColor = 'var(--accent2)'; borderColor = 'rgba(34,211,238,.2)'; }
+    if (m.status === 'maintenance') { dotColor = 'var(--accent)';  borderColor = 'rgba(244,166,34,.3)'; }
+    else if (isActive)              { dotColor = 'var(--accent2)'; borderColor = 'rgba(34,211,238,.5)'; }
+    else if (m.status === 'online') { dotColor = 'var(--success)'; borderColor = 'rgba(34,197,94,.35)'; }
 
     let idleTag = '';
     if (m.idle_state === 'idle_warning') {
@@ -2748,10 +2748,13 @@ function renderDashboard() {
     }
 
     const userLine = isActive
-      ? `<div style="font-size:11px;color:${m.session_manager_id?'var(--accent2)':'var(--text-mid)'};margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">◉ ${m.current_guest_name||'Manager'}</div>`
+      ? `<div style="font-size:11px;color:var(--accent2);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">◉ ${m.current_guest_name||m.current_guest_name===null&&m.session_manager_id?'Manager':'In Benutzung'}</div>`
       : '';
 
-    return `<div style="background:var(--surface);border:1px solid ${borderColor};border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:2px">
+    const cardBg = isActive
+      ? 'background:rgba(34,211,238,.07);box-shadow:0 0 0 1px rgba(34,211,238,.15),0 0 14px rgba(34,211,238,.1)'
+      : 'background:var(--surface)';
+    return `<div style="${cardBg};border:1px solid ${borderColor};border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:2px">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0;${isActive?'box-shadow:0 0 6px '+dotColor:''}"></span>
         <span style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${m.name}</span>
