@@ -6,7 +6,11 @@ Shelly Gen2+: RPC-API /rpc/Switch.Set, Digest-Auth via plug_token="admin:passwor
               Gilt für Gen2, Gen3, Gen4 — alle nutzen dieselbe RPC-API.
 """
 import httpx
+import logging
+from types import SimpleNamespace
 from typing import Tuple
+
+log = logging.getLogger(__name__)
 
 TIMEOUT = 5.0
 
@@ -129,3 +133,39 @@ async def get_plug_status(machine) -> dict:
         return {"supported": True, "on": None, "power_w": None, "error": "unreachable"}
 
     return {"supported": False, "on": None, "power_w": None}
+
+
+async def switch_all_machine_plugs(machine, action: str, db) -> Tuple[bool, str]:
+    """Schaltet Primär-Plug (machine.plug_ip) + alle Sekundär-Plugs aus machine_plugs."""
+    from sqlalchemy import select as _sel
+    from app.models import MachinePlug, Plug as PlugModel
+
+    msgs: list[str] = []
+    all_ok = True
+
+    ok, msg = await switch_plug(machine, action)
+    msgs.append(msg)
+    if not ok:
+        all_ok = False
+
+    try:
+        res = await db.execute(
+            _sel(PlugModel).join(MachinePlug, MachinePlug.plug_id == PlugModel.id)
+            .where(MachinePlug.machine_id == machine.id, MachinePlug.sort_order > 0)
+        )
+        for plug in res.scalars().all():
+            proxy = SimpleNamespace(
+                plug_type=plug.plug_type,
+                plug_ip=plug.plug_ip,
+                plug_token=plug.plug_token,
+            )
+            ok2, msg2 = await switch_plug(proxy, action)
+            msgs.append(msg2)
+            if not ok2:
+                all_ok = False
+    except Exception as e:
+        log.error(f"switch_all_machine_plugs Sekundär-Fehler: {e}")
+        all_ok = False
+        msgs.append(f"Sekundär-Plug Fehler: {e}")
+
+    return all_ok, "; ".join(msgs)

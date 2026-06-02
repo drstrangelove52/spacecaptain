@@ -154,6 +154,7 @@ class MachineOut(MachineBase):
     session_manager_id: Optional[int] = None
     session_started_at: Optional[datetime] = None
     plug_id: Optional[int] = None
+    plugs: list = []  # [{id, name, plug_ip, plug_type}, ...] — sortiert nach sort_order
 
     class Config:
         from_attributes = True

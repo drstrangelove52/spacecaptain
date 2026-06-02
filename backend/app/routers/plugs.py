@@ -2,10 +2,10 @@ from types import SimpleNamespace
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.database import get_db
-from app.models import Plug, Machine, User, PlugType
+from app.models import Plug, Machine, MachinePlug, User, PlugType
 from app.schemas import PlugCreate, PlugUpdate, PlugOut
 from app.services.auth import get_current_user
 from app.services.plug import switch_plug
@@ -17,7 +17,10 @@ VALID_TYPES = {"mystrom", "shelly", "shelly_gen2"}
 
 async def _plug_out(plug: Plug, db: AsyncSession) -> dict:
     res = await db.execute(
-        select(Machine.id, Machine.name).where(Machine.plug_id == plug.id)
+        select(Machine.id, Machine.name)
+        .join(MachinePlug, MachinePlug.machine_id == Machine.id)
+        .where(MachinePlug.plug_id == plug.id)
+        .order_by(MachinePlug.sort_order)
     )
     rows = res.all()
     return {
@@ -73,9 +76,13 @@ async def update_plug(
         raise HTTPException(400, f"plug_type muss einer von {sorted(VALID_TYPES)} sein")
     for field, value in changes.items():
         setattr(plug, field, value)
-    # Sync updated IP/token/type to all assigned machines
+    # Sync IP/token/type auf alle Maschinen wo dieser Plug PRIMÄR ist (sort_order=0)
     if any(f in changes for f in ("plug_ip", "plug_token", "plug_type")):
-        mres = await db.execute(select(Machine).where(Machine.plug_id == plug_id))
+        mres = await db.execute(
+            select(Machine)
+            .join(MachinePlug, MachinePlug.machine_id == Machine.id)
+            .where(MachinePlug.plug_id == plug_id, MachinePlug.sort_order == 0)
+        )
         for m in mres.scalars().all():
             if "plug_ip"    in changes: m.plug_ip    = plug.plug_ip
             if "plug_token" in changes: m.plug_token = plug.plug_token
@@ -92,10 +99,10 @@ async def delete_plug(
     _: User = Depends(get_current_user),
 ):
     result = await db.execute(select(Plug).where(Plug.id == plug_id))
-    plug = result.scalar_one_or_none()
+    plug = result.scalars().first()
     if not plug:
         raise HTTPException(404, "Plug nicht gefunden")
-    assigned = await db.execute(select(Machine.id).where(Machine.plug_id == plug_id))
+    assigned = await db.execute(select(MachinePlug.id).where(MachinePlug.plug_id == plug_id))
     if assigned.scalars().first():
         raise HTTPException(400, "Plug ist noch Maschinen zugewiesen — zuerst alle Zuweisungen aufheben")
     await db.delete(plug)
@@ -120,10 +127,28 @@ async def assign_plug(
     if not machine:
         raise HTTPException(404, "Maschine nicht gefunden")
 
-    machine.plug_id    = plug_id
-    machine.plug_type  = PlugType(plug.plug_type)
-    machine.plug_ip    = plug.plug_ip
-    machine.plug_token = plug.plug_token
+    # Idempotent: schon zugewiesen?
+    existing = await db.execute(
+        select(MachinePlug).where(MachinePlug.machine_id == machine_id, MachinePlug.plug_id == plug_id)
+    )
+    if existing.scalar_one_or_none():
+        return {"ok": True}
+
+    # sort_order bestimmen
+    max_res = await db.execute(
+        select(func.max(MachinePlug.sort_order)).where(MachinePlug.machine_id == machine_id)
+    )
+    max_order = max_res.scalar()
+    sort_order = 0 if max_order is None else max_order + 1
+
+    db.add(MachinePlug(machine_id=machine_id, plug_id=plug_id, sort_order=sort_order))
+
+    # Primär-Plug: Machine-Felder aktualisieren
+    if sort_order == 0:
+        machine.plug_id    = plug_id
+        machine.plug_type  = PlugType(plug.plug_type)
+        machine.plug_ip    = plug.plug_ip
+        machine.plug_token = plug.plug_token
 
     await db.commit()
     return {"ok": True}
@@ -142,24 +167,61 @@ async def unassign_plug(
         raise HTTPException(404, "Plug nicht gefunden")
 
     if machine_id:
-        # Nur diese eine Maschine ablösen
-        mres = await db.execute(
-            select(Machine).where(Machine.id == machine_id, Machine.plug_id == plug_id)
+        mp_res = await db.execute(
+            select(MachinePlug).where(MachinePlug.machine_id == machine_id, MachinePlug.plug_id == plug_id)
         )
-        machine = mres.scalar_one_or_none()
-        if machine:
-            machine.plug_id    = None
-            machine.plug_type  = PlugType.none
-            machine.plug_ip    = None
-            machine.plug_token = None
+        mp = mp_res.scalar_one_or_none()
+        if mp:
+            was_primary = (mp.sort_order == 0)
+            await db.delete(mp)
+            await db.flush()
+
+            if was_primary:
+                mres = await db.execute(select(Machine).where(Machine.id == machine_id))
+                machine = mres.scalar_one_or_none()
+                if machine:
+                    # Nächsten Plug zum Primär-Plug befördern
+                    next_res = await db.execute(
+                        select(MachinePlug).where(MachinePlug.machine_id == machine_id)
+                        .order_by(MachinePlug.sort_order)
+                    )
+                    next_mp = next_res.scalars().first()
+                    if next_mp:
+                        plug_res = await db.execute(select(Plug).where(Plug.id == next_mp.plug_id))
+                        new_primary = plug_res.scalar_one_or_none()
+                        next_mp.sort_order = 0
+                        if new_primary:
+                            machine.plug_id    = new_primary.id
+                            machine.plug_type  = PlugType(new_primary.plug_type)
+                            machine.plug_ip    = new_primary.plug_ip
+                            machine.plug_token = new_primary.plug_token
+                    else:
+                        machine.plug_id    = None
+                        machine.plug_type  = PlugType.none
+                        machine.plug_ip    = None
+                        machine.plug_token = None
     else:
-        # Alle zugewiesenen Maschinen ablösen (Fallback)
-        mres = await db.execute(select(Machine).where(Machine.plug_id == plug_id))
-        for machine in mres.scalars().all():
-            machine.plug_id    = None
-            machine.plug_type  = PlugType.none
-            machine.plug_ip    = None
-            machine.plug_token = None
+        # Alle Zuweisungen dieses Plugs aufheben (Fallback)
+        all_mp = (await db.execute(
+            select(MachinePlug).where(MachinePlug.plug_id == plug_id)
+        )).scalars().all()
+        for mp in all_mp:
+            if mp.sort_order == 0:
+                mres = await db.execute(select(Machine).where(Machine.id == mp.machine_id))
+                m = mres.scalar_one_or_none()
+                if m:
+                    # Prüfen ob andere Plugs vorhanden
+                    other_res = await db.execute(
+                        select(MachinePlug).where(
+                            MachinePlug.machine_id == mp.machine_id,
+                            MachinePlug.plug_id != plug_id
+                        ).order_by(MachinePlug.sort_order)
+                    )
+                    other = other_res.scalars().first()
+                    if not other:
+                        m.plug_id = None; m.plug_type = PlugType.none
+                        m.plug_ip = None; m.plug_token = None
+            await db.delete(mp)
 
     await db.commit()
     return {"ok": True}
@@ -178,7 +240,7 @@ async def test_switch_plug(
     if not plug:
         raise HTTPException(404, "Plug nicht gefunden")
 
-    assigned = await db.execute(select(Machine.id).where(Machine.plug_id == plug_id))
+    assigned = await db.execute(select(MachinePlug.id).where(MachinePlug.plug_id == plug_id))
     if assigned.scalars().first():
         raise HTTPException(400, "Plug ist einer Maschine zugewiesen — Test nur für freie Plugs")
 

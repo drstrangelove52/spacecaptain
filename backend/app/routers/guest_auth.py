@@ -23,7 +23,7 @@ def _local_iso(dt):
     if dt is None: return None
     from datetime import timezone
     return dt.replace(tzinfo=timezone.utc).astimezone(APP_TIMEZONE).isoformat()
-from app.services.plug import switch_plug, get_plug_status
+from app.services.plug import switch_plug, get_plug_status, switch_all_machine_plugs
 from app.services.session import start_session, end_session
 from app.models import SessionEndedBy
 
@@ -315,7 +315,7 @@ async def guest_switch(payload: SwitchRequest, db: AsyncSession = Depends(get_db
             duration_h = (datetime.utcnow() - machine.session_started_at).total_seconds() / 3600
             energy_wh = round(plug_status["power_w"] * duration_h, 3)
 
-    ok, msg = await switch_plug(machine, payload.action)
+    ok, msg = await switch_all_machine_plugs(machine, payload.action, db)
     log_type = LogType.plug_on if payload.action == "on" else LogType.plug_off
 
     if ok:

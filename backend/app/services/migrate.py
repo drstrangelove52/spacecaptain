@@ -343,6 +343,24 @@ async def run_migrations(engine: AsyncEngine) -> None:
                 ('Sonstiges',  '🔧', 8, NOW())
             """))
 
+        # ── v1.23: machine_plugs (mehrere Plugs pro Maschine) ────────────────
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS machine_plugs (
+                id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                machine_id  INT UNSIGNED NOT NULL,
+                plug_id     INT NOT NULL,
+                sort_order  INT NOT NULL DEFAULT 0,
+                UNIQUE KEY uq_machine_plug (machine_id, plug_id),
+                FOREIGN KEY (machine_id) REFERENCES machines(id) ON DELETE CASCADE,
+                FOREIGN KEY (plug_id)    REFERENCES plugs(id)    ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
+        # Bestehende Zuweisungen aus machines.plug_id übernehmen (einmalig, idempotent)
+        await conn.execute(text("""
+            INSERT IGNORE INTO machine_plugs (machine_id, plug_id, sort_order)
+            SELECT id, plug_id, 0 FROM machines WHERE plug_id IS NOT NULL
+        """))
+
     log.info("Migrationen abgeschlossen")
 
 

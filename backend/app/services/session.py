@@ -8,7 +8,7 @@ import asyncio
 import logging
 
 from app.models import Machine, MachineSession, SessionEndedBy, LogType
-from app.services.plug import switch_plug, get_plug_status
+from app.services.plug import switch_plug, get_plug_status, switch_all_machine_plugs
 from app.services import logger as log_svc
 
 log = logging.getLogger(__name__)
@@ -171,7 +171,7 @@ async def idle_watcher(app):
                             idle_min = (datetime.utcnow() - idle_since[m.id]).total_seconds() / 60
                             if idle_min >= m.idle_timeout_min:
                                 log.info(f"Idle-Timeout: {m.name} nach {idle_min:.1f} min")
-                                ok, msg = await switch_plug(m, "off")
+                                ok, msg = await switch_all_machine_plugs(m, "off", db)
                                 # Energie berechnen (power bekannt, Laufzeit aus session_started_at)
                                 energy_wh = None
                                 if m.session_started_at and power is not None:

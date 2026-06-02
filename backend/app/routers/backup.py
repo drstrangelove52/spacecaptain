@@ -13,7 +13,7 @@ from app.models import (
     User, Guest, Machine, Permission,
     ActivityLog, MachineSession, LogType, SessionEndedBy,
     MaintenanceInterval, MaintenanceRecord, SystemSettings, Announcement, NtfyTopic,
-    Plug,
+    Plug, MachinePlug,
 )
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
@@ -47,6 +47,9 @@ async def _build_export_data(db: AsyncSession) -> dict:
     announcements = (await db.execute(select(Announcement).order_by(Announcement.id))).scalars().all()
     ntfy_topics   = (await db.execute(select(NtfyTopic).order_by(NtfyTopic.id))).scalars().all()
     plugs         = (await db.execute(select(Plug).order_by(Plug.id))).scalars().all()
+    machine_plugs_rows = (await db.execute(
+        select(MachinePlug).order_by(MachinePlug.machine_id, MachinePlug.sort_order)
+    )).scalars().all()
 
     # Stabile Referenzen statt IDs
     guest_by_id   = {g.id: g.username  for g in guests}
@@ -56,7 +59,7 @@ async def _build_export_data(db: AsyncSession) -> dict:
     plug_by_id = {p.id: p.plug_ip for p in plugs}
 
     return {
-        "version": "2.7",
+        "version": "2.8",
         "app_version": APP_VERSION,
         "exported_at": datetime.utcnow().isoformat(),
         "settings": {
@@ -87,6 +90,12 @@ async def _build_export_data(db: AsyncSession) -> dict:
             "plug_token": p.plug_token,
             "notes":      p.notes,
         } for p in plugs],
+        "machine_plugs": [{
+            "machine_qr_token": machine_by_id.get(mp.machine_id),
+            "plug_ip":          plug_by_id.get(mp.plug_id),
+            "sort_order":       mp.sort_order,
+        } for mp in machine_plugs_rows
+          if machine_by_id.get(mp.machine_id) and plug_by_id.get(mp.plug_id)],
         "machines": [{
             "name": m.name, "category": m.category, "manufacturer": m.manufacturer,
             "model": m.model, "serial_number": m.serial_number,
@@ -255,9 +264,10 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
     #   • Niemals breaking changes ohne Versions-Prüfung (payload.get("version")) einbauen.
     backup_version = payload.get("version", "unbekannt")
 
-    stats = {"users": 0, "guests": 0, "machines": 0, "plugs": 0, "permissions": 0,
-             "sessions": 0, "activity_log": 0, "announcements": 0, "ntfy_topics": 0,
-             "maintenance_intervals": 0, "maintenance_records": 0, "skipped": 0, "updated": 0}
+    stats = {"users": 0, "guests": 0, "machines": 0, "plugs": 0, "machine_plugs": 0,
+             "permissions": 0, "sessions": 0, "activity_log": 0, "announcements": 0,
+             "ntfy_topics": 0, "maintenance_intervals": 0, "maintenance_records": 0,
+             "skipped": 0, "updated": 0}
 
     # ── Systemeinstellungen ────────────────────────────────
     if s := payload.get("settings"):
@@ -384,6 +394,36 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
     guest_map   = {g.username: g.id  for g in (await db.execute(select(Guest))).scalars().all()}
     machine_map = {m.qr_token: m.id  for m in (await db.execute(select(Machine))).scalars().all()}
     user_map    = {u.email:    u.id  for u in (await db.execute(select(User))).scalars().all()}
+
+    # ── machine_plugs ─────────────────────────────────────
+    plug_ip_map_current = {p.plug_ip: p.id for p in (await db.execute(select(Plug))).scalars().all()}
+    existing_mp_keys = {
+        (mp.machine_id, mp.plug_id)
+        for mp in (await db.execute(select(MachinePlug))).scalars().all()
+    }
+    for mp_entry in payload.get("machine_plugs", []):
+        mid = machine_map.get(mp_entry.get("machine_qr_token"))
+        pid = plug_ip_map_current.get(mp_entry.get("plug_ip"))
+        if not mid or not pid:
+            stats["skipped"] += 1; continue
+        if (mid, pid) in existing_mp_keys:
+            stats["skipped"] += 1; continue
+        existing_mp_keys.add((mid, pid))
+        db.add(MachinePlug(machine_id=mid, plug_id=pid, sort_order=mp_entry.get("sort_order", 0)))
+        # Primär-Plug → Machine-Felder aktualisieren
+        if mp_entry.get("sort_order", 0) == 0:
+            mres = await db.execute(select(Machine).where(Machine.id == mid))
+            m_row = mres.scalar_one_or_none()
+            plug_row = (await db.execute(select(Plug).where(Plug.id == pid))).scalar_one_or_none()
+            if m_row and plug_row:
+                from app.models import PlugType as _PT
+                m_row.plug_id = pid
+                m_row.plug_type = _PT(plug_row.plug_type)
+                m_row.plug_ip = plug_row.plug_ip
+                m_row.plug_token = plug_row.plug_token
+        stats["machine_plugs"] += 1
+
+    await db.flush()
 
     # ── Berechtigungen ────────────────────────────────────
     existing_perms_map = {

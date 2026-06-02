@@ -3226,6 +3226,7 @@ function showAddMachine() {
         ${[...(_plugs||[])].sort((a,b)=>a.name.localeCompare(b.name,'de')).map(p=>`<option value="${p.id}">${escHtml(_plugOptionLabel(p,null))}</option>`).join('')}
       </select>
       ${!(_plugs&&_plugs.length)?`<div style="font-size:11px;color:var(--text-dim);margin-top:4px">Pool ist leer — <a href="#" onclick="navigateTo('plugs');closeModal();return false" style="color:var(--accent)">Plugs verwalten →</a></div>`:''}
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Weitere Plugs können nach dem Erstellen in der Bearbeitungsansicht hinzugefügt werden.</div>
     </div>
     <div id="mc-idle-row" style="display:none">
       <hr style="border-color:var(--border);margin:16px 0">
@@ -3265,9 +3266,59 @@ function showAddMachine() {
   });
 }
 
+let _editMachinePlugs = [];        // [{id, name, plug_ip, plug_type}] — aktueller Zustand im Dialog
+let _editMachinePlugsOrig = [];    // Original (für Diff beim Speichern)
+let _editMachineId = null;
+
+function _renderEditPlugList() {
+  const el = document.getElementById('e-plug-list'); if (!el) return;
+  if (!_editMachinePlugs.length) {
+    el.innerHTML = '<span style="color:var(--text-dim);font-size:13px">— kein Plug zugewiesen —</span>';
+    document.getElementById('e-idle-row').style.display = 'none';
+    return;
+  }
+  document.getElementById('e-idle-row').style.display = 'block';
+  el.innerHTML = _editMachinePlugs.map((p, idx) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:6px 8px;background:var(--surface2);border-radius:6px">
+      <span style="font-size:11px;color:var(--accent);min-width:20px">${idx===0?'★':''}</span>
+      <span style="flex:1"><strong>${escHtml(p.name)}</strong> <span style="color:var(--text-dim);font-size:12px">${escHtml(p.plug_ip)} · ${_plugTypeLabel(p.plug_type)}</span></span>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="_removeEditPlug(${p.id})" style="color:var(--error);padding:2px 6px">×</button>
+    </div>`).join('');
+}
+
+function _removeEditPlug(plugId) {
+  _editMachinePlugs = _editMachinePlugs.filter(p => p.id !== plugId);
+  _renderEditPlugList();
+  _refreshEditPlugDropdown();
+}
+
+function _refreshEditPlugDropdown() {
+  const sel = document.getElementById('e-add-plug-sel'); if (!sel) return;
+  const assignedIds = new Set(_editMachinePlugs.map(p => p.id));
+  sel.innerHTML = '<option value="">— Plug hinzufügen —</option>' +
+    [...(_plugs||[])].sort((a,b)=>a.name.localeCompare(b.name,'de'))
+      .map(p => `<option value="${p.id}"${assignedIds.has(p.id)?' disabled':''}>` +
+        `${escHtml(_plugOptionLabel(p, _editMachineId))}</option>`).join('');
+}
+
+function _addEditPlug() {
+  const sel = document.getElementById('e-add-plug-sel'); if (!sel) return;
+  const pid = parseInt(sel.value); if (!pid) return;
+  if (_editMachinePlugs.some(p => p.id === pid)) return;
+  const plug = _plugs.find(p => p.id === pid); if (!plug) return;
+  const others = (plug.machines||[]).filter(x => x.id !== _editMachineId).map(x => x.name);
+  if (others.length > 0 && !confirm(`Plug «${plug.name}» ist bereits «${others.join(', ')}» zugewiesen.\nBeide Maschinen schalten dann gleichzeitig.\nTrotzdem zuweisen?`)) return;
+  _editMachinePlugs.push({id: plug.id, name: plug.name, plug_ip: plug.plug_ip, plug_type: plug.plug_type});
+  sel.value = '';
+  _renderEditPlugList();
+  _refreshEditPlugDropdown();
+}
+
 function editMachine(id) {
   const m=cache.machines.find(x=>x.id===id); if (!m) return;
-  const showPlug=!!(m.plug_id||(m.plug_type&&m.plug_type!=='none'));
+  _editMachineId = id;
+  _editMachinePlugs = [...(m.plugs||[])];
+  _editMachinePlugsOrig = [...(m.plugs||[]).map(p=>({...p}))];
   openModal('Maschine bearbeiten',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${escHtml(m.name)}"></div>
     <div class="form-row">
@@ -3285,15 +3336,17 @@ function editMachine(id) {
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="e-comment" rows="2" placeholder="z.B. Linse verschmutzt">${m.comment||''}</textarea></div>
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="e-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden">${m.safety_notes||''}</textarea></div>
     <hr style="border-color:var(--border);margin:16px 0">
-    <div class="form-group"><label class="form-label">Smart Plug</label>
-      <select class="form-input" id="e-plug-pool" onchange="updateEditIdleRow()">
-        <option value="">— Kein Smart Plug —</option>
-        ${[...(_plugs||[])].sort((a,b)=>a.name.localeCompare(b.name,'de')).map(p=>`<option value="${p.id}" ${m.plug_id===p.id?'selected':''}>${escHtml(_plugOptionLabel(p,m.id))}</option>`).join('')}
-      </select>
-      ${m.plug_ip&&!m.plug_id?`<div style="font-size:11px;color:var(--accent);margin-top:4px">⚠ Direkt konfigurierter Plug (${escHtml(m.plug_ip)}) — im Pool anlegen und hier zuweisen.</div>`:''}
-      ${!(_plugs&&_plugs.length)?`<div style="font-size:11px;color:var(--text-dim);margin-top:4px">Pool ist leer — <a href="#" onclick="navigateTo('plugs');closeModal();return false" style="color:var(--accent)">Plugs verwalten →</a></div>`:''}
+    <div class="form-group">
+      <label class="form-label">Smart Plugs <span style="font-size:11px;color:var(--text-dim);font-weight:400">★ = Primär (Monitoring)</span></label>
+      <div id="e-plug-list" style="margin-bottom:8px"></div>
+      ${(_plugs&&_plugs.length)?`
+      <div style="display:flex;gap:8px;align-items:center">
+        <select class="form-input" id="e-add-plug-sel" style="flex:1"></select>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="_addEditPlug()" style="white-space:nowrap">+ Hinzufügen</button>
+      </div>`:`<div style="font-size:11px;color:var(--text-dim)">Pool ist leer — <a href="#" onclick="navigateTo('plugs');closeModal();return false" style="color:var(--accent)">Plugs verwalten →</a></div>`}
+      ${m.plug_ip&&!(m.plugs&&m.plugs.length)?`<div style="font-size:11px;color:var(--accent);margin-top:4px">⚠ Direkt konfigurierter Plug (${escHtml(m.plug_ip)}) — im Pool anlegen und hier zuweisen.</div>`:''}
     </div>
-    <div id="e-idle-row" style="display:${showPlug?'block':'none'}">
+    <div id="e-idle-row" style="display:${(m.plugs&&m.plugs.length)?'block':'none'}">
       <hr style="border-color:var(--border);margin:16px 0">
       <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px">LEERLAUF-AUTOMATIK</div>
       <div class="form-row">
@@ -3311,19 +3364,14 @@ function editMachine(id) {
       </div>
     </div>
   `, async()=>{
-    const newPlugId=document.getElementById('e-plug-pool').value;
-    const oldPlugId=m.plug_id?String(m.plug_id):'';
-    if (newPlugId!==oldPlugId) {
-      if (newPlugId) {
-        const selPlug=_plugs.find(p=>p.id===parseInt(newPlugId));
-        const others=(selPlug?.machines||[]).filter(x=>x.id!==id).map(x=>x.name);
-        if (others.length>0 && !confirm(`Plug «${selPlug.name}» ist bereits «${others.join(', ')}» zugewiesen.\nBeide Maschinen schalten dann gleichzeitig.\nTrotzdem zuweisen?`)) return;
-        await POST(`/plugs/${newPlugId}/assign?machine_id=${id}`,{});
-      } else {
-        const curPlug=_plugs.find(p=>(p.machines||[]).some(x=>x.id===id));
-        if (curPlug) await POST(`/plugs/${curPlug.id}/unassign?machine_id=${id}`,{});
-      }
-    }
+    // Plug-Diff berechnen
+    const origIds = new Set(_editMachinePlugsOrig.map(p=>p.id));
+    const newIds  = new Set(_editMachinePlugs.map(p=>p.id));
+    const toRemove = _editMachinePlugsOrig.filter(p=>!newIds.has(p.id));
+    const toAdd    = _editMachinePlugs.filter(p=>!origIds.has(p.id));
+    for (const p of toRemove) await POST(`/plugs/${p.id}/unassign?machine_id=${id}`,{});
+    for (const p of toAdd)    await POST(`/plugs/${p.id}/assign?machine_id=${id}`,{});
+
     const idle_w=document.getElementById('e-idlew')?.value;
     const idle_t=document.getElementById('e-idlet')?.value;
     const poll_s=document.getElementById('e-poll')?.value;
@@ -3332,16 +3380,13 @@ function editMachine(id) {
     const res=await PATCH(`/machines/${id}`,payload);
     if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
   });
+  // Nach Modal-Render: Liste und Dropdown initialisieren
+  setTimeout(()=>{ _renderEditPlugList(); _refreshEditPlugDropdown(); }, 0);
 }
 
 function updateMcIdleRow() {
   const v=document.getElementById('mc-plug-pool')?.value;
   const el=document.getElementById('mc-idle-row');
-  if (el) el.style.display=v?'block':'none';
-}
-function updateEditIdleRow() {
-  const v=document.getElementById('e-plug-pool')?.value;
-  const el=document.getElementById('e-idle-row');
   if (el) el.style.display=v?'block':'none';
 }
 

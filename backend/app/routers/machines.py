@@ -13,11 +13,12 @@ from sqlalchemy import select, func
 from typing import List
 
 from app.database import get_db
-from app.models import User, Machine, Permission, LogType
+from app.models import User, Machine, MachinePlug, Permission, LogType
+from app.models import Plug as PlugModel
 from app.schemas import MachineCreate, MachineUpdate, MachineOut
 from app.services.auth import get_current_user
 from app.services import logger as log_svc
-from app.services.plug import get_plug_status, switch_plug
+from app.services.plug import get_plug_status, switch_plug, switch_all_machine_plugs
 from app.config import APP_TIMEZONE
 
 def _local_iso(dt):
@@ -41,10 +42,17 @@ async def _machine_out(machine: Machine, db: AsyncSession) -> MachineOut:
     )
     out = MachineOut.model_validate(machine)
     out.user_count = count_res.scalar() or 0
-    # Explizit setzen damit lazy-loading kein Problem macht
     out.current_guest_id   = machine.current_guest_id
     out.session_manager_id = machine.session_manager_id
     out.session_started_at = machine.session_started_at
+    # Multi-Plug: alle zugewiesenen Plugs laden
+    mp_res = await db.execute(
+        select(PlugModel.id, PlugModel.name, PlugModel.plug_ip, PlugModel.plug_type)
+        .join(MachinePlug, MachinePlug.plug_id == PlugModel.id)
+        .where(MachinePlug.machine_id == machine.id)
+        .order_by(MachinePlug.sort_order)
+    )
+    out.plugs = [{"id": r[0], "name": r[1], "plug_ip": r[2], "plug_type": r[3]} for r in mp_res.all()]
     return out
 
 
@@ -121,6 +129,14 @@ async def list_machines_live(
                 else:
                     idle_state = 'active'
 
+            mp_res = await db.execute(
+                select(PlugModel.id, PlugModel.name, PlugModel.plug_ip, PlugModel.plug_type)
+                .join(MachinePlug, MachinePlug.plug_id == PlugModel.id)
+                .where(MachinePlug.machine_id == m.id)
+                .order_by(MachinePlug.sort_order)
+            )
+            machine_plugs_list = [{"id": r[0], "name": r[1], "plug_ip": r[2], "plug_type": r[3]} for r in mp_res.all()]
+
             out.append({
                 "id": m.id,
                 "name": m.name,
@@ -137,6 +153,7 @@ async def list_machines_live(
                 "plug_ip": m.plug_ip,
                 "plug_token": m.plug_token,
                 "plug_poll_interval_sec": m.plug_poll_interval_sec,
+                "plugs": machine_plugs_list,
                 "qr_token": m.qr_token,
                 "user_count": user_count,
                 "idle_power_w": m.idle_power_w,
@@ -166,6 +183,7 @@ async def list_machines_live(
                 "manufacturer": m.manufacturer, "model": m.model, "serial_number": m.serial_number,
                 "location": m.location, "status": m.status,
                 "comment": m.comment, "safety_notes": m.safety_notes, "plug_id": m.plug_id, "plug_type": m.plug_type,
+                "plugs": [],
                 "qr_token": m.qr_token,
                 "user_count": 0,
                 "idle_power_w": m.idle_power_w,
@@ -370,7 +388,7 @@ async def manager_switch(
             duration_h = (datetime.utcnow() - machine.session_started_at).total_seconds() / 3600
             energy_wh = round(pre_status["power_w"] * duration_h, 3)
 
-    ok, msg = await switch_plug(machine, action)
+    ok, msg = await switch_all_machine_plugs(machine, action, db)
 
     if ok:
         if action == "on":

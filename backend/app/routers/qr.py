@@ -28,7 +28,7 @@ from app.models import User, Guest, Machine, Permission, GuestToken, LogType, Ma
 from app.schemas import QRScanRequest
 from app.services.auth import get_current_user
 from app.services import logger as log_svc
-from app.services.plug import switch_plug
+from app.services.plug import switch_plug, switch_all_machine_plugs
 
 router = APIRouter(prefix="/qr", tags=["qr"])
 
@@ -206,7 +206,7 @@ async def scan_machine(
     ))
 
     # 6. Smart Plug einschalten
-    plug_ok, plug_msg = await switch_plug(machine, "on")
+    plug_ok, plug_msg = await switch_all_machine_plugs(machine, "on", db)
 
     await log_svc.log(
         db, LogType.access_granted,
@@ -251,7 +251,7 @@ async def release_machine(
     if not machine:
         raise HTTPException(404, "Maschine nicht gefunden")
 
-    plug_ok, plug_msg = await switch_plug(machine, "off")
+    plug_ok, plug_msg = await switch_all_machine_plugs(machine, "off", db)
 
     await log_svc.log(
         db, LogType.plug_off,
@@ -279,7 +279,7 @@ async def manual_plug_toggle(
     if not machine:
         raise HTTPException(404, "Maschine nicht gefunden")
 
-    ok, msg = await switch_plug(machine, action)
+    ok, msg = await switch_all_machine_plugs(machine, action, db)
     log_type = LogType.plug_on if action == "on" else LogType.plug_off
     await log_svc.log(
         db, log_type,
