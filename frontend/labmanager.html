@@ -1251,16 +1251,29 @@
             <div class="help-article">
               <div class="help-article-title">Smart Plug zuweisen</div>
               <div class="help-article-body">
-                Smart Plugs werden zentral im <strong>Plug-Pool</strong> verwaltet und dann Maschinen zugewiesen.
+                Smart Plugs werden zentral im <strong>Plug-Pool</strong> verwaltet und dann Maschinen zugewiesen. Eine Maschine kann mehrere Plugs haben (z.B. CNC mit zwei Steckdosen).
                 <ol>
                   <li>Sidebar → <strong>Ausstattung → Plug-Pool</strong> → Plug anlegen (falls noch nicht vorhanden)</li>
                   <li>Sidebar → <strong>Maschinen</strong> → Maschine bearbeiten (✏)</li>
-                  <li>Abschnitt «Smart Plug» → Plug aus dem Pool auswählen</li>
-                  <li>Optional: Leerlauf-Schwellwert (Watt), Timeout (Minuten) und Poll-Intervall anpassen</li>
+                  <li>Abschnitt «Smart Plugs» → Dropdown «Plug hinzufügen» öffnen und Plug auswählen → «+ Hinzufügen»</li>
+                  <li>Für weitere Plugs: Schritt 3 wiederholen</li>
+                  <li>Optional: Leerlauf-Schwellwert, Timeout und Poll-Intervall konfigurieren</li>
                   <li>Speichern</li>
                 </ol>
-                <div class="help-tip"><strong>Tipp:</strong> Ein Plug kann immer nur einer Maschine zugewiesen sein. Ist er bereits vergeben, muss er zuerst bei der anderen Maschine abgewählt werden.</div>
+                Der mit ★ markierte Plug ist der <strong>Primär-Plug</strong> — er wird für die Leerlauf-Erkennung und den Status-Poll verwendet. Alle weiteren Plugs schalten gleichzeitig mit.
                 <div class="help-warn"><strong>Hinweis:</strong> Der Smart Plug muss im gleichen Netzwerk wie der SpaceCaptain-Server erreichbar sein. Feste IP-Adresse empfohlen (DHCP-Reservierung im Router).</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Mehrere Plugs pro Maschine (z.B. CNC)</div>
+              <div class="help-article-body">
+                Maschinen, die mehr als eine Steckdose benötigen (z.B. CNC-Fräse &gt; 2000 W), können mehrere Plugs zugewiesen bekommen. Beim Ein- und Ausschalten werden alle Plugs der Maschine gleichzeitig geschaltet.
+                <ul style="margin-top:8px">
+                  <li><strong>★ Primär-Plug</strong> (erster zugewiesener Plug): Wird für Leerlauf-Erkennung, Status-Anzeige und Poll verwendet</li>
+                  <li><strong>Sekundär-Plugs</strong>: Schalten mit dem Primär-Plug, werden aber nicht separat überwacht</li>
+                  <li>Die Reihenfolge wird durch die Zuweisung bestimmt — zuerst zugewiesener Plug ist immer Primär</li>
+                </ul>
+                <div class="help-tip"><strong>Plug entfernen:</strong> Im Bearbeitungsdialog → «×» neben dem Plug klicken → Speichern. Wird der Primär-Plug entfernt, rückt der nächste Plug automatisch nach.</div>
               </div>
             </div>
             <div class="help-article">
@@ -1349,7 +1362,8 @@
                 Der Plug-Pool ist eine zentrale Verwaltung für alle Smart Plugs im Makerspace. Jeder Plug wird einmalig mit Name, Typ und IP-Adresse erfasst und kann danach beliebigen Maschinen zugewiesen werden. So müssen Verbindungsdaten nicht mehrfach gepflegt werden und der Überblick bleibt gewahrt — auch bei vielen Plugs.
                 <ul style="margin-top:10px">
                   <li>Unterstützte Typen: <strong>myStrom</strong>, <strong>Shelly Gen1</strong>, <strong>Shelly Gen2/Gen3/Gen4</strong></li>
-                  <li>Ein Plug kann immer nur <strong>einer Maschine</strong> gleichzeitig zugewiesen sein</li>
+                  <li>Ein Plug kann <strong>mehreren Maschinen</strong> zugewiesen sein (alle schalten dann gleichzeitig)</li>
+                  <li>Eine Maschine kann <strong>mehrere Plugs</strong> haben (alle schalten gleichzeitig)</li>
                   <li>Freie Plugs (ohne Zuweisung) können direkt aus dem Pool testweise geschaltet werden</li>
                 </ul>
               </div>
@@ -1385,11 +1399,12 @@
                 Die Zuweisung erfolgt in der Maschinenkonfiguration — nicht im Plug-Pool selbst.
                 <ol>
                   <li>Sidebar → <strong>Maschinen</strong> → Maschine bearbeiten (✏)</li>
-                  <li>Abschnitt «Smart Plug» → Plug aus dem Dropdown auswählen</li>
+                  <li>Abschnitt «Smart Plugs» → Dropdown «Plug hinzufügen» → Plug auswählen → «+ Hinzufügen»</li>
+                  <li>Für weitere Plugs: Schritt 2 wiederholen</li>
                   <li>Speichern</li>
                 </ol>
-                Nach der Zuweisung erscheint der Maschinenname in der Plug-Pool-Tabelle unter «Zugewiesen an».
-                <div class="help-tip"><strong>Umzug:</strong> Plug einer anderen Maschine zuweisen — einfach in der neuen Maschine den Plug auswählen und speichern. Die vorherige Zuweisung wird automatisch aufgehoben.</div>
+                Nach der Zuweisung erscheint der Maschinenname in der Plug-Pool-Tabelle unter «Zugewiesen an». Der zuerst zugewiesene Plug ist automatisch der Primär-Plug (★).
+                <div class="help-tip"><strong>Shared Plug:</strong> Ist ein Plug bereits einer anderen Maschine zugewiesen, erscheint eine Bestätigung. Beide Maschinen schalten dann gleichzeitig — sinnvoll z.B. für einen ganzen Arbeitsplatz.</div>
               </div>
             </div>
             <div class="help-article">
@@ -1397,10 +1412,10 @@
               <div class="help-article-body">
                 <ol>
                   <li>Sidebar → <strong>Maschinen</strong> → Maschine bearbeiten (✏)</li>
-                  <li>Abschnitt «Smart Plug» → «— Kein Smart Plug —» auswählen</li>
+                  <li>Abschnitt «Smart Plugs» → «×» neben dem Plug klicken</li>
                   <li>Speichern</li>
                 </ol>
-                Der Plug erscheint danach in der Pool-Liste wieder als «— frei —» und kann anderen Maschinen zugewiesen oder gelöscht werden.
+                Wird der Primär-Plug (★) entfernt und es gibt weitere Plugs, rückt der nächste automatisch als Primär nach. Sind alle Plugs entfernt, erscheint der Plug in der Pool-Liste wieder als «— frei —».
               </div>
             </div>
             <div class="help-article">
