@@ -32,7 +32,7 @@ async def automation_watcher(app):
     from app.database import AsyncSessionLocal
 
     while True:
-        await asyncio.sleep(10)
+        await asyncio.sleep(5)
         try:
             async with AsyncSessionLocal() as db:
                 res = await db.execute(
@@ -94,10 +94,9 @@ async def _process(a: MachineAutomation, db) -> None:
         if state in ("on", "countdown"):
             if a.id not in _countdown_start:
                 _countdown_start[a.id] = now
-                _state[a.id] = "countdown"
-            else:
-                elapsed = (now - _countdown_start[a.id]).total_seconds()
-                if elapsed >= a.off_delay_sec:
+            _state[a.id] = "countdown"
+            elapsed = (now - _countdown_start[a.id]).total_seconds()
+            if elapsed >= a.off_delay_sec:
                     tgt_res = await db.execute(select(Machine).where(Machine.id == a.target_machine_id))
                     tgt = tgt_res.scalar_one_or_none()
                     if tgt:
