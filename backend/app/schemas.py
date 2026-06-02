@@ -257,6 +257,37 @@ class PlugOut(BaseModel):
         from_attributes = True
 
 
+# ── Automationen ──────────────────────────────────────────
+class AutomationCreate(BaseModel):
+    source_machine_id: int
+    target_machine_id: int
+    on_threshold_w:    float
+    off_threshold_w:   float
+    off_delay_sec:     int = 30
+    enabled:           bool = True
+
+class AutomationUpdate(BaseModel):
+    on_threshold_w:  Optional[float] = None
+    off_threshold_w: Optional[float] = None
+    off_delay_sec:   Optional[int]   = None
+    enabled:         Optional[bool]  = None
+
+class AutomationOut(BaseModel):
+    id:                int
+    source_machine_id: int
+    target_machine_id: int
+    source_machine_name: str = ""
+    target_machine_name: str = ""
+    on_threshold_w:    float
+    off_threshold_w:   float
+    off_delay_sec:     int
+    enabled:           bool
+    created_at:        datetime
+
+    class Config:
+        from_attributes = True
+
+
 # ── Dashboard ─────────────────────────────────────────────
 class DashboardStats(BaseModel):
     total_guests: int

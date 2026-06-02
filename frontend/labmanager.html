@@ -289,6 +289,7 @@
     <div class="nav-section">AUSSTATTUNG</div>
     <div class="nav-item" data-page="machines" onclick="navigate(this)"><span class="nav-icon">🏭</span> Maschinen <span class="nav-badge" id="badge-machines">0</span></div>
     <div class="nav-item" data-page="plugs" onclick="navigate(this)"><span class="nav-icon">🔌</span> Plug-Pool <span class="nav-badge" id="badge-plugs">0</span></div>
+    <div class="nav-item" data-page="automations" onclick="navigate(this)"><span class="nav-icon">⚡</span> Automationen <span class="nav-badge" id="badge-automations" style="display:none">0</span></div>
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
     <div class="nav-item" data-page="permissions" onclick="navigate(this)"><span class="nav-icon">🔑</span> Berechtigungen</div>
     <div class="nav-section">SYSTEM</div>
@@ -563,6 +564,18 @@
     </div>
 
     <!-- BACKUP PAGE -->
+
+    <!-- AUTOMATIONEN -->
+    <div class="page" id="page-automations">
+      <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div class="section-title">Automationen <span>// LEISTUNGS-TRIGGER</span></div>
+        <button class="btn btn-primary btn-sm" onclick="showAddAutomation()">+ Neue Automation</button>
+      </div>
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:16px;max-width:680px">
+        Schaltet eine Ziel-Maschine (z.B. Absaugung) automatisch ein, sobald die Quell-Maschine (z.B. Tischkreissäge) eine definierte Leistungsschwelle überschreitet. Nach Unterschreiten der Ausschaltschwelle wird die Ziel-Maschine nach einer konfigurierbaren Nachlaufzeit ausgeschaltet.
+      </div>
+      <div id="automations-list"></div>
+    </div>
 
     <!-- MASCHINENPFLEGE -->
     <div class="page" id="page-maintenance">
@@ -1068,6 +1081,7 @@
             <div class="help-nav-item" onclick="selectHelpCat('machines')"><span class="help-nav-icon">🏭</span><span class="help-nav-label">Maschinen</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('plugs')"><span class="help-nav-icon">🔌</span><span class="help-nav-label">Plug-Pool</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('permissions')"><span class="help-nav-icon">🔑</span><span class="help-nav-label">Berechtigungen</span></div>
+            <div class="help-nav-item" onclick="selectHelpCat('automations')"><span class="help-nav-icon">⚡</span><span class="help-nav-label">Automationen</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('maintenance')"><span class="help-nav-icon">🔧</span><span class="help-nav-label">Maschinenpflege</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('announcements')"><span class="help-nav-icon">📢</span><span class="help-nav-label">Mitteilungen</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('notifications')"><span class="help-nav-icon">🔔</span><span class="help-nav-label">Benachrichtigungen</span></div>
@@ -1485,6 +1499,73 @@
                   <li>«Zugang gewähren» oder «Zugang entziehen» für alle Markierten anwenden</li>
                 </ol>
                 <div class="help-tip"><strong>Tipp:</strong> Ideal nach einer Schulung — alle Teilnehmenden auf einmal freischalten.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Automationen ── -->
+            <div class="help-panel" id="help-panel-automations">
+              <div class="help-panel-header"><span class="help-panel-icon">⚡</span><span class="help-panel-title">Automationen</span></div>
+              <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Was sind Automationen?</div>
+              <div class="help-article-body">
+                Automationen schalten eine Ziel-Maschine (z.B. Absaugung) automatisch ein und aus, basierend auf der Leistungsaufnahme einer Quell-Maschine (z.B. Tischkreissäge). Der Trigger ist rein leistungsbasiert — unabhängig davon, ob eine Session aktiv ist.
+                <ul style="margin-top:10px">
+                  <li>Die <strong>Quell-Maschine</strong> muss einen konfigurierten Smart Plug haben</li>
+                  <li>Die <strong>Ziel-Maschine</strong> kann jeden Maschinentyp sein (auch ohne Plug: Session-only)</li>
+                  <li>Mehrere Automationen können auf dieselbe Quelle oder dasselbe Ziel verweisen</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Automation erstellen</div>
+              <div class="help-article-body">
+                <ol>
+                  <li>Sidebar → <strong>Ausstattung → Automationen</strong> → «+ Neue Automation»</li>
+                  <li><strong>Quell-Maschine</strong> wählen — nur Maschinen mit Plug stehen zur Auswahl</li>
+                  <li><strong>Ziel-Maschine</strong> wählen — die automatisch geschaltete Maschine</li>
+                  <li><strong>Einschaltschwelle (W):</strong> Überschreitet die Quell-Maschine diesen Wert → Ziel EIN</li>
+                  <li><strong>Ausschaltschwelle (W):</strong> Fällt die Quell-Maschine darunter → Countdown startet</li>
+                  <li><strong>Nachlaufzeit (s):</strong> Wie lange die Ziel-Maschine nach Ende des Countdowns noch läuft</li>
+                </ol>
+                <div class="help-tip"><strong>Beispiel Tischkreissäge + Absaugung:</strong><br>
+                Einschalten ≥ 150 W · Ausschalten &lt; 20 W · Nachlauf 60 s<br>
+                → Sobald die Säge anläuft (Stromspitze), schaltet die Absaugung ein. Nach dem Abschalten läuft sie noch 60 s nach, um Späne vollständig abzusaugen.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Schwellwerte richtig konfigurieren</div>
+              <div class="help-article-body">
+                <ul>
+                  <li><strong>Einschaltschwelle:</strong> Sollte deutlich über dem Leerlaufverbrauch der Quell-Maschine liegen (z.B. Leerlauf 5 W → Schwelle 50 W)</li>
+                  <li><strong>Ausschaltschwelle:</strong> Etwas über dem absoluten Minimalverbrauch, damit kurze Pausen keinen Fehlalarm auslösen</li>
+                  <li><strong>Einschaltschwelle muss grösser sein als Ausschaltschwelle</strong> — sonst wäre der Zustand undefiniert</li>
+                  <li>Zwischen Ein- und Ausschaltschwelle: laufender Countdown wird abgebrochen, Ziel bleibt EIN</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Watcher-Status (Live-Anzeige)</div>
+              <div class="help-article-body">
+                In der Automationen-Liste wird der aktuelle Zustand des Watchers angezeigt:
+                <ul style="margin-top:8px">
+                  <li><strong>● aktiv</strong> — Quell-Maschine über Einschaltschwelle, Ziel ist EIN</li>
+                  <li><strong>⏱ Nachlauf Xs</strong> — Countdown läuft, Ziel schaltet bald AUS</li>
+                  <li><strong>○ bereit</strong> — Quell-Maschine unter Schwelle, Ziel ist AUS, wartet auf Trigger</li>
+                </ul>
+                Der Status aktualisiert sich automatisch alle 30 Sekunden (Dashboard-Intervall).
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Automation deaktivieren / löschen</div>
+              <div class="help-article-body">
+                <ul>
+                  <li><strong>Deaktivieren:</strong> Checkbox «Aktiv» deaktivieren — Regel bleibt gespeichert, wird aber nicht mehr ausgeführt</li>
+                  <li><strong>Löschen:</strong> 🗑-Symbol — Regel wird dauerhaft entfernt. Wird die Quell- oder Ziel-Maschine gelöscht, wird die Automation automatisch mitgelöscht.</li>
+                </ul>
+                <div class="help-warn"><strong>Hinweis:</strong> Beim Deaktivieren oder Löschen wird die Ziel-Maschine <em>nicht</em> automatisch ausgeschaltet — der Zustand bleibt wie er ist.</div>
               </div>
             </div>
           </div>
@@ -2235,6 +2316,7 @@ function navigate(el) {
   if (page==='settings') { loadSettings(); loadTopicsForSettings(); }
   if (page==='backup') loadBackupFiles();
   if (page==='plugs') loadPlugs();
+  if (page==='automations') loadAutomations();
 
   if (page==='help') initHelp();
 }
@@ -4291,6 +4373,10 @@ async function startDashboardRefresh() {
   setInterval(async () => {
     const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
     if (activePage === 'machines' || activePage === 'dashboard') refreshLiveData();
+    if (activePage === 'automations') {
+      const states = await GET('/automations/states');
+      if (states) { _autoStates = states; renderAutomations(); }
+    }
   }, ms);
 }
 startDashboardRefresh();
@@ -4499,6 +4585,175 @@ async function deleteBackupFile(filename) {
     showToast('Backup gelöscht', 'success');
     await loadBackupFiles();
   }
+}
+
+// ═══════════════════════════════════════════════════════
+// AUTOMATIONEN
+// ═══════════════════════════════════════════════════════
+let _automations = [];
+let _autoStates  = {};
+
+async function loadAutomations() {
+  const [autos, states] = await Promise.all([
+    GET('/automations'),
+    GET('/automations/states'),
+  ]);
+  _automations = autos || [];
+  _autoStates  = states || {};
+  renderAutomations();
+}
+
+function _stateLabel(autoId) {
+  const s = _autoStates[autoId];
+  if (!s) return '';
+  if (s.state === 'on')       return '<span style="color:var(--success);font-size:11px">● aktiv</span>';
+  if (s.state === 'countdown') {
+    const sec = s.countdown_sec ?? 0;
+    return `<span style="color:var(--accent);font-size:11px">⏱ Nachlauf ${sec}s</span>`;
+  }
+  return '<span style="color:var(--text-dim);font-size:11px">○ bereit</span>';
+}
+
+function renderAutomations() {
+  const el = document.getElementById('automations-list'); if (!el) return;
+  const badge = document.getElementById('badge-automations');
+  if (badge) {
+    badge.textContent = _automations.length;
+    badge.style.display = _automations.length ? '' : 'none';
+  }
+  if (!_automations.length) {
+    el.innerHTML = `<div class="card" style="padding:32px;text-align:center;color:var(--text-dim)">
+      Noch keine Automationen konfiguriert.<br>
+      <span style="font-size:12px">Mit «+ Neue Automation» eine Regel erstellen.</span>
+    </div>`;
+    return;
+  }
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">${_automations.map(a=>`
+    <div class="card" style="padding:18px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:4px">
+          ${escHtml(a.source_machine_name)} → ${escHtml(a.target_machine_name)}
+        </div>
+        <div style="font-size:12px;color:var(--text-dim);font-family:var(--mono)">
+          EIN ≥ ${a.on_threshold_w} W &nbsp;·&nbsp; AUS &lt; ${a.off_threshold_w} W &nbsp;·&nbsp; Nachlauf ${a.off_delay_sec} s
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+        ${_stateLabel(a.id)}
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--text-mid)">
+          <input type="checkbox" ${a.enabled?'checked':''} onchange="toggleAutomation(${a.id},this.checked)" style="accent-color:var(--accent2)"> Aktiv
+        </label>
+        <button class="btn btn-ghost btn-sm" onclick="editAutomation(${a.id})">✏</button>
+        <button class="btn btn-ghost btn-sm" onclick="deleteAutomation(${a.id},'${escHtml(a.source_machine_name)} → ${escHtml(a.target_machine_name)}')" style="color:var(--error)">🗑</button>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function _autoMachineOptions(selectedId) {
+  return (cache.machines||[])
+    .filter(m=>m.plug_type&&m.plug_type!=='none')
+    .sort((a,b)=>a.name.localeCompare(b.name,'de'))
+    .map(m=>`<option value="${m.id}"${m.id===selectedId?' selected':''}>${escHtml(m.name)}</option>`)
+    .join('');
+}
+
+function _allMachineOptions(selectedId) {
+  return (cache.machines||[])
+    .sort((a,b)=>a.name.localeCompare(b.name,'de'))
+    .map(m=>`<option value="${m.id}"${m.id===selectedId?' selected':''}>${escHtml(m.name)}</option>`)
+    .join('');
+}
+
+function showAddAutomation() {
+  openModal('Neue Automation', `
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;line-height:1.6">
+      Die <strong style="color:var(--text)">Quell-Maschine</strong> wird auf Leistungsaufnahme überwacht (muss einen Plug haben).<br>
+      Die <strong style="color:var(--text)">Ziel-Maschine</strong> wird automatisch ein- und ausgeschaltet.
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Quell-Maschine (Trigger)</label>
+        <select class="form-input" id="a-src">
+          <option value="">— Maschine mit Plug wählen —</option>
+          ${_autoMachineOptions(null)}
+        </select>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Nur Maschinen mit konfiguriertem Plug werden aufgeführt</div>
+      </div>
+      <div class="form-group"><label class="form-label">Ziel-Maschine (wird geschaltet)</label>
+        <select class="form-input" id="a-tgt">
+          <option value="">— Maschine wählen —</option>
+          ${_allMachineOptions(null)}
+        </select>
+      </div>
+    </div>
+    <hr style="border-color:var(--border);margin:16px 0">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px">SCHWELLWERTE</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Einschalten bei ≥ (Watt)</label>
+        <input class="form-input" id="a-on" type="number" step="1" min="1" placeholder="z.B. 150">
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Ziel EIN wenn Quell-Plug diese Leistung überschreitet</div>
+      </div>
+      <div class="form-group"><label class="form-label">Ausschalten unter (Watt)</label>
+        <input class="form-input" id="a-off" type="number" step="1" min="0" placeholder="z.B. 20">
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Countdown startet wenn Quell-Plug unter diesen Wert fällt</div>
+      </div>
+      <div class="form-group"><label class="form-label">Nachlaufzeit (Sekunden)</label>
+        <input class="form-input" id="a-delay" type="number" step="1" min="0" value="30" placeholder="30">
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Ziel bleibt noch diese Zeit eingeschaltet bevor es ausgeht</div>
+      </div>
+    </div>
+  `, async()=>{
+    const src   = parseInt(document.getElementById('a-src').value);
+    const tgt   = parseInt(document.getElementById('a-tgt').value);
+    const onW   = parseFloat(document.getElementById('a-on').value);
+    const offW  = parseFloat(document.getElementById('a-off').value);
+    const delay = parseInt(document.getElementById('a-delay').value)||30;
+    if (!src||!tgt)           { showToast('Bitte Quell- und Ziel-Maschine wählen','error'); return; }
+    if (src===tgt)            { showToast('Quell- und Ziel-Maschine müssen verschieden sein','error'); return; }
+    if (!onW||isNaN(onW))     { showToast('Einschaltschwelle angeben','error'); return; }
+    if (isNaN(offW))          { showToast('Ausschaltschwelle angeben','error'); return; }
+    if (onW<=offW)            { showToast('Einschaltschwelle muss höher sein als Ausschaltschwelle','error'); return; }
+    const res = await POST('/automations',{source_machine_id:src,target_machine_id:tgt,on_threshold_w:onW,off_threshold_w:offW,off_delay_sec:delay});
+    if (res) { closeModal(); await loadAutomations(); showToast('Automation erstellt','success'); }
+  });
+}
+
+function editAutomation(id) {
+  const a = _automations.find(x=>x.id===id); if (!a) return;
+  openModal('Automation bearbeiten', `
+    <div style="font-size:13px;color:var(--text-mid);margin-bottom:16px">
+      <strong>${escHtml(a.source_machine_name)}</strong> → <strong>${escHtml(a.target_machine_name)}</strong>
+    </div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px">SCHWELLWERTE</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Einschalten bei ≥ (Watt)</label>
+        <input class="form-input" id="ea-on" type="number" step="1" min="1" value="${a.on_threshold_w}">
+      </div>
+      <div class="form-group"><label class="form-label">Ausschalten unter (Watt)</label>
+        <input class="form-input" id="ea-off" type="number" step="1" min="0" value="${a.off_threshold_w}">
+      </div>
+      <div class="form-group"><label class="form-label">Nachlaufzeit (Sekunden)</label>
+        <input class="form-input" id="ea-delay" type="number" step="1" min="0" value="${a.off_delay_sec}">
+      </div>
+    </div>
+  `, async()=>{
+    const onW   = parseFloat(document.getElementById('ea-on').value);
+    const offW  = parseFloat(document.getElementById('ea-off').value);
+    const delay = parseInt(document.getElementById('ea-delay').value)||30;
+    if (isNaN(onW)||isNaN(offW)) { showToast('Schwellwerte angeben','error'); return; }
+    if (onW<=offW)               { showToast('Einschaltschwelle muss höher sein als Ausschaltschwelle','error'); return; }
+    const res = await PATCH(`/automations/${id}`,{on_threshold_w:onW,off_threshold_w:offW,off_delay_sec:delay});
+    if (res) { closeModal(); await loadAutomations(); showToast('Gespeichert','success'); }
+  });
+}
+
+async function toggleAutomation(id, enabled) {
+  await PATCH(`/automations/${id}`, {enabled});
+  await loadAutomations();
+}
+
+async function deleteAutomation(id, label) {
+  if (!confirm(`Automation «${label}» löschen?`)) return;
+  if (await DELETE(`/automations/${id}`)) { await loadAutomations(); showToast('Gelöscht','warn'); }
 }
 
 // ═══════════════════════════════════════════════════════

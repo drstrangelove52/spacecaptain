@@ -13,7 +13,7 @@ from app.models import (
     User, Guest, Machine, Permission,
     ActivityLog, MachineSession, LogType, SessionEndedBy,
     MaintenanceInterval, MaintenanceRecord, SystemSettings, Announcement, NtfyTopic,
-    Plug, MachinePlug,
+    Plug, MachinePlug, MachineAutomation,
 )
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
@@ -50,6 +50,9 @@ async def _build_export_data(db: AsyncSession) -> dict:
     machine_plugs_rows = (await db.execute(
         select(MachinePlug).order_by(MachinePlug.machine_id, MachinePlug.sort_order)
     )).scalars().all()
+    automations = (await db.execute(
+        select(MachineAutomation).order_by(MachineAutomation.id)
+    )).scalars().all()
 
     # Stabile Referenzen statt IDs
     guest_by_id   = {g.id: g.username  for g in guests}
@@ -59,7 +62,7 @@ async def _build_export_data(db: AsyncSession) -> dict:
     plug_by_id = {p.id: p.plug_ip for p in plugs}
 
     return {
-        "version": "2.8",
+        "version": "2.9",
         "app_version": APP_VERSION,
         "exported_at": datetime.utcnow().isoformat(),
         "settings": {
@@ -156,6 +159,15 @@ async def _build_export_data(db: AsyncSession) -> dict:
             "recur_valid_until":  a.recur_valid_until.isoformat() if a.recur_valid_until else None,
             "created_at":         _iso(a.created_at),
         } for a in announcements],
+        "automations": [{
+            "source_machine_qr": machine_by_id.get(a.source_machine_id),
+            "target_machine_qr": machine_by_id.get(a.target_machine_id),
+            "on_threshold_w":    a.on_threshold_w,
+            "off_threshold_w":   a.off_threshold_w,
+            "off_delay_sec":     a.off_delay_sec,
+            "enabled":           a.enabled,
+        } for a in automations
+          if machine_by_id.get(a.source_machine_id) and machine_by_id.get(a.target_machine_id)],
         "activity_log": [{
             "type":             l.type,
             "message":          l.message,
@@ -422,6 +434,32 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
                 m_row.plug_ip = plug_row.plug_ip
                 m_row.plug_token = plug_row.plug_token
         stats["machine_plugs"] += 1
+
+    await db.flush()
+
+    # ── Automationen ──────────────────────────────────────
+    existing_autos = {
+        (a.source_machine_id, a.target_machine_id)
+        for a in (await db.execute(select(MachineAutomation))).scalars().all()
+    }
+    for a in payload.get("automations", []):
+        src_mid = machine_map.get(a.get("source_machine_qr"))
+        tgt_mid = machine_map.get(a.get("target_machine_qr"))
+        if not src_mid or not tgt_mid:
+            stats["skipped"] += 1; continue
+        if (src_mid, tgt_mid) in existing_autos:
+            stats["skipped"] += 1; continue
+        existing_autos.add((src_mid, tgt_mid))
+        db.add(MachineAutomation(
+            source_machine_id=src_mid,
+            target_machine_id=tgt_mid,
+            on_threshold_w=a.get("on_threshold_w", 100),
+            off_threshold_w=a.get("off_threshold_w", 10),
+            off_delay_sec=a.get("off_delay_sec", 30),
+            enabled=a.get("enabled", True),
+        ))
+        stats.setdefault("automations", 0)
+        stats["automations"] += 1
 
     await db.flush()
 

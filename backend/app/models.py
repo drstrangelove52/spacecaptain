@@ -297,6 +297,21 @@ class MachinePlug(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class MachineAutomation(Base):
+    """Schaltet Ziel-Maschine automatisch basierend auf Leistungsaufnahme der Quell-Maschine."""
+    __tablename__ = "machine_automations"
+    id:                Mapped[int]   = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source_machine_id: Mapped[int]   = mapped_column(UINT(unsigned=True), ForeignKey("machines.id", ondelete="CASCADE"))
+    target_machine_id: Mapped[int]   = mapped_column(UINT(unsigned=True), ForeignKey("machines.id", ondelete="CASCADE"))
+    on_threshold_w:    Mapped[float] = mapped_column(Float, nullable=False)
+    off_threshold_w:   Mapped[float] = mapped_column(Float, nullable=False)
+    off_delay_sec:     Mapped[int]   = mapped_column(Integer, default=30)
+    enabled:           Mapped[bool]  = mapped_column(Boolean, default=True)
+    created_at:        Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    source_machine:    Mapped["Machine"] = relationship("Machine", foreign_keys=[source_machine_id])
+    target_machine:    Mapped["Machine"] = relationship("Machine", foreign_keys=[target_machine_id])
+
+
 class MachineQueue(Base):
     __tablename__ = "machine_queue"
     id:          Mapped[int]          = mapped_column(Integer, primary_key=True, autoincrement=True)

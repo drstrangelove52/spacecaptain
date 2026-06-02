@@ -343,6 +343,22 @@ async def run_migrations(engine: AsyncEngine) -> None:
                 ('Sonstiges',  '🔧', 8, NOW())
             """))
 
+        # ── v1.24: machine_automations (Leistungs-Automation) ────────────────
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS machine_automations (
+                id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                source_machine_id   INT UNSIGNED NOT NULL,
+                target_machine_id   INT UNSIGNED NOT NULL,
+                on_threshold_w      FLOAT NOT NULL,
+                off_threshold_w     FLOAT NOT NULL,
+                off_delay_sec       INT NOT NULL DEFAULT 30,
+                enabled             TINYINT(1) NOT NULL DEFAULT 1,
+                created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (source_machine_id) REFERENCES machines(id) ON DELETE CASCADE,
+                FOREIGN KEY (target_machine_id) REFERENCES machines(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
+
         # ── v1.23: machine_plugs (mehrere Plugs pro Maschine) ────────────────
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS machine_plugs (
