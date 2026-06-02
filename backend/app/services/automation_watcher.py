@@ -15,8 +15,9 @@ from datetime import datetime
 
 from sqlalchemy import select
 
-from app.models import MachineAutomation, Machine, LogType
+from app.models import MachineAutomation, Machine, LogType, SessionEndedBy
 from app.services.plug import get_plug_status, switch_all_machine_plugs
+from app.services.session import start_manager_session, end_session
 from app.services import logger as log_svc
 
 log = logging.getLogger(__name__)
@@ -77,11 +78,16 @@ async def _process(a: MachineAutomation, db) -> None:
                 if ok:
                     _state[a.id] = "on"
                     log.info(f"Automation {a.id}: {src.name} → {tgt.name} EIN ({power:.0f}W ≥ {a.on_threshold_w}W)")
+                    tgt_id = tgt.id
                     await log_svc.log(
                         db, LogType.plug_on,
                         f"Automation: {src.name} → {tgt.name} EIN ({power:.0f} W)",
-                        machine_id=tgt.id,
+                        machine_id=tgt_id,
                     )
+                    # Session starten damit Maschine sofort als aktiv angezeigt wird
+                    tgt = (await db.execute(select(Machine).where(Machine.id == tgt_id))).scalar_one_or_none()
+                    if tgt and not tgt.session_started_at:
+                        await start_manager_session(db, tgt, user_id=None)
                 else:
                     log.warning(f"Automation {a.id}: Einschalten fehlgeschlagen — {msg}")
                     await log_svc.log(
@@ -105,11 +111,16 @@ async def _process(a: MachineAutomation, db) -> None:
                             _state[a.id] = "idle"
                             _countdown_start.pop(a.id, None)
                             log.info(f"Automation {a.id}: {src.name} → {tgt.name} AUS (nach {elapsed:.0f}s Nachlauf)")
+                            tgt_id = tgt.id
                             await log_svc.log(
                                 db, LogType.plug_off,
                                 f"Automation: {src.name} → {tgt.name} AUS (Nachlauf {elapsed:.0f}s)",
-                                machine_id=tgt.id,
+                                machine_id=tgt_id,
                             )
+                            # Session beenden damit Maschine sofort als inaktiv angezeigt wird
+                            tgt = (await db.execute(select(Machine).where(Machine.id == tgt_id))).scalar_one_or_none()
+                            if tgt and tgt.session_started_at:
+                                await end_session(db, tgt, ended_by=SessionEndedBy.system)
                         else:
                             log.warning(f"Automation {a.id}: Ausschalten fehlgeschlagen — {msg}")
                             await log_svc.log(
