@@ -4681,8 +4681,9 @@ function showAddAutomation() {
       <div class="form-group"><label class="form-label">Ziel-Maschine (geschaltet)</label>
         <select class="form-input" id="a-tgt">
           <option value="">— Maschine wählen —</option>
-          ${_allMachineOptions(null)}
+          ${_autoMachineOptions(null)}
         </select>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Nur Maschinen mit konfiguriertem Plug werden aufgeführt</div>
       </div>
     </div>
     <hr style="border-color:var(--border);margin:16px 0">
