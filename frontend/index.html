@@ -49,6 +49,7 @@
   .form-label{display:block;font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
   .form-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;color:var(--text);font-family:var(--body);font-size:16px;outline:none;transition:border-color .15s}
   .form-input:focus{border-color:var(--accent)}
+  input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 1000px var(--bg) inset!important;-webkit-text-fill-color:var(--text)!important;transition:background-color 5000s ease-in-out 0s}
   .error-box{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--danger);margin-bottom:14px;display:none}
 
   /* BUTTONS */
@@ -248,18 +249,18 @@
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px">
       <div>
         <label style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;display:block;margin-bottom:6px">AKTUELLES PASSWORT</label>
-        <input type="password" id="pw-current" class="input-field" placeholder="Aktuelles Passwort" style="width:100%;box-sizing:border-box">
+        <input type="password" id="pw-current" class="form-input" placeholder="Aktuelles Passwort">
       </div>
       <div>
         <label style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;display:block;margin-bottom:6px">NEUES PASSWORT</label>
-        <input type="password" id="pw-new" class="input-field" placeholder="Mindestens 6 Zeichen" style="width:100%;box-sizing:border-box">
+        <input type="password" id="pw-new" class="form-input" placeholder="Mindestens 6 Zeichen">
       </div>
       <div>
         <label style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;display:block;margin-bottom:6px">NEUES PASSWORT BESTÄTIGEN</label>
-        <input type="password" id="pw-confirm" class="input-field" placeholder="Wiederholen" style="width:100%;box-sizing:border-box">
+        <input type="password" id="pw-confirm" class="form-input" placeholder="Wiederholen">
       </div>
       <div id="pw-error" style="display:none;color:#ef4444;font-family:var(--mono);font-size:11px;padding:8px;background:rgba(239,68,68,.1);border-radius:6px"></div>
-      <button class="btn-primary" id="pw-btn" onclick="doChangePassword()">🔑 Passwort speichern</button>
+      <button class="btn-big btn-login" id="pw-btn" onclick="doChangePassword()">🔑 Passwort speichern</button>
     </div>
     <button class="btn-secondary" onclick="document.getElementById('screen-pw').style.display='none'">← Zurück</button>
   </div>
