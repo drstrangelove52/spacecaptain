@@ -91,8 +91,7 @@ async def _process(a: MachineAutomation, db) -> None:
                     )
 
     elif power < a.off_threshold_w:
-        if state == "on":
-            # Countdown starten oder prüfen
+        if state in ("on", "countdown"):
             if a.id not in _countdown_start:
                 _countdown_start[a.id] = now
                 _state[a.id] = "countdown"
@@ -119,9 +118,6 @@ async def _process(a: MachineAutomation, db) -> None:
                                 f"Automation: {src.name} → {tgt.name} AUS fehlgeschlagen — {msg}",
                                 machine_id=tgt.id,
                             )
-        elif state == "countdown":
-            # Bereits im Countdown
-            pass
 
     else:
         # Zwischen Ein- und Ausschaltschwelle: Countdown abbrechen, Zustand beibehalten
