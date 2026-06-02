@@ -99,11 +99,13 @@
   .view-toggle{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px}
   .view-toggle button{background:none;border:none;padding:4px 10px;cursor:pointer;border-radius:3px;color:var(--text-dim);font-size:15px;line-height:1}
   .view-toggle button.active{background:rgba(255,255,255,.08);color:var(--text)}
-  .machine-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px;cursor:pointer;position:relative;overflow:hidden;transition:border-color .2s}
+  .machine-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px;cursor:pointer;position:relative;overflow:hidden;transition:border-color .2s,background .2s,box-shadow .2s}
   .machine-card:hover{border-color:var(--accent)}
   .machine-card.online::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 24px 24px 0;border-color:transparent var(--success) transparent transparent}
   .machine-card.offline::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 24px 24px 0;border-color:transparent var(--border) transparent transparent}
   .machine-card.maintenance::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 24px 24px 0;border-color:transparent var(--accent) transparent transparent}
+  .machine-card.in-use{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.5);box-shadow:0 0 0 1px rgba(34,197,94,.15)}
+  .machine-card.in-use::before{content:'';position:absolute;top:0;left:0;bottom:0;width:3px;background:var(--success);border-radius:6px 0 0 6px}
   /* ── Hilfe-Seite ──────────────────────────────────────────────── */
   .help-search-wrap{position:relative;margin-bottom:16px}
   .help-search-wrap .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--text-dim);pointer-events:none}
@@ -3202,7 +3204,8 @@ function _machineCard(m) {
     idleClass='idle-caution';
   }
   const mfrModel=[m.manufacturer,m.model].filter(Boolean).join(' · ');
-  return `<div class="machine-card ${m.status} ${idleClass}" id="mc-${m.id}">
+  const inUseClass = m.in_use ? 'in-use' : '';
+  return `<div class="machine-card ${m.status} ${idleClass} ${inUseClass}" id="mc-${m.id}">
     <div class="machine-icon">${icon}</div>
     <div class="machine-name">${escHtml(m.name)}${m.training_required===false?'<span style="font-family:var(--mono);font-size:9px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3);border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle">OFFEN</span>':''}</div>
     <div class="machine-cat">${m.category}${m.location?' // '+escHtml(m.location):''}</div>
