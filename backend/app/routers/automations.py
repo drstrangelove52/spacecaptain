@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import get_db
-from app.models import MachineAutomation, Machine, User
+from app.models import MachineAutomation, Machine, User, LogType
 from app.schemas import AutomationCreate, AutomationUpdate, AutomationOut
 from app.services.auth import get_current_user
 from app.services.automation_watcher import get_automation_states
