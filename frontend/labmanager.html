@@ -574,6 +574,16 @@
       <div style="font-size:13px;color:var(--text-dim);margin-bottom:16px;max-width:680px">
         Schaltet eine Ziel-Maschine (z.B. Absaugung) automatisch ein, sobald die Quell-Maschine (z.B. Tischkreissäge) eine definierte Leistungsschwelle überschreitet. Nach Unterschreiten der Ausschaltschwelle wird die Ziel-Maschine nach einer konfigurierbaren Nachlaufzeit ausgeschaltet.
       </div>
+      <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+        <div class="search-wrap" style="flex:1;min-width:200px"><span class="search-icon">🔍</span><input class="search-input" id="auto-search" placeholder="Quell- oder Ziel-Maschine…" oninput="filterAutomations()"></div>
+        <select class="filter-input" id="auto-filter-enabled" onchange="filterAutomations()" style="width:150px">
+          <option value="">Aktiv &amp; inaktiv</option>
+          <option value="active">Nur aktive</option>
+          <option value="inactive">Nur inaktive</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('auto-search').value='';document.getElementById('auto-filter-enabled').value='';filterAutomations()">✕ Reset</button>
+      </div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:10px" id="auto-filter-count"></div>
       <div id="automations-list"></div>
     </div>
 
@@ -4614,13 +4624,33 @@ function _stateLabel(autoId) {
   return '<span style="color:var(--text-dim);font-size:11px">○ bereit</span>';
 }
 
+function filterAutomations() {
+  const q       = (document.getElementById('auto-search')?.value || '').toLowerCase();
+  const enabledF = document.getElementById('auto-filter-enabled')?.value || '';
+  const countEl  = document.getElementById('auto-filter-count');
+
+  let filtered = _automations.filter(a => {
+    if (q && !a.source_machine_name.toLowerCase().includes(q) && !a.target_machine_name.toLowerCase().includes(q)) return false;
+    if (enabledF === 'active'   && !a.enabled) return false;
+    if (enabledF === 'inactive' &&  a.enabled) return false;
+    return true;
+  });
+
+  if (countEl) countEl.textContent = (q || enabledF) ? `${filtered.length} von ${_automations.length} Automationen` : '';
+  renderAutomationsFiltered(filtered);
+}
+
 function renderAutomations() {
-  const el = document.getElementById('automations-list'); if (!el) return;
   const badge = document.getElementById('badge-automations');
   if (badge) {
     badge.textContent = _automations.length;
     badge.style.display = _automations.length ? '' : 'none';
   }
+  filterAutomations();
+}
+
+function renderAutomationsFiltered(list) {
+  const el = document.getElementById('automations-list'); if (!el) return;
   if (!_automations.length) {
     el.innerHTML = `<div class="card" style="padding:32px;text-align:center;color:var(--text-dim)">
       Noch keine Automationen konfiguriert.<br>
@@ -4628,8 +4658,12 @@ function renderAutomations() {
     </div>`;
     return;
   }
-  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">${_automations.map(a=>`
-    <div class="card" style="padding:18px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+  if (!list.length) {
+    el.innerHTML = `<div class="card" style="padding:24px;text-align:center;color:var(--text-dim)">Keine Automationen entsprechen dem Filter.</div>`;
+    return;
+  }
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">${list.map(a=>`
+    <div class="card" style="padding:18px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap${a.enabled?'':';opacity:0.6'}">
       <div style="flex:1;min-width:200px">
         <div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:4px">
           ${escHtml(a.source_machine_name)} → ${escHtml(a.target_machine_name)}
