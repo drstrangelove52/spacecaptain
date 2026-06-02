@@ -305,6 +305,11 @@ async def run_migrations(engine: AsyncEngine) -> None:
             "user_created", "user_updated", "guest_updated", "machine_updated",
         ])
 
+        # ── v1.24: Aktivitätslog für Automationen ────────────────────────────
+        await _extend_enum_if_needed(conn, "activity_log", "type", [
+            "automation_created", "automation_updated", "automation_deleted",
+        ])
+
         # ── v1.16: Aktivitätslog für alle fehlenden Aktionen ─────────────────
         await _extend_enum_if_needed(conn, "activity_log", "type", [
             "settings_changed",

@@ -84,6 +84,11 @@ async def _process(a: MachineAutomation, db) -> None:
                     )
                 else:
                     log.warning(f"Automation {a.id}: Einschalten fehlgeschlagen — {msg}")
+                    await log_svc.log(
+                        db, LogType.error,
+                        f"Automation: {src.name} → {tgt.name} EIN fehlgeschlagen — {msg}",
+                        machine_id=tgt.id,
+                    )
 
     elif power < a.off_threshold_w:
         if state == "on":
@@ -109,6 +114,11 @@ async def _process(a: MachineAutomation, db) -> None:
                             )
                         else:
                             log.warning(f"Automation {a.id}: Ausschalten fehlgeschlagen — {msg}")
+                            await log_svc.log(
+                                db, LogType.error,
+                                f"Automation: {src.name} → {tgt.name} AUS fehlgeschlagen — {msg}",
+                                machine_id=tgt.id,
+                            )
         elif state == "countdown":
             # Bereits im Countdown
             pass

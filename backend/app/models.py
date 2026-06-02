@@ -61,6 +61,9 @@ class LogType(str, enum.Enum):
     user_updated = "user_updated"
     guest_updated = "guest_updated"
     machine_updated = "machine_updated"
+    automation_created = "automation_created"
+    automation_updated = "automation_updated"
+    automation_deleted = "automation_deleted"
 
 class SessionEndedBy(str, enum.Enum):
     guest = "guest"
