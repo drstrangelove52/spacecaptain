@@ -65,18 +65,20 @@ async def create_automation(
     if payload.on_threshold_w <= payload.off_threshold_w:
         raise HTTPException(400, "Einschaltschwelle muss höher sein als Ausschaltschwelle")
 
+    uid = current.id
     a = MachineAutomation(**payload.model_dump())
     db.add(a)
     await db.commit()
     await db.refresh(a)
     await db.refresh(a, ["source_machine", "target_machine"])
+    result = await _auto_out(a)
     await log_svc.log(
         db, LogType.automation_created,
-        f"Automation erstellt: {a.source_machine.name} → {a.target_machine.name} "
+        f"Automation erstellt: {result['source_machine_name']} → {result['target_machine_name']} "
         f"(EIN ≥ {a.on_threshold_w} W, AUS < {a.off_threshold_w} W, Nachlauf {a.off_delay_sec} s)",
-        user_id=current.id,
+        user_id=uid,
     )
-    return await _auto_out(a)
+    return result
 
 
 @router.patch("/{auto_id}", response_model=AutomationOut)
@@ -86,6 +88,7 @@ async def update_automation(
     db: AsyncSession = Depends(get_db),
     current: User = Depends(get_current_user),
 ):
+    uid = current.id
     a = await _load(auto_id, db)
     changes = payload.model_dump(exclude_unset=True)
     for field, value in changes.items():
@@ -95,13 +98,14 @@ async def update_automation(
     await db.commit()
     await db.refresh(a)
     await db.refresh(a, ["source_machine", "target_machine"])
+    result = await _auto_out(a)
     await log_svc.log(
         db, LogType.automation_updated,
-        f"Automation geändert: {a.source_machine.name} → {a.target_machine.name} "
+        f"Automation geändert: {result['source_machine_name']} → {result['target_machine_name']} "
         f"({', '.join(changes.keys())})",
-        user_id=current.id,
+        user_id=uid,
     )
-    return await _auto_out(a)
+    return result
 
 
 @router.get("/states")
@@ -118,6 +122,7 @@ async def delete_automation(
     db: AsyncSession = Depends(get_db),
     current: User = Depends(get_current_user),
 ):
+    uid = current.id
     a = await _load(auto_id, db)
     await db.refresh(a, ["source_machine", "target_machine"])
     label = f"{a.source_machine.name} → {a.target_machine.name}"
@@ -126,6 +131,6 @@ async def delete_automation(
     await log_svc.log(
         db, LogType.automation_deleted,
         f"Automation gelöscht: {label}",
-        user_id=current.id,
+        user_id=uid,
     )
     return {"ok": True}
