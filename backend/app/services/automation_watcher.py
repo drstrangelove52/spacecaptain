@@ -87,7 +87,7 @@ async def _process(a: MachineAutomation, db) -> None:
                     # Session starten damit Maschine sofort als aktiv angezeigt wird
                     tgt = (await db.execute(select(Machine).where(Machine.id == tgt_id))).scalar_one_or_none()
                     if tgt and not tgt.session_started_at:
-                        await start_manager_session(db, tgt, user_id=None)
+                        await start_manager_session(db, tgt, user_id=None, source="automation")
                 else:
                     log.warning(f"Automation {a.id}: Einschalten fehlgeschlagen — {msg}")
                     await log_svc.log(

@@ -348,6 +348,10 @@ async def run_migrations(engine: AsyncEngine) -> None:
                 ('Sonstiges',  '🔧', 8, NOW())
             """))
 
+        # ── v1.25: session_source auf machine_sessions ───────────────────────
+        await _add_column_if_missing(conn, "machine_sessions", "session_source",
+                                     "VARCHAR(50) DEFAULT NULL")
+
         # ── v1.24: machine_automations (Leistungs-Automation) ────────────────
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS machine_automations (

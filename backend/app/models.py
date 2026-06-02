@@ -165,6 +165,7 @@ class MachineSession(Base):
     duration_min: Mapped[Optional[float]] = mapped_column(Float, default=None)
     energy_wh:    Mapped[Optional[float]] = mapped_column(Float, default=None)
     ended_by:     Mapped[Optional[SessionEndedBy]] = mapped_column(Enum(SessionEndedBy), default=None)
+    session_source: Mapped[Optional[str]] = mapped_column(String(50), default=None)
     machine:      Mapped["Machine"]       = relationship("Machine")
     guest:        Mapped[Optional["Guest"]] = relationship("Guest")
 

@@ -52,14 +52,22 @@ async def start_session(db: AsyncSession, machine: Machine, guest_id: int) -> Ma
     return session
 
 
-async def start_manager_session(db: AsyncSession, machine: Machine, user_id: int | None) -> MachineSession:
+async def start_manager_session(
+    db: AsyncSession,
+    machine: Machine,
+    user_id: int | None,
+    source: str = "manager",
+) -> MachineSession:
     """Startet eine Manager-Session (kein Gast, aber Idle-Policy gilt)."""
     # Offene Session abschliessen
     if machine.session_started_at:
         await end_session(db, machine, ended_by=SessionEndedBy.system)
 
     now = datetime.utcnow()
-    session = MachineSession(machine_id=machine.id, guest_id=None, manager_id=user_id, started_at=now)
+    session = MachineSession(
+        machine_id=machine.id, guest_id=None, manager_id=user_id,
+        started_at=now, session_source=source,
+    )
     db.add(session)
 
     await db.execute(
