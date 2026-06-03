@@ -4860,16 +4860,25 @@ function _condForm(c, uid) {
   let fields = '';
   if (c.type === 'power') {
     fields = `
-      <select class="form-input" style="flex:2" onchange="_editConditions.find(x=>x._uid==${uid}).source_machine_id=parseInt(this.value)||null" data-uid="${uid}">
-        <option value="">Quell-Maschine…</option>${machineOpts}
-      </select>
-      <div style="display:flex;gap:6px;align-items:center;flex:3">
-        <input class="form-input" type="number" min="1" placeholder="EIN ≥ W" value="${c.power_on_w||''}" style="width:90px"
-          onchange="_editConditions.find(x=>x._uid==${uid}).power_on_w=parseFloat(this.value)">
-        <span style="color:var(--text-muted);font-size:12px">/ AUS &lt;</span>
-        <input class="form-input" type="number" min="0" placeholder="AUS W" value="${c.power_off_w||''}" style="width:90px"
-          onchange="_editConditions.find(x=>x._uid==${uid}).power_off_w=parseFloat(this.value)">
-        <span style="color:var(--text-muted);font-size:12px">W</span>
+      <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:12px;color:var(--text-muted);width:140px;flex-shrink:0">Überwachte Maschine</label>
+          <select class="form-input" style="flex:1" onchange="_editConditions.find(x=>x._uid==${uid}).source_machine_id=parseInt(this.value)||null">
+            <option value="">Auswählen…</option>${machineOpts}
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:12px;color:var(--text-muted);width:140px;flex-shrink:0">Einschalten ab</label>
+          <input class="form-input" type="number" min="1" value="${c.power_on_w||''}" style="width:90px"
+            onchange="_editConditions.find(x=>x._uid==${uid}).power_on_w=parseFloat(this.value)">
+          <span style="font-size:12px;color:var(--text-muted)">Watt oder mehr</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:12px;color:var(--text-muted);width:140px;flex-shrink:0">Ausschalten unter</label>
+          <input class="form-input" type="number" min="0" value="${c.power_off_w||''}" style="width:90px"
+            onchange="_editConditions.find(x=>x._uid==${uid}).power_off_w=parseFloat(this.value)">
+          <span style="font-size:12px;color:var(--text-muted)">Watt</span>
+        </div>
       </div>`;
   } else if (c.type === 'schedule') {
     const dayBoxes = DAY_LABELS.map((lbl,i) => {
@@ -4893,8 +4902,9 @@ function _condForm(c, uid) {
   } else {
     fields = `<span style="font-size:13px;color:var(--text-muted);flex:1">${COND_LABELS[c.type]||c.type} — keine weiteren Einstellungen</span>`;
   }
-  return `<div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px" data-cuid="${uid}">
-    <span style="font-size:12px;font-weight:600;color:var(--text-mid);width:90px;flex-shrink:0;padding-top:6px">${COND_LABELS[c.type]||c.type}</span>
+  const isVertical = c.type === 'power';
+  return `<div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px" data-cuid="${uid}">
+    ${isVertical ? '' : `<span style="font-size:12px;font-weight:600;color:var(--text-mid);width:90px;flex-shrink:0;padding-top:6px">${COND_LABELS[c.type]||c.type}</span>`}
     <div style="display:flex;gap:6px;align-items:flex-start;flex:1;flex-wrap:wrap">${fields}</div>
     <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="removeCondition(${uid})">✕</button>
   </div>`;
