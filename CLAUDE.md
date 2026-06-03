@@ -26,6 +26,26 @@ Alle Services laufen in Docker Compose. Die Konfiguration erfolgt via `.env`.
 - `GET/POST/PATCH/DELETE`-Wrapper: `api()`, `GET()`, `POST()`, `PATCH()`, `DELETE()` in der HTML-Datei
 - `downloadBackupFile()` nutzt eigenen `fetch`-Aufruf (braucht Blob-Handling, nicht JSON)
 
+## Wichtige Dateien
+
+```
+backend/app/
+  models.py                  — ORM: alle Tabellen
+  services/migrate.py        — Migrationen (idempotent, laufen bei jedem Start)
+  services/rule_watcher.py   — Kombinierter Automations-Watcher (10s Intervall)
+  services/room.py           — open_room() / close_room() mit force_off-Logik
+  services/session.py        — Idle-Watcher, Plug-Watcher
+  services/backup_service.py — Backup-Logik, BACKUP_DIR, backup_watcher()
+  routers/automations.py     — Regelwerk CRUD (action_type: machine|room_open|room_close)
+  routers/guest_auth.py      — Gast-Zugang inkl. Raum-Sperre
+  routers/backup.py          — Backup REST-Endpoints
+
+frontend/
+  labmanager.html            — Komplette Admin-UI (single file, kein Framework)
+  index.html                 — Gäste-App
+  display.html               — Kiosk/Display-Seite
+```
+
 ## Datenbankschema-Migrationen
 
 Migrationen laufen **bei jedem Backend-Start** in `backend/app/services/migrate.py`.
@@ -48,7 +68,7 @@ Migrationen laufen **bei jedem Backend-Start** in `backend/app/services/migrate.
 
 ## Hintergrund-Tasks
 
-In `backend/app/main.py` werden 4 Tasks im FastAPI-Lifespan gestartet:
+In `backend/app/main.py` werden 5 Tasks im FastAPI-Lifespan gestartet:
 
 | Task | Datei | Funktion |
 |---|---|---|
@@ -56,8 +76,31 @@ In `backend/app/main.py` werden 4 Tasks im FastAPI-Lifespan gestartet:
 | Plug-Watcher | `services/session.py` | Pollt Smart-Plug-Status |
 | Queue-Watcher | `services/queue_service.py` | Verarbeitet Warteliste |
 | Backup-Watcher | `services/backup_service.py` | Tägliches Auto-Backup |
+| Rule-Watcher | `services/rule_watcher.py` | Automationsregeln (10s Intervall) |
 
 Alle Tasks werden beim Shutdown mit `.cancel()` beendet.
+
+## Automations-Regelwerk
+
+Jede Regel hat einen `action_type` (`machine` / `room_open` / `room_close`) und beliebig viele AND-verknüpfte Bedingungen (`power`, `schedule`, `room_open`, `session_active`).
+
+**Zustandsautomat pro Regel:** `idle` → `on` → `countdown` → `idle`
+
+**Wichtiges Verhalten bei Raum-Aktionen (`room_open` / `room_close`):**
+- Die Aktion feuert **einmalig** wenn alle Bedingungen wahr werden (idle → on)
+- Wenn Bedingungen wieder falsch werden, wird nur der Rule-State auf `idle` zurückgesetzt — der Raum-Status in der DB bleibt unverändert
+- Das Zeitplan-Ende (`time_off`) schiesst den Raum **nicht** automatisch — es setzt nur den State zurück damit die Regel am nächsten Tag wieder feuern kann
+- Für zeitgesteuertes Öffnen **und** Schliessen braucht es zwei separate Regeln
+
+**Raum-Bedingung (`room_open`) ist bei Raum-Aktionen nicht sinnvoll** und im UI ausgefiltert.
+
+OR-Verknüpfung in Bedingungen ist bewusst nicht implementiert — zwei separate Regeln ersetzen das ohne UX-Komplexität.
+
+## Raum-Logik
+
+- `force_off_on_close` Flag pro Maschine: beim Raumschluss werden nur Maschinen mit diesem Flag ausgeschaltet (z.B. Kaffeemaschine, Lötstation). 3D-Drucker laufen über Nacht weiter.
+- Laufende Maschinen-Sessions werden beim Raumschluss **nicht** unterbrochen (by design). Der Gast kann die Maschine noch ausschalten, neue Sessions sind aber gesperrt.
+- Gast-App: HTTP 403 vom Backend enthält `detail: "Raum ist geschlossen"` und wird im UI als eigenes Panel angezeigt (kein stiller Logout).
 
 ## Zeitzone
 
@@ -75,11 +118,25 @@ Bei neuen Einstellungsfeldern müssen **drei Stellen** aktualisiert werden:
 2. `backend/app/routers/settings.py` — `SettingsOut`, `SettingsUpdate`, PATCH-Handler
 3. `backend/app/services/migrate.py` — Migration + `db/init.sql`
 
+## Rollen
+
+- **Admin**: voller Zugriff, darf Gäste/Maschinen löschen
+- **Lab Manager**: darf deaktivieren, aber nicht löschen — verhindert versehentlichen Datenverlust, Gast-History bleibt erhalten
+
 ## Berechtigungshistorie (UI)
 
 `GET /permissions/history?guest_id=X` gibt den neuesten `ActivityLog`-Eintrag pro Maschine zurück (Typ `permission_granted` / `permission_revoked`). Der `comment` kommt aus `entry.meta["comment"]`. Das UI zeigt diesen Kommentar in der Berechtigungsmatrix.
 
 Beim Overwrite-Restore: falls `is_blocked` sich ändert, wird ein neuer `ActivityLog`-Eintrag geschrieben, damit die Historie den wiederhergestellten Zustand zeigt.
+
+## Bekannte Einschränkungen / Offene Punkte
+
+| Thema | Beschreibung |
+|---|---|
+| Raum-Session-Hinweis | Wenn Raum bei laufender Session geschlossen wird, läuft Session weiter (by design) — kein UI-Hinweis vorhanden |
+| Doppelter Log-Eintrag | `room_close`-Regel mit Zeitplan triggert täglich neu → kosmetisch doppelter Log |
+| Zeitgesteuerter Raum | Technisch möglich via zwei Automationsregeln, kein dedizierter UI-Workflow |
+| API Raum-Steuerung | `open_room()` / `close_room()` in `services/room.py` bereit, kein öffentlicher API-Endpoint (z.B. für Home Assistant / Türöffner) |
 
 ## Häufige Befehle
 
@@ -101,4 +158,5 @@ docker compose exec db mariadb -u spacecaptain -p spacecaptain
 
 - `--reload` ohne `--reload-dir /app/app` — WatchFiles überwacht sonst `/app/backups` und löst bei jedem neuen Backup-File einen Reload aus
 - Imports aus `backup.py` auf Modulebene in `backup_service.py` — zirkulärer Import
-- Neue Settings-Felder nur in `models.py` eintragen und vergessen → `SettingsOut`/`SettingsUpdate` in `settings.py` ebenfalls anpassen
+- Neue Settings-Felder nur in `models.py` eintragen — `SettingsOut`/`SettingsUpdate` in `settings.py` und Migration vergessen
+- Bei `automations.py` Log-Nachrichten `tm.name` verwenden ohne zu prüfen ob `tm` None ist — bei `room_open`/`room_close`-Aktionen gibt es keine Ziel-Maschine
