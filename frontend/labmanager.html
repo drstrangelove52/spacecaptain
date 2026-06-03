@@ -578,6 +578,7 @@
 
     <!-- AUTOMATIONEN -->
     <div class="page" id="page-automations">
+      <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" id="auto-search" placeholder="Regelname, Maschine suchen…" oninput="filterAutomations(this.value)"></div>
       <div id="automations-list"></div>
     </div>
 
@@ -589,11 +590,11 @@
           <div class="section-header">
             <div class="section-title">Wartungsintervalle</div>
           </div>
-          <div id="maintenance-filter" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-            <select class="form-input" id="maint-filter-machine" style="flex:1;min-width:140px;font-size:13px" onchange="renderIntervals()">
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+            <select class="filter-input" id="maint-filter-machine" style="flex:1;min-width:140px" onchange="renderIntervals()">
               <option value="">Alle Maschinen</option>
             </select>
-            <select class="form-input" id="maint-filter-status" style="width:130px;font-size:13px" onchange="renderIntervals()">
+            <select class="filter-input" id="maint-filter-status" style="width:130px" onchange="renderIntervals()">
               <option value="">Alle Status</option>
               <option value="due">Fällig</option>
               <option value="warning">Warnung</option>
@@ -4794,13 +4795,31 @@ function _condChip(c) {
   }
 }
 
+function filterAutomations(q) {
+  const query = (q || document.getElementById('auto-search')?.value || '').toLowerCase();
+  const filtered = !query ? _rules : _rules.filter(r =>
+    r.name.toLowerCase().includes(query) ||
+    r.target_machine_name.toLowerCase().includes(query) ||
+    r.conditions.some(c => (c.source_machine_name||'').toLowerCase().includes(query))
+  );
+  _renderAutomationsList(filtered);
+}
+
 function renderAutomations() {
+  filterAutomations('');
+}
+
+function _renderAutomationsList(rules) {
   const el = document.getElementById('automations-list');
   if (!_rules.length) {
     el.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;padding:20px 0">Keine Regeln konfiguriert.</div>';
     return;
   }
-  el.innerHTML = _rules.map(r => {
+  if (!rules.length) {
+    el.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;padding:20px 0">Keine Regeln gefunden.</div>';
+    return;
+  }
+  el.innerHTML = rules.map(r => {
     const st    = _ruleStates[r.id];
     const state = st?.state || 'idle';
     const stateChip = state === 'on'
