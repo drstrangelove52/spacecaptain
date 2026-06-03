@@ -413,7 +413,8 @@
 
     <!-- LAB MANAGER -->
     <div class="page" id="page-labmanager">
-      <div class="table-wrap"><table>
+      <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" placeholder="Name, Email suchen…" oninput="filterTable(this,'lm-table')"></div>
+      <div class="table-wrap"><table id="lm-table">
         <thead><tr><th>Name</th><th>Email</th><th>Rolle</th><th>Zuständig für</th><th>Status</th><th>Aktionen</th></tr></thead>
         <tbody id="lm-tbody"><tr><td colspan="6"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody>
       </table></div>
@@ -439,7 +440,7 @@
           <button id="view-table-btn" title="Tabellenansicht" onclick="setMachineView('table')">≡</button>
         </div>
       </div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:10px" id="machine-filter-count"></div>
+      <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);margin-bottom:10px" id="machine-filter-count"></div>
       <div id="machine-grid"><div class="loading"><div class="spinner"></div>Laden…</div></div>
     </div>
 
@@ -460,7 +461,7 @@
         </select>
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('plug-search').value='';document.getElementById('plug-filter-type').value='';document.getElementById('plug-filter-assign').value='';filterPlugs()">✕ Reset</button>
       </div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:10px" id="plug-filter-count"></div>
+      <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);margin-bottom:10px" id="plug-filter-count"></div>
       <div id="plug-list"><div class="loading"><div class="spinner"></div>Laden…</div></div>
     </div>
 
@@ -585,11 +586,6 @@
 
     <!-- AUTOMATIONEN -->
     <div class="page" id="page-automations">
-      <div style="font-size:13px;color:var(--text-dim);margin-bottom:16px;max-width:720px">
-        Schaltet Geräte automatisch basierend auf kombinierten Bedingungen (alle müssen gleichzeitig wahr sein).
-        Bedingungstypen: <strong>Leistung</strong> (Maschine zieht Strom), <strong>Zeitplan</strong> (Wochentag + Uhrzeit),
-        <strong>Raum geöffnet</strong>, <strong>Aktive Session</strong> (jemand arbeitet).
-      </div>
       <div id="automations-list"></div>
     </div>
 
@@ -1073,6 +1069,7 @@
 
     <!-- ═══ MITTEILUNGEN ════════════════════════════════════════════════ -->
     <div class="page" id="page-announcements">
+      <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" id="ann-search" placeholder="Mitteilung suchen…" oninput="filterAnnouncements(this.value)"></div>
       <div id="ann-list"><div class="loading"><div class="spinner"></div>Laden…</div></div>
     </div>
 
@@ -2553,6 +2550,13 @@ function _annPayload() {
     recur_valid_from:  rec ? (document.getElementById('ann-vfrom').value || null) : null,
     recur_valid_until: rec ? (document.getElementById('ann-vuntil').value || null) : null,
   };
+}
+
+function filterAnnouncements(q) {
+  q = (q || '').toLowerCase();
+  document.querySelectorAll('#ann-list > div').forEach(el => {
+    el.style.display = !q || el.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
 }
 
 function showAddAnnouncement() {
