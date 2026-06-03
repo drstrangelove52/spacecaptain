@@ -2344,7 +2344,7 @@ function initHelp() {
 function selectHelpCat(id) {
   _helpActiveCat = id;
   document.getElementById('help-search').value = '';
-  const ids = ['start','guests','machines','permissions','maintenance','announcements','notifications','emergency','stats','log','display','nfc','settings','backup','problems'];
+  const ids = ['start','guests','machines','plugs','permissions','automations','maintenance','announcements','notifications','emergency','stats','log','display','nfc','settings','backup','problems'];
   document.querySelectorAll('.help-nav-item').forEach((item, i) => item.classList.toggle('active', ids[i] === id));
   document.querySelectorAll('.help-panel').forEach(p => p.classList.toggle('active', p.id === 'help-panel-' + id));
   document.getElementById('help-search-results').style.display = 'none';
