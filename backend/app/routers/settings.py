@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional
@@ -47,7 +48,7 @@ class SettingsOut(BaseModel):
     auto_backup_keep: int = 30
     space_name: str = ""
     room_open: bool = False
-    room_open_since: Optional[str] = None
+    room_open_since: Optional[datetime] = None
     room_open_auto: bool = True
 
     class Config:
