@@ -523,10 +523,6 @@
 
     <!-- LOG -->
     <div class="page" id="page-log">
-      <div class="section-header">
-        <div class="section-title">Aktivitätslog</div>
-        <button class="btn btn-ghost btn-sm" onclick="loadLog()">↺ Aktualisieren</button>
-      </div>
       <!-- Filter -->
       <div class="log-filters">
         <div class="filter-group"><label class="filter-label">Gast</label><select class="filter-input" id="f-guest"><option value="">Alle Gäste</option></select></div>
@@ -546,10 +542,6 @@
 
     <!-- STATS -->
     <div class="page" id="page-stats">
-      <div class="section-header">
-        <div class="section-title">Statistiken</div>
-        <button class="btn btn-ghost btn-sm" onclick="loadStats()">↺ Aktualisieren</button>
-      </div>
       <!-- Filter -->
       <div class="log-filters" style="margin-bottom:16px">
         <div class="filter-group"><label class="filter-label">Maschine</label><select class="filter-input" id="s-machine"><option value="">Alle Maschinen</option></select></div>
@@ -2300,8 +2292,8 @@ const pageActions={
   maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-ghost" onclick="showFreeRecord()">+ Freie Wartung</button> <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`,
   announcements:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('announcements')" title="Hilfe zu Mitteilungen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddAnnouncement()">+ Neue Mitteilung</button>`,
   notifications:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('notifications')" title="Hilfe zu Benachrichtigungen">? Hilfe</button>`,
-  stats:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('stats')" title="Hilfe zu Statistiken">? Hilfe</button>`,
-  log:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('log')" title="Hilfe zum Aktivitätslog">? Hilfe</button>`,
+  stats:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('stats')" title="Hilfe zu Statistiken">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="loadStats()">↺ Aktualisieren</button>`,
+  log:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('log')" title="Hilfe zum Aktivitätslog">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="loadLog()">↺ Aktualisieren</button>`,
   backup:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('backup')" title="Hilfe zu Backup">? Hilfe</button>`,
   settings:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('settings')" title="Hilfe zu Einstellungen">? Hilfe</button>`,
   dashboard:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>`,
