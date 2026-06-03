@@ -1,16 +1,19 @@
 import secrets
 import logging
 import io
+import csv
 import base64
 import qrcode
 from datetime import datetime
 
 log = logging.getLogger(__name__)
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List
+
+from app.services.auth import require_admin
 
 from app.database import get_db
 from app.models import User, Machine, MachinePlug, Permission, LogType
@@ -416,3 +419,133 @@ async def manager_switch(
         machine_id=machine.id, user_id=current.id)
 
     return {"ok": ok, "action": action, "machine": machine.name, "message": msg}
+
+
+# ── CSV-Import ────────────────────────────────────────────────────────────────
+
+_STATUS_MAP = {
+    "online": "online", "offline": "offline",
+    "maintenance": "maintenance", "wartung": "maintenance",
+}
+
+def _parse_csv_row(row: dict, existing_names: set[str], row_nr: int) -> dict:
+    """Validiert eine CSV-Zeile und gibt ein result-dict zurück."""
+    name = (row.get("Name") or "").strip()
+    if not name:
+        return {"row": row_nr, "action": "error", "reason": "Name fehlt"}
+
+    status_raw = (row.get("Status") or "online").strip().lower()
+    status = _STATUS_MAP.get(status_raw, "online")
+
+    schulung = (row.get("Schulung") or "Ja").strip().lower()
+    training = schulung not in ("nein", "no", "false", "0")
+
+    return {
+        "row": row_nr,
+        "name": name,
+        "category": (row.get("Kategorie") or "Sonstiges").strip() or "Sonstiges",
+        "manufacturer": (row.get("Hersteller") or "").strip() or None,
+        "model": (row.get("Modell") or "").strip() or None,
+        "serial_number": (row.get("Seriennummer") or "").strip() or None,
+        "location": (row.get("Standort") or "").strip() or None,
+        "status": status,
+        "training_required": training,
+        "comment": (row.get("Kommentar") or "").strip() or None,
+        "action": "skip" if name in existing_names else "import",
+        "reason": "Bereits vorhanden" if name in existing_names else None,
+    }
+
+
+@router.post("/import/preview")
+async def import_machines_preview(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(require_admin),
+):
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")  # strips BOM if present
+    except UnicodeDecodeError:
+        text = content.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(text), delimiter=";")
+    if not reader.fieldnames or "Name" not in reader.fieldnames:
+        raise HTTPException(400, "Ungültiges CSV-Format — Spalte 'Name' nicht gefunden")
+
+    res = await db.execute(select(Machine.name))
+    existing_names = {r[0] for r in res.all()}
+
+    rows = []
+    for i, row in enumerate(reader, start=2):
+        rows.append(_parse_csv_row(row, existing_names, i))
+
+    to_import = sum(1 for r in rows if r["action"] == "import")
+    skipped   = sum(1 for r in rows if r["action"] == "skip")
+    errors    = sum(1 for r in rows if r["action"] == "error")
+
+    return {
+        "total": len(rows),
+        "to_import": to_import,
+        "skipped": skipped,
+        "errors": errors,
+        "rows": rows,
+    }
+
+
+@router.post("/import/confirm")
+async def import_machines_confirm(
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(require_admin),
+):
+    rows = payload.get("rows", [])
+    if not rows:
+        raise HTTPException(400, "Keine Zeilen übergeben")
+
+    res = await db.execute(select(Machine.name))
+    existing_names = {r[0] for r in res.all()}
+
+    imported = 0
+    skipped  = 0
+    from app.models import MachineStatus
+
+    for row in rows:
+        if row.get("action") != "import":
+            skipped += 1
+            continue
+        name = (row.get("name") or "").strip()
+        if not name or name in existing_names:
+            skipped += 1
+            continue
+        status_val = row.get("status", "online")
+        try:
+            status_enum = MachineStatus(status_val)
+        except ValueError:
+            status_enum = MachineStatus.online
+
+        machine = Machine(
+            name=name,
+            category=row.get("category") or "Sonstiges",
+            manufacturer=row.get("manufacturer"),
+            model=row.get("model"),
+            serial_number=row.get("serial_number"),
+            location=row.get("location"),
+            status=status_enum,
+            training_required=bool(row.get("training_required", True)),
+            comment=row.get("comment"),
+            qr_token=_gen_qr_token(),
+        )
+        db.add(machine)
+        existing_names.add(name)
+        imported += 1
+
+    await db.commit()
+
+    if imported > 0:
+        await log_svc.log(
+            db, LogType.machine_created,
+            f"CSV-Import: {imported} Maschine(n) importiert, {skipped} übersprungen",
+            user_id=current.id,
+        )
+
+    return {"imported": imported, "skipped": skipped}

@@ -1357,9 +1357,11 @@
               </div>
             </div>
             <div class="help-article">
-              <div class="help-article-title">Maschinenliste exportieren (CSV)</div>
+              <div class="help-article-title">Maschinenliste exportieren / importieren (CSV)</div>
               <div class="help-article-body">
-                Sidebar → <strong>Maschinen</strong> → «↓ CSV». Die Datei enthält Name, Kategorie, Hersteller, Modell, Seriennummer, Standort, Status und kumulierte Betriebsstunden. Kann in Excel oder LibreOffice Calc geöffnet werden.
+                <strong>Export:</strong> Sidebar → <strong>Maschinen</strong> → «↓ CSV». Die Datei enthält Name, Kategorie, Hersteller, Modell, Seriennummer, Standort, Status, Schulung und Kommentar. Kann in Excel oder LibreOffice Calc geöffnet werden.<br><br>
+                <strong>Import:</strong> Sidebar → <strong>Maschinen</strong> → «↑ CSV». Eine CSV-Datei im gleichen Format (Semikolon-getrennt, Spaltenüberschriften in der ersten Zeile) auswählen. Es erscheint eine Vorschau mit allen Zeilen und ob sie importiert oder übersprungen werden (bereits vorhandene Namen werden ignoriert). Erst nach Bestätigung werden die Daten gespeichert.<br><br>
+                Hinweis: Plug-Konfiguration und ID-Spalte werden beim Import ignoriert. Plugs können nach dem Import in den Maschineneinstellungen zugewiesen werden.
               </div>
             </div>
             <div class="help-article">
@@ -2295,7 +2297,7 @@ const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',mach
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button> <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`,
-  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button> <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`,
+  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button> <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)"> <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`,
   plugs:()=>`<button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`,
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
   maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`,
@@ -3146,6 +3148,87 @@ function exportMachinesCsv(){
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   a.download=`spacecaptain-inventar-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
+}
+
+function triggerCsvImport(){
+  document.getElementById('csv-import-input')?.click();
+}
+
+async function handleCsvImport(ev){
+  const file=ev.target.files?.[0];
+  ev.target.value='';
+  if(!file) return;
+  const fd=new FormData();
+  fd.append('file',file);
+  showToast('CSV wird analysiert…','info');
+  let preview;
+  try{
+    const resp=await fetch('/api/machines/import/preview',{method:'POST',headers:{Authorization:'Bearer '+getToken()},body:fd});
+    if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.detail||resp.statusText);}
+    preview=await resp.json();
+  }catch(e){showToast('Fehler beim Lesen der CSV: '+e.message,'error');return;}
+  showCsvPreviewModal(preview);
+}
+
+let _csvImportRows=[];
+
+function showCsvPreviewModal(preview){
+  const {total,to_import,skipped,errors,rows}=preview;
+  _csvImportRows=rows;
+  const actionColor=r=>r.action==='import'?'var(--success)':r.action==='error'?'var(--danger)':'var(--text-muted)';
+  const actionLabel=r=>r.action==='import'?'Import':r.action==='error'?'Fehler':'Überspringen';
+  const rowsHtml=rows.map(r=>`
+    <tr style="color:${actionColor(r)}">
+      <td style="padding:4px 8px">${r.row}</td>
+      <td style="padding:4px 8px">${r.name||'—'}</td>
+      <td style="padding:4px 8px">${r.category||''}</td>
+      <td style="padding:4px 8px">${r.location||''}</td>
+      <td style="padding:4px 8px;font-weight:600">${actionLabel(r)}</td>
+      <td style="padding:4px 8px;font-size:12px;color:var(--text-muted)">${r.reason||''}</td>
+    </tr>`).join('');
+
+  const html=`
+  <div id="csv-preview-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;width:min(820px,95vw);max-height:85vh;display:flex;flex-direction:column;gap:16px">
+      <h3 style="margin:0">CSV-Import Vorschau</h3>
+      <div style="display:flex;gap:24px;font-size:14px">
+        <span>Gesamt: <strong>${total}</strong></span>
+        <span style="color:var(--success)">Neu: <strong>${to_import}</strong></span>
+        <span style="color:var(--text-muted)">Übersprungen: <strong>${skipped}</strong></span>
+        ${errors?`<span style="color:var(--danger)">Fehler: <strong>${errors}</strong></span>`:''}
+      </div>
+      <div style="overflow:auto;flex:1;border:1px solid var(--border);border-radius:8px">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="background:var(--bg);color:var(--text-muted);text-align:left">
+            <th style="padding:6px 8px">#</th>
+            <th style="padding:6px 8px">Name</th>
+            <th style="padding:6px 8px">Kategorie</th>
+            <th style="padding:6px 8px">Standort</th>
+            <th style="padding:6px 8px">Aktion</th>
+            <th style="padding:6px 8px">Hinweis</th>
+          </tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:12px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="document.getElementById('csv-preview-modal').remove()">Abbrechen</button>
+        ${to_import>0
+          ?`<button class="btn btn-primary" onclick="confirmCsvImport()">${to_import} Maschine${to_import===1?'':'n'} importieren</button>`
+          :'<span style="color:var(--text-muted);align-self:center">Nichts zu importieren</span>'}
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+
+async function confirmCsvImport(){
+  document.getElementById('csv-preview-modal')?.remove();
+  const toImport=_csvImportRows.filter(r=>r.action==='import');
+  try{
+    const data=await POST('/machines/import/confirm',{rows:toImport});
+    showToast(`${data.imported} Maschine(n) importiert, ${data.skipped} übersprungen`,'success');
+    await loadMachines();
+  }catch(e){showToast('Import fehlgeschlagen: '+(e.message||e),'error');}
 }
 
 function filterMachines() {
