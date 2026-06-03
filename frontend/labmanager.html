@@ -4700,6 +4700,62 @@ async function deleteBackupFile(filename) {
 // AUTOMATIONEN — REGELWERK
 // ═══════════════════════════════════════════════════════
 
+// ── Raum-Status ───────────────────────────────────────────────────────────────
+
+let _roomStatus = {room_open: false, room_open_since: null, room_open_auto: true};
+
+async function loadRoomStatus() {
+  const data = await apiSilent('GET', '/settings/room');
+  if (!data) return;
+  _roomStatus = data;
+  renderRoomStatus();
+}
+
+function renderRoomStatus() {
+  const {room_open, room_open_since} = _roomStatus;
+  const bar   = document.getElementById('room-status-bar');
+  const dot   = document.getElementById('room-status-dot');
+  const label = document.getElementById('room-status-label');
+  const since = document.getElementById('room-status-since');
+  const btnO  = document.getElementById('room-btn-open');
+  const btnC  = document.getElementById('room-btn-close');
+  if (!bar) return;
+  if (room_open) {
+    bar.style.background  = 'rgba(34,197,94,.07)';
+    bar.style.borderColor = 'rgba(34,197,94,.4)';
+    dot.style.background  = '#22c55e';
+    dot.style.boxShadow   = '0 0 6px rgba(34,197,94,.6)';
+    label.textContent     = 'Raum geöffnet';
+    label.style.color     = '#22c55e';
+    since.textContent     = room_open_since
+      ? `seit ${new Date(room_open_since).toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'})} Uhr` : '';
+    btnO.style.display = 'none';
+    btnC.style.display = '';
+  } else {
+    bar.style.background  = 'var(--surface)';
+    bar.style.borderColor = 'var(--border)';
+    dot.style.background  = 'var(--text-muted)';
+    dot.style.boxShadow   = 'none';
+    label.textContent     = 'Raum geschlossen';
+    label.style.color     = 'var(--text-muted)';
+    since.textContent     = '';
+    btnO.style.display = '';
+    btnC.style.display = 'none';
+  }
+}
+
+async function setRoomStatus(open) {
+  const data = await POST('/settings/room', {open});
+  if (data !== null) {
+    _roomStatus.room_open = data.room_open;
+    _roomStatus.room_open_since = open ? new Date().toISOString() : null;
+    renderRoomStatus();
+    showToast(open ? 'Raum geöffnet' : 'Raum geschlossen', open ? 'success' : 'warn');
+  }
+}
+
+// ── Regelwerk ─────────────────────────────────────────────────────────────────
+
 const COND_LABELS = {
   power:          '⚡ Leistung',
   schedule:       '🕐 Zeitplan',
@@ -4868,7 +4924,7 @@ function _addCondMenu() {
   return `<div style="position:relative;display:inline-block">
     <button class="btn btn-ghost btn-sm" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'">+ Bedingung ▾</button>
     <div style="display:none;position:absolute;top:100%;left:0;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-width:200px;padding:4px 0;box-shadow:0 4px 12px rgba(0,0,0,.3)">
-      ${Object.entries(COND_LABELS).map(([t,l])=>`<div style="padding:8px 14px;cursor:pointer;font-size:13px" onmousedown="addCondition('${t}')">${l}</div>`).join('')}
+      ${Object.entries(COND_LABELS).map(([t,l])=>`<div style="padding:8px 14px;cursor:pointer;font-size:13px" onmousedown="addCondition('${t}');this.closest('div[style*=absolute]').style.display='none'">${l}</div>`).join('')}
     </div>
   </div>`;
 }
