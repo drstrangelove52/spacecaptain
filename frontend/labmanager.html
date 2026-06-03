@@ -2778,7 +2778,7 @@ function renderGuests() {
     <td><span class="badge ${g.is_active?'badge-green':'badge-gray'}">${g.is_active?'aktiv':'inaktiv'}</span></td>
     <td style="display:flex;gap:6px;padding:8px 16px">
       <button class="btn btn-ghost btn-sm" onclick="editGuest(${g.id})">✏</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteGuest(${g.id},'${g.name}')">✕</button>
+      ${currentUser?.role==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteGuest(${g.id},'${g.name}')">✕</button>`:''}
     </td>
   </tr>`).join('');
 }
@@ -3305,7 +3305,7 @@ function _machineCard(m) {
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="editMachine(${m.id})">✏ Bearbeiten</button>
       <button class="btn btn-ghost btn-sm" onclick="openQRModal(${m.id})">▦ QR/NFC</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>
+      ${currentUser?.role==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>`:''}
     </div>
   </div>`;
 }
@@ -3345,7 +3345,7 @@ function _machineTable(machines) {
       <td style="white-space:nowrap">
         <button class="btn btn-ghost btn-sm" onclick="editMachine(${m.id})">✏</button>
         <button class="btn btn-ghost btn-sm" onclick="openQRModal(${m.id})">▦</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>
+        ${currentUser?.role==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>`:''}
       </td>
     </tr>`;
   }).join('');

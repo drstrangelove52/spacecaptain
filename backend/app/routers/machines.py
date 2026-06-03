@@ -273,7 +273,7 @@ async def update_machine(
 async def delete_machine(
     machine_id: int,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_admin),
 ):
     result = await db.execute(select(Machine).where(Machine.id == machine_id))
     machine = result.scalar_one_or_none()

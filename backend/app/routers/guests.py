@@ -11,7 +11,7 @@ def _hash(pw: str) -> str:
     return bcrypt.hashpw(pw.encode(), bcrypt.gensalt(12)).decode()
 from app.models import User, Guest, Machine, Permission, LogType
 from app.schemas import GuestCreate, GuestUpdate, GuestOut, GuestRegister
-from app.services.auth import get_current_user
+from app.services.auth import get_current_user, require_admin
 from app.services import logger as log_svc
 
 router = APIRouter(prefix="/guests", tags=["guests"])
@@ -196,7 +196,7 @@ async def update_guest(
 async def delete_guest(
     guest_id: int,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_admin),
 ):
     result = await db.execute(select(Guest).where(Guest.id == guest_id))
     guest = result.scalar_one_or_none()
