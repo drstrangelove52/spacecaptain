@@ -870,17 +870,6 @@
           </div>
         </div>
 
-        <!-- NTFY TOPICS -->
-        <div class="table-wrap" style="padding:20px" id="cfg-topics-section">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">
-            <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px">NTFY TOPICS</div>
-            <button class="btn btn-ghost btn-sm" onclick="showAddTopic()">+ Topic hinzufügen</button>
-          </div>
-          <div id="cfg-topics-list" style="display:flex;flex-direction:column;gap:8px">
-            <div style="color:var(--text-dim);font-size:13px">Laden…</div>
-          </div>
-        </div>
-
         <!-- AUTO-BACKUP -->
         <div class="table-wrap" style="padding:20px">
           <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">AUTOMATISCHES BACKUP</div>
@@ -913,13 +902,10 @@
 
     <!-- BENACHRICHTIGUNGEN-SEITE -->
     <div class="page" id="page-notifications">
-      <div class="section-header">
-        <div class="section-title">Benachrichtigungen <span>// NTFY TOPICS</span></div>
-      </div>
       <div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:6px;padding:14px 18px;font-size:13px;color:var(--text-mid);line-height:1.7;margin-bottom:20px">
-        Installiere die <strong>ntfy</strong> App auf deinem Smartphone und abonniere die gewünschten Topics per QR-Code.
-        Die App ist kostenlos für <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" style="color:var(--accent2)">iOS</a> und
-        <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" style="color:var(--accent2)">Android</a> verfügbar.
+        Installiere die <strong>ntfy</strong> App auf deinem Smartphone und abonniere Topics per QR-Code. Kostenlos für
+        <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" style="color:var(--accent2)">iOS</a> und
+        <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" style="color:var(--accent2)">Android</a>.
       </div>
       <div id="notifications-list" style="display:flex;flex-direction:column;gap:16px">
         <div style="color:var(--text-dim);font-size:13px">Laden…</div>
@@ -2292,7 +2278,7 @@ const pageActions={
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
   maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-ghost" onclick="showFreeRecord()">+ Freie Wartung</button> <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`,
   announcements:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('announcements')" title="Hilfe zu Mitteilungen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddAnnouncement()">+ Neue Mitteilung</button>`,
-  notifications:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('notifications')" title="Hilfe zu Benachrichtigungen">? Hilfe</button>`,
+  notifications:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('notifications')" title="Hilfe zu Benachrichtigungen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddTopic()">+ Topic hinzufügen</button>`,
   stats:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('stats')" title="Hilfe zu Statistiken">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="loadStats()">↺ Aktualisieren</button>`,
   log:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('log')" title="Hilfe zum Aktivitätslog">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="loadLog()">↺ Aktualisieren</button>`,
   backup:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('backup')" title="Hilfe zu Backup">? Hilfe</button>`,
@@ -5719,13 +5705,13 @@ setInterval(checkEmergencyStatus, 15000);
 // ═══════════════════════════════════════════════════════
 async function loadNotificationsPage() {
   const container = document.getElementById('notifications-list');
-  const topics = await GET('/ntfy-topics');
+  if (!container) return;
+  const [topics, s] = await Promise.all([GET('/ntfy-topics'), apiSilent('GET', '/settings')]);
   if (!topics) return;
   if (!topics.length) {
-    container.innerHTML = '<div style="color:var(--text-dim);font-size:13px">Noch keine Topics konfiguriert. Admin kann Topics in den Einstellungen hinzufügen.</div>';
+    container.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:20px 0">Noch keine Topics konfiguriert. Klicke auf «+ Topic hinzufügen».</div>';
     return;
   }
-  const s = await GET('/settings');
   const server = (s?.ntfy_server || 'https://ntfy.sh').replace(/\/$/, '');
   container.innerHTML = topics.map(t => {
     const url = `${server}/${t.topic}`;
@@ -5733,13 +5719,17 @@ async function loadNotificationsPage() {
     return `<div class="topic-card">
       <div class="topic-qr"><img src="${qrSrc}" alt="QR"></div>
       <div style="flex:1">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <div style="font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:.5px">${t.title}</div>
-          <button class="btn btn-ghost btn-sm" onclick="sendTestNotification(${t.id}, this)">Test senden</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:8px;flex-wrap:wrap">
+          <div style="font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:.5px">${escHtml(t.title)}</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="sendTestNotification(${t.id}, this)">▶ Test</button>
+            <button class="btn btn-ghost btn-sm" onclick="showEditTopic(${t.id})">✎</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteTopic(${t.id})">✕</button>
+          </div>
         </div>
-        ${t.description ? `<div style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5">${t.description}</div>` : ''}
-        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-bottom:6px">TOPIC</div>
-        <div style="font-family:var(--mono);font-size:13px;color:var(--accent2);word-break:break-all">${url}</div>
+        ${t.description ? `<div style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5">${escHtml(t.description)}</div>` : ''}
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-bottom:4px">ABONNIEREN</div>
+        <div style="font-family:var(--mono);font-size:12px;color:var(--accent2);word-break:break-all">${url}</div>
       </div>
     </div>`;
   }).join('');
@@ -5755,33 +5745,15 @@ async function sendTestNotification(id, btn) {
   if (res) showToast('Test-Benachrichtigung gesendet', 'success');
 }
 
-// Topics für Einstellungs-Dropdown und -Liste laden
+// Topics für Einstellungs-Dropdown laden (Emergency-Topic Selektor)
 async function loadTopicsForSettings() {
   const topics = await GET('/ntfy-topics');
   if (!topics) return;
-
-  // Dropdown für Emergency-Topic befüllen
   const sel = document.getElementById('cfg-emergency-topic');
+  if (!sel) return;
   sel.innerHTML = '<option value="">— Kein Topic —</option>' +
-    topics.map(t => `<option value="${t.id}">${t.title}</option>`).join('');
+    topics.map(t => `<option value="${t.id}">${escHtml(t.title)}</option>`).join('');
   if (_emergencyNtfyTopicId) sel.value = _emergencyNtfyTopicId;
-
-  // Topics-Liste in Einstellungen rendern
-  const list = document.getElementById('cfg-topics-list');
-  if (!topics.length) {
-    list.innerHTML = '<div style="color:var(--text-dim);font-size:13px">Noch keine Topics definiert.</div>';
-    return;
-  }
-  list.innerHTML = topics.map(t => `
-    <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px">
-      <div style="flex:1">
-        <div style="font-weight:600;font-size:14px">${t.title}</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:2px">${t.key} · ${t.topic}</div>
-        ${t.description ? `<div style="font-size:12px;color:var(--text-dim);margin-top:2px">${t.description}</div>` : ''}
-      </div>
-      <button class="btn btn-ghost btn-sm" onclick="showEditTopic(${t.id})">✏</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteTopic(${t.id})">✕</button>
-    </div>`).join('');
 }
 
 function _topicFormHtml(t) {
@@ -5814,12 +5786,17 @@ function _topicPayload() {
   };
 }
 
+function _refreshTopics() {
+  loadNotificationsPage();
+  loadTopicsForSettings();
+}
+
 function showAddTopic() {
   openModal('Topic hinzufügen', _topicFormHtml(null), async () => {
     const p = _topicPayload();
     if (!p.key || !p.title || !p.topic) return showToast('Bitte alle Pflichtfelder ausfüllen', 'warn');
     const res = await POST('/ntfy-topics', p);
-    if (res) { closeModal(); showToast('Topic gespeichert', 'success'); loadTopicsForSettings(); }
+    if (res) { closeModal(); showToast('Topic gespeichert', 'success'); _refreshTopics(); }
   });
 }
 
@@ -5831,14 +5808,14 @@ async function showEditTopic(id) {
     const p = _topicPayload();
     if (!p.key || !p.title || !p.topic) return showToast('Bitte alle Pflichtfelder ausfüllen', 'warn');
     const res = await PUT(`/ntfy-topics/${id}`, p);
-    if (res) { closeModal(); showToast('Topic aktualisiert', 'success'); loadTopicsForSettings(); }
+    if (res) { closeModal(); showToast('Topic aktualisiert', 'success'); _refreshTopics(); }
   });
 }
 
 async function deleteTopic(id) {
   if (!confirm('Topic wirklich löschen?')) return;
   const res = await apiSilent('DELETE', `/ntfy-topics/${id}`);
-  if (res !== null) { showToast('Topic gelöscht', 'warn'); loadTopicsForSettings(); }
+  if (res !== null) { showToast('Topic gelöscht', 'warn'); _refreshTopics(); }
 }
 
 // ═══════════════════════════════════════════════════════
