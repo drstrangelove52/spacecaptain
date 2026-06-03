@@ -600,10 +600,6 @@
         <div>
           <div class="section-header">
             <div class="section-title">Wartungsintervalle <span>// ÜBERSICHT</span></div>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-ghost btn-sm" onclick="showFreeRecord()">+ Freie Wartung</button>
-              <button class="btn btn-primary btn-sm" onclick="showAddInterval()">+ Neues Intervall</button>
-            </div>
           </div>
           <div id="maintenance-filter" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
             <select class="form-input" id="maint-filter-machine" style="flex:1;min-width:140px;font-size:13px" onchange="renderIntervals()">
@@ -2304,7 +2300,7 @@ const pageActions={
   plugs:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('plugs')" title="Hilfe zu Plug-Pool">? Hilfe</button> <button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`,
   automations:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('automations')" title="Hilfe zu Automationen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddRule()">+ Neue Regel</button>`,
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
-  maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`,
+  maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-ghost" onclick="showFreeRecord()">+ Freie Wartung</button> <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`,
   announcements:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('announcements')" title="Hilfe zu Mitteilungen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddAnnouncement()">+ Neue Mitteilung</button>`,
   notifications:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('notifications')" title="Hilfe zu Benachrichtigungen">? Hilfe</button>`,
   stats:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('stats')" title="Hilfe zu Statistiken">? Hilfe</button>`,
