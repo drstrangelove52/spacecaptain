@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import User, LogType
-from app.services.auth import require_admin
+from app.services.auth import require_admin, get_current_user
 from app.services.system_settings import get_system_settings
 from app.services.logger import log as activity_log
 
@@ -203,7 +203,7 @@ async def update_settings(
 async def set_room_status(
     payload: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(get_current_user),
 ):
     """Öffnet oder schliesst den Raum manuell."""
     from datetime import datetime as _dt

@@ -13,7 +13,7 @@ from app.models import (
     User, Guest, Machine, Permission,
     ActivityLog, MachineSession, LogType, SessionEndedBy,
     MaintenanceInterval, MaintenanceRecord, SystemSettings, Announcement, NtfyTopic,
-    Plug, MachinePlug, MachineAutomation,
+    Plug, MachinePlug, AutomationRule, RuleCondition,
 )
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
@@ -50,9 +50,15 @@ async def _build_export_data(db: AsyncSession) -> dict:
     machine_plugs_rows = (await db.execute(
         select(MachinePlug).order_by(MachinePlug.machine_id, MachinePlug.sort_order)
     )).scalars().all()
-    automations = (await db.execute(
-        select(MachineAutomation).order_by(MachineAutomation.id)
+    auto_rules = (await db.execute(
+        select(AutomationRule).order_by(AutomationRule.id)
     )).scalars().all()
+    auto_conds = (await db.execute(
+        select(RuleCondition).order_by(RuleCondition.rule_id, RuleCondition.id)
+    )).scalars().all()
+    conds_by_rule: dict[int, list] = {}
+    for c in auto_conds:
+        conds_by_rule.setdefault(c.rule_id, []).append(c)
 
     # Stabile Referenzen statt IDs
     guest_by_id   = {g.id: g.username  for g in guests}
@@ -62,7 +68,7 @@ async def _build_export_data(db: AsyncSession) -> dict:
     plug_by_id = {p.id: p.plug_ip for p in plugs}
 
     return {
-        "version": "2.9",
+        "version": "3.0",
         "app_version": APP_VERSION,
         "exported_at": datetime.utcnow().isoformat(),
         "settings": {
@@ -159,15 +165,21 @@ async def _build_export_data(db: AsyncSession) -> dict:
             "recur_valid_until":  a.recur_valid_until.isoformat() if a.recur_valid_until else None,
             "created_at":         _iso(a.created_at),
         } for a in announcements],
-        "automations": [{
-            "source_machine_qr": machine_by_id.get(a.source_machine_id),
-            "target_machine_qr": machine_by_id.get(a.target_machine_id),
-            "on_threshold_w":    a.on_threshold_w,
-            "off_threshold_w":   a.off_threshold_w,
-            "off_delay_sec":     a.off_delay_sec,
-            "enabled":           a.enabled,
-        } for a in automations
-          if machine_by_id.get(a.source_machine_id) and machine_by_id.get(a.target_machine_id)],
+        "automation_rules": [{
+            "name":              r.name,
+            "target_machine_qr": machine_by_id.get(r.target_machine_id),
+            "off_delay_sec":     r.off_delay_sec,
+            "enabled":           r.enabled,
+            "conditions": [{
+                "type":              c.type,
+                "source_machine_qr": machine_by_id.get(c.source_machine_id) if c.source_machine_id else None,
+                "power_on_w":        c.power_on_w,
+                "power_off_w":       c.power_off_w,
+                "days":              c.days,
+                "time_on":           c.time_on.strftime("%H:%M") if c.time_on else None,
+                "time_off":          c.time_off.strftime("%H:%M") if c.time_off else None,
+            } for c in conds_by_rule.get(r.id, [])],
+        } for r in auto_rules if machine_by_id.get(r.target_machine_id)],
         "activity_log": [{
             "type":             l.type,
             "message":          l.message,
@@ -437,29 +449,45 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
 
     await db.flush()
 
-    # ── Automationen ──────────────────────────────────────
-    existing_autos = {
-        (a.source_machine_id, a.target_machine_id)
-        for a in (await db.execute(select(MachineAutomation))).scalars().all()
+    # ── Automationsregeln ─────────────────────────────────
+    existing_rule_names = {
+        r.name for r in (await db.execute(select(AutomationRule))).scalars().all()
     }
-    for a in payload.get("automations", []):
-        src_mid = machine_map.get(a.get("source_machine_qr"))
-        tgt_mid = machine_map.get(a.get("target_machine_qr"))
-        if not src_mid or not tgt_mid:
+    from datetime import time as _Time
+    for r in payload.get("automation_rules", []):
+        tgt_mid = machine_map.get(r.get("target_machine_qr"))
+        if not tgt_mid:
             stats["skipped"] += 1; continue
-        if (src_mid, tgt_mid) in existing_autos:
+        name = r.get("name") or ""
+        if name and name in existing_rule_names:
             stats["skipped"] += 1; continue
-        existing_autos.add((src_mid, tgt_mid))
-        db.add(MachineAutomation(
-            source_machine_id=src_mid,
+        rule = AutomationRule(
+            name=name,
             target_machine_id=tgt_mid,
-            on_threshold_w=a.get("on_threshold_w", 100),
-            off_threshold_w=a.get("off_threshold_w", 10),
-            off_delay_sec=a.get("off_delay_sec", 30),
-            enabled=a.get("enabled", True),
-        ))
-        stats.setdefault("automations", 0)
-        stats["automations"] += 1
+            off_delay_sec=r.get("off_delay_sec", 0),
+            enabled=r.get("enabled", True),
+        )
+        db.add(rule)
+        await db.flush()
+        existing_rule_names.add(name)
+        for c in r.get("conditions", []):
+            ctype = c.get("type")
+            cond = RuleCondition(rule_id=rule.id, type=ctype)
+            if ctype == "power":
+                cond.source_machine_id = machine_map.get(c.get("source_machine_qr"))
+                cond.power_on_w  = c.get("power_on_w")
+                cond.power_off_w = c.get("power_off_w")
+            elif ctype == "schedule":
+                cond.days = c.get("days")
+                t_on  = c.get("time_on")
+                t_off = c.get("time_off")
+                if t_on:
+                    p = t_on.split(":"); cond.time_on  = _Time(int(p[0]), int(p[1]))
+                if t_off:
+                    p = t_off.split(":"); cond.time_off = _Time(int(p[0]), int(p[1]))
+            db.add(cond)
+        stats.setdefault("automation_rules", 0)
+        stats["automation_rules"] += 1
 
     await db.flush()
 
