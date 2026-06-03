@@ -4798,7 +4798,7 @@ function _condForm(c, uid) {
   let fields = '';
   if (c.type === 'power') {
     fields = `
-      <select class="form-input" style="flex:2" onchange="_editConditions.find(x=>x._uid===_uid(this)).source_machine_id=parseInt(this.value)" data-uid="${uid}">
+      <select class="form-input" style="flex:2" onchange="_editConditions.find(x=>x._uid==${uid}).source_machine_id=parseInt(this.value)||null" data-uid="${uid}">
         <option value="">Quell-Maschine…</option>${machineOpts}
       </select>
       <div style="display:flex;gap:6px;align-items:center;flex:3">
@@ -4866,7 +4866,7 @@ function removeCondition(uid) {
 
 function _addCondMenu() {
   return `<div style="position:relative;display:inline-block">
-    <button class="btn btn-ghost btn-sm" onclick="this.nextSibling.style.display=this.nextSibling.style.display==='block'?'none':'block'">+ Bedingung ▾</button>
+    <button class="btn btn-ghost btn-sm" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'">+ Bedingung ▾</button>
     <div style="display:none;position:absolute;top:100%;left:0;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-width:200px;padding:4px 0;box-shadow:0 4px 12px rgba(0,0,0,.3)">
       ${Object.entries(COND_LABELS).map(([t,l])=>`<div style="padding:8px 14px;cursor:pointer;font-size:13px" onmousedown="addCondition('${t}')">${l}</div>`).join('')}
     </div>
@@ -4880,16 +4880,11 @@ function _ruleModalBody(r) {
     <div class="form-group"><label class="form-label">Name (optional)</label>
       <input class="form-input" id="rule-name" value="${escHtml(r?.name||'')}" placeholder="z.B. Absaugung">
     </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Ziel-Maschine</label>
-        <select class="form-input" id="rule-target" ${r?'disabled':''}>
-          <option value="">Auswählen…</option>${machOpts}
-        </select>
-        ${r?`<input type="hidden" id="rule-target-hidden" value="${r.target_machine_id}">`:''}</div>
-      <div class="form-group"><label class="form-label">Nachlaufzeit (Sek.)</label>
-        <input class="form-input" id="rule-delay" type="number" min="0" value="${r?.off_delay_sec??0}">
-      </div>
-    </div>
+    <div class="form-group"><label class="form-label">Ziel-Maschine</label>
+      <select class="form-input" id="rule-target" ${r?'disabled':''}>
+        <option value="">Auswählen…</option>${machOpts}
+      </select>
+      ${r?`<input type="hidden" id="rule-target-hidden" value="${r.target_machine_id}">`:''}</div>
     <div style="margin-bottom:8px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <label class="form-label" style="margin:0">Bedingungen <span style="color:var(--text-muted);font-weight:400">(alle müssen gleichzeitig wahr sein)</span></label>
@@ -4897,6 +4892,10 @@ function _ruleModalBody(r) {
       </div>
       <div id="rule-conditions-list"></div>
       <div id="rule-cond-error" style="color:var(--danger);font-size:12px;display:none;margin-top:4px"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nachlaufzeit (Sekunden) <span style="font-weight:400;color:var(--text-muted)">— wie lange nach Bedingungsende noch eingeschaltet bleibt</span></label>
+      <input class="form-input" id="rule-delay" type="number" min="0" value="${r?.off_delay_sec??0}" style="width:120px">
     </div>`;
 }
 
