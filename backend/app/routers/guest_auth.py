@@ -215,6 +215,13 @@ async def check_access(payload: CheckRequest, db: AsyncSession = Depends(get_db)
     if not machine:
         raise HTTPException(404, "Maschine nicht gefunden")
 
+    s = await get_system_settings(db)
+    if not s.room_open and not machine.session_started_at:
+        await log_svc.log(db, LogType.room_access_denied,
+                          f"Zugang verweigert (Raum geschlossen): {guest.name} → {machine.name}",
+                          guest_id=guest.id, machine_id=machine.id)
+        raise HTTPException(403, "Raum ist geschlossen")
+
     perm_res = await db.execute(
         select(Permission).where(Permission.guest_id == guest.id, Permission.machine_id == machine.id)
     )
@@ -298,6 +305,12 @@ async def guest_switch(payload: SwitchRequest, db: AsyncSession = Depends(get_db
 
     if machine.status != "online":
         raise HTTPException(503, f"Maschine '{machine.name}' nicht verfügbar")
+
+    # Raum-Sperre: nur beim Einschalten prüfen (Ausschalten immer erlauben)
+    if payload.action == "on" and machine.current_guest_id != guest.id:
+        s = await get_system_settings(db)
+        if not s.room_open:
+            raise HTTPException(403, "Raum ist geschlossen")
 
     perm_res = await db.execute(
         select(Permission).where(Permission.guest_id == guest.id, Permission.machine_id == machine.id)

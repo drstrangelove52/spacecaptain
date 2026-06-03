@@ -3438,6 +3438,13 @@ function showAddMachine() {
         <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Wenn deaktiviert: alle Gäste haben automatisch Zugang, einzelne können gesperrt werden.</div>
       </div>
     </div>
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-top:10px">
+      <input type="checkbox" id="mc-force-off" style="width:16px;height:16px;cursor:pointer;accent-color:var(--danger);margin-top:2px;flex-shrink:0">
+      <div>
+        <label class="form-label" style="margin-bottom:2px;cursor:pointer" for="mc-force-off">Bei Raumschluss ausschalten</label>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Wenn aktiviert: Gerät wird automatisch ausgeschaltet wenn der Raum geschlossen wird (z.B. Kaffeemaschine, Lötstation).</div>
+      </div>
+    </div>
   `, async()=>{
     const name=document.getElementById('mc-name').value.trim();
     if (!name) { showToast('Name erforderlich','error'); return; }
@@ -3451,7 +3458,8 @@ function showAddMachine() {
     const idle_t=document.getElementById('mc-idlet')?.value;
     const poll_s=document.getElementById('mc-poll')?.value;
     const training_required=document.getElementById('mc-training')?.checked??true;
-    const res=await POST('/machines',{name,category:document.getElementById('mc-cat').value,status:document.getElementById('mc-status').value,manufacturer:document.getElementById('mc-mfr').value.trim()||null,model:document.getElementById('mc-model').value.trim()||null,serial_number:document.getElementById('mc-serial').value.trim()||null,location:document.getElementById('mc-loc').value.trim(),comment:document.getElementById('mc-comment').value.trim()||null,safety_notes:document.getElementById('mc-safety').value.trim()||null,plug_type:'none',idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required});
+    const force_off_on_close=document.getElementById('mc-force-off')?.checked??false;
+    const res=await POST('/machines',{name,category:document.getElementById('mc-cat').value,status:document.getElementById('mc-status').value,manufacturer:document.getElementById('mc-mfr').value.trim()||null,model:document.getElementById('mc-model').value.trim()||null,serial_number:document.getElementById('mc-serial').value.trim()||null,location:document.getElementById('mc-loc').value.trim(),comment:document.getElementById('mc-comment').value.trim()||null,safety_notes:document.getElementById('mc-safety').value.trim()||null,plug_type:'none',idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required,force_off_on_close});
     if (res) {
       if (plugId) await POST(`/plugs/${plugId}/assign?machine_id=${res.id}`,{});
       closeModal(); await loadAll(); showToast(`${res.name} hinzugefügt!`,'success');
@@ -3556,6 +3564,13 @@ function editMachine(id) {
         <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Wenn deaktiviert: alle Gäste haben automatisch Zugang, einzelne können gesperrt werden.</div>
       </div>
     </div>
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-top:10px">
+      <input type="checkbox" id="e-force-off" ${m.force_off_on_close?'checked':''} style="width:16px;height:16px;cursor:pointer;accent-color:var(--danger);margin-top:2px;flex-shrink:0">
+      <div>
+        <label class="form-label" style="margin-bottom:2px;cursor:pointer" for="e-force-off">Bei Raumschluss ausschalten</label>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Wenn aktiviert: Gerät wird automatisch ausgeschaltet wenn der Raum geschlossen wird (z.B. Kaffeemaschine, Lötstation).</div>
+      </div>
+    </div>
   `, async()=>{
     // Plug-Diff berechnen
     const origIds = new Set(_editMachinePlugsOrig.map(p=>p.id));
@@ -3569,7 +3584,8 @@ function editMachine(id) {
     const idle_t=document.getElementById('e-idlet')?.value;
     const poll_s=document.getElementById('e-poll')?.value;
     const training_required=document.getElementById('e-training')?.checked??true;
-    const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,manufacturer:document.getElementById('e-mfr').value.trim()||null,model:document.getElementById('e-model').value.trim()||null,serial_number:document.getElementById('e-serial').value.trim()||null,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,safety_notes:document.getElementById('e-safety').value.trim()||null,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required};
+    const force_off_on_close=document.getElementById('e-force-off')?.checked??false;
+    const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,manufacturer:document.getElementById('e-mfr').value.trim()||null,model:document.getElementById('e-model').value.trim()||null,serial_number:document.getElementById('e-serial').value.trim()||null,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,safety_notes:document.getElementById('e-safety').value.trim()||null,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required,force_off_on_close};
     const res=await PATCH(`/machines/${id}`,payload);
     if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
   });
@@ -4817,11 +4833,19 @@ function _renderAutomationsList(rules) {
         : `<span style="font-size:11px;color:var(--text-muted)">● AUS</span>`;
     const chips  = r.conditions.map(_condChip).join(' ');
     const delay  = r.off_delay_sec > 0 ? `<span style="font-size:11px;color:var(--text-muted)">Nachlauf ${r.off_delay_sec}s</span>` : '';
+    const actionChip = r.action_type === 'room_open'
+      ? `<span style="font-size:11px;color:var(--success);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:1px 7px">🟢 Raum öffnen</span>`
+      : r.action_type === 'room_close'
+        ? `<span style="font-size:11px;color:var(--danger);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:1px 7px">🔴 Raum schliessen</span>`
+        : '';
+    const targetLabel = r.action_type === 'machine' && r.target_machine_name
+      ? `<span style="font-size:12px;color:var(--text-muted)">→ ${escHtml(r.target_machine_name)}</span>` : '';
     return `<div class="machine-card" style="margin-bottom:10px;padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
       <div style="flex:1;min-width:200px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
-          <strong>${escHtml(r.name || r.target_machine_name)}</strong>
-          ${r.name ? `<span style="font-size:12px;color:var(--text-muted)">→ ${escHtml(r.target_machine_name)}</span>` : ''}
+          <strong>${escHtml(r.name || r.target_machine_name || (r.action_type==='room_open'?'Raum öffnen':'Raum schliessen'))}</strong>
+          ${targetLabel}
+          ${actionChip}
           ${stateChip}
           ${!r.enabled ? '<span style="font-size:11px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px">inaktiv</span>' : ''}
         </div>
@@ -4947,15 +4971,25 @@ function _addCondMenu() {
 function _ruleModalBody(r) {
   const machines = cache.machines.filter(m => m.plug_type && m.plug_type !== 'none');
   const machOpts = machines.map(m => `<option value="${m.id}" ${r&&m.id===r.target_machine_id?'selected':''}>${escHtml(m.name)}</option>`).join('');
+  const at = r?.action_type || 'machine';
+  const isMachine = at === 'machine';
   return `
     <div class="form-group"><label class="form-label">Name (optional)</label>
       <input class="form-input" id="rule-name" value="${escHtml(r?.name||'')}" placeholder="z.B. Absaugung">
     </div>
-    <div class="form-group"><label class="form-label">Ziel-Maschine</label>
-      <select class="form-input" id="rule-target" ${r?'disabled':''}>
+    <div class="form-group"><label class="form-label">Aktion</label>
+      <select class="form-input" id="rule-action" onchange="_onActionTypeChange(this.value)" ${r?'disabled':''}>
+        <option value="machine"    ${at==='machine'   ?'selected':''}>🏭 Maschine schalten</option>
+        <option value="room_open"  ${at==='room_open' ?'selected':''}>🟢 Raum öffnen</option>
+        <option value="room_close" ${at==='room_close'?'selected':''}>🔴 Raum schliessen</option>
+      </select>
+    </div>
+    <div id="rule-target-row" class="form-group" style="${isMachine?'':'display:none'}">
+      <label class="form-label">Ziel-Maschine</label>
+      <select class="form-input" id="rule-target" ${r&&isMachine?'disabled':''}>
         <option value="">Auswählen…</option>${machOpts}
       </select>
-      ${r?`<input type="hidden" id="rule-target-hidden" value="${r.target_machine_id}">`:''}</div>
+      ${r&&isMachine?`<input type="hidden" id="rule-target-hidden" value="${r.target_machine_id}">`:''}</div>
     <div style="margin-bottom:8px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <label class="form-label" style="margin:0">Bedingungen <span style="color:var(--text-muted);font-weight:400">(alle müssen gleichzeitig wahr sein)</span></label>
@@ -4964,24 +4998,33 @@ function _ruleModalBody(r) {
       <div id="rule-conditions-list"></div>
       <div id="rule-cond-error" style="color:var(--danger);font-size:12px;display:none;margin-top:4px"></div>
     </div>
-    <div class="form-group">
+    <div id="rule-delay-row" class="form-group" style="${isMachine?'':'display:none'}">
       <label class="form-label">Nachlaufzeit (Sekunden) <span style="font-weight:400;color:var(--text-muted)">— wie lange nach Bedingungsende noch eingeschaltet bleibt</span></label>
       <input class="form-input" id="rule-delay" type="number" min="0" value="${r?.off_delay_sec??0}" style="width:120px">
     </div>`;
 }
 
+function _onActionTypeChange(val) {
+  const isMachine = val === 'machine';
+  document.getElementById('rule-target-row').style.display = isMachine ? '' : 'none';
+  document.getElementById('rule-delay-row').style.display  = isMachine ? '' : 'none';
+}
+
 function _collectRule() {
-  const name    = document.getElementById('rule-name').value.trim();
-  const targetEl = document.getElementById('rule-target-hidden') || document.getElementById('rule-target');
-  const target  = parseInt(targetEl.value);
-  const delay   = parseInt(document.getElementById('rule-delay').value) || 0;
-  if (!target)  { showToast('Ziel-Maschine auswählen','error'); return null; }
+  const name       = document.getElementById('rule-name').value.trim();
+  const action_type = (document.getElementById('rule-action')?.value) || 'machine';
+  const delay      = parseInt(document.getElementById('rule-delay')?.value) || 0;
+  let target_machine_id = null;
+  if (action_type === 'machine') {
+    const targetEl = document.getElementById('rule-target-hidden') || document.getElementById('rule-target');
+    target_machine_id = parseInt(targetEl?.value) || null;
+    if (!target_machine_id) { showToast('Ziel-Maschine auswählen','error'); return null; }
+  }
   if (!_editConditions.length) {
     document.getElementById('rule-cond-error').textContent = 'Mindestens eine Bedingung hinzufügen';
     document.getElementById('rule-cond-error').style.display = 'block';
     return null;
   }
-  // Validierung
   for (const c of _editConditions) {
     if (c.type === 'power') {
       if (!c.source_machine_id) { showToast('Leistungs-Bedingung: Quell-Maschine auswählen','error'); return null; }
@@ -4993,7 +5036,7 @@ function _collectRule() {
     }
   }
   const conditions = _editConditions.map(({_uid, ...c}) => c);
-  return {name, target_machine_id: target, off_delay_sec: delay, conditions};
+  return {name, action_type, target_machine_id, off_delay_sec: delay, conditions};
 }
 
 function showAddRule() {

@@ -452,6 +452,19 @@ async def run_migrations(engine: AsyncEngine) -> None:
             "ALTER TABLE ntfy_topics MODIFY COLUMN `key` VARCHAR(50) DEFAULT NULL"
         ))
 
+        # ── v1.29: force_off_on_close + action_type ──────────────────────────
+        await _add_column_if_missing(conn, "machines", "force_off_on_close",
+                                     "TINYINT(1) NOT NULL DEFAULT 0")
+        await _add_column_if_missing(conn, "automation_rules", "action_type",
+                                     "VARCHAR(20) NOT NULL DEFAULT 'machine'")
+        # target_machine_id nullable machen (für room_open/room_close Regeln)
+        await conn.execute(text(
+            "ALTER TABLE automation_rules MODIFY COLUMN target_machine_id INT UNSIGNED DEFAULT NULL"
+        ))
+        await _extend_enum_if_needed(conn, "activity_log", "type", [
+            "room_access_denied",
+        ])
+
     log.info("Migrationen abgeschlossen")
 
 

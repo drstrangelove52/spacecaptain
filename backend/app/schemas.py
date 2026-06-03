@@ -122,6 +122,7 @@ class MachineBase(BaseModel):
     training_required: bool = True
     comment: Optional[str] = None
     safety_notes: Optional[str] = None
+    force_off_on_close: bool = False
 
 class MachineCreate(MachineBase):
     pass
@@ -144,6 +145,7 @@ class MachineUpdate(BaseModel):
     training_required: Optional[bool] = None
     comment: Optional[str] = None
     safety_notes: Optional[str] = None
+    force_off_on_close: Optional[bool] = None
 
 class MachineOut(MachineBase):
     id: int

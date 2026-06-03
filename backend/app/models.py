@@ -69,8 +69,9 @@ class LogType(str, enum.Enum):
     schedule_deleted = "schedule_deleted"
     schedule_on = "schedule_on"
     schedule_off = "schedule_off"
-    room_opened  = "room_opened"
-    room_closed  = "room_closed"
+    room_opened         = "room_opened"
+    room_closed         = "room_closed"
+    room_access_denied  = "room_access_denied"
     rule_created = "rule_created"
     rule_updated = "rule_updated"
     rule_deleted = "rule_deleted"
@@ -158,6 +159,7 @@ class Machine(Base):
     total_hours:        Mapped[float]            = mapped_column(Float, default=0.0)
     comment:            Mapped[Optional[str]]   = mapped_column(Text)
     safety_notes:       Mapped[Optional[str]]   = mapped_column(Text, default=None)
+    force_off_on_close: Mapped[bool]            = mapped_column(Boolean, default=False)
     plug_id:            Mapped[Optional[int]]   = mapped_column(Integer, ForeignKey("plugs.id", ondelete="SET NULL"), default=None)
     qr_token:           Mapped[str]             = mapped_column(String(64), unique=True, nullable=False)
     created_at:         Mapped[datetime]        = mapped_column(DateTime, default=datetime.utcnow)
@@ -283,13 +285,14 @@ class DeviceSchedule(Base):
 
 class AutomationRule(Base):
     __tablename__ = "automation_rules"
-    id:                Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name:              Mapped[str]      = mapped_column(String(100), default="")
-    target_machine_id: Mapped[int]      = mapped_column(UINT(unsigned=True), ForeignKey("machines.id", ondelete="CASCADE"))
-    off_delay_sec:     Mapped[int]      = mapped_column(Integer, default=0)
-    enabled:           Mapped[bool]     = mapped_column(Boolean, default=True)
-    created_at:        Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    target_machine: Mapped["Machine"]           = relationship("Machine", foreign_keys=[target_machine_id])
+    id:                Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name:              Mapped[str]           = mapped_column(String(100), default="")
+    action_type:       Mapped[str]           = mapped_column(String(20), default="machine")  # machine | room_open | room_close
+    target_machine_id: Mapped[Optional[int]] = mapped_column(UINT(unsigned=True), ForeignKey("machines.id", ondelete="CASCADE"), nullable=True, default=None)
+    off_delay_sec:     Mapped[int]           = mapped_column(Integer, default=0)
+    enabled:           Mapped[bool]          = mapped_column(Boolean, default=True)
+    created_at:        Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
+    target_machine: Mapped[Optional["Machine"]]  = relationship("Machine", foreign_keys=[target_machine_id])
     conditions:     Mapped[list["RuleCondition"]] = relationship("RuleCondition", back_populates="rule", cascade="all, delete-orphan")
 
 

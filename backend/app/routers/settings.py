@@ -206,16 +206,12 @@ async def set_room_status(
     current_user: User = Depends(get_current_user),
 ):
     """Öffnet oder schliesst den Raum manuell."""
-    from datetime import datetime as _dt
+    from app.services.room import open_room, close_room
     open_val = bool(payload.get("open", False))
-    row = await get_system_settings(db)
-    row.room_open = open_val
-    row.room_open_since = _dt.utcnow() if open_val else None
-    await db.commit()
-    log_type = LogType.room_opened if open_val else LogType.room_closed
-    await activity_log(db, log_type,
-                       f"Raum {'geöffnet' if open_val else 'geschlossen'} (manuell)",
-                       user_id=current_user.id)
+    if open_val:
+        await open_room(db, user_id=current_user.id)
+    else:
+        await close_room(db, user_id=current_user.id)
     return {"room_open": open_val}
 
 

@@ -26,6 +26,7 @@ from app.services.plug import get_plug_status, switch_all_machine_plugs
 from app.services.session import start_manager_session, end_session
 from app.services import logger as log_svc
 from app.services.system_settings import get_system_settings
+from app.services.room import open_room, close_room
 from app.config import APP_TIMEZONE
 
 log = logging.getLogger(__name__)
@@ -108,10 +109,27 @@ async def _evaluate_conditions(rule_id: int, state: str, room_open: bool, db) ->
 
 
 async def _process(rule: AutomationRule, room_open: bool, db) -> None:
-    state = _state.get(rule.id, "idle")
-    now   = datetime.utcnow()
+    state   = _state.get(rule.id, "idle")
+    now     = datetime.utcnow()
     all_met = await _evaluate_conditions(rule.id, state, room_open, db)
 
+    action = rule.action_type or "machine"
+
+    # ── Raum-Aktionen (einmalig feuern, kein Countdown) ──────────────────────
+    if action in ("room_open", "room_close"):
+        if all_met and state == "idle":
+            if action == "room_open":
+                await open_room(db, reason="Automation")
+                log.info(f"Regel {rule.id} '{rule.name}': Raum geöffnet")
+            else:
+                await close_room(db, reason="Automation")
+                log.info(f"Regel {rule.id} '{rule.name}': Raum geschlossen")
+            _state[rule.id] = "on"
+        elif not all_met and state == "on":
+            _state[rule.id] = "idle"
+        return
+
+    # ── Maschinen-Aktion (bestehende Logik) ───────────────────────────────────
     if all_met:
         _countdown_start.pop(rule.id, None)
 
@@ -159,7 +177,6 @@ async def _process(rule: AutomationRule, room_open: bool, db) -> None:
                     else:
                         log.warning(f"Regel {rule.id}: Ausschalten fehlgeschlagen — {msg}")
         else:
-            # war idle und bleibt idle
             _state[rule.id] = "idle"
 
 

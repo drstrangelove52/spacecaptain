@@ -36,18 +36,20 @@ class ConditionIn(BaseModel):
 
 
 class RuleIn(BaseModel):
-    name:              str  = ""
-    target_machine_id: int
-    off_delay_sec:     int  = 0
-    enabled:           bool = True
+    name:              str           = ""
+    action_type:       str           = "machine"  # machine | room_open | room_close
+    target_machine_id: Optional[int] = None
+    off_delay_sec:     int           = 0
+    enabled:           bool          = True
     conditions:        List[ConditionIn] = []
 
 
 class RulePatch(BaseModel):
-    name:          Optional[str]            = None
-    off_delay_sec: Optional[int]            = None
-    enabled:       Optional[bool]           = None
-    conditions:    Optional[List[ConditionIn]] = None
+    name:              Optional[str]             = None
+    action_type:       Optional[str]             = None
+    off_delay_sec:     Optional[int]             = None
+    enabled:           Optional[bool]            = None
+    conditions:        Optional[List[ConditionIn]] = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -118,10 +120,11 @@ async def _rule_out(rule: AutomationRule, db: AsyncSession) -> dict:
     if machine_ids:
         mres = await db.execute(select(Machine.id, Machine.name).where(Machine.id.in_(machine_ids)))
         machines = {r[0]: r[1] for r in mres.all()}
-    tm_name = rule.target_machine.name if hasattr(rule, "target_machine") and rule.target_machine else "?"
+    tm_name = rule.target_machine.name if hasattr(rule, "target_machine") and rule.target_machine else None
     return {
         "id":                  rule.id,
         "name":                rule.name,
+        "action_type":         rule.action_type,
         "target_machine_id":   rule.target_machine_id,
         "target_machine_name": tm_name,
         "off_delay_sec":       rule.off_delay_sec,
@@ -156,15 +159,22 @@ async def create_rule(
     db: AsyncSession = Depends(get_db),
     current: User = Depends(require_admin),
 ):
-    tm = (await db.execute(select(Machine).where(Machine.id == payload.target_machine_id))).scalar_one_or_none()
-    if not tm:
-        raise HTTPException(404, "Ziel-Maschine nicht gefunden")
+    if payload.action_type not in ("machine", "room_open", "room_close"):
+        raise HTTPException(400, "action_type muss 'machine', 'room_open' oder 'room_close' sein")
+    tm = None
+    if payload.action_type == "machine":
+        if not payload.target_machine_id:
+            raise HTTPException(400, "Ziel-Maschine erforderlich für action_type 'machine'")
+        tm = (await db.execute(select(Machine).where(Machine.id == payload.target_machine_id))).scalar_one_or_none()
+        if not tm:
+            raise HTTPException(404, "Ziel-Maschine nicht gefunden")
     if not payload.conditions:
         raise HTTPException(400, "Mindestens eine Bedingung erforderlich")
 
     rule = AutomationRule(
         name=payload.name.strip(),
-        target_machine_id=payload.target_machine_id,
+        action_type=payload.action_type,
+        target_machine_id=payload.target_machine_id if payload.action_type == "machine" else None,
         off_delay_sec=max(0, payload.off_delay_sec),
         enabled=payload.enabled,
     )
@@ -198,6 +208,8 @@ async def update_rule(
 
     if payload.name is not None:
         rule.name = payload.name.strip()
+    if payload.action_type is not None:
+        rule.action_type = payload.action_type
     if payload.off_delay_sec is not None:
         rule.off_delay_sec = max(0, payload.off_delay_sec)
     if payload.enabled is not None:
