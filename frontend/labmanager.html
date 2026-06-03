@@ -2640,6 +2640,12 @@ async function loadAll() {
   renderGuests(); renderLM(); renderMachines(); renderPermGuestList(); renderPermMachineList(); renderDashboard();
   populateQRSelects();
   loadRoomStatus();
+  // clientSettings sofort laden damit Backdrop-Einstellung sofort gilt
+  apiSilent('GET', '/settings').then(s => {
+    if (!s) return;
+    clientSettings.modal_backdrop_input   = s.modal_backdrop_input;
+    clientSettings.modal_backdrop_display = s.modal_backdrop_display;
+  });
 
   // Live-Daten (Plug-Status, Session-Info) im Hintergrund nachladen
   refreshLiveData();
