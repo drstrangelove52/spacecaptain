@@ -3163,7 +3163,7 @@ async function handleCsvImport(ev){
   showToast('CSV wird analysiert…','info');
   let preview;
   try{
-    const resp=await fetch('/api/machines/import/preview',{method:'POST',headers:{Authorization:'Bearer '+getToken()},body:fd});
+    const resp=await fetch('/api/machines/import/preview',{method:'POST',headers:{Authorization:'Bearer '+token},body:fd});
     if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.detail||resp.statusText);}
     preview=await resp.json();
   }catch(e){showToast('Fehler beim Lesen der CSV: '+e.message,'error');return;}
