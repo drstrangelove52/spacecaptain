@@ -211,7 +211,7 @@
   /* MODAL */
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:1000}
   .modal-overlay.open{display:flex}
-  .modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;width:520px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;width:520px;max-width:95vw;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)}
   .modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
   .modal-title{font-family:var(--display);font-size:18px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
   .modal-close{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:20px;line-height:1}
@@ -4959,11 +4959,13 @@ function removeCondition(uid) {
   _renderConditions();
 }
 
-function _addCondMenu() {
+function _addCondMenu(actionType) {
+  const exclude = (actionType === 'room_open' || actionType === 'room_close') ? ['room_open'] : [];
+  const entries = Object.entries(COND_LABELS).filter(([t]) => !exclude.includes(t));
   return `<div style="position:relative;display:inline-block">
     <button class="btn btn-ghost btn-sm" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'">+ Bedingung ▾</button>
-    <div style="display:none;position:absolute;top:100%;left:0;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-width:200px;padding:4px 0;box-shadow:0 4px 12px rgba(0,0,0,.3)">
-      ${Object.entries(COND_LABELS).map(([t,l])=>`<div style="padding:8px 14px;cursor:pointer;font-size:13px" onmousedown="addCondition('${t}');this.closest('div[style*=absolute]').style.display='none'">${l}</div>`).join('')}
+    <div style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-width:200px;padding:4px 0;box-shadow:0 4px 12px rgba(0,0,0,.3)">
+      ${entries.map(([t,l])=>`<div style="padding:8px 14px;cursor:pointer;font-size:13px" onmousedown="addCondition('${t}');this.closest('div[style*=absolute]').style.display='none'">${l}</div>`).join('')}
     </div>
   </div>`;
 }
@@ -4984,6 +4986,9 @@ function _ruleModalBody(r) {
         <option value="room_close" ${at==='room_close'?'selected':''}>🔴 Raum schliessen</option>
       </select>
     </div>
+    <div id="rule-room-hint" style="display:${at==='room_open'||at==='room_close'?'block':'none'};margin:-4px 0 12px;padding:10px 12px;background:rgba(244,166,34,.08);border:1px solid rgba(244,166,34,.3);border-radius:8px;font-size:12px;color:var(--text-mid);line-height:1.5">
+      <strong style="color:var(--accent)">Hinweis:</strong> Das Ende des Zeitplans führt <em>nicht</em> automatisch die Gegenaktion aus. Für zeitgesteuertes Öffnen <em>und</em> Schliessen zwei separate Regeln anlegen — eine mit «Raum öffnen», eine mit «Raum schliessen».
+    </div>
     <div id="rule-target-row" class="form-group" style="${isMachine?'':'display:none'}">
       <label class="form-label">Ziel-Maschine</label>
       <select class="form-input" id="rule-target" ${r&&isMachine?'disabled':''}>
@@ -4993,7 +4998,7 @@ function _ruleModalBody(r) {
     <div style="margin-bottom:8px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <label class="form-label" style="margin:0">Bedingungen <span style="color:var(--text-muted);font-weight:400">(alle müssen gleichzeitig wahr sein)</span></label>
-        ${_addCondMenu()}
+        <div id="rule-cond-menu-wrap">${_addCondMenu(at)}</div>
       </div>
       <div id="rule-conditions-list"></div>
       <div id="rule-cond-error" style="color:var(--danger);font-size:12px;display:none;margin-top:4px"></div>
@@ -5006,8 +5011,10 @@ function _ruleModalBody(r) {
 
 function _onActionTypeChange(val) {
   const isMachine = val === 'machine';
-  document.getElementById('rule-target-row').style.display = isMachine ? '' : 'none';
-  document.getElementById('rule-delay-row').style.display  = isMachine ? '' : 'none';
+  document.getElementById('rule-target-row').style.display  = isMachine ? '' : 'none';
+  document.getElementById('rule-delay-row').style.display   = isMachine ? '' : 'none';
+  document.getElementById('rule-room-hint').style.display   = isMachine ? 'none' : 'block';
+  document.getElementById('rule-cond-menu-wrap').innerHTML  = _addCondMenu(val);
 }
 
 function _collectRule() {

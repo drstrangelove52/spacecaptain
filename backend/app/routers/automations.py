@@ -189,8 +189,9 @@ async def create_rule(
     rule.target_machine = tm
     result = await _rule_out(rule, db)
     uid = current.id
+    target = tm.name if tm else rule.action_type
     await log_svc.log(db, LogType.rule_created,
-                      f"Regel '{rule.name or rule.id}' für {tm.name} erstellt",
+                      f"Regel '{rule.name or rule.id}' für {target} erstellt",
                       user_id=uid)
     return result
 

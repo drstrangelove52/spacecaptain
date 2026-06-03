@@ -199,6 +199,13 @@
       <div id="ctrl-denied-reason" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;font-family:var(--mono);font-size:12px;color:var(--text-mid);text-align:left"></div>
     </div>
 
+    <!-- Raum geschlossen -->
+    <div class="denied-card" id="ctrl-room-closed" style="display:none;background:rgba(244,166,34,.08);border-color:rgba(244,166,34,.3)">
+      <div class="denied-icon">🔒</div>
+      <div class="denied-title" style="color:var(--accent)">Raum geschlossen</div>
+      <div class="denied-sub">Das Lab ist derzeit geschlossen.<br>Bitte versuche es später erneut.</div>
+    </div>
+
     <!-- Warteliste -->
     <div id="ctrl-queue" style="display:none">
       <div class="queue-box">
@@ -487,14 +494,26 @@ async function showControlScreen() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({access_token: S.guestToken, machine_token: S.machineToken})
     });
-    if (!r.ok) { doLogout(); return; }
+    if (!r.ok) {
+      const errData = await r.json().catch(() => ({}));
+      if (r.status === 403) {
+        if (S.machine) renderMachineCard('control-machine-card', S.machine);
+        ['ctrl-granted','ctrl-denied','ctrl-reserved','ctrl-offline','ctrl-room-closed'].forEach(id =>
+          document.getElementById(id).style.display = 'none');
+        document.getElementById('ctrl-room-closed').style.display = 'block';
+        showScreen('control');
+      } else {
+        doLogout();
+      }
+      return;
+    }
     const d = await r.json();
     S.machine = {...(S.machine || {}), ...d.machine};
     S.hasPermission = d.has_permission;
     S.myMachineOn = d.machine.current_guest_id === d.guest_id;  // ich habe diese Maschine eingeschaltet
 
     renderMachineCard('control-machine-card', S.machine);
-    ['ctrl-granted','ctrl-denied','ctrl-reserved','ctrl-offline'].forEach(id =>
+    ['ctrl-granted','ctrl-denied','ctrl-reserved','ctrl-offline','ctrl-room-closed'].forEach(id =>
       document.getElementById(id).style.display = 'none');
 
     if (S.machine.status !== 'online') {
@@ -684,9 +703,13 @@ async function switchMachine(action) {
     const data = await r.json();
 
     if (!r.ok) {
-      alert(data.detail || 'Fehler beim Schalten');
       btn.disabled = false;
       btn.textContent = action === 'on' ? '⚡ EINSCHALTEN' : '○ AUSSCHALTEN';
+      if (r.status === 403) {
+        await showControlScreen();
+      } else {
+        alert(data.detail || 'Fehler beim Schalten');
+      }
       return;
     }
 
