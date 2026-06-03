@@ -293,6 +293,7 @@
     <div class="nav-item" data-page="machines" onclick="navigate(this)"><span class="nav-icon">🏭</span> Maschinen <span class="nav-badge" id="badge-machines">0</span></div>
     <div class="nav-item" data-page="plugs" onclick="navigate(this)"><span class="nav-icon">🔌</span> Plug-Pool <span class="nav-badge" id="badge-plugs">0</span></div>
     <div class="nav-item" data-page="automations" onclick="navigate(this)"><span class="nav-icon">⚡</span> Automationen <span class="nav-badge" id="badge-automations">0</span></div>
+    <div class="nav-item" data-page="schedules" onclick="navigate(this)"><span class="nav-icon">🕐</span> Zeitpläne <span class="nav-badge" id="badge-schedules">0</span></div>
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
     <div class="nav-item" data-page="permissions" onclick="navigate(this)"><span class="nav-icon">🔑</span> Berechtigungen</div>
     <div class="nav-section">SYSTEM</div>
@@ -335,6 +336,21 @@
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
+      <!-- RAUM-STATUS -->
+      <div id="room-status-bar" style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-radius:10px;margin-bottom:16px;border:1px solid var(--border);background:var(--surface);transition:background .3s,border-color .3s">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="room-status-dot" style="width:12px;height:12px;border-radius:50%;background:var(--text-muted);display:inline-block;flex-shrink:0"></span>
+          <div>
+            <div id="room-status-label" style="font-weight:600;font-size:14px">Raum-Status wird geladen…</div>
+            <div id="room-status-since" style="font-size:12px;color:var(--text-muted)"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="room-btn-open"  class="btn btn-sm" style="display:none" onclick="setRoomStatus(true)">🟢 Öffnen</button>
+          <button id="room-btn-close" class="btn btn-sm btn-danger" style="display:none" onclick="setRoomStatus(false)">🔴 Schliessen</button>
+        </div>
+      </div>
+
       <!-- OPERATIVE METRIKEN -->
       <div class="stats-grid" style="margin-bottom:20px">
         <div class="stat-card green"><div class="stat-label">Aktive Sessions</div><div class="stat-value" id="stat-active-sessions">—</div><div class="stat-sub" id="stat-active-sub">Maschinen in Betrieb</div></div>
@@ -588,6 +604,19 @@
       </div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:10px" id="auto-filter-count"></div>
       <div id="automations-list"></div>
+    </div>
+
+    <!-- ZEITPLÄNE -->
+    <div class="page" id="page-schedules">
+      <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div class="section-title">Zeitpläne <span>// ZEITGESTEUERTE GERÄTE</span></div>
+        <button class="btn btn-primary btn-sm" onclick="showAddSchedule()">+ Neuer Zeitplan</button>
+      </div>
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:16px;max-width:680px">
+        Schaltet Geräte (z.B. Kaffeemaschine, Display) automatisch nach Wochentag und Uhrzeit ein und aus.
+        Optional nur wenn der Raum geöffnet ist — der Raum-Status kann manuell oder automatisch beim ersten Gast-Login gesetzt werden.
+      </div>
+      <div id="schedules-list"></div>
     </div>
 
     <!-- MASCHINENPFLEGE -->
@@ -2292,7 +2321,7 @@ function doLogout() {
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',plugs:'Plug-Pool',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Mitteilungen',notifications:'Benachrichtigungen',backup:'Backup & Restore',settings:'Einstellungen',info:'Info',help:'Hilfe & Dokumentation'};
+const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',plugs:'Plug-Pool',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Mitteilungen',notifications:'Benachrichtigungen',backup:'Backup & Restore',settings:'Einstellungen',schedules:'Zeitpläne',info:'Info',help:'Hilfe & Dokumentation'};
 const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',machines:'machines',permissions:'permissions',maintenance:'maintenance',backup:'backup',settings:'settings'};
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
@@ -2302,6 +2331,7 @@ const pageActions={
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
   maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`,
   announcements:()=>`<button class="btn btn-primary" onclick="showAddAnnouncement()">+ Neue Mitteilung</button>`,
+  schedules:()=>`<button class="btn btn-primary btn-sm" onclick="showAddSchedule()">+ Neuer Zeitplan</button>`,
   backup:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('backup')" title="Hilfe zu Backup">? Hilfe</button>`,
   settings:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('settings')" title="Hilfe zu Einstellungen">? Hilfe</button>`,
   dashboard:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>`,
@@ -2332,6 +2362,8 @@ function navigate(el) {
   if (page==='backup') loadBackupFiles();
   if (page==='plugs') loadPlugs();
   if (page==='automations') loadAutomations();
+  if (page==='schedules') loadSchedules();
+  if (page==='dashboard') loadRoomStatus();
 
   if (page==='help') initHelp();
 }
@@ -2631,6 +2663,8 @@ async function loadAll() {
   // Sofort rendern — Dashboard und Log sind damit schon sichtbar
   renderGuests(); renderLM(); renderMachines(); renderPermGuestList(); renderPermMachineList(); renderDashboard();
   populateQRSelects();
+  loadRoomStatus();
+  loadSchedules();
 
   // Live-Daten (Plug-Status, Session-Info) im Hintergrund nachladen
   refreshLiveData();
@@ -2645,7 +2679,7 @@ async function refreshLiveData() {
   renderDashboard();
   refreshMaintenanceOverview();
   const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
-  if (activePage === 'dashboard') { loadAdminQueues(); loadPendingGuests(); }
+  if (activePage === 'dashboard') { loadAdminQueues(); loadPendingGuests(); loadRoomStatus(); }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -4876,6 +4910,230 @@ async function toggleAutomation(id, enabled) {
 async function deleteAutomation(id, label) {
   if (!confirm(`Automation «${label}» löschen?`)) return;
   if (await DELETE(`/automations/${id}`)) { await loadAutomations(); showToast('Gelöscht','warn'); }
+}
+
+// ═══════════════════════════════════════════════════════
+// RAUM-STATUS
+// ═══════════════════════════════════════════════════════
+
+let _roomStatus = {room_open: false, room_open_since: null, room_open_auto: true};
+
+async function loadRoomStatus() {
+  const data = await GET('/settings/room');
+  if (!data) return;
+  _roomStatus = data;
+  renderRoomStatus();
+}
+
+function renderRoomStatus() {
+  const {room_open, room_open_since} = _roomStatus;
+  const bar   = document.getElementById('room-status-bar');
+  const dot   = document.getElementById('room-status-dot');
+  const label = document.getElementById('room-status-label');
+  const since = document.getElementById('room-status-since');
+  const btnO  = document.getElementById('room-btn-open');
+  const btnC  = document.getElementById('room-btn-close');
+  if (!bar) return;
+
+  if (room_open) {
+    bar.style.background   = 'rgba(34,197,94,.07)';
+    bar.style.borderColor  = 'rgba(34,197,94,.4)';
+    dot.style.background   = '#22c55e';
+    dot.style.boxShadow    = '0 0 6px rgba(34,197,94,.6)';
+    label.textContent      = 'Raum geöffnet';
+    label.style.color      = '#22c55e';
+    since.textContent      = room_open_since ? `seit ${new Date(room_open_since).toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'})} Uhr` : '';
+    btnO.style.display  = 'none';
+    btnC.style.display  = '';
+  } else {
+    bar.style.background  = 'var(--surface)';
+    bar.style.borderColor = 'var(--border)';
+    dot.style.background  = 'var(--text-muted)';
+    dot.style.boxShadow   = 'none';
+    label.textContent     = 'Raum geschlossen';
+    label.style.color     = 'var(--text-muted)';
+    since.textContent     = '';
+    btnO.style.display = '';
+    btnC.style.display = 'none';
+  }
+}
+
+async function setRoomStatus(open) {
+  const data = await POST('/settings/room', {open});
+  if (data !== null) {
+    _roomStatus.room_open = data.room_open;
+    _roomStatus.room_open_since = open ? new Date().toISOString() : null;
+    renderRoomStatus();
+    showToast(open ? 'Raum geöffnet' : 'Raum geschlossen', open ? 'success' : 'warn');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// ZEITPLÄNE
+// ═══════════════════════════════════════════════════════
+
+const DAY_LABELS = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+const DAY_NAMES  = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+
+let _schedules = [];
+
+async function loadSchedules() {
+  const data = await GET('/schedules');
+  if (data) {
+    _schedules = data;
+    renderSchedules();
+    const b = document.getElementById('badge-schedules');
+    if (b) { b.textContent = data.length; b.style.display = ''; }
+  }
+}
+
+function renderSchedules() {
+  const el = document.getElementById('schedules-list');
+  if (!_schedules.length) {
+    el.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;padding:20px 0">Keine Zeitpläne konfiguriert.</div>';
+    return;
+  }
+  el.innerHTML = _schedules.map(s => {
+    const days = s.days.split(',').map(d=>DAY_LABELS[parseInt(d)-1]||d);
+    const daysHtml = days.map(d=>`<span style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:11px;font-family:var(--mono)">${d}</span>`).join(' ');
+    const roomBadge = s.require_room_open
+      ? `<span style="font-size:11px;color:var(--success);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:1px 6px">nur wenn Raum offen</span>`
+      : `<span style="font-size:11px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px">immer</span>`;
+    return `<div class="machine-card" style="margin-bottom:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <strong>${escHtml(s.name || s.machine_name)}</strong>
+          ${s.name ? `<span style="font-size:12px;color:var(--text-muted)">— ${escHtml(s.machine_name)}</span>` : ''}
+          ${!s.enabled ? '<span style="font-size:11px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px">inaktiv</span>' : ''}
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          ${daysHtml}
+          <span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">${s.time_on} – ${s.time_off}</span>
+          ${roomBadge}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+          <input type="checkbox" ${s.enabled?'checked':''} onchange="toggleSchedule(${s.id},this.checked)"> Aktiv
+        </label>
+        <button class="btn btn-ghost btn-sm" onclick="editSchedule(${s.id})">✎</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSchedule(${s.id},'${escHtml(s.name||s.machine_name)}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function _scheduleMachineOptions(selectedId) {
+  return cache.machines
+    .filter(m => m.plug_type && m.plug_type !== 'none')
+    .map(m => `<option value="${m.id}" ${m.id===selectedId?'selected':''}>${escHtml(m.name)}</option>`)
+    .join('');
+}
+
+function _dayCheckboxes(selectedDays) {
+  const sel = new Set((selectedDays||'').split(',').map(d=>d.trim()));
+  return DAY_LABELS.map((lbl,i) => {
+    const num = String(i+1);
+    return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;margin-right:8px;cursor:pointer">
+      <input type="checkbox" name="sched-day" value="${num}" ${sel.has(num)?'checked':''}> ${lbl}
+    </label>`;
+  }).join('');
+}
+
+function _collectDays() {
+  return [...document.querySelectorAll('input[name="sched-day"]:checked')].map(el=>el.value).join(',');
+}
+
+function showAddSchedule() {
+  const machines = cache.machines.filter(m => m.plug_type && m.plug_type !== 'none');
+  if (!machines.length) { showToast('Keine Maschinen mit Plug konfiguriert','error'); return; }
+  openModal('Neuer Zeitplan', `
+    <div class="form-group"><label class="form-label">Maschine / Gerät</label>
+      <select class="form-input" id="ns-machine">${_scheduleMachineOptions(null)}</select>
+    </div>
+    <div class="form-group"><label class="form-label">Name (optional)</label>
+      <input class="form-input" id="ns-name" placeholder="z.B. Kaffeemaschine morgens">
+    </div>
+    <div class="form-group"><label class="form-label">Wochentage</label>
+      <div style="margin-top:4px">${_dayCheckboxes('1,2,3,4,5')}</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Einschalten um</label>
+        <input class="form-input" id="ns-on" type="time" value="08:00">
+      </div>
+      <div class="form-group"><label class="form-label">Ausschalten um</label>
+        <input class="form-input" id="ns-off" type="time" value="18:00">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:8px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="ns-room" checked>
+        Nur einschalten wenn Raum geöffnet ist
+      </label>
+    </div>
+  `, async () => {
+    const machine_id = parseInt(document.getElementById('ns-machine').value);
+    const name = document.getElementById('ns-name').value.trim();
+    const days = _collectDays();
+    const time_on  = document.getElementById('ns-on').value;
+    const time_off = document.getElementById('ns-off').value;
+    const require_room_open = document.getElementById('ns-room').checked;
+    if (!days) { showToast('Mindestens einen Wochentag auswählen','error'); return; }
+    if (!time_on||!time_off) { showToast('Zeiten angeben','error'); return; }
+    if (time_off <= time_on) { showToast('Ausschaltzeit muss nach Einschaltzeit liegen','error'); return; }
+    const res = await POST('/schedules', {machine_id, name, days, time_on, time_off, require_room_open});
+    if (res) { closeModal(); await loadSchedules(); showToast('Zeitplan gespeichert','success'); }
+  });
+}
+
+function editSchedule(id) {
+  const s = _schedules.find(x=>x.id===id); if (!s) return;
+  openModal('Zeitplan bearbeiten', `
+    <div class="form-group"><label class="form-label">Maschine / Gerät</label>
+      <div class="form-input" style="background:var(--surface2);color:var(--text-dim)">${escHtml(s.machine_name)}</div>
+    </div>
+    <div class="form-group"><label class="form-label">Name (optional)</label>
+      <input class="form-input" id="es-name" value="${escHtml(s.name)}" placeholder="z.B. Kaffeemaschine morgens">
+    </div>
+    <div class="form-group"><label class="form-label">Wochentage</label>
+      <div style="margin-top:4px">${_dayCheckboxes(s.days)}</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Einschalten um</label>
+        <input class="form-input" id="es-on" type="time" value="${s.time_on}">
+      </div>
+      <div class="form-group"><label class="form-label">Ausschalten um</label>
+        <input class="form-input" id="es-off" type="time" value="${s.time_off}">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:8px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="es-room" ${s.require_room_open?'checked':''}>
+        Nur einschalten wenn Raum geöffnet ist
+      </label>
+    </div>
+  `, async () => {
+    const name = document.getElementById('es-name').value.trim();
+    const days = _collectDays();
+    const time_on  = document.getElementById('es-on').value;
+    const time_off = document.getElementById('es-off').value;
+    const require_room_open = document.getElementById('es-room').checked;
+    if (!days) { showToast('Mindestens einen Wochentag auswählen','error'); return; }
+    if (!time_on||!time_off) { showToast('Zeiten angeben','error'); return; }
+    if (time_off <= time_on) { showToast('Ausschaltzeit muss nach Einschaltzeit liegen','error'); return; }
+    const res = await PATCH(`/schedules/${id}`, {name, days, time_on, time_off, require_room_open});
+    if (res) { closeModal(); await loadSchedules(); showToast('Gespeichert','success'); }
+  });
+}
+
+async function toggleSchedule(id, enabled) {
+  await PATCH(`/schedules/${id}`, {enabled});
+  await loadSchedules();
+}
+
+async function deleteSchedule(id, label) {
+  if (!confirm(`Zeitplan «${label}» löschen?`)) return;
+  if (await DELETE(`/schedules/${id}`)) { await loadSchedules(); showToast('Gelöscht','warn'); }
 }
 
 // ═══════════════════════════════════════════════════════

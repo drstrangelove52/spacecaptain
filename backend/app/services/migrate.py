@@ -386,6 +386,32 @@ async def run_migrations(engine: AsyncEngine) -> None:
             SELECT id, plug_id, 0 FROM machines WHERE plug_id IS NOT NULL
         """))
 
+        # ── v1.26: Raum-Öffnungsstatus + Zeitpläne ───────────────────────────
+        await _add_column_if_missing(conn, "system_settings", "room_open",
+                                     "TINYINT(1) NOT NULL DEFAULT 0")
+        await _add_column_if_missing(conn, "system_settings", "room_open_since",
+                                     "DATETIME DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "room_open_auto",
+                                     "TINYINT(1) NOT NULL DEFAULT 1")
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS device_schedules (
+                id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                machine_id        INT UNSIGNED NOT NULL,
+                name              VARCHAR(100) NOT NULL DEFAULT '',
+                days              VARCHAR(20)  NOT NULL,
+                time_on           TIME         NOT NULL,
+                time_off          TIME         NOT NULL,
+                require_room_open TINYINT(1)   NOT NULL DEFAULT 1,
+                enabled           TINYINT(1)   NOT NULL DEFAULT 1,
+                created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (machine_id) REFERENCES machines(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
+        await _extend_enum_if_needed(conn, "activity_log", "type", [
+            "schedule_created", "schedule_updated", "schedule_deleted",
+            "schedule_on", "schedule_off", "room_opened", "room_closed",
+        ])
+
     log.info("Migrationen abgeschlossen")
 
 

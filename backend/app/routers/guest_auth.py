@@ -13,11 +13,12 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.database import get_db
-from app.models import Guest, Machine, Permission, LogType, ActivityLog, User, MachineQueue, QueueStatus
+from app.models import Guest, Machine, Permission, LogType, ActivityLog, User, MachineQueue, QueueStatus, SystemSettings
 from app.config import get_settings
 from app.services import logger as log_svc
 from app.services.auth import get_current_user
 from app.config import APP_TIMEZONE
+from app.services.system_settings import get_system_settings
 
 def _local_iso(dt):
     if dt is None: return None
@@ -111,6 +112,26 @@ async def _machine_detail(machine: Machine) -> dict:
 
 
 # ── Login ─────────────────────────────────────────────
+async def _auto_open_room(db: AsyncSession, guest_name: str) -> None:
+    """Öffnet den Raum automatisch beim ersten Gast-Login des Tages (wenn room_open_auto aktiv)."""
+    s = await get_system_settings(db)
+    if not s.room_open_auto or s.room_open:
+        return
+    from datetime import date as _date
+    today_start = datetime.combine(_date.today(), __import__("datetime").time.min)
+    existing = await db.execute(
+        select(ActivityLog)
+        .where(ActivityLog.type == LogType.room_opened, ActivityLog.created_at >= today_start)
+    )
+    if existing.scalar_one_or_none() is not None:
+        return
+    s.room_open = True
+    s.room_open_since = datetime.utcnow()
+    await db.commit()
+    await log_svc.log(db, LogType.room_opened,
+                      f"Raum automatisch geöffnet (erster Gast-Login: {guest_name})")
+
+
 @router.post("/login")
 async def guest_login(payload: GuestLoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -124,6 +145,7 @@ async def guest_login(payload: GuestLoginRequest, db: AsyncSession = Depends(get
 
     token = create_guest_token(guest.id)
     await log_svc.log(db, LogType.guest_login, f"Gast-Login: {guest.name} (@{guest.username})", guest_id=guest.id)
+    await _auto_open_room(db, guest.name)
     return {
         "access_token": token, "token_type": "bearer",
         "guest_id": guest.id, "guest_name": guest.name, "username": guest.username,
@@ -151,6 +173,7 @@ async def guest_login_by_token(
     token = create_guest_token(guest.id)
     await log_svc.log(db, LogType.guest_login,
         f"Gast-Login per Token-Link: {guest.name} (@{guest.username})", guest_id=guest.id)
+    await _auto_open_room(db, guest.name)
     return {
         "access_token": token, "token_type": "bearer",
         "guest_id": guest.id, "guest_name": guest.name, "username": guest.username,

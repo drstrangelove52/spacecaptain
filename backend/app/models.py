@@ -1,6 +1,6 @@
 from datetime import datetime, date, time
 from typing import Optional
-from sqlalchemy import (Integer, String, Boolean, DateTime, Text, JSON,
+from sqlalchemy import (Integer, String, Boolean, DateTime, Time, Text, JSON,
                         Enum, ForeignKey, UniqueConstraint, Float, Date, Time)
 from sqlalchemy.dialects.mysql import INTEGER as UINT
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -64,6 +64,13 @@ class LogType(str, enum.Enum):
     automation_created = "automation_created"
     automation_updated = "automation_updated"
     automation_deleted = "automation_deleted"
+    schedule_created = "schedule_created"
+    schedule_updated = "schedule_updated"
+    schedule_deleted = "schedule_deleted"
+    schedule_on = "schedule_on"
+    schedule_off = "schedule_off"
+    room_opened = "room_opened"
+    room_closed = "room_closed"
 
 class SessionEndedBy(str, enum.Enum):
     guest = "guest"
@@ -250,6 +257,23 @@ class SystemSettings(Base):
     auto_backup_minute:         Mapped[int]            = mapped_column(Integer, default=0)
     auto_backup_keep:           Mapped[int]            = mapped_column(Integer, default=30)
     space_name:                 Mapped[str]            = mapped_column(String(100), default="")
+    room_open:                  Mapped[bool]           = mapped_column(Boolean, default=False)
+    room_open_since:            Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
+    room_open_auto:             Mapped[bool]           = mapped_column(Boolean, default=True)
+
+
+class DeviceSchedule(Base):
+    __tablename__ = "device_schedules"
+    id:               Mapped[int]            = mapped_column(Integer, primary_key=True, autoincrement=True)
+    machine_id:       Mapped[int]            = mapped_column(UINT(unsigned=True), ForeignKey("machines.id", ondelete="CASCADE"))
+    name:             Mapped[str]            = mapped_column(String(100), default="")
+    days:             Mapped[str]            = mapped_column(String(20), nullable=False)   # "1,2,3,4,5"
+    time_on:          Mapped[time]           = mapped_column(Time, nullable=False)
+    time_off:         Mapped[time]           = mapped_column(Time, nullable=False)
+    require_room_open: Mapped[bool]          = mapped_column(Boolean, default=True)
+    enabled:          Mapped[bool]           = mapped_column(Boolean, default=True)
+    created_at:       Mapped[datetime]       = mapped_column(DateTime, default=datetime.utcnow)
+    machine:          Mapped["Machine"]      = relationship("Machine")
 
 
 class NtfyTopic(Base):

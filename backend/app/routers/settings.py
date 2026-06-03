@@ -46,6 +46,9 @@ class SettingsOut(BaseModel):
     auto_backup_minute: int = 0
     auto_backup_keep: int = 30
     space_name: str = ""
+    room_open: bool = False
+    room_open_since: Optional[str] = None
+    room_open_auto: bool = True
 
     class Config:
         from_attributes = True
@@ -85,6 +88,7 @@ class SettingsUpdate(BaseModel):
     auto_backup_minute: Optional[int] = None
     auto_backup_keep: Optional[int] = None
     space_name: Optional[str] = None
+    room_open_auto: Optional[bool] = None
 
 
 @router.get("/public")
@@ -185,8 +189,42 @@ async def update_settings(
         row.auto_backup_keep = max(1, payload.auto_backup_keep)
     if payload.space_name is not None:
         row.space_name = payload.space_name.strip()
+    if payload.room_open_auto is not None:
+        row.room_open_auto = payload.room_open_auto
     await db.commit()
     await db.refresh(row)
     await activity_log(db, LogType.settings_changed,
                        "Systemeinstellungen geändert", user_id=current_user.id)
     return row
+
+
+@router.post("/room")
+async def set_room_status(
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Öffnet oder schliesst den Raum manuell."""
+    from datetime import datetime as _dt
+    open_val = bool(payload.get("open", False))
+    row = await get_system_settings(db)
+    row.room_open = open_val
+    row.room_open_since = _dt.utcnow() if open_val else None
+    await db.commit()
+    log_type = LogType.room_opened if open_val else LogType.room_closed
+    await activity_log(db, log_type,
+                       f"Raum {'geöffnet' if open_val else 'geschlossen'} (manuell)",
+                       user_id=current_user.id)
+    return {"room_open": open_val}
+
+
+@router.get("/room")
+async def get_room_status(db: AsyncSession = Depends(get_db)):
+    """Öffentlich: aktueller Raum-Öffnungsstatus."""
+    from app.config import APP_TIMEZONE
+    from datetime import timezone
+    row = await get_system_settings(db)
+    since_iso = None
+    if row.room_open_since:
+        since_iso = row.room_open_since.replace(tzinfo=timezone.utc).astimezone(APP_TIMEZONE).isoformat()
+    return {"room_open": row.room_open, "room_open_since": since_iso, "room_open_auto": row.room_open_auto}
