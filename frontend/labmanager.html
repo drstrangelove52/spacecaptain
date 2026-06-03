@@ -5759,27 +5759,22 @@ async function loadTopicsForSettings() {
 function _topicFormHtml(t) {
   return `
     <div class="form-group">
-      <label class="form-label">Interner Schlüssel <span style="color:var(--text-dim);font-weight:400">(z.B. emergency, registration)</span></label>
-      <input class="form-input" id="tf-key" value="${t?.key||''}" placeholder="emergency">
-    </div>
-    <div class="form-group">
       <label class="form-label">Anzeigename</label>
-      <input class="form-input" id="tf-title" value="${t?.title||''}" placeholder="Notfall-Alarm">
+      <input class="form-input" id="tf-title" value="${escHtml(t?.title||'')}" placeholder="Notfall-Alarm">
     </div>
     <div class="form-group">
       <label class="form-label">ntfy Topic-String</label>
-      <input class="form-input" id="tf-topic" value="${t?.topic||''}" placeholder="makerspace-notfall-x7k2">
+      <input class="form-input" id="tf-topic" value="${escHtml(t?.topic||'')}" placeholder="makerspace-notfall-x7k2">
       <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Geheimen, schwer erratbaren String wählen.</div>
     </div>
     <div class="form-group">
       <label class="form-label">Beschreibung <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
-      <textarea class="form-input" id="tf-desc" rows="2" placeholder="Benachrichtigungen bei Notfall-Alarm">${t?.description||''}</textarea>
+      <textarea class="form-input" id="tf-desc" rows="2" placeholder="Benachrichtigungen bei Notfall-Alarm">${escHtml(t?.description||'')}</textarea>
     </div>`;
 }
 
 function _topicPayload() {
   return {
-    key:         document.getElementById('tf-key').value.trim(),
     title:       document.getElementById('tf-title').value.trim(),
     topic:       document.getElementById('tf-topic').value.trim(),
     description: document.getElementById('tf-desc').value.trim() || null,

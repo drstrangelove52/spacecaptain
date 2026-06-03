@@ -447,6 +447,11 @@ async def run_migrations(engine: AsyncEngine) -> None:
             "rule_created", "rule_updated", "rule_deleted", "rule_on", "rule_off",
         ])
 
+        # ── v1.28: ntfy_topics.key nullable (Feld wird nicht mehr benötigt) ───
+        await conn.execute(text(
+            "ALTER TABLE ntfy_topics MODIFY COLUMN `key` VARCHAR(50) DEFAULT NULL"
+        ))
+
     log.info("Migrationen abgeschlossen")
 
 

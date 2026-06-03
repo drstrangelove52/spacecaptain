@@ -16,7 +16,6 @@ router = APIRouter(prefix="/ntfy-topics", tags=["ntfy"])
 
 
 class NtfyTopicIn(BaseModel):
-    key: str
     topic: str
     title: str
     description: Optional[str] = None
@@ -25,7 +24,6 @@ class NtfyTopicIn(BaseModel):
 def _serialize(t: NtfyTopic) -> dict:
     return {
         "id": t.id,
-        "key": t.key,
         "topic": t.topic,
         "title": t.title,
         "description": t.description,

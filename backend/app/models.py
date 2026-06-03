@@ -322,7 +322,7 @@ class RuleCondition(Base):
 class NtfyTopic(Base):
     __tablename__ = "ntfy_topics"
     id:          Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
-    key:         Mapped[str]           = mapped_column(String(50), unique=True, nullable=False)
+    key:         Mapped[Optional[str]]  = mapped_column(String(50), unique=True, nullable=True, default=None)
     topic:       Mapped[str]           = mapped_column(String(200), nullable=False)
     title:       Mapped[str]           = mapped_column(String(200), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
