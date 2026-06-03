@@ -293,7 +293,6 @@
     <div class="nav-item" data-page="machines" onclick="navigate(this)"><span class="nav-icon">🏭</span> Maschinen <span class="nav-badge" id="badge-machines">0</span></div>
     <div class="nav-item" data-page="plugs" onclick="navigate(this)"><span class="nav-icon">🔌</span> Plug-Pool <span class="nav-badge" id="badge-plugs">0</span></div>
     <div class="nav-item" data-page="automations" onclick="navigate(this)"><span class="nav-icon">⚡</span> Automationen <span class="nav-badge" id="badge-automations">0</span></div>
-    <div class="nav-item" data-page="schedules" onclick="navigate(this)"><span class="nav-icon">🕐</span> Zeitpläne <span class="nav-badge" id="badge-schedules">0</span></div>
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
     <div class="nav-item" data-page="permissions" onclick="navigate(this)"><span class="nav-icon">🔑</span> Berechtigungen</div>
     <div class="nav-section">SYSTEM</div>
@@ -587,36 +586,15 @@
     <!-- AUTOMATIONEN -->
     <div class="page" id="page-automations">
       <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-        <div class="section-title">Automationen <span>// LEISTUNGS-TRIGGER</span></div>
-        <button class="btn btn-primary btn-sm" onclick="showAddAutomation()">+ Neue Automation</button>
+        <div class="section-title">Automationen <span>// REGELWERK</span></div>
+        <button class="btn btn-primary btn-sm" onclick="showAddRule()">+ Neue Regel</button>
       </div>
-      <div style="font-size:13px;color:var(--text-dim);margin-bottom:16px;max-width:680px">
-        Schaltet eine Ziel-Maschine (z.B. Absaugung) automatisch ein, sobald die Quell-Maschine (z.B. Tischkreissäge) eine definierte Leistungsschwelle überschreitet. Nach Unterschreiten der Ausschaltschwelle wird die Ziel-Maschine nach einer konfigurierbaren Nachlaufzeit ausgeschaltet.
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:16px;max-width:720px">
+        Schaltet Geräte automatisch basierend auf kombinierten Bedingungen (alle müssen gleichzeitig wahr sein).
+        Bedingungstypen: <strong>Leistung</strong> (Maschine zieht Strom), <strong>Zeitplan</strong> (Wochentag + Uhrzeit),
+        <strong>Raum geöffnet</strong>, <strong>Aktive Session</strong> (jemand arbeitet).
       </div>
-      <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
-        <div class="search-wrap" style="flex:1;min-width:200px"><span class="search-icon">🔍</span><input class="search-input" id="auto-search" placeholder="Quell- oder Ziel-Maschine…" oninput="filterAutomations()"></div>
-        <select class="filter-input" id="auto-filter-enabled" onchange="filterAutomations()" style="width:150px">
-          <option value="">Aktiv &amp; inaktiv</option>
-          <option value="active">Nur aktive</option>
-          <option value="inactive">Nur inaktive</option>
-        </select>
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('auto-search').value='';document.getElementById('auto-filter-enabled').value='';filterAutomations()">✕ Reset</button>
-      </div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:10px" id="auto-filter-count"></div>
       <div id="automations-list"></div>
-    </div>
-
-    <!-- ZEITPLÄNE -->
-    <div class="page" id="page-schedules">
-      <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-        <div class="section-title">Zeitpläne <span>// ZEITGESTEUERTE GERÄTE</span></div>
-        <button class="btn btn-primary btn-sm" onclick="showAddSchedule()">+ Neuer Zeitplan</button>
-      </div>
-      <div style="font-size:13px;color:var(--text-dim);margin-bottom:16px;max-width:680px">
-        Schaltet Geräte (z.B. Kaffeemaschine, Display) automatisch nach Wochentag und Uhrzeit ein und aus.
-        Optional nur wenn der Raum geöffnet ist — der Raum-Status kann manuell oder automatisch beim ersten Gast-Login gesetzt werden.
-      </div>
-      <div id="schedules-list"></div>
     </div>
 
     <!-- MASCHINENPFLEGE -->
@@ -2321,7 +2299,7 @@ function doLogout() {
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',plugs:'Plug-Pool',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Mitteilungen',notifications:'Benachrichtigungen',backup:'Backup & Restore',settings:'Einstellungen',schedules:'Zeitpläne',info:'Info',help:'Hilfe & Dokumentation'};
+const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',plugs:'Plug-Pool',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Mitteilungen',notifications:'Benachrichtigungen',backup:'Backup & Restore',settings:'Einstellungen',info:'Info',help:'Hilfe & Dokumentation'};
 const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',machines:'machines',permissions:'permissions',maintenance:'maintenance',backup:'backup',settings:'settings'};
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
@@ -2331,7 +2309,6 @@ const pageActions={
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
   maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`,
   announcements:()=>`<button class="btn btn-primary" onclick="showAddAnnouncement()">+ Neue Mitteilung</button>`,
-  schedules:()=>`<button class="btn btn-primary btn-sm" onclick="showAddSchedule()">+ Neuer Zeitplan</button>`,
   backup:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('backup')" title="Hilfe zu Backup">? Hilfe</button>`,
   settings:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('settings')" title="Hilfe zu Einstellungen">? Hilfe</button>`,
   dashboard:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>`,
@@ -2362,7 +2339,6 @@ function navigate(el) {
   if (page==='backup') loadBackupFiles();
   if (page==='plugs') loadPlugs();
   if (page==='automations') loadAutomations();
-  if (page==='schedules') loadSchedules();
   if (page==='dashboard') loadRoomStatus();
 
   if (page==='help') initHelp();
@@ -2664,7 +2640,6 @@ async function loadAll() {
   renderGuests(); renderLM(); renderMachines(); renderPermGuestList(); renderPermMachineList(); renderDashboard();
   populateQRSelects();
   loadRoomStatus();
-  loadSchedules();
 
   // Live-Daten (Plug-Status, Session-Info) im Hintergrund nachladen
   refreshLiveData();
@@ -4722,418 +4697,270 @@ async function deleteBackupFile(filename) {
 }
 
 // ═══════════════════════════════════════════════════════
-// AUTOMATIONEN
+// AUTOMATIONEN — REGELWERK
 // ═══════════════════════════════════════════════════════
-let _automations = [];
-let _autoStates  = {};
+
+const COND_LABELS = {
+  power:          '⚡ Leistung',
+  schedule:       '🕐 Zeitplan',
+  room_open:      '🏠 Raum geöffnet',
+  session_active: '👤 Aktive Session',
+};
+
+let _rules     = [];
+let _ruleStates = {};
 
 async function loadAutomations() {
-  const [autos, states] = await Promise.all([
-    GET('/automations'),
-    GET('/automations/states'),
+  const [rules, states] = await Promise.all([
+    apiSilent('GET', '/automations'),
+    apiSilent('GET', '/automations/states'),
   ]);
-  _automations = autos || [];
-  _autoStates  = states || {};
+  if (rules)  { _rules = rules; }
+  if (states) { _ruleStates = states; }
   renderAutomations();
+  const b = document.getElementById('badge-automations');
+  if (b) { b.textContent = _rules.length; b.style.display = ''; }
 }
 
-function _stateLabel(autoId) {
-  const s = _autoStates[autoId];
-  if (!s) return '';
-  if (s.state === 'on')       return '<span style="color:var(--success);font-size:11px">● aktiv</span>';
-  if (s.state === 'countdown') {
-    const sec = s.countdown_sec ?? 0;
-    return `<span style="color:var(--accent);font-size:11px">⏱ Nachlauf ${sec}s</span>`;
+function _condChip(c) {
+  const styles = 'font-size:11px;border-radius:4px;padding:2px 7px;border:1px solid';
+  switch (c.type) {
+    case 'power':
+      return `<span style="${styles} rgba(244,166,34,.4);background:rgba(244,166,34,.08);color:var(--accent)">⚡ ${escHtml(c.source_machine_name)} &gt;${c.power_on_w}W</span>`;
+    case 'schedule': {
+      const days = c.days.split(',').map(d=>DAY_LABELS[parseInt(d)-1]||d).join(' ');
+      return `<span style="${styles} rgba(34,211,238,.4);background:rgba(34,211,238,.08);color:var(--accent2)">🕐 ${days} ${c.time_on}–${c.time_off}</span>`;
+    }
+    case 'room_open':
+      return `<span style="${styles} rgba(34,197,94,.4);background:rgba(34,197,94,.08);color:var(--success)">🏠 Raum offen</span>`;
+    case 'session_active':
+      return `<span style="${styles} rgba(168,85,247,.4);background:rgba(168,85,247,.08);color:#a855f7">👤 Aktive Session</span>`;
+    default:
+      return `<span style="${styles} var(--border)">${escHtml(c.type)}</span>`;
   }
-  return '<span style="color:var(--text-dim);font-size:11px">○ bereit</span>';
-}
-
-function filterAutomations() {
-  const q       = (document.getElementById('auto-search')?.value || '').toLowerCase();
-  const enabledF = document.getElementById('auto-filter-enabled')?.value || '';
-  const countEl  = document.getElementById('auto-filter-count');
-
-  let filtered = _automations.filter(a => {
-    if (q && !a.source_machine_name.toLowerCase().includes(q) && !a.target_machine_name.toLowerCase().includes(q)) return false;
-    if (enabledF === 'active'   && !a.enabled) return false;
-    if (enabledF === 'inactive' &&  a.enabled) return false;
-    return true;
-  });
-
-  if (countEl) countEl.textContent = (q || enabledF) ? `${filtered.length} von ${_automations.length} Automationen` : '';
-  renderAutomationsFiltered(filtered);
 }
 
 function renderAutomations() {
-  const badge = document.getElementById('badge-automations');
-  if (badge) { badge.textContent = _automations.length; }
-  filterAutomations();
-}
-
-function renderAutomationsFiltered(list) {
-  const el = document.getElementById('automations-list'); if (!el) return;
-  if (!_automations.length) {
-    el.innerHTML = `<div class="card" style="padding:32px;text-align:center;color:var(--text-dim)">
-      Noch keine Automationen konfiguriert.<br>
-      <span style="font-size:12px">Mit «+ Neue Automation» eine Regel erstellen.</span>
-    </div>`;
+  const el = document.getElementById('automations-list');
+  if (!_rules.length) {
+    el.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;padding:20px 0">Keine Regeln konfiguriert.</div>';
     return;
   }
-  if (!list.length) {
-    el.innerHTML = `<div class="card" style="padding:24px;text-align:center;color:var(--text-dim)">Keine Automationen entsprechen dem Filter.</div>`;
-    return;
-  }
-  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">${list.map(a=>`
-    <div class="card" style="padding:18px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap${a.enabled?'':';opacity:0.6'}">
+  el.innerHTML = _rules.map(r => {
+    const st    = _ruleStates[r.id];
+    const state = st?.state || 'idle';
+    const stateChip = state === 'on'
+      ? `<span style="font-size:11px;color:var(--success);font-weight:600">● AN</span>`
+      : state === 'countdown'
+        ? `<span style="font-size:11px;color:var(--accent)">⏱ ${st.countdown_sec||0}s</span>`
+        : `<span style="font-size:11px;color:var(--text-muted)">● AUS</span>`;
+    const chips  = r.conditions.map(_condChip).join(' ');
+    const delay  = r.off_delay_sec > 0 ? `<span style="font-size:11px;color:var(--text-muted)">Nachlauf ${r.off_delay_sec}s</span>` : '';
+    return `<div class="machine-card" style="margin-bottom:10px;padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
       <div style="flex:1;min-width:200px">
-        <div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:4px">
-          ${escHtml(a.source_machine_name)} → ${escHtml(a.target_machine_name)}
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+          <strong>${escHtml(r.name || r.target_machine_name)}</strong>
+          ${r.name ? `<span style="font-size:12px;color:var(--text-muted)">→ ${escHtml(r.target_machine_name)}</span>` : ''}
+          ${stateChip}
+          ${!r.enabled ? '<span style="font-size:11px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px">inaktiv</span>' : ''}
         </div>
-        <div style="font-size:12px;color:var(--text-dim);font-family:var(--mono)">
-          EIN ≥ ${a.on_threshold_w} W &nbsp;·&nbsp; AUS &lt; ${a.off_threshold_w} W &nbsp;·&nbsp; Nachlauf ${a.off_delay_sec} s
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          ${chips}
+          ${delay}
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
-        ${_stateLabel(a.id)}
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--text-mid)">
-          <input type="checkbox" ${a.enabled?'checked':''} onchange="toggleAutomation(${a.id},this.checked)" style="accent-color:var(--accent2)"> Aktiv
+      <div style="display:flex;gap:8px;flex-shrink:0;align-items:center">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+          <input type="checkbox" ${r.enabled?'checked':''} onchange="toggleRule(${r.id},this.checked)"> Aktiv
         </label>
-        <button class="btn btn-ghost btn-sm" onclick="editAutomation(${a.id})">✏</button>
-        <button class="btn btn-ghost btn-sm" onclick="deleteAutomation(${a.id},'${escHtml(a.source_machine_name)} → ${escHtml(a.target_machine_name)}')" style="color:var(--error)">🗑</button>
+        <button class="btn btn-ghost btn-sm" onclick="editRule(${r.id})">✎</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRule(${r.id},'${escHtml(r.name||r.target_machine_name)}')">✕</button>
       </div>
-    </div>`).join('')}</div>`;
+    </div>`;
+  }).join('');
 }
 
-function _autoMachineOptions(selectedId) {
-  return (cache.machines||[])
-    .filter(m=>m.plug_type&&m.plug_type!=='none')
-    .sort((a,b)=>a.name.localeCompare(b.name,'de'))
-    .map(m=>`<option value="${m.id}"${m.id===selectedId?' selected':''}>${escHtml(m.name)}</option>`)
+// ── Bedingungen-Editor ────────────────────────────────────────────────────────
+
+let _editConditions = [];
+
+function _condDefaults(type) {
+  if (type === 'power')    return {type, source_machine_id: null, power_on_w: 100, power_off_w: 20};
+  if (type === 'schedule') return {type, days: '1,2,3,4,5', time_on: '08:00', time_off: '18:00'};
+  return {type};
+}
+
+function _condForm(c, uid) {
+  const machineOpts = cache.machines
+    .filter(m => m.plug_type && m.plug_type !== 'none')
+    .map(m => `<option value="${m.id}" ${m.id===c.source_machine_id?'selected':''}>${escHtml(m.name)}</option>`)
     .join('');
+  let fields = '';
+  if (c.type === 'power') {
+    fields = `
+      <select class="form-input" style="flex:2" onchange="_editConditions.find(x=>x._uid===_uid(this)).source_machine_id=parseInt(this.value)" data-uid="${uid}">
+        <option value="">Quell-Maschine…</option>${machineOpts}
+      </select>
+      <div style="display:flex;gap:6px;align-items:center;flex:3">
+        <input class="form-input" type="number" min="1" placeholder="EIN ≥ W" value="${c.power_on_w||''}" style="width:90px"
+          onchange="_editConditions.find(x=>x._uid==${uid}).power_on_w=parseFloat(this.value)">
+        <span style="color:var(--text-muted);font-size:12px">/ AUS &lt;</span>
+        <input class="form-input" type="number" min="0" placeholder="AUS W" value="${c.power_off_w||''}" style="width:90px"
+          onchange="_editConditions.find(x=>x._uid==${uid}).power_off_w=parseFloat(this.value)">
+        <span style="color:var(--text-muted);font-size:12px">W</span>
+      </div>`;
+  } else if (c.type === 'schedule') {
+    const dayBoxes = DAY_LABELS.map((lbl,i) => {
+      const num = String(i+1);
+      const sel = (c.days||'').split(',').includes(num);
+      return `<label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer">
+        <input type="checkbox" value="${num}" ${sel?'checked':''} onchange="_updateCondDays(${uid})"> ${lbl}
+      </label>`;
+    }).join('');
+    fields = `
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;flex:3">
+        ${dayBoxes}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex:2">
+        <input class="form-input" type="time" value="${c.time_on||'08:00'}" style="width:100px"
+          onchange="_editConditions.find(x=>x._uid==${uid}).time_on=this.value">
+        <span style="color:var(--text-muted)">–</span>
+        <input class="form-input" type="time" value="${c.time_off||'18:00'}" style="width:100px"
+          onchange="_editConditions.find(x=>x._uid==${uid}).time_off=this.value">
+      </div>`;
+  } else {
+    fields = `<span style="font-size:13px;color:var(--text-muted);flex:1">${COND_LABELS[c.type]||c.type} — keine weiteren Einstellungen</span>`;
+  }
+  return `<div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px" data-cuid="${uid}">
+    <span style="font-size:12px;font-weight:600;color:var(--text-mid);width:90px;flex-shrink:0;padding-top:6px">${COND_LABELS[c.type]||c.type}</span>
+    <div style="display:flex;gap:6px;align-items:flex-start;flex:1;flex-wrap:wrap">${fields}</div>
+    <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="removeCondition(${uid})">✕</button>
+  </div>`;
 }
 
-function _allMachineOptions(selectedId) {
-  return (cache.machines||[])
-    .sort((a,b)=>a.name.localeCompare(b.name,'de'))
-    .map(m=>`<option value="${m.id}"${m.id===selectedId?' selected':''}>${escHtml(m.name)}</option>`)
-    .join('');
+function _updateCondDays(uid) {
+  const cond = _editConditions.find(x => x._uid === uid);
+  if (!cond) return;
+  const card = document.querySelector(`[data-cuid="${uid}"]`);
+  if (!card) return;
+  const checked = [...card.querySelectorAll('input[type=checkbox]:checked')].map(el => el.value);
+  cond.days = checked.join(',');
 }
 
-function showAddAutomation() {
-  openModal('Neue Automation', `
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;line-height:1.6">
-      Die <strong style="color:var(--text)">Quell-Maschine</strong> wird auf Leistungsaufnahme überwacht (muss einen Plug haben).<br>
-      Die <strong style="color:var(--text)">Ziel-Maschine</strong> wird automatisch ein- und ausgeschaltet.
+function _renderConditions() {
+  const el = document.getElementById('rule-conditions-list');
+  if (!el) return;
+  el.innerHTML = _editConditions.map(c => _condForm(c, c._uid)).join('');
+}
+
+function addCondition(type) {
+  const c = {..._condDefaults(type), _uid: Date.now() + Math.random()};
+  _editConditions.push(c);
+  _renderConditions();
+}
+
+function removeCondition(uid) {
+  _editConditions = _editConditions.filter(c => c._uid !== uid);
+  _renderConditions();
+}
+
+function _addCondMenu() {
+  return `<div style="position:relative;display:inline-block">
+    <button class="btn btn-ghost btn-sm" onclick="this.nextSibling.style.display=this.nextSibling.style.display==='block'?'none':'block'">+ Bedingung ▾</button>
+    <div style="display:none;position:absolute;top:100%;left:0;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-width:200px;padding:4px 0;box-shadow:0 4px 12px rgba(0,0,0,.3)">
+      ${Object.entries(COND_LABELS).map(([t,l])=>`<div style="padding:8px 14px;cursor:pointer;font-size:13px" onmousedown="addCondition('${t}')">${l}</div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function _ruleModalBody(r) {
+  const machines = cache.machines.filter(m => m.plug_type && m.plug_type !== 'none');
+  const machOpts = machines.map(m => `<option value="${m.id}" ${r&&m.id===r.target_machine_id?'selected':''}>${escHtml(m.name)}</option>`).join('');
+  return `
+    <div class="form-group"><label class="form-label">Name (optional)</label>
+      <input class="form-input" id="rule-name" value="${escHtml(r?.name||'')}" placeholder="z.B. Absaugung">
     </div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Quell-Maschine (Trigger)</label>
-        <select class="form-input" id="a-src">
-          <option value="">— Maschine mit Plug wählen —</option>
-          ${_autoMachineOptions(null)}
+      <div class="form-group"><label class="form-label">Ziel-Maschine</label>
+        <select class="form-input" id="rule-target" ${r?'disabled':''}>
+          <option value="">Auswählen…</option>${machOpts}
         </select>
-        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Nur Maschinen mit konfiguriertem Plug werden aufgeführt</div>
-      </div>
-      <div class="form-group"><label class="form-label">Ziel-Maschine (geschaltet)</label>
-        <select class="form-input" id="a-tgt">
-          <option value="">— Maschine wählen —</option>
-          ${_autoMachineOptions(null)}
-        </select>
-        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Nur Maschinen mit konfiguriertem Plug werden aufgeführt</div>
+        ${r?`<input type="hidden" id="rule-target-hidden" value="${r.target_machine_id}">`:''}</div>
+      <div class="form-group"><label class="form-label">Nachlaufzeit (Sek.)</label>
+        <input class="form-input" id="rule-delay" type="number" min="0" value="${r?.off_delay_sec??0}">
       </div>
     </div>
-    <hr style="border-color:var(--border);margin:16px 0">
-    <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px">SCHWELLWERTE</div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Einschalten bei ≥ (Watt)</label>
-        <input class="form-input" id="a-on" type="number" step="1" min="1" placeholder="z.B. 150">
-        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Ziel EIN wenn Quell-Plug diese Leistung überschreitet</div>
+    <div style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label class="form-label" style="margin:0">Bedingungen <span style="color:var(--text-muted);font-weight:400">(alle müssen gleichzeitig wahr sein)</span></label>
+        ${_addCondMenu()}
       </div>
-      <div class="form-group"><label class="form-label">Ausschalten unter (Watt)</label>
-        <input class="form-input" id="a-off" type="number" step="1" min="0" placeholder="z.B. 20">
-        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Countdown startet wenn Quell-Plug unter diesen Wert fällt</div>
-      </div>
-      <div class="form-group"><label class="form-label">Nachlaufzeit (Sekunden)</label>
-        <input class="form-input" id="a-delay" type="number" step="1" min="0" value="30" placeholder="30">
-        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Ziel bleibt noch diese Zeit eingeschaltet bevor es ausgeht</div>
-      </div>
-    </div>
-  `, async()=>{
-    const src   = parseInt(document.getElementById('a-src').value);
-    const tgt   = parseInt(document.getElementById('a-tgt').value);
-    const onW   = parseFloat(document.getElementById('a-on').value);
-    const offW  = parseFloat(document.getElementById('a-off').value);
-    const delay = parseInt(document.getElementById('a-delay').value)||30;
-    if (!src||!tgt)           { showToast('Bitte Quell- und Ziel-Maschine wählen','error'); return; }
-    if (src===tgt)            { showToast('Quell- und Ziel-Maschine müssen verschieden sein','error'); return; }
-    if (!onW||isNaN(onW))     { showToast('Einschaltschwelle angeben','error'); return; }
-    if (isNaN(offW))          { showToast('Ausschaltschwelle angeben','error'); return; }
-    if (onW<=offW)            { showToast('Einschaltschwelle muss höher sein als Ausschaltschwelle','error'); return; }
-    const res = await POST('/automations',{source_machine_id:src,target_machine_id:tgt,on_threshold_w:onW,off_threshold_w:offW,off_delay_sec:delay});
-    if (res) { closeModal(); await loadAutomations(); showToast('Automation erstellt','success'); }
+      <div id="rule-conditions-list"></div>
+      <div id="rule-cond-error" style="color:var(--danger);font-size:12px;display:none;margin-top:4px"></div>
+    </div>`;
+}
+
+function _collectRule() {
+  const name    = document.getElementById('rule-name').value.trim();
+  const targetEl = document.getElementById('rule-target-hidden') || document.getElementById('rule-target');
+  const target  = parseInt(targetEl.value);
+  const delay   = parseInt(document.getElementById('rule-delay').value) || 0;
+  if (!target)  { showToast('Ziel-Maschine auswählen','error'); return null; }
+  if (!_editConditions.length) {
+    document.getElementById('rule-cond-error').textContent = 'Mindestens eine Bedingung hinzufügen';
+    document.getElementById('rule-cond-error').style.display = 'block';
+    return null;
+  }
+  // Validierung
+  for (const c of _editConditions) {
+    if (c.type === 'power') {
+      if (!c.source_machine_id) { showToast('Leistungs-Bedingung: Quell-Maschine auswählen','error'); return null; }
+      if (!c.power_on_w || !c.power_off_w) { showToast('Leistungs-Bedingung: Schwellwerte eingeben','error'); return null; }
+      if (c.power_on_w <= c.power_off_w) { showToast('Einschaltschwelle muss höher als Ausschaltschwelle sein','error'); return null; }
+    } else if (c.type === 'schedule') {
+      if (!c.days) { showToast('Zeitplan: Wochentage auswählen','error'); return null; }
+      if (!c.time_on || !c.time_off || c.time_off <= c.time_on) { showToast('Zeitplan: gültige Zeiten eingeben','error'); return null; }
+    }
+  }
+  const conditions = _editConditions.map(({_uid, ...c}) => c);
+  return {name, target_machine_id: target, off_delay_sec: delay, conditions};
+}
+
+function showAddRule() {
+  if (!cache.machines.some(m => m.plug_type && m.plug_type !== 'none')) {
+    showToast('Keine Maschinen mit Plug konfiguriert','error'); return;
+  }
+  _editConditions = [];
+  openModal('Neue Regel', _ruleModalBody(null), async () => {
+    const payload = _collectRule(); if (!payload) return;
+    const res = await POST('/automations', payload);
+    if (res) { closeModal(); await loadAutomations(); showToast('Regel erstellt','success'); }
   });
+  _renderConditions();
 }
 
-function editAutomation(id) {
-  const a = _automations.find(x=>x.id===id); if (!a) return;
-  openModal('Automation bearbeiten', `
-    <div style="font-size:13px;color:var(--text-mid);margin-bottom:16px">
-      <strong>${escHtml(a.source_machine_name)}</strong> → <strong>${escHtml(a.target_machine_name)}</strong>
-    </div>
-    <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px">SCHWELLWERTE</div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Einschalten bei ≥ (Watt)</label>
-        <input class="form-input" id="ea-on" type="number" step="1" min="1" value="${a.on_threshold_w}">
-      </div>
-      <div class="form-group"><label class="form-label">Ausschalten unter (Watt)</label>
-        <input class="form-input" id="ea-off" type="number" step="1" min="0" value="${a.off_threshold_w}">
-      </div>
-      <div class="form-group"><label class="form-label">Nachlaufzeit (Sekunden)</label>
-        <input class="form-input" id="ea-delay" type="number" step="1" min="0" value="${a.off_delay_sec}">
-      </div>
-    </div>
-  `, async()=>{
-    const onW   = parseFloat(document.getElementById('ea-on').value);
-    const offW  = parseFloat(document.getElementById('ea-off').value);
-    const delay = parseInt(document.getElementById('ea-delay').value)||30;
-    if (isNaN(onW)||isNaN(offW)) { showToast('Schwellwerte angeben','error'); return; }
-    if (onW<=offW)               { showToast('Einschaltschwelle muss höher sein als Ausschaltschwelle','error'); return; }
-    const res = await PATCH(`/automations/${id}`,{on_threshold_w:onW,off_threshold_w:offW,off_delay_sec:delay});
+function editRule(id) {
+  const r = _rules.find(x => x.id === id); if (!r) return;
+  _editConditions = r.conditions.map((c,i) => ({...c, _uid: i + 1}));
+  openModal('Regel bearbeiten', _ruleModalBody(r), async () => {
+    const data = _collectRule(); if (!data) return;
+    const {target_machine_id, ...patch} = data;
+    const res = await PATCH(`/automations/${id}`, patch);
     if (res) { closeModal(); await loadAutomations(); showToast('Gespeichert','success'); }
   });
+  _renderConditions();
 }
 
-async function toggleAutomation(id, enabled) {
+async function toggleRule(id, enabled) {
   await PATCH(`/automations/${id}`, {enabled});
   await loadAutomations();
 }
 
-async function deleteAutomation(id, label) {
-  if (!confirm(`Automation «${label}» löschen?`)) return;
+async function deleteRule(id, label) {
+  if (!confirm(`Regel «${label}» löschen?`)) return;
   if (await DELETE(`/automations/${id}`)) { await loadAutomations(); showToast('Gelöscht','warn'); }
 }
 
-// ═══════════════════════════════════════════════════════
-// RAUM-STATUS
-// ═══════════════════════════════════════════════════════
-
-let _roomStatus = {room_open: false, room_open_since: null, room_open_auto: true};
-
-async function loadRoomStatus() {
-  const data = await GET('/settings/room');
-  if (!data) return;
-  _roomStatus = data;
-  renderRoomStatus();
-}
-
-function renderRoomStatus() {
-  const {room_open, room_open_since} = _roomStatus;
-  const bar   = document.getElementById('room-status-bar');
-  const dot   = document.getElementById('room-status-dot');
-  const label = document.getElementById('room-status-label');
-  const since = document.getElementById('room-status-since');
-  const btnO  = document.getElementById('room-btn-open');
-  const btnC  = document.getElementById('room-btn-close');
-  if (!bar) return;
-
-  if (room_open) {
-    bar.style.background   = 'rgba(34,197,94,.07)';
-    bar.style.borderColor  = 'rgba(34,197,94,.4)';
-    dot.style.background   = '#22c55e';
-    dot.style.boxShadow    = '0 0 6px rgba(34,197,94,.6)';
-    label.textContent      = 'Raum geöffnet';
-    label.style.color      = '#22c55e';
-    since.textContent      = room_open_since ? `seit ${new Date(room_open_since).toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'})} Uhr` : '';
-    btnO.style.display  = 'none';
-    btnC.style.display  = '';
-  } else {
-    bar.style.background  = 'var(--surface)';
-    bar.style.borderColor = 'var(--border)';
-    dot.style.background  = 'var(--text-muted)';
-    dot.style.boxShadow   = 'none';
-    label.textContent     = 'Raum geschlossen';
-    label.style.color     = 'var(--text-muted)';
-    since.textContent     = '';
-    btnO.style.display = '';
-    btnC.style.display = 'none';
-  }
-}
-
-async function setRoomStatus(open) {
-  const data = await POST('/settings/room', {open});
-  if (data !== null) {
-    _roomStatus.room_open = data.room_open;
-    _roomStatus.room_open_since = open ? new Date().toISOString() : null;
-    renderRoomStatus();
-    showToast(open ? 'Raum geöffnet' : 'Raum geschlossen', open ? 'success' : 'warn');
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-// ZEITPLÄNE
-// ═══════════════════════════════════════════════════════
-
-const DAY_NAMES  = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
-
-let _schedules = [];
-
-async function loadSchedules() {
-  const data = await GET('/schedules');
-  if (data) {
-    _schedules = data;
-    renderSchedules();
-    const b = document.getElementById('badge-schedules');
-    if (b) { b.textContent = data.length; b.style.display = ''; }
-  }
-}
-
-function renderSchedules() {
-  const el = document.getElementById('schedules-list');
-  if (!_schedules.length) {
-    el.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;padding:20px 0">Keine Zeitpläne konfiguriert.</div>';
-    return;
-  }
-  el.innerHTML = _schedules.map(s => {
-    const days = s.days.split(',').map(d=>DAY_LABELS[parseInt(d)-1]||d);
-    const daysHtml = days.map(d=>`<span style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:11px;font-family:var(--mono)">${d}</span>`).join(' ');
-    const roomBadge = s.require_room_open
-      ? `<span style="font-size:11px;color:var(--success);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:1px 6px">nur wenn Raum offen</span>`
-      : `<span style="font-size:11px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px">immer</span>`;
-    return `<div class="machine-card" style="margin-bottom:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-      <div style="flex:1;min-width:200px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <strong>${escHtml(s.name || s.machine_name)}</strong>
-          ${s.name ? `<span style="font-size:12px;color:var(--text-muted)">— ${escHtml(s.machine_name)}</span>` : ''}
-          ${!s.enabled ? '<span style="font-size:11px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px">inaktiv</span>' : ''}
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          ${daysHtml}
-          <span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">${s.time_on} – ${s.time_off}</span>
-          ${roomBadge}
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;flex-shrink:0">
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
-          <input type="checkbox" ${s.enabled?'checked':''} onchange="toggleSchedule(${s.id},this.checked)"> Aktiv
-        </label>
-        <button class="btn btn-ghost btn-sm" onclick="editSchedule(${s.id})">✎</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteSchedule(${s.id},'${escHtml(s.name||s.machine_name)}')">✕</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function _scheduleMachineOptions(selectedId) {
-  return cache.machines
-    .filter(m => m.plug_type && m.plug_type !== 'none')
-    .map(m => `<option value="${m.id}" ${m.id===selectedId?'selected':''}>${escHtml(m.name)}</option>`)
-    .join('');
-}
-
-function _dayCheckboxes(selectedDays) {
-  const sel = new Set((selectedDays||'').split(',').map(d=>d.trim()));
-  return DAY_LABELS.map((lbl,i) => {
-    const num = String(i+1);
-    return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;margin-right:8px;cursor:pointer">
-      <input type="checkbox" name="sched-day" value="${num}" ${sel.has(num)?'checked':''}> ${lbl}
-    </label>`;
-  }).join('');
-}
-
-function _collectDays() {
-  return [...document.querySelectorAll('input[name="sched-day"]:checked')].map(el=>el.value).join(',');
-}
-
-function showAddSchedule() {
-  const machines = cache.machines.filter(m => m.plug_type && m.plug_type !== 'none');
-  if (!machines.length) { showToast('Keine Maschinen mit Plug konfiguriert','error'); return; }
-  openModal('Neuer Zeitplan', `
-    <div class="form-group"><label class="form-label">Maschine / Gerät</label>
-      <select class="form-input" id="ns-machine">${_scheduleMachineOptions(null)}</select>
-    </div>
-    <div class="form-group"><label class="form-label">Name (optional)</label>
-      <input class="form-input" id="ns-name" placeholder="z.B. Kaffeemaschine morgens">
-    </div>
-    <div class="form-group"><label class="form-label">Wochentage</label>
-      <div style="margin-top:4px">${_dayCheckboxes('1,2,3,4,5')}</div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Einschalten um</label>
-        <input class="form-input" id="ns-on" type="time" value="08:00">
-      </div>
-      <div class="form-group"><label class="form-label">Ausschalten um</label>
-        <input class="form-input" id="ns-off" type="time" value="18:00">
-      </div>
-    </div>
-    <div class="form-group" style="margin-top:8px">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
-        <input type="checkbox" id="ns-room" checked>
-        Nur einschalten wenn Raum geöffnet ist
-      </label>
-    </div>
-  `, async () => {
-    const machine_id = parseInt(document.getElementById('ns-machine').value);
-    const name = document.getElementById('ns-name').value.trim();
-    const days = _collectDays();
-    const time_on  = document.getElementById('ns-on').value;
-    const time_off = document.getElementById('ns-off').value;
-    const require_room_open = document.getElementById('ns-room').checked;
-    if (!days) { showToast('Mindestens einen Wochentag auswählen','error'); return; }
-    if (!time_on||!time_off) { showToast('Zeiten angeben','error'); return; }
-    if (time_off <= time_on) { showToast('Ausschaltzeit muss nach Einschaltzeit liegen','error'); return; }
-    const res = await POST('/schedules', {machine_id, name, days, time_on, time_off, require_room_open});
-    if (res) { closeModal(); await loadSchedules(); showToast('Zeitplan gespeichert','success'); }
-  });
-}
-
-function editSchedule(id) {
-  const s = _schedules.find(x=>x.id===id); if (!s) return;
-  openModal('Zeitplan bearbeiten', `
-    <div class="form-group"><label class="form-label">Maschine / Gerät</label>
-      <div class="form-input" style="background:var(--surface2);color:var(--text-dim)">${escHtml(s.machine_name)}</div>
-    </div>
-    <div class="form-group"><label class="form-label">Name (optional)</label>
-      <input class="form-input" id="es-name" value="${escHtml(s.name)}" placeholder="z.B. Kaffeemaschine morgens">
-    </div>
-    <div class="form-group"><label class="form-label">Wochentage</label>
-      <div style="margin-top:4px">${_dayCheckboxes(s.days)}</div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Einschalten um</label>
-        <input class="form-input" id="es-on" type="time" value="${s.time_on}">
-      </div>
-      <div class="form-group"><label class="form-label">Ausschalten um</label>
-        <input class="form-input" id="es-off" type="time" value="${s.time_off}">
-      </div>
-    </div>
-    <div class="form-group" style="margin-top:8px">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
-        <input type="checkbox" id="es-room" ${s.require_room_open?'checked':''}>
-        Nur einschalten wenn Raum geöffnet ist
-      </label>
-    </div>
-  `, async () => {
-    const name = document.getElementById('es-name').value.trim();
-    const days = _collectDays();
-    const time_on  = document.getElementById('es-on').value;
-    const time_off = document.getElementById('es-off').value;
-    const require_room_open = document.getElementById('es-room').checked;
-    if (!days) { showToast('Mindestens einen Wochentag auswählen','error'); return; }
-    if (!time_on||!time_off) { showToast('Zeiten angeben','error'); return; }
-    if (time_off <= time_on) { showToast('Ausschaltzeit muss nach Einschaltzeit liegen','error'); return; }
-    const res = await PATCH(`/schedules/${id}`, {name, days, time_on, time_off, require_room_open});
-    if (res) { closeModal(); await loadSchedules(); showToast('Gespeichert','success'); }
-  });
-}
-
-async function toggleSchedule(id, enabled) {
-  await PATCH(`/schedules/${id}`, {enabled});
-  await loadSchedules();
-}
-
-async function deleteSchedule(id, label) {
-  if (!confirm(`Zeitplan «${label}» löschen?`)) return;
-  if (await DELETE(`/schedules/${id}`)) { await loadSchedules(); showToast('Gelöscht','warn'); }
-}
 
 // ═══════════════════════════════════════════════════════
 // MAINTENANCE — MASCHINENPFLEGE

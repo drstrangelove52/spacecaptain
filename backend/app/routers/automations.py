@@ -1,136 +1,249 @@
-from typing import List, Optional
+"""
+Automationen — kombiniertes Regelwerk mit Trigger-Bedingungen.
+
+Jede Regel hat eine Ziel-Maschine (ein-/ausschalten) und beliebig viele
+Bedingungen (AND-verknüpft). Bedingungstypen:
+  power          – Quell-Maschine überschreitet Watt-Schwelle
+  schedule       – Wochentag + Zeitfenster
+  room_open      – Raum ist geöffnet
+  session_active – mindestens eine aktive Maschinen-Session
+"""
+from datetime import time as TimeType
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MachineAutomation, Machine, User, LogType
-from app.schemas import AutomationCreate, AutomationUpdate, AutomationOut
-from app.services.auth import get_current_user
-from app.services.automation_watcher import get_automation_states
+from app.models import User, AutomationRule, RuleCondition, Machine, LogType
+from app.services.auth import require_admin
 from app.services import logger as log_svc
 
 router = APIRouter(prefix="/automations", tags=["automations"])
 
 
-async def _auto_out(a: MachineAutomation) -> dict:
+# ── Pydantic ──────────────────────────────────────────────────────────────────
+
+class ConditionIn(BaseModel):
+    type: str
+    source_machine_id: Optional[int]   = None
+    power_on_w:        Optional[float] = None
+    power_off_w:       Optional[float] = None
+    days:              Optional[str]   = None
+    time_on:           Optional[str]   = None
+    time_off:          Optional[str]   = None
+
+
+class RuleIn(BaseModel):
+    name:              str  = ""
+    target_machine_id: int
+    off_delay_sec:     int  = 0
+    enabled:           bool = True
+    conditions:        List[ConditionIn] = []
+
+
+class RulePatch(BaseModel):
+    name:          Optional[str]            = None
+    off_delay_sec: Optional[int]            = None
+    enabled:       Optional[bool]           = None
+    conditions:    Optional[List[ConditionIn]] = None
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _parse_time(s: str) -> TimeType:
+    try:
+        parts = s.split(":")
+        return TimeType(int(parts[0]), int(parts[1]))
+    except Exception:
+        raise HTTPException(400, f"Ungültiges Zeitformat: {s!r}")
+
+
+def _time_str(t) -> Optional[str]:
+    return t.strftime("%H:%M") if t else None
+
+
+def _validate_condition(c: ConditionIn) -> None:
+    if c.type == "power":
+        if c.source_machine_id is None or c.power_on_w is None or c.power_off_w is None:
+            raise HTTPException(400, "power: source_machine_id, power_on_w und power_off_w erforderlich")
+        if c.power_on_w <= c.power_off_w:
+            raise HTTPException(400, "Einschaltschwelle muss höher sein als Ausschaltschwelle")
+    elif c.type == "schedule":
+        if not c.days or not c.time_on or not c.time_off:
+            raise HTTPException(400, "schedule: days, time_on und time_off erforderlich")
+        if c.time_off <= c.time_on:
+            raise HTTPException(400, "Ausschaltzeit muss nach Einschaltzeit liegen")
+    elif c.type not in ("room_open", "session_active"):
+        raise HTTPException(400, f"Unbekannter Bedingungstyp: {c.type!r}")
+
+
+def _build_condition_obj(c: ConditionIn, rule_id: int) -> RuleCondition:
+    _validate_condition(c)
+    cond = RuleCondition(rule_id=rule_id, type=c.type)
+    if c.type == "power":
+        cond.source_machine_id = c.source_machine_id
+        cond.power_on_w  = c.power_on_w
+        cond.power_off_w = c.power_off_w
+    elif c.type == "schedule":
+        cond.days    = c.days
+        cond.time_on  = _parse_time(c.time_on)
+        cond.time_off = _parse_time(c.time_off)
+    return cond
+
+
+def _cond_out(c: RuleCondition, machines: dict) -> dict:
+    d: dict = {"id": c.id, "type": c.type}
+    if c.type == "power":
+        d["source_machine_id"]   = c.source_machine_id
+        d["source_machine_name"] = machines.get(c.source_machine_id, "?")
+        d["power_on_w"]  = c.power_on_w
+        d["power_off_w"] = c.power_off_w
+    elif c.type == "schedule":
+        d["days"]     = c.days
+        d["time_on"]  = _time_str(c.time_on)
+        d["time_off"] = _time_str(c.time_off)
+    return d
+
+
+async def _rule_out(rule: AutomationRule, db: AsyncSession) -> dict:
+    conds_res = await db.execute(
+        select(RuleCondition).where(RuleCondition.rule_id == rule.id)
+    )
+    conds = conds_res.scalars().all()
+    # Maschinen-Namen für power-conditions bulk-laden
+    machine_ids = {c.source_machine_id for c in conds if c.type == "power" and c.source_machine_id}
+    machines: dict = {}
+    if machine_ids:
+        mres = await db.execute(select(Machine.id, Machine.name).where(Machine.id.in_(machine_ids)))
+        machines = {r[0]: r[1] for r in mres.all()}
+    tm_name = rule.target_machine.name if hasattr(rule, "target_machine") and rule.target_machine else "?"
     return {
-        "id":                  a.id,
-        "source_machine_id":   a.source_machine_id,
-        "target_machine_id":   a.target_machine_id,
-        "source_machine_name": a.source_machine.name if a.source_machine else "",
-        "target_machine_name": a.target_machine.name if a.target_machine else "",
-        "on_threshold_w":      a.on_threshold_w,
-        "off_threshold_w":     a.off_threshold_w,
-        "off_delay_sec":       a.off_delay_sec,
-        "enabled":             a.enabled,
-        "created_at":          a.created_at,
+        "id":                  rule.id,
+        "name":                rule.name,
+        "target_machine_id":   rule.target_machine_id,
+        "target_machine_name": tm_name,
+        "off_delay_sec":       rule.off_delay_sec,
+        "enabled":             rule.enabled,
+        "conditions":          [_cond_out(c, machines) for c in conds],
     }
 
 
-async def _load(auto_id: int, db: AsyncSession) -> MachineAutomation:
-    res = await db.execute(select(MachineAutomation).where(MachineAutomation.id == auto_id))
-    a = res.scalar_one_or_none()
-    if not a:
-        raise HTTPException(404, "Automation nicht gefunden")
-    return a
+# ── Endpoints ─────────────────────────────────────────────────────────────────
 
-
-@router.get("", response_model=List[AutomationOut])
-async def list_automations(
+@router.get("")
+async def list_rules(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_admin),
 ):
-    res = await db.execute(select(MachineAutomation).order_by(MachineAutomation.id))
-    autos = res.scalars().all()
-    # Eager-load machine names
-    for a in autos:
-        await db.refresh(a, ["source_machine", "target_machine"])
-    return [await _auto_out(a) for a in autos]
+    res = await db.execute(select(AutomationRule).order_by(AutomationRule.id))
+    rules = res.scalars().all()
+    tm_ids = {r.target_machine_id for r in rules}
+    tm_map: dict = {}
+    if tm_ids:
+        tmres = await db.execute(select(Machine).where(Machine.id.in_(tm_ids)))
+        for m in tmres.scalars().all():
+            tm_map[m.id] = m
+    for r in rules:
+        r.target_machine = tm_map.get(r.target_machine_id)
+    return [await _rule_out(r, db) for r in rules]
 
 
-@router.post("", response_model=AutomationOut)
-async def create_automation(
-    payload: AutomationCreate,
+@router.post("")
+async def create_rule(
+    payload: RuleIn,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_admin),
 ):
-    # Maschinen prüfen
-    for mid, label in [(payload.source_machine_id, "Quell"), (payload.target_machine_id, "Ziel")]:
-        m = (await db.execute(select(Machine).where(Machine.id == mid))).scalar_one_or_none()
-        if not m:
-            raise HTTPException(404, f"{label}-Maschine nicht gefunden")
-    if payload.source_machine_id == payload.target_machine_id:
-        raise HTTPException(400, "Quell- und Ziel-Maschine dürfen nicht identisch sein")
-    if payload.on_threshold_w <= payload.off_threshold_w:
-        raise HTTPException(400, "Einschaltschwelle muss höher sein als Ausschaltschwelle")
+    tm = (await db.execute(select(Machine).where(Machine.id == payload.target_machine_id))).scalar_one_or_none()
+    if not tm:
+        raise HTTPException(404, "Ziel-Maschine nicht gefunden")
+    if not payload.conditions:
+        raise HTTPException(400, "Mindestens eine Bedingung erforderlich")
 
-    uid = current.id
-    a = MachineAutomation(**payload.model_dump())
-    db.add(a)
-    await db.commit()
-    await db.refresh(a)
-    await db.refresh(a, ["source_machine", "target_machine"])
-    result = await _auto_out(a)
-    await log_svc.log(
-        db, LogType.automation_created,
-        f"Automation erstellt: {result['source_machine_name']} → {result['target_machine_name']} "
-        f"(EIN ≥ {a.on_threshold_w} W, AUS < {a.off_threshold_w} W, Nachlauf {a.off_delay_sec} s)",
-        user_id=uid,
+    rule = AutomationRule(
+        name=payload.name.strip(),
+        target_machine_id=payload.target_machine_id,
+        off_delay_sec=max(0, payload.off_delay_sec),
+        enabled=payload.enabled,
     )
+    db.add(rule)
+    await db.flush()
+
+    for ci in payload.conditions:
+        db.add(_build_condition_obj(ci, rule.id))
+
+    await db.commit()
+    await db.refresh(rule)
+    rule.target_machine = tm
+    result = await _rule_out(rule, db)
+    uid = current.id
+    await log_svc.log(db, LogType.rule_created,
+                      f"Regel '{rule.name or rule.id}' für {tm.name} erstellt",
+                      user_id=uid)
     return result
 
 
-@router.patch("/{auto_id}", response_model=AutomationOut)
-async def update_automation(
-    auto_id: int,
-    payload: AutomationUpdate,
+@router.patch("/{rule_id}")
+async def update_rule(
+    rule_id: int,
+    payload: RulePatch,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_admin),
 ):
-    uid = current.id
-    a = await _load(auto_id, db)
-    changes = payload.model_dump(exclude_unset=True)
-    for field, value in changes.items():
-        setattr(a, field, value)
-    if a.on_threshold_w <= a.off_threshold_w:
-        raise HTTPException(400, "Einschaltschwelle muss höher sein als Ausschaltschwelle")
+    rule = (await db.execute(select(AutomationRule).where(AutomationRule.id == rule_id))).scalar_one_or_none()
+    if not rule:
+        raise HTTPException(404, "Regel nicht gefunden")
+
+    if payload.name is not None:
+        rule.name = payload.name.strip()
+    if payload.off_delay_sec is not None:
+        rule.off_delay_sec = max(0, payload.off_delay_sec)
+    if payload.enabled is not None:
+        rule.enabled = payload.enabled
+
+    if payload.conditions is not None:
+        old = (await db.execute(select(RuleCondition).where(RuleCondition.rule_id == rule_id))).scalars().all()
+        for c in old:
+            await db.delete(c)
+        await db.flush()
+        for ci in payload.conditions:
+            db.add(_build_condition_obj(ci, rule_id))
+
     await db.commit()
-    await db.refresh(a)
-    await db.refresh(a, ["source_machine", "target_machine"])
-    result = await _auto_out(a)
-    await log_svc.log(
-        db, LogType.automation_updated,
-        f"Automation geändert: {result['source_machine_name']} → {result['target_machine_name']} "
-        f"({', '.join(changes.keys())})",
-        user_id=uid,
-    )
+    await db.refresh(rule)
+    tm = (await db.execute(select(Machine).where(Machine.id == rule.target_machine_id))).scalar_one_or_none()
+    rule.target_machine = tm
+    result = await _rule_out(rule, db)
+    uid = current.id
+    await log_svc.log(db, LogType.rule_updated,
+                      f"Regel '{rule.name or rule.id}' aktualisiert",
+                      user_id=uid)
     return result
+
+
+@router.delete("/{rule_id}")
+async def delete_rule(
+    rule_id: int,
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(require_admin),
+):
+    rule = (await db.execute(select(AutomationRule).where(AutomationRule.id == rule_id))).scalar_one_or_none()
+    if not rule:
+        raise HTTPException(404, "Regel nicht gefunden")
+    tm = (await db.execute(select(Machine).where(Machine.id == rule.target_machine_id))).scalar_one_or_none()
+    label = rule.name or str(rule.id)
+    uid = current.id
+    await db.delete(rule)
+    await db.commit()
+    await log_svc.log(db, LogType.rule_deleted,
+                      f"Regel '{label}' für {tm.name if tm else '?'} gelöscht",
+                      user_id=uid)
+    return {"ok": True}
 
 
 @router.get("/states")
-async def automation_states(
-    _: User = Depends(get_current_user),
-):
-    """Aktueller Watcher-Zustand pro Automation (idle/on/countdown)."""
-    return get_automation_states()
-
-
-@router.delete("/{auto_id}")
-async def delete_automation(
-    auto_id: int,
-    db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
-):
-    uid = current.id
-    a = await _load(auto_id, db)
-    await db.refresh(a, ["source_machine", "target_machine"])
-    label = f"{a.source_machine.name} → {a.target_machine.name}"
-    await db.delete(a)
-    await db.commit()
-    await log_svc.log(
-        db, LogType.automation_deleted,
-        f"Automation gelöscht: {label}",
-        user_id=uid,
-    )
-    return {"ok": True}
+async def rule_states(_: User = Depends(require_admin)):
+    from app.services.rule_watcher import get_rule_states
+    return get_rule_states()

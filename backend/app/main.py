@@ -14,11 +14,9 @@ from app.routers import ntfy_topics as ntfy_topics_router
 from app.routers import emergency as emergency_router
 from app.routers import categories as categories_router
 from app.routers import automations as automations_router
-from app.routers import schedules as schedules_router
 from app.services.session import idle_watcher, plug_watcher, queue_watcher
 from app.services.backup_service import backup_watcher
-from app.services.automation_watcher import automation_watcher
-from app.services.schedule_watcher import schedule_watcher
+from app.services.rule_watcher import rule_watcher
 
 settings = get_settings()
 
@@ -41,11 +39,10 @@ async def lifespan(app: FastAPI):
     task2 = asyncio.create_task(plug_watcher(app))
     task3 = asyncio.create_task(queue_watcher(app))
     task4 = asyncio.create_task(backup_watcher(app))
-    task5 = asyncio.create_task(automation_watcher(app))
-    task6 = asyncio.create_task(schedule_watcher(app))
+    task5 = asyncio.create_task(rule_watcher(app))
     yield
-    task1.cancel(); task2.cancel(); task3.cancel(); task4.cancel(); task5.cancel(); task6.cancel()
-    for t in (task1, task2, task3, task4, task5, task6):
+    task1.cancel(); task2.cancel(); task3.cancel(); task4.cancel(); task5.cancel()
+    for t in (task1, task2, task3, task4, task5):
         try:
             await t
         except asyncio.CancelledError:
@@ -114,4 +111,3 @@ app.include_router(emergency_router.router,     prefix="/api")
 app.include_router(categories_router.router,    prefix="/api")
 app.include_router(plugs_router.router,         prefix="/api")
 app.include_router(automations_router.router,   prefix="/api")
-app.include_router(schedules_router.router,     prefix="/api")

@@ -412,6 +412,41 @@ async def run_migrations(engine: AsyncEngine) -> None:
             "schedule_on", "schedule_off", "room_opened", "room_closed",
         ])
 
+        # ── v1.27: Kombiniertes Regelwerk (automation_rules + rule_conditions) ─
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS automation_rules (
+                id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name              VARCHAR(100) NOT NULL DEFAULT '',
+                target_machine_id INT UNSIGNED NOT NULL,
+                off_delay_sec     INT NOT NULL DEFAULT 0,
+                enabled           TINYINT(1) NOT NULL DEFAULT 1,
+                created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (target_machine_id) REFERENCES machines(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS rule_conditions (
+                id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                rule_id           INT UNSIGNED NOT NULL,
+                type              VARCHAR(30) NOT NULL,
+                source_machine_id INT UNSIGNED NULL,
+                power_on_w        FLOAT NULL,
+                power_off_w       FLOAT NULL,
+                days              VARCHAR(20) NULL,
+                time_on           TIME NULL,
+                time_off          TIME NULL,
+                FOREIGN KEY (rule_id) REFERENCES automation_rules(id) ON DELETE CASCADE,
+                FOREIGN KEY (source_machine_id) REFERENCES machines(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
+        # Bestehende machine_automations migrieren (einmalig)
+        await _migrate_automations_to_rules(conn)
+        # Bestehende device_schedules migrieren (einmalig)
+        await _migrate_schedules_to_rules(conn)
+        await _extend_enum_if_needed(conn, "activity_log", "type", [
+            "rule_created", "rule_updated", "rule_deleted", "rule_on", "rule_off",
+        ])
+
     log.info("Migrationen abgeschlossen")
 
 
@@ -464,3 +499,74 @@ async def _backfill_guest_ntfy_topics(conn) -> None:
             "UPDATE guests SET ntfy_topic = :topic WHERE id = :id AND ntfy_topic IS NULL"
         ), {"topic": topic, "id": guest_id})
     log.info(f"Migration: ntfy_topic für {len(rows)} bestehende Gäste nachgefüllt")
+
+
+async def _migrate_automations_to_rules(conn) -> None:
+    """Migriert machine_automations → automation_rules + rule_conditions (einmalig)."""
+    # Prüfen ob bereits Regeln vorhanden (dann schon migriert)
+    existing = await conn.execute(text("SELECT COUNT(*) FROM automation_rules"))
+    if existing.scalar() > 0:
+        return
+    old = await conn.execute(text("SELECT * FROM machine_automations"))
+    rows = old.fetchall()
+    if not rows:
+        return
+    for row in rows:
+        r = await conn.execute(text("""
+            INSERT INTO automation_rules (name, target_machine_id, off_delay_sec, enabled, created_at)
+            VALUES (:name, :tid, :delay, :enabled, :created)
+        """), {
+            "name": f"Automation {row[0]}",
+            "tid": row[2],   # target_machine_id
+            "delay": row[5], # off_delay_sec
+            "enabled": row[6],
+            "created": row[7],
+        })
+        rule_id = r.lastrowid
+        await conn.execute(text("""
+            INSERT INTO rule_conditions (rule_id, type, source_machine_id, power_on_w, power_off_w)
+            VALUES (:rule_id, 'power', :src, :on_w, :off_w)
+        """), {
+            "rule_id": rule_id,
+            "src": row[1],   # source_machine_id
+            "on_w": row[3],  # on_threshold_w
+            "off_w": row[4], # off_threshold_w
+        })
+    log.info(f"Migration: {len(rows)} machine_automations → automation_rules migriert")
+
+
+async def _migrate_schedules_to_rules(conn) -> None:
+    """Migriert device_schedules → automation_rules + rule_conditions (einmalig, nur wenn automation_rules leer war)."""
+    old = await conn.execute(text("SELECT * FROM device_schedules"))
+    rows = old.fetchall()
+    if not rows:
+        return
+    for row in rows:
+        # Prüfen ob diese Regel schon existiert (per Name-Match)
+        name = f"Zeitplan: {row[1]}" if row[2] else f"Zeitplan {row[0]}"
+        ex = await conn.execute(text(
+            "SELECT COUNT(*) FROM automation_rules WHERE name = :name"
+        ), {"name": name})
+        if ex.scalar() > 0:
+            continue
+        r = await conn.execute(text("""
+            INSERT INTO automation_rules (name, target_machine_id, off_delay_sec, enabled, created_at)
+            VALUES (:name, :tid, 0, :enabled, :created)
+        """), {
+            "name": name,
+            "tid": row[1],   # machine_id
+            "enabled": row[5],
+            "created": row[7],
+        })
+        rule_id = r.lastrowid
+        # Schedule-Bedingung
+        await conn.execute(text("""
+            INSERT INTO rule_conditions (rule_id, type, days, time_on, time_off)
+            VALUES (:rule_id, 'schedule', :days, :on, :off)
+        """), {"rule_id": rule_id, "days": row[3], "on": row[4], "off": row[5]})
+        # Raum-Bedingung wenn gesetzt
+        if row[6]:  # require_room_open
+            await conn.execute(text("""
+                INSERT INTO rule_conditions (rule_id, type) VALUES (:rule_id, 'room_open')
+            """), {"rule_id": rule_id})
+    log.info(f"Migration: {len(rows)} device_schedules → automation_rules migriert")

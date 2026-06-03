@@ -69,8 +69,13 @@ class LogType(str, enum.Enum):
     schedule_deleted = "schedule_deleted"
     schedule_on = "schedule_on"
     schedule_off = "schedule_off"
-    room_opened = "room_opened"
-    room_closed = "room_closed"
+    room_opened  = "room_opened"
+    room_closed  = "room_closed"
+    rule_created = "rule_created"
+    rule_updated = "rule_updated"
+    rule_deleted = "rule_deleted"
+    rule_on      = "rule_on"
+    rule_off     = "rule_off"
 
 class SessionEndedBy(str, enum.Enum):
     guest = "guest"
@@ -274,6 +279,44 @@ class DeviceSchedule(Base):
     enabled:          Mapped[bool]           = mapped_column(Boolean, default=True)
     created_at:       Mapped[datetime]       = mapped_column(DateTime, default=datetime.utcnow)
     machine:          Mapped["Machine"]      = relationship("Machine")
+
+
+class AutomationRule(Base):
+    __tablename__ = "automation_rules"
+    id:                Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name:              Mapped[str]      = mapped_column(String(100), default="")
+    target_machine_id: Mapped[int]      = mapped_column(UINT(unsigned=True), ForeignKey("machines.id", ondelete="CASCADE"))
+    off_delay_sec:     Mapped[int]      = mapped_column(Integer, default=0)
+    enabled:           Mapped[bool]     = mapped_column(Boolean, default=True)
+    created_at:        Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    target_machine: Mapped["Machine"]           = relationship("Machine", foreign_keys=[target_machine_id])
+    conditions:     Mapped[list["RuleCondition"]] = relationship("RuleCondition", back_populates="rule", cascade="all, delete-orphan")
+
+
+class RuleCondition(Base):
+    """Eine Bedingung innerhalb einer AutomationRule (AND-Verknüpfung).
+
+    Typen:
+      power          – source_machine_id, power_on_w, power_off_w
+      schedule       – days ("1,2,3"), time_on, time_off
+      room_open      – (keine zusätzlichen Felder)
+      session_active – (keine zusätzlichen Felder)
+    """
+    __tablename__ = "rule_conditions"
+    id:                Mapped[int]            = mapped_column(Integer, primary_key=True, autoincrement=True)
+    rule_id:           Mapped[int]            = mapped_column(Integer, ForeignKey("automation_rules.id", ondelete="CASCADE"))
+    type:              Mapped[str]            = mapped_column(String(30), nullable=False)
+    # power
+    source_machine_id: Mapped[Optional[int]]  = mapped_column(UINT(unsigned=True), ForeignKey("machines.id", ondelete="SET NULL"), default=None)
+    power_on_w:        Mapped[Optional[float]] = mapped_column(Float, default=None)
+    power_off_w:       Mapped[Optional[float]] = mapped_column(Float, default=None)
+    # schedule
+    days:              Mapped[Optional[str]]  = mapped_column(String(20), default=None)
+    time_on:           Mapped[Optional[time]] = mapped_column(Time, default=None)
+    time_off:          Mapped[Optional[time]] = mapped_column(Time, default=None)
+    # (room_open und session_active brauchen keine zusätzlichen Felder)
+    rule:           Mapped["AutomationRule"] = relationship("AutomationRule", back_populates="conditions")
+    source_machine: Mapped[Optional["Machine"]] = relationship("Machine", foreign_keys=[source_machine_id])
 
 
 class NtfyTopic(Base):
