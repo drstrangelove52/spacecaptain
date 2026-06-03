@@ -1491,61 +1491,72 @@
             <div class="help-article">
               <div class="help-article-title">Was sind Automationen?</div>
               <div class="help-article-body">
-                Automationen schalten eine Ziel-Maschine (z.B. Absaugung) automatisch ein und aus, basierend auf der Leistungsaufnahme einer Quell-Maschine (z.B. Tischkreissäge). Der Trigger ist rein leistungsbasiert — unabhängig davon, ob eine Session aktiv ist.
+                Automationen schalten eine Ziel-Maschine (z.B. Kaffeemaschine, Absaugung) automatisch ein und aus — basierend auf kombinierten Bedingungen. Alle Bedingungen einer Regel müssen gleichzeitig wahr sein (AND-Verknüpfung).
                 <ul style="margin-top:10px">
-                  <li>Die <strong>Quell-Maschine</strong> muss einen konfigurierten Smart Plug haben</li>
-                  <li>Die <strong>Ziel-Maschine</strong> kann jeden Maschinentyp sein (auch ohne Plug: Session-only)</li>
-                  <li>Mehrere Automationen können auf dieselbe Quelle oder dasselbe Ziel verweisen</li>
+                  <li>Die <strong>Ziel-Maschine</strong> muss einen konfigurierten Smart Plug haben</li>
+                  <li>Mehrere Regeln können dieselbe Ziel-Maschine steuern</li>
+                  <li>Optional: <strong>Nachlaufzeit</strong> — wie lange die Ziel-Maschine nach Bedingungsende noch eingeschaltet bleibt</li>
                 </ul>
               </div>
             </div>
             <div class="help-article">
-              <div class="help-article-title">Automation erstellen</div>
+              <div class="help-article-title">Regel erstellen</div>
               <div class="help-article-body">
                 <ol>
-                  <li>Sidebar → <strong>Ausstattung → Automationen</strong> → «+ Neue Automation»</li>
-                  <li><strong>Quell-Maschine</strong> wählen — nur Maschinen mit Plug stehen zur Auswahl</li>
-                  <li><strong>Ziel-Maschine</strong> wählen — die automatisch geschaltete Maschine</li>
-                  <li><strong>Einschaltschwelle (W):</strong> Überschreitet die Quell-Maschine diesen Wert → Ziel EIN</li>
-                  <li><strong>Ausschaltschwelle (W):</strong> Fällt die Quell-Maschine darunter → Countdown startet</li>
-                  <li><strong>Nachlaufzeit (s):</strong> Wie lange die Ziel-Maschine nach Ende des Countdowns noch läuft</li>
+                  <li>Sidebar → <strong>Automationen</strong> → «+ Neue Regel»</li>
+                  <li><strong>Name</strong> vergeben (optional), <strong>Ziel-Maschine</strong> wählen</li>
+                  <li>Über «+ Bedingung» eine oder mehrere Bedingungen hinzufügen</li>
+                  <li><strong>Nachlaufzeit</strong> einstellen (0 = sofort ausschalten)</li>
                 </ol>
-                <div class="help-tip"><strong>Beispiel Tischkreissäge + Absaugung:</strong><br>
-                Einschalten ≥ 150 W · Ausschalten &lt; 20 W · Nachlauf 60 s<br>
-                → Sobald die Säge anläuft (Stromspitze), schaltet die Absaugung ein. Nach dem Abschalten läuft sie noch 60 s nach, um Späne vollständig abzusaugen.</div>
               </div>
             </div>
             <div class="help-article">
-              <div class="help-article-title">Schwellwerte richtig konfigurieren</div>
+              <div class="help-article-title">Bedingungstypen</div>
               <div class="help-article-body">
                 <ul>
-                  <li><strong>Einschaltschwelle:</strong> Sollte deutlich über dem Leerlaufverbrauch der Quell-Maschine liegen (z.B. Leerlauf 5 W → Schwelle 50 W)</li>
-                  <li><strong>Ausschaltschwelle:</strong> Etwas über dem absoluten Minimalverbrauch, damit kurze Pausen keinen Fehlalarm auslösen</li>
-                  <li><strong>Einschaltschwelle muss grösser sein als Ausschaltschwelle</strong> — sonst wäre der Zustand undefiniert</li>
-                  <li>Zwischen Ein- und Ausschaltschwelle: laufender Countdown wird abgebrochen, Ziel bleibt EIN</li>
+                  <li><strong>⚡ Leistung:</strong> Eine Quell-Maschine überschreitet einen Watt-Schwellwert. Einschalten ab X W, Ausschalten unter Y W (Hysterese verhindert Flackern).
+                    <div class="help-tip">Beispiel: Tischkreissäge ≥ 150 W → Absaugung EIN. Nachlauf 60 s damit Späne vollständig abgesaugt werden.</div>
+                  </li>
+                  <li><strong>🕐 Zeitplan:</strong> Aktuelle Zeit liegt im konfigurierten Fenster (Wochentage + Von–Bis).
+                    <div class="help-tip">Beispiel: Mo–Fr 08:00–18:00 → Kaffeemaschine EIN.</div>
+                  </li>
+                  <li><strong>🏠 Raum geöffnet:</strong> Der Raum-Öffnungsstatus im Dashboard ist aktiv. Kann manuell oder automatisch beim ersten Gast-Login des Tages gesetzt werden.</li>
+                  <li><strong>👤 Aktive Session:</strong> Mindestens eine Maschinen-Session ist aktiv. Nützlich um Geräte nur einzuschalten solange jemand im Space arbeitet.
+                    <div class="help-tip">Mit Nachlaufzeit kombinierbar: Session-aktiv + Nachlauf 30 min = Lüftung läuft 30 min nach letzter Session weiter.</div>
+                  </li>
                 </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Raum-Öffnungsstatus</div>
+              <div class="help-article-body">
+                Der Raum-Status ist oben im Dashboard sichtbar. Er kann:
+                <ul style="margin-top:8px">
+                  <li><strong>Manuell</strong> über «🟢 Öffnen» / «🔴 Schliessen» gesetzt werden</li>
+                  <li><strong>Automatisch</strong> beim ersten Gast-Login des Tages geöffnet werden (konfigurierbar unter Einstellungen → «Automatisch öffnen»)</li>
+                </ul>
+                Regeln mit der Bedingung «Raum geöffnet» werden nur ausgeführt wenn der Status aktiv ist — ideal für Spaces die nicht täglich geöffnet sind.
               </div>
             </div>
             <div class="help-article">
               <div class="help-article-title">Watcher-Status (Live-Anzeige)</div>
               <div class="help-article-body">
-                In der Automationen-Liste wird der aktuelle Zustand des Watchers angezeigt:
+                In der Regelliste wird der aktuelle Watcher-Status angezeigt:
                 <ul style="margin-top:8px">
-                  <li><strong>● aktiv</strong> — Quell-Maschine über Einschaltschwelle, Ziel ist EIN</li>
-                  <li><strong>⏱ Nachlauf Xs</strong> — Countdown läuft, Ziel schaltet bald AUS</li>
-                  <li><strong>○ bereit</strong> — Quell-Maschine unter Schwelle, Ziel ist AUS, wartet auf Trigger</li>
+                  <li><strong style="color:#22c55e">● AN</strong> — alle Bedingungen erfüllt, Ziel-Maschine eingeschaltet</li>
+                  <li><strong style="color:var(--accent)">⏱ Xs</strong> — Bedingungen nicht mehr erfüllt, Nachlauf läuft</li>
+                  <li><strong style="color:var(--text-muted)">● AUS</strong> — Bedingungen nicht erfüllt, Ziel-Maschine ausgeschaltet</li>
                 </ul>
-                Der Status aktualisiert sich automatisch alle 30 Sekunden (Dashboard-Intervall).
               </div>
             </div>
             <div class="help-article">
-              <div class="help-article-title">Automation deaktivieren / löschen</div>
+              <div class="help-article-title">Regel deaktivieren / löschen</div>
               <div class="help-article-body">
                 <ul>
-                  <li><strong>Deaktivieren:</strong> Checkbox «Aktiv» deaktivieren — Regel bleibt gespeichert, wird aber nicht mehr ausgeführt</li>
-                  <li><strong>Löschen:</strong> 🗑-Symbol — Regel wird dauerhaft entfernt. Wird die Quell- oder Ziel-Maschine gelöscht, wird die Automation automatisch mitgelöscht.</li>
+                  <li><strong>Deaktivieren:</strong> Checkbox «Aktiv» — Regel bleibt gespeichert, wird nicht ausgeführt</li>
+                  <li><strong>Löschen:</strong> ✕-Symbol — dauerhaft entfernt</li>
                 </ul>
-                <div class="help-warn"><strong>Hinweis:</strong> Beim Deaktivieren oder Löschen wird die Ziel-Maschine <em>nicht</em> automatisch ausgeschaltet — der Zustand bleibt wie er ist.</div>
+                <div class="help-warn">Beim Deaktivieren oder Löschen wird die Ziel-Maschine <em>nicht</em> automatisch ausgeschaltet.</div>
               </div>
             </div>
           </div>
@@ -1652,11 +1663,12 @@
               <div class="help-article-body">
                 Neben den automatischen Gast-Topics können eigene ntfy-Kanäle für betriebliche Benachrichtigungen hinterlegt werden (z.B. für Notfall-Alarm-Meldungen an das Team).
                 <ol style="margin-top:8px">
-                  <li>Sidebar → <strong>Einstellungen → Benachrichtigungen</strong> → Abschnitt «ntfy-Topics»</li>
-                  <li>«+ Topic hinzufügen» → Schlüssel, Topic-URL und Beschreibung eingeben</li>
-                  <li>Das neue Topic steht dann unter <strong>Einstellungen → Notfall-Alarm → ntfy-Topic</strong> zur Auswahl</li>
+                  <li>Sidebar → <strong>Benachrichtigungen</strong> → «+ Topic hinzufügen»</li>
+                  <li><strong>Anzeigename</strong> und <strong>Topic-String</strong> eingeben (geheimen, schwer erratbaren String wählen)</li>
+                  <li>QR-Code scannen mit der ntfy-App um das Topic zu abonnieren</li>
+                  <li>Das Topic steht dann unter <strong>Einstellungen → Notfall-Alarm → ntfy-Topic</strong> zur Auswahl</li>
                 </ol>
-                <div class="help-tip"><strong>Unterschied zu Gast-Topics:</strong> Gast-Topics sind automatisch generiert und dienen der persönlichen Benachrichtigung (Warteschlange). Manager-Topics sind manuell konfigurierte Kanäle für Alarm- und Systemmeldungen.</div>
+                <div class="help-tip"><strong>Unterschied zu Gast-Topics:</strong> Gast-Topics sind automatisch generiert für persönliche Benachrichtigungen (Warteschlange). Manager-Topics sind manuell konfigurierte Kanäle für Alarm- und Systemmeldungen.</div>
               </div>
             </div>
           </div>
@@ -2072,7 +2084,7 @@
             <div class="help-article">
               <div class="help-article-title">Was ist im Backup enthalten?</div>
               <div class="help-article-body">
-                <strong>Enthalten:</strong> Einstellungen, Benutzer, Gäste, Maschinen, Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Mitteilungen, ntfy-Topics.<br><br>
+                <strong>Enthalten:</strong> Einstellungen, Benutzer, Gäste, Maschinen, Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Mitteilungen, ntfy-Topics, Automationsregeln.<br><br>
                 <strong>Nicht enthalten:</strong> Aktive Warteschlangen-Einträge und NFC-Gast-Tokens (temporäre Laufzeitdaten, die nach einem Restore automatisch neu erstellt werden).
               </div>
             </div>
