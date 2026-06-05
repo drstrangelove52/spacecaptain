@@ -36,7 +36,7 @@ class ConditionIn(BaseModel):
 
 
 class RuleIn(BaseModel):
-    name:              str           = ""
+    name:              str
     action_type:       str           = "machine"  # machine | room_open | room_close | notify
     target_machine_id: Optional[int] = None
     off_delay_sec:     int           = 0

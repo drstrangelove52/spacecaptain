@@ -5158,8 +5158,8 @@ function _ruleModalBody(r) {
   const at = r?.action_type || 'machine';
   const isMachine = at === 'machine';
   return `
-    <div class="form-group"><label class="form-label">Name (optional)</label>
-      <input class="form-input" id="rule-name" value="${escHtml(r?.name||'')}" placeholder="z.B. Absaugung">
+    <div class="form-group"><label class="form-label">Name</label>
+      <input class="form-input" id="rule-name" value="${escHtml(r?.name||'')}" placeholder="z.B. Absaugung" required>
     </div>
     <div class="form-group"><label class="form-label">Aktion</label>
       <select class="form-input" id="rule-action" onchange="_onActionTypeChange(this.value)" ${r?'disabled':''}>
@@ -5217,6 +5217,7 @@ function _onActionTypeChange(val) {
 
 function _collectRule() {
   const name       = document.getElementById('rule-name').value.trim();
+  if (!name) { showToast('Regelname ist obligatorisch', 'error'); document.getElementById('rule-name').focus(); return null; }
   const action_type = (document.getElementById('rule-action')?.value) || 'machine';
   const delay      = parseInt(document.getElementById('rule-delay')?.value) || 0;
   let target_machine_id = null;
