@@ -69,15 +69,20 @@ async def _build_export_data(db: AsyncSession) -> dict:
 
     plug_by_id = {p.id: p.plug_ip for p in plugs}
 
+    # Settings: emergency_plug_id/-2_id als IP-Referenz exportieren (DB-IDs sind instanzspezifisch)
+    _settings_dict = {
+        col.key: getattr(cfg, col.key)
+        for col in inspect(SystemSettings).mapper.column_attrs
+        if col.key not in ("id", "emergency_plug_id", "emergency_plug2_id")
+    }
+    _settings_dict["emergency_plug_ip_ref"]  = plug_by_id.get(cfg.emergency_plug_id)  if cfg.emergency_plug_id  else None
+    _settings_dict["emergency_plug2_ip_ref"] = plug_by_id.get(cfg.emergency_plug2_id) if cfg.emergency_plug2_id else None
+
     return {
         "version": "3.0",
         "app_version": APP_VERSION,
         "exported_at": datetime.utcnow().isoformat(),
-        "settings": {
-            col.key: getattr(cfg, col.key)
-            for col in inspect(SystemSettings).mapper.column_attrs
-            if col.key != "id"
-        },
+        "settings": _settings_dict,
         "ntfy_topics": [{
             "key":         t.key,
             "topic":       t.topic,
@@ -421,8 +426,18 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
 
     await db.flush()
 
-    # Plug-Map für Verlinkung mit Maschinen
+    # Plug-Map für Verlinkung mit Maschinen + Notfall-Plugs
     plug_ip_map = {p.plug_ip: p.id for p in (await db.execute(select(Plug))).scalars().all()}
+
+    # Notfall-Plugs: IP-Referenz → ID auflösen (instanzunabhängig)
+    _es = payload.get("settings", {})
+    if "emergency_plug_ip_ref" in _es or "emergency_plug2_ip_ref" in _es:
+        _cfg = await get_system_settings(db)
+        if "emergency_plug_ip_ref" in _es:
+            _cfg.emergency_plug_id = plug_ip_map.get(_es.get("emergency_plug_ip_ref"))
+        if "emergency_plug2_ip_ref" in _es:
+            _cfg.emergency_plug2_id = plug_ip_map.get(_es.get("emergency_plug2_ip_ref"))
+        await db.flush()
 
     # ── Maschinen ─────────────────────────────────────────
     existing_machines = {m.qr_token: m for m in (await db.execute(select(Machine))).scalars().all()}

@@ -138,6 +138,14 @@ Bei neuen Einstellungsfeldern müssen **drei Stellen** aktualisiert werden:
 
 Die Einstellungs-Seite im Frontend ist als Hilfe-Layout organisiert (7 Kategorien: System, Display, Aushänge, AGB, Push-Nachrichten, Notfall-Alarm, Auto-Backup). Neue Felder in der passenden Kategorie ergänzen.
 
+## Notfall-Alarm
+
+- Sirene und Blinklicht werden über den **Plug-Pool** konfiguriert: `emergency_plug_id` und `emergency_plug2_id` in `SystemSettings` (FK auf `plugs.id`)
+- `_switch_emergency_plugs(plug1_id, plug2_id, action, db)` in `routers/emergency.py` lädt den Plug per ID aus der DB
+- `_auto_stop_plugs(plug1_id, plug2_id, duration_sec)` läuft als asyncio-Task und öffnet nach dem Sleep eine eigene DB-Session (`AsyncSessionLocal`) — die Request-Session ist zu diesem Zeitpunkt längst geschlossen
+
+**Backup-Besonderheit:** `emergency_plug_id`/`emergency_plug2_id` sind DB-interne IDs. Im Backup werden sie als `emergency_plug_ip_ref`/`emergency_plug2_ip_ref` (Plug-IP-Adresse) exportiert und beim Import nach Plug-Import wieder zu IDs aufgelöst. So bleibt ein Restore auf einer anderen Instanz korrekt.
+
 ## Rollen
 
 - **Admin**: voller Zugriff, darf Gäste/Maschinen löschen
@@ -185,3 +193,4 @@ docker compose exec db mariadb -u spacecaptain -p spacecaptain
 - Neue Settings-Felder nur in `models.py` eintragen — `SettingsOut`/`SettingsUpdate` in `settings.py` und Migration vergessen
 - Bei `automations.py` Log-Nachrichten `tm.name` verwenden ohne zu prüfen ob `tm` None ist — bei `room_open`/`room_close`/`notify`-Aktionen gibt es keine Ziel-Maschine
 - Neue Backup-Sektionen ohne `payload.get("sektion", [])` lesen — bricht ältere Backups
+- `emergency_plug_id`/`emergency_plug2_id` direkt in den Settings exportieren — sind DB-interne IDs, müssen als IP-Referenz exportiert und beim Import aufgelöst werden (siehe Notfall-Alarm-Sektion)

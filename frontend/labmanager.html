@@ -6061,7 +6061,7 @@ function _plugOptionLabel(p, excludeMachineId) {
 function _fillEmergencyPlugDropdowns() {
   const opts = '<option value="">— Kein Plug —</option>' +
     [..._plugs].sort((a,b)=>a.name.localeCompare(b.name,'de'))
-      .map(p=>`<option value="${p.id}">${escHtml(p.name)} · ${_plugTypeLabel(p.plug_type)} · ${escHtml(p.plug_ip)}</option>`)
+      .map(p=>`<option value="${p.id}">${escHtml(_plugOptionLabel(p, null))}</option>`)
       .join('');
   const d1 = document.getElementById('cfg-emergency-plug-id');
   const d2 = document.getElementById('cfg-emergency-plug2-id');
