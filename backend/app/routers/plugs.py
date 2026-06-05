@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.database import get_db
-from app.models import Plug, Machine, MachinePlug, User, PlugType
+from app.models import Plug, Machine, MachinePlug, SystemSettings, User, PlugType
 from app.schemas import PlugCreate, PlugUpdate, PlugOut
 from app.services.auth import get_current_user
 from app.services.plug import switch_plug
@@ -22,7 +22,17 @@ async def _plug_out(plug: Plug, db: AsyncSession) -> dict:
         .where(MachinePlug.plug_id == plug.id)
         .order_by(MachinePlug.sort_order)
     )
-    rows = res.all()
+    machines = [{"id": r[0], "name": r[1]} for r in res.all()]
+
+    # Notfall-Alarm: Sirene / Blinklicht ebenfalls anzeigen
+    cfg_res = await db.execute(select(SystemSettings).where(SystemSettings.id == 1))
+    cfg = cfg_res.scalar_one_or_none()
+    if cfg:
+        if cfg.emergency_plug_id == plug.id:
+            machines.append({"id": None, "name": "🚨 Sirene"})
+        if cfg.emergency_plug2_id == plug.id:
+            machines.append({"id": None, "name": "🚨 Blinklicht"})
+
     return {
         "id": plug.id,
         "name": plug.name,
@@ -31,7 +41,7 @@ async def _plug_out(plug: Plug, db: AsyncSession) -> dict:
         "plug_token": plug.plug_token,
         "notes": plug.notes,
         "created_at": plug.created_at,
-        "machines": [{"id": r[0], "name": r[1]} for r in rows],
+        "machines": machines,
     }
 
 
