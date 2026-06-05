@@ -129,7 +129,7 @@ async def _send_rule_notification(rule: AutomationRule, settings, db) -> None:
     if ok:
         log.info(f"Regel {rule.id} '{rule.name}': ntfy gesendet an {topic.topic}")
         await log_svc.log(db, LogType.rule_notify,
-                          f"Regel '{rule.name or rule.id}': Benachrichtigung gesendet")
+                          f"Regel '{rule.name}': Benachrichtigung gesendet")
     else:
         log.warning(f"Regel {rule.id}: ntfy fehlgeschlagen")
 
@@ -179,7 +179,7 @@ async def _process(rule: AutomationRule, room_open: bool, db) -> None:
                 log.info(f"Regel {rule.id} '{rule.name}': {tgt.name} EIN")
                 tgt_id = tgt.id
                 await log_svc.log(db, LogType.rule_on,
-                                  f"Regel '{rule.name or rule.id}': {tgt.name} EIN",
+                                  f"Regel '{rule.name}': {tgt.name} EIN",
                                   machine_id=tgt_id)
                 tgt = (await db.execute(select(Machine).where(Machine.id == tgt_id))).scalar_one_or_none()
                 if tgt and not tgt.session_started_at:
@@ -204,7 +204,7 @@ async def _process(rule: AutomationRule, room_open: bool, db) -> None:
                         log.info(f"Regel {rule.id} '{rule.name}': {tgt.name} AUS (nach {elapsed:.0f}s)")
                         tgt_id = tgt.id
                         await log_svc.log(db, LogType.rule_off,
-                                          f"Regel '{rule.name or rule.id}': {tgt.name} AUS",
+                                          f"Regel '{rule.name}': {tgt.name} AUS",
                                           machine_id=tgt_id)
                         tgt = (await db.execute(select(Machine).where(Machine.id == tgt_id))).scalar_one_or_none()
                         if tgt and tgt.session_started_at:

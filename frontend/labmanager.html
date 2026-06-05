@@ -3561,7 +3561,7 @@ function showAddMachine() {
       <input type="checkbox" id="mc-force-off" style="width:16px;height:16px;cursor:pointer;accent-color:var(--danger);margin-top:2px;flex-shrink:0">
       <div>
         <label class="form-label" style="margin-bottom:2px;cursor:pointer" for="mc-force-off">Bei Raumschluss ausschalten</label>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Wenn aktiviert: Gerät wird automatisch ausgeschaltet wenn der Raum geschlossen wird (z.B. Kaffeemaschine, Lötstation).</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Wenn aktiviert: Gerät wird automatisch ausgeschaltet wenn ${_spaceName} geschlossen wird (z.B. Kaffeemaschine, Lötstation).</div>
       </div>
     </div>
   `, async()=>{
@@ -3687,7 +3687,7 @@ function editMachine(id) {
       <input type="checkbox" id="e-force-off" ${m.force_off_on_close?'checked':''} style="width:16px;height:16px;cursor:pointer;accent-color:var(--danger);margin-top:2px;flex-shrink:0">
       <div>
         <label class="form-label" style="margin-bottom:2px;cursor:pointer" for="e-force-off">Bei Raumschluss ausschalten</label>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Wenn aktiviert: Gerät wird automatisch ausgeschaltet wenn der Raum geschlossen wird (z.B. Kaffeemaschine, Lötstation).</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Wenn aktiviert: Gerät wird automatisch ausgeschaltet wenn ${_spaceName} geschlossen wird (z.B. Kaffeemaschine, Lötstation).</div>
       </div>
     </div>
   `, async()=>{
@@ -4444,7 +4444,7 @@ if (_ltParam) {
   GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=u.role==='admin'?'':'none';document.getElementById('nav-backup').style.display=u.role==='admin'?'':'none';document.getElementById('nav-notifications').style.display=u.role==='admin'?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
 }
 document.getElementById('login-pass').addEventListener('keydown',e=>{ if (e.key==='Enter') doLogin(); });
-fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){document.getElementById('login-space-sub').textContent=n;document.getElementById('sidebar-space-sub').textContent=n;}}).catch(()=>{});
+fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){_spaceName=n;document.getElementById('login-space-sub').textContent=n;document.getElementById('sidebar-space-sub').textContent=n;}}).catch(()=>{});
 setInterval(()=>{ if(document.querySelector('.nav-item.active')?.dataset.page==='log') loadLog(); },30000);
 // ═══════════════════════════════════════════════════════
 // EINSTELLUNGEN
@@ -4504,7 +4504,7 @@ async function loadSettings() {
   document.getElementById('cfg-auto-backup-keep').value = s.auto_backup_keep ?? 30;
   document.getElementById('cfg-space-name').value = s.space_name ?? '';
   const _sn = s.space_name || '';
-  if (_sn) { document.getElementById('sidebar-space-sub').textContent = _sn; document.getElementById('login-space-sub').textContent = _sn; }
+  if (_sn) { _spaceName = _sn; document.getElementById('sidebar-space-sub').textContent = _sn; document.getElementById('login-space-sub').textContent = _sn; }
   // Topic-Dropdown füllen und Auswahl setzen
   _emergencyNtfyTopicId = s.emergency_ntfy_topic_id;
   const h = s.jwt_expire_minutes >= 60
@@ -4878,6 +4878,7 @@ async function deleteBackupFile(filename) {
 // ── Raum-Status ───────────────────────────────────────────────────────────────
 
 let _roomStatus = {room_open: false, room_open_since: null, room_open_auto: true};
+let _spaceName = 'Raum';
 
 async function loadRoomStatus() {
   const data = await apiSilent('GET', '/settings/room');
@@ -4900,7 +4901,7 @@ function renderRoomStatus() {
     bar.style.borderColor = 'rgba(34,197,94,.4)';
     dot.style.background  = '#22c55e';
     dot.style.boxShadow   = '0 0 6px rgba(34,197,94,.6)';
-    label.textContent     = 'Raum geöffnet';
+    label.textContent     = `${_spaceName} geöffnet`;
     label.style.color     = '#22c55e';
     since.textContent     = '';
     btnO.style.display = 'none';
@@ -4910,7 +4911,7 @@ function renderRoomStatus() {
     bar.style.borderColor = 'var(--border)';
     dot.style.background  = 'var(--text-muted)';
     dot.style.boxShadow   = 'none';
-    label.textContent     = 'Raum geschlossen';
+    label.textContent     = `${_spaceName} geschlossen`;
     label.style.color     = 'var(--text-muted)';
     since.textContent     = '';
     btnO.style.display = '';
@@ -4924,7 +4925,7 @@ async function setRoomStatus(open) {
     _roomStatus.room_open = data.room_open;
     _roomStatus.room_open_since = open ? new Date().toISOString() : null;
     renderRoomStatus();
-    showToast(open ? 'Raum geöffnet' : 'Raum geschlossen', open ? 'success' : 'warn');
+    showToast(open ? `${_spaceName} geöffnet` : `${_spaceName} geschlossen`, open ? 'success' : 'warn');
   }
 }
 
@@ -4933,7 +4934,7 @@ async function setRoomStatus(open) {
 const COND_LABELS = {
   power:          '⚡ Leistung',
   schedule:       '🕐 Zeitplan',
-  room_open:      '🏠 Raum geöffnet',
+  get room_open() { return `🏠 ${_spaceName} geöffnet`; },
   session_active: '👤 Aktive Session',
 };
 
@@ -5008,9 +5009,9 @@ function _renderAutomationsList(rules) {
     const chips  = r.conditions.map(_condChip).join(' ');
     const delay  = r.off_delay_sec > 0 ? `<span style="font-size:11px;color:var(--text-muted)">Nachlauf ${r.off_delay_sec}s</span>` : '';
     const actionChip = r.action_type === 'room_open'
-      ? `<span style="font-size:11px;color:var(--success);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:1px 7px">🟢 Raum öffnen</span>`
+      ? `<span style="font-size:11px;color:var(--success);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:1px 7px">🟢 ${_spaceName} öffnen</span>`
       : r.action_type === 'room_close'
-        ? `<span style="font-size:11px;color:var(--danger);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:1px 7px">🔴 Raum schliessen</span>`
+        ? `<span style="font-size:11px;color:var(--danger);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:1px 7px">🔴 ${_spaceName} schliessen</span>`
         : r.action_type === 'notify'
           ? `<span style="font-size:11px;color:var(--accent2);background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);border-radius:4px;padding:1px 7px">🔔 Push-Nachricht</span>`
           : '';
@@ -5024,7 +5025,7 @@ function _renderAutomationsList(rules) {
     return `<div class="machine-card" style="margin-bottom:10px;padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
       <div style="flex:1;min-width:200px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
-          <strong>${escHtml(r.name || r.target_machine_name || (r.action_type==='room_open'?'Raum öffnen':r.action_type==='room_close'?'Raum schliessen':'Push-Nachricht'))}</strong>
+          <strong>${escHtml(r.name || r.target_machine_name || (r.action_type==='room_open'?`${_spaceName} öffnen`:r.action_type==='room_close'?`${_spaceName} schliessen`:'Push-Nachricht'))}</strong>
           ${targetLabel}
           ${actionChip}
           ${stateChip}
@@ -5163,13 +5164,13 @@ function _ruleModalBody(r) {
     <div class="form-group"><label class="form-label">Aktion</label>
       <select class="form-input" id="rule-action" onchange="_onActionTypeChange(this.value)" ${r?'disabled':''}>
         <option value="machine"    ${at==='machine'   ?'selected':''}>🏭 Maschine schalten</option>
-        <option value="room_open"  ${at==='room_open' ?'selected':''}>🟢 Raum öffnen</option>
-        <option value="room_close" ${at==='room_close'?'selected':''}>🔴 Raum schliessen</option>
+        <option value="room_open"  ${at==='room_open' ?'selected':''}>🟢 ${_spaceName} öffnen</option>
+        <option value="room_close" ${at==='room_close'?'selected':''}>🔴 ${_spaceName} schliessen</option>
         <option value="notify"     ${at==='notify'    ?'selected':''}>🔔 Push-Nachricht senden</option>
       </select>
     </div>
     <div id="rule-room-hint" style="display:${at==='room_open'||at==='room_close'?'block':'none'};margin:-4px 0 12px;padding:10px 12px;background:rgba(244,166,34,.08);border:1px solid rgba(244,166,34,.3);border-radius:8px;font-size:12px;color:var(--text-mid);line-height:1.5">
-      <strong style="color:var(--accent)">Hinweis:</strong> Das Ende des Zeitplans führt <em>nicht</em> automatisch die Gegenaktion aus. Für zeitgesteuertes Öffnen <em>und</em> Schliessen zwei separate Regeln anlegen — eine mit «Raum öffnen», eine mit «Raum schliessen».
+      <strong style="color:var(--accent)">Hinweis:</strong> Das Ende des Zeitplans führt <em>nicht</em> automatisch die Gegenaktion aus. Für zeitgesteuertes Öffnen <em>und</em> Schliessen zwei separate Regeln anlegen — eine mit «${_spaceName} öffnen», eine mit «${_spaceName} schliessen».
     </div>
     <div id="rule-target-row" class="form-group" style="${isMachine?'':'display:none'}">
       <label class="form-label">Ziel-Maschine</label>
