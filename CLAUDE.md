@@ -24,6 +24,7 @@ Alle Services laufen in Docker Compose. Die Konfiguration erfolgt via `.env`.
 **Frontend:**
 - Eine einzige `labmanager.html` — kein Build-Schritt, kein Framework
 - `GET/POST/PATCH/DELETE`-Wrapper: `api()`, `GET()`, `POST()`, `PATCH()`, `DELETE()` in der HTML-Datei
+- `DELETE()` unterstützt optionalen Body: `DELETE(path, body)`
 - `downloadBackupFile()` nutzt eigenen `fetch`-Aufruf (braucht Blob-Handling, nicht JSON)
 
 ## Wichtige Dateien
@@ -36,7 +37,9 @@ backend/app/
   services/room.py           — open_room() / close_room() mit force_off-Logik
   services/session.py        — Idle-Watcher, Plug-Watcher
   services/backup_service.py — Backup-Logik, BACKUP_DIR, backup_watcher()
-  routers/automations.py     — Regelwerk CRUD (action_type: machine|room_open|room_close)
+  routers/automations.py     — Regelwerk CRUD (action_type: machine|room_open|room_close|notify)
+  routers/categories.py      — Maschinenkategorien CRUD
+  routers/locations.py       — Maschinenstandorte CRUD
   routers/guest_auth.py      — Gast-Zugang inkl. Raum-Sperre
   routers/backup.py          — Backup REST-Endpoints
 
@@ -66,6 +69,8 @@ Migrationen laufen **bei jedem Backend-Start** in `backend/app/services/migrate.
 - Neue Top-Level-Sektionen mit `payload.get("sektion", [])` lesen
 - Nie `payload["key"]` ohne Existenzprüfung
 
+**Was ist im Backup enthalten:** Einstellungen, Benutzer, Gäste, Maschinen, Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln, Standorte.
+
 ## Hintergrund-Tasks
 
 In `backend/app/main.py` werden 5 Tasks im FastAPI-Lifespan gestartet:
@@ -82,14 +87,19 @@ Alle Tasks werden beim Shutdown mit `.cancel()` beendet.
 
 ## Automations-Regelwerk
 
-Jede Regel hat einen `action_type` (`machine` / `room_open` / `room_close`) und beliebig viele AND-verknüpfte Bedingungen (`power`, `schedule`, `room_open`, `session_active`).
+Jede Regel hat einen `action_type` (`machine` / `room_open` / `room_close` / `notify`) und beliebig viele AND-verknüpfte Bedingungen (`power`, `schedule`, `room_open`, `session_active`).
 
 **Zustandsautomat pro Regel:** `idle` → `on` → `countdown` → `idle`
 
-**Wichtiges Verhalten bei Raum-Aktionen (`room_open` / `room_close`):**
+**Aktionstypen:**
+- `machine`: schaltet Ziel-Maschine (mit Plug) ein/aus, Nachlaufzeit möglich
+- `room_open` / `room_close`: feuert einmalig (idle → on), kein target_machine_id nötig
+- `notify`: sendet ntfy-Push an `notify_topic_id` mit `notify_message`, feuert einmalig
+
+**Wichtiges Verhalten bei Raum- und Notify-Aktionen:**
 - Die Aktion feuert **einmalig** wenn alle Bedingungen wahr werden (idle → on)
-- Wenn Bedingungen wieder falsch werden, wird nur der Rule-State auf `idle` zurückgesetzt — der Raum-Status in der DB bleibt unverändert
-- Das Zeitplan-Ende (`time_off`) schiesst den Raum **nicht** automatisch — es setzt nur den State zurück damit die Regel am nächsten Tag wieder feuern kann
+- Wenn Bedingungen wieder falsch werden, wird nur der Rule-State auf `idle` zurückgesetzt
+- Das Zeitplan-Ende (`time_off`) schiesst den Raum/Notify **nicht** automatisch — setzt nur State zurück
 - Für zeitgesteuertes Öffnen **und** Schliessen braucht es zwei separate Regeln
 
 **Raum-Bedingung (`room_open`) ist bei Raum-Aktionen nicht sinnvoll** und im UI ausgefiltert.
@@ -101,6 +111,14 @@ OR-Verknüpfung in Bedingungen ist bewusst nicht implementiert — zwei separate
 - `force_off_on_close` Flag pro Maschine: beim Raumschluss werden nur Maschinen mit diesem Flag ausgeschaltet (z.B. Kaffeemaschine, Lötstation). 3D-Drucker laufen über Nacht weiter.
 - Laufende Maschinen-Sessions werden beim Raumschluss **nicht** unterbrochen (by design). Der Gast kann die Maschine noch ausschalten, neue Sessions sind aber gesperrt.
 - Gast-App: HTTP 403 vom Backend enthält `detail: "Raum ist geschlossen"` und wird im UI als eigenes Panel angezeigt (kein stiller Logout).
+
+## Maschinenkategorien und Standorte
+
+- Kategorien (`machine_categories`) und Standorte (`machine_locations`) sind vordefinierte Listen, die in den Maschinen-Formularen als `<select>` erscheinen.
+- Verwaltung via Topbar-Buttons «⚙ Kategorien» und «⚙ Standorte» auf der Maschinen-Seite.
+- **CSV-Import** legt fehlende Kategorien und Standorte automatisch an (`import/confirm`-Endpoint in `routers/machines.py`).
+- Beide Tabellen sind vollständig im Backup enthalten.
+- Frontend: `cache.categories` / `cache.locations`, `_catOptions()` / `_locOptions()`, `_refreshCatFilter()` / `_refreshLocFilter()`.
 
 ## Zeitzone
 
@@ -118,6 +136,8 @@ Bei neuen Einstellungsfeldern müssen **drei Stellen** aktualisiert werden:
 2. `backend/app/routers/settings.py` — `SettingsOut`, `SettingsUpdate`, PATCH-Handler
 3. `backend/app/services/migrate.py` — Migration + `db/init.sql`
 
+Die Einstellungs-Seite im Frontend ist als Hilfe-Layout organisiert (7 Kategorien: System, Display, Aushänge, AGB, Push-Nachrichten, Notfall-Alarm, Auto-Backup). Neue Felder in der passenden Kategorie ergänzen.
+
 ## Rollen
 
 - **Admin**: voller Zugriff, darf Gäste/Maschinen löschen
@@ -129,13 +149,17 @@ Bei neuen Einstellungsfeldern müssen **drei Stellen** aktualisiert werden:
 
 Beim Overwrite-Restore: falls `is_blocked` sich ändert, wird ein neuer `ActivityLog`-Eintrag geschrieben, damit die Historie den wiederhergestellten Zustand zeigt.
 
+## Terminologie
+
+- **Aushänge** (nicht "Mitteilungen"): zeitgesteuerte Ankündigungen für Gäste (`announcements`)
+- **Push-Nachrichten** (nicht "Benachrichtigungen"): ntfy-basierte Push-Nachrichten
+
 ## Bekannte Einschränkungen / Offene Punkte
 
 | Thema | Beschreibung |
 |---|---|
 | Raum-Session-Hinweis | Wenn Raum bei laufender Session geschlossen wird, läuft Session weiter (by design) — kein UI-Hinweis vorhanden |
 | Doppelter Log-Eintrag | `room_close`-Regel mit Zeitplan triggert täglich neu → kosmetisch doppelter Log |
-| Zeitgesteuerter Raum | Technisch möglich via zwei Automationsregeln, kein dedizierter UI-Workflow |
 | API Raum-Steuerung | `open_room()` / `close_room()` in `services/room.py` bereit, kein öffentlicher API-Endpoint (z.B. für Home Assistant / Türöffner) |
 
 ## Häufige Befehle
@@ -159,4 +183,5 @@ docker compose exec db mariadb -u spacecaptain -p spacecaptain
 - `--reload` ohne `--reload-dir /app/app` — WatchFiles überwacht sonst `/app/backups` und löst bei jedem neuen Backup-File einen Reload aus
 - Imports aus `backup.py` auf Modulebene in `backup_service.py` — zirkulärer Import
 - Neue Settings-Felder nur in `models.py` eintragen — `SettingsOut`/`SettingsUpdate` in `settings.py` und Migration vergessen
-- Bei `automations.py` Log-Nachrichten `tm.name` verwenden ohne zu prüfen ob `tm` None ist — bei `room_open`/`room_close`-Aktionen gibt es keine Ziel-Maschine
+- Bei `automations.py` Log-Nachrichten `tm.name` verwenden ohne zu prüfen ob `tm` None ist — bei `room_open`/`room_close`/`notify`-Aktionen gibt es keine Ziel-Maschine
+- Neue Backup-Sektionen ohne `payload.get("sektion", [])` lesen — bricht ältere Backups
