@@ -14,7 +14,6 @@ async def get_system_settings(db: AsyncSession) -> SystemSettings:
             id=1,
             nfc_writer_url=env.nfc_writer_url,
             jwt_expire_minutes=env.jwt_expire_minutes,
-            guest_token_days=365,
         )
         db.add(row)
         await db.commit()

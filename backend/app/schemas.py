@@ -176,10 +176,6 @@ class PermissionOut(BaseModel):
 
 
 # ── QR / Plug ─────────────────────────────────────────────
-class QRScanRequest(BaseModel):
-    guest_token: str   # Gast-Login-Token (aus QR-Code des Gastes oder Session)
-    machine_qr: str    # QR-Token der Maschine
-
 class PlugActionRequest(BaseModel):
     machine_id: int
     action: str  # "on" | "off"

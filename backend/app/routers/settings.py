@@ -16,7 +16,6 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 class SettingsOut(BaseModel):
     nfc_writer_url: str
     jwt_expire_minutes: int
-    guest_token_days: int
     modal_backdrop_input: bool
     modal_backdrop_display: bool
     queue_reservation_minutes: int
@@ -58,7 +57,6 @@ class SettingsOut(BaseModel):
 class SettingsUpdate(BaseModel):
     nfc_writer_url: Optional[str] = None
     jwt_expire_minutes: Optional[int] = None
-    guest_token_days: Optional[int] = None
     modal_backdrop_input: Optional[bool] = None
     modal_backdrop_display: Optional[bool] = None
     queue_reservation_minutes: Optional[int] = None
@@ -128,8 +126,6 @@ async def update_settings(
         row.nfc_writer_url = payload.nfc_writer_url
     if payload.jwt_expire_minutes is not None:
         row.jwt_expire_minutes = max(5, payload.jwt_expire_minutes)
-    if payload.guest_token_days is not None:
-        row.guest_token_days = max(1, payload.guest_token_days)
     if payload.modal_backdrop_input is not None:
         row.modal_backdrop_input = payload.modal_backdrop_input
     if payload.modal_backdrop_display is not None:

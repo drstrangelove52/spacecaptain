@@ -122,17 +122,6 @@ class Guest(Base):
     login_token:   Mapped[Optional[str]]       = mapped_column(String(64), unique=True, nullable=True)
     ntfy_topic:    Mapped[Optional[str]]       = mapped_column(String(80), unique=True, nullable=True)
     permissions:   Mapped[list["Permission"]] = relationship("Permission", back_populates="guest", cascade="all, delete-orphan")
-    tokens:        Mapped[list["GuestToken"]] = relationship("GuestToken", back_populates="guest", cascade="all, delete-orphan")
-
-
-class GuestToken(Base):
-    __tablename__ = "guest_tokens"
-    id:         Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
-    guest_id:   Mapped[int]      = mapped_column(Integer, ForeignKey("guests.id", ondelete="CASCADE"))
-    token:      Mapped[str]      = mapped_column(String(64), unique=True, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    guest:      Mapped["Guest"]  = relationship("Guest", back_populates="tokens")
 
 
 class Machine(Base):
@@ -233,7 +222,6 @@ class SystemSettings(Base):
     id:                       Mapped[int]  = mapped_column(Integer, primary_key=True, default=1)
     nfc_writer_url:           Mapped[str]  = mapped_column(String(255), default="")
     jwt_expire_minutes:       Mapped[int]  = mapped_column(Integer, default=480)
-    guest_token_days:         Mapped[int]  = mapped_column(Integer, default=365)
     modal_backdrop_input:     Mapped[bool] = mapped_column(Boolean, default=True)
     modal_backdrop_display:   Mapped[bool] = mapped_column(Boolean, default=True)
     queue_reservation_minutes:  Mapped[int] = mapped_column(Integer, default=5)
@@ -287,10 +275,12 @@ class AutomationRule(Base):
     __tablename__ = "automation_rules"
     id:                Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
     name:              Mapped[str]           = mapped_column(String(100), default="")
-    action_type:       Mapped[str]           = mapped_column(String(20), default="machine")  # machine | room_open | room_close
+    action_type:       Mapped[str]           = mapped_column(String(20), default="machine")  # machine | room_open | room_close | notify
     target_machine_id: Mapped[Optional[int]] = mapped_column(UINT(unsigned=True), ForeignKey("machines.id", ondelete="CASCADE"), nullable=True, default=None)
     off_delay_sec:     Mapped[int]           = mapped_column(Integer, default=0)
     enabled:           Mapped[bool]          = mapped_column(Boolean, default=True)
+    notify_topic_id:   Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("ntfy_topics.id", ondelete="SET NULL"), nullable=True, default=None)
+    notify_message:    Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
     created_at:        Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
     target_machine: Mapped[Optional["Machine"]]  = relationship("Machine", foreign_keys=[target_machine_id])
     conditions:     Mapped[list["RuleCondition"]] = relationship("RuleCondition", back_populates="rule", cascade="all, delete-orphan")

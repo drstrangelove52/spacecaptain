@@ -21,12 +21,13 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import select, func
 
-from app.models import AutomationRule, RuleCondition, Machine, MachineSession, LogType, SessionEndedBy
+from app.models import AutomationRule, RuleCondition, Machine, MachineSession, LogType, SessionEndedBy, NtfyTopic
 from app.services.plug import get_plug_status, switch_all_machine_plugs
 from app.services.session import start_manager_session, end_session
 from app.services import logger as log_svc
 from app.services.system_settings import get_system_settings
 from app.services.room import open_room, close_room
+from app.services.ntfy import send_notification
 from app.config import APP_TIMEZONE
 
 log = logging.getLogger(__name__)
@@ -108,6 +109,31 @@ async def _evaluate_conditions(rule_id: int, state: str, room_open: bool, db) ->
     return True
 
 
+async def _send_rule_notification(rule: AutomationRule, settings, db) -> None:
+    if not rule.notify_topic_id:
+        return
+    topic_res = await db.execute(select(NtfyTopic).where(NtfyTopic.id == rule.notify_topic_id))
+    topic = topic_res.scalar_one_or_none()
+    if not topic:
+        log.warning(f"Regel {rule.id}: ntfy-Topic {rule.notify_topic_id} nicht gefunden")
+        return
+    message = rule.notify_message or f"Automation '{rule.name or rule.id}' ausgelöst"
+    ok = await send_notification(
+        server=settings.ntfy_server,
+        token=settings.ntfy_token,
+        topic=topic.topic,
+        title=rule.name or "SpaceCaptain Automation",
+        message=message,
+        tags=["bell"],
+    )
+    if ok:
+        log.info(f"Regel {rule.id} '{rule.name}': ntfy gesendet an {topic.topic}")
+        await log_svc.log(db, LogType.rule_notify,
+                          f"Regel '{rule.name or rule.id}': Benachrichtigung gesendet")
+    else:
+        log.warning(f"Regel {rule.id}: ntfy fehlgeschlagen")
+
+
 async def _process(rule: AutomationRule, room_open: bool, db) -> None:
     state   = _state.get(rule.id, "idle")
     now     = datetime.utcnow()
@@ -124,6 +150,15 @@ async def _process(rule: AutomationRule, room_open: bool, db) -> None:
             else:
                 await close_room(db, reason="Automation")
                 log.info(f"Regel {rule.id} '{rule.name}': Raum geschlossen")
+            _state[rule.id] = "on"
+        elif not all_met and state == "on":
+            _state[rule.id] = "idle"
+        return
+
+    # ── Benachrichtigung (einmalig feuern, kein Countdown) ───────────────────
+    if action == "notify":
+        if all_met and state == "idle":
+            await _send_rule_notification(rule, settings, db)
             _state[rule.id] = "on"
         elif not all_met and state == "on":
             _state[rule.id] = "idle"

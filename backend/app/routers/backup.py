@@ -4,6 +4,7 @@ Passwort-Hashes werden mitexportiert — Backup-Datei sicher aufbewahren!
 """
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, inspect
@@ -115,6 +116,7 @@ async def _build_export_data(db: AsyncSession) -> dict:
             "idle_timeout_min": m.idle_timeout_min, "plug_poll_interval_sec": m.plug_poll_interval_sec,
             "training_required": m.training_required, "total_hours": m.total_hours,
             "comment": m.comment, "safety_notes": m.safety_notes, "qr_token": m.qr_token,
+            "force_off_on_close": m.force_off_on_close,
         } for m in machines],
         "permissions": [{
             "guest_username":    guest_by_id.get(p.guest_id),
@@ -167,7 +169,10 @@ async def _build_export_data(db: AsyncSession) -> dict:
         } for a in announcements],
         "automation_rules": [{
             "name":              r.name,
+            "action_type":       r.action_type,
             "target_machine_qr": machine_by_id.get(r.target_machine_id),
+            "notify_topic_key":  next((t.key for t in ntfy_topics if t.id == r.notify_topic_id), None),
+            "notify_message":    r.notify_message,
             "off_delay_sec":     r.off_delay_sec,
             "enabled":           r.enabled,
             "conditions": [{
@@ -179,7 +184,7 @@ async def _build_export_data(db: AsyncSession) -> dict:
                 "time_on":           c.time_on.strftime("%H:%M") if c.time_on else None,
                 "time_off":          c.time_off.strftime("%H:%M") if c.time_off else None,
             } for c in conds_by_rule.get(r.id, [])],
-        } for r in auto_rules if machine_by_id.get(r.target_machine_id)],
+        } for r in auto_rules],
         "activity_log": [{
             "type":             l.type,
             "message":          l.message,
@@ -241,6 +246,27 @@ async def delete_backup_file(
         raise HTTPException(status_code=404, detail="Datei nicht gefunden")
     path.unlink()
     return {"ok": True}
+
+
+class BulkDeleteRequest(BaseModel):
+    filenames: list[str]
+
+@router.delete("/files")
+async def delete_backup_files_bulk(
+    payload: BulkDeleteRequest,
+    _: User = Depends(require_admin),
+):
+    deleted = 0
+    for filename in payload.filenames:
+        try:
+            _validate_filename(filename)
+            path = BACKUP_DIR / filename
+            if path.exists() and path.is_file():
+                path.unlink()
+                deleted += 1
+        except Exception:
+            pass
+    return {"ok": True, "deleted": deleted}
 
 
 @router.post("/files/create")
@@ -394,6 +420,7 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
                 row.idle_power_w = m.get("idle_power_w"); row.idle_timeout_min = m.get("idle_timeout_min")
                 row.training_required = m.get("training_required", row.training_required)
                 row.comment = m.get("comment"); row.safety_notes = m.get("safety_notes")
+                row.force_off_on_close = m.get("force_off_on_close", row.force_off_on_close)
                 stats["updated"] += 1
             else:
                 stats["skipped"] += 1
@@ -408,6 +435,7 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
             plug_id=plug_id,
             idle_power_w=m.get("idle_power_w"), idle_timeout_min=m.get("idle_timeout_min"),
             comment=m.get("comment"), safety_notes=m.get("safety_notes"),
+            force_off_on_close=m.get("force_off_on_close", False),
             qr_token=m["qr_token"],
         ))
         stats["machines"] += 1
@@ -453,17 +481,24 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
     existing_rule_names = {
         r.name for r in (await db.execute(select(AutomationRule))).scalars().all()
     }
+    ntfy_topic_map = {t.key: t.id for t in (await db.execute(select(NtfyTopic))).scalars().all()}
     from datetime import time as _Time
     for r in payload.get("automation_rules", []):
-        tgt_mid = machine_map.get(r.get("target_machine_qr"))
-        if not tgt_mid:
+        action_type = r.get("action_type", "machine")
+        tgt_mid = machine_map.get(r.get("target_machine_qr")) if r.get("target_machine_qr") else None
+        # machine-Regeln brauchen eine gültige Zielmaschine
+        if action_type == "machine" and not tgt_mid:
             stats["skipped"] += 1; continue
         name = r.get("name") or ""
         if name and name in existing_rule_names:
             stats["skipped"] += 1; continue
+        notify_topic_id = ntfy_topic_map.get(r.get("notify_topic_key")) if r.get("notify_topic_key") else None
         rule = AutomationRule(
             name=name,
+            action_type=action_type,
             target_machine_id=tgt_mid,
+            notify_topic_id=notify_topic_id,
+            notify_message=r.get("notify_message"),
             off_delay_sec=r.get("off_delay_sec", 0),
             enabled=r.get("enabled", True),
         )

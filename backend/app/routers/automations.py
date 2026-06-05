@@ -37,11 +37,13 @@ class ConditionIn(BaseModel):
 
 class RuleIn(BaseModel):
     name:              str           = ""
-    action_type:       str           = "machine"  # machine | room_open | room_close
+    action_type:       str           = "machine"  # machine | room_open | room_close | notify
     target_machine_id: Optional[int] = None
     off_delay_sec:     int           = 0
     enabled:           bool          = True
     conditions:        List[ConditionIn] = []
+    notify_topic_id:   Optional[int] = None
+    notify_message:    Optional[str] = None
 
 
 class RulePatch(BaseModel):
@@ -50,6 +52,8 @@ class RulePatch(BaseModel):
     off_delay_sec:     Optional[int]             = None
     enabled:           Optional[bool]            = None
     conditions:        Optional[List[ConditionIn]] = None
+    notify_topic_id:   Optional[int]             = None
+    notify_message:    Optional[str]             = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -130,6 +134,8 @@ async def _rule_out(rule: AutomationRule, db: AsyncSession) -> dict:
         "off_delay_sec":       rule.off_delay_sec,
         "enabled":             rule.enabled,
         "conditions":          [_cond_out(c, machines) for c in conds],
+        "notify_topic_id":     rule.notify_topic_id,
+        "notify_message":      rule.notify_message,
     }
 
 
@@ -159,8 +165,8 @@ async def create_rule(
     db: AsyncSession = Depends(get_db),
     current: User = Depends(require_admin),
 ):
-    if payload.action_type not in ("machine", "room_open", "room_close"):
-        raise HTTPException(400, "action_type muss 'machine', 'room_open' oder 'room_close' sein")
+    if payload.action_type not in ("machine", "room_open", "room_close", "notify"):
+        raise HTTPException(400, "Ungültiger action_type")
     tm = None
     if payload.action_type == "machine":
         if not payload.target_machine_id:
@@ -168,6 +174,8 @@ async def create_rule(
         tm = (await db.execute(select(Machine).where(Machine.id == payload.target_machine_id))).scalar_one_or_none()
         if not tm:
             raise HTTPException(404, "Ziel-Maschine nicht gefunden")
+    if payload.action_type == "notify" and not payload.notify_topic_id:
+        raise HTTPException(400, "notify_topic_id erforderlich für action_type 'notify'")
     if not payload.conditions:
         raise HTTPException(400, "Mindestens eine Bedingung erforderlich")
 
@@ -177,6 +185,8 @@ async def create_rule(
         target_machine_id=payload.target_machine_id if payload.action_type == "machine" else None,
         off_delay_sec=max(0, payload.off_delay_sec),
         enabled=payload.enabled,
+        notify_topic_id=payload.notify_topic_id if payload.action_type == "notify" else None,
+        notify_message=payload.notify_message.strip() if payload.notify_message else None,
     )
     db.add(rule)
     await db.flush()
@@ -215,6 +225,10 @@ async def update_rule(
         rule.off_delay_sec = max(0, payload.off_delay_sec)
     if payload.enabled is not None:
         rule.enabled = payload.enabled
+    if payload.notify_topic_id is not None:
+        rule.notify_topic_id = payload.notify_topic_id
+    if payload.notify_message is not None:
+        rule.notify_message = payload.notify_message.strip() or None
 
     if payload.conditions is not None:
         old = (await db.execute(select(RuleCondition).where(RuleCondition.rule_id == rule_id))).scalars().all()

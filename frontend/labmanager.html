@@ -298,8 +298,8 @@
     <div class="nav-section">SYSTEM</div>
     <div class="nav-item" data-page="log" onclick="navigate(this)"><span class="nav-icon">📋</span> Aktivitätslog</div>
     <div class="nav-item" data-page="stats" onclick="navigate(this)"><span class="nav-icon">📈</span> Statistiken</div>
-    <div class="nav-item" data-page="announcements" onclick="navigate(this)"><span class="nav-icon">📢</span> Mitteilungen</div>
-    <div class="nav-item" id="nav-notifications" data-page="notifications" onclick="navigate(this)"><span class="nav-icon">🔔</span> Benachrichtigungen</div>
+    <div class="nav-item" data-page="announcements" onclick="navigate(this)"><span class="nav-icon">📢</span> Aushänge</div>
+    <div class="nav-item" id="nav-notifications" data-page="notifications" onclick="navigate(this)"><span class="nav-icon">🔔</span> Push-Nachrichten</div>
     <div class="nav-item" data-page="backup" onclick="navigate(this)" id="nav-backup" style="display:none"><span class="nav-icon">💾</span> Backup</div>
     <div class="nav-item" data-page="settings" onclick="navigate(this)" id="nav-settings" style="display:none"><span class="nav-icon">⚙️</span> Einstellungen</div>
     <div class="nav-item" data-page="info" onclick="navigate(this)"><span class="nav-icon">ℹ️</span> Info</div>
@@ -648,8 +648,9 @@
         <!-- Automatische Backups -->
         <div>
           <div class="section-header">
-            <div class="section-title">Automatische Backups <span>// GESPEICHERTE DATEIEN</span></div>
-            <div style="display:flex;gap:8px">
+            <div class="section-title">Backups</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button id="backup-delete-selected" class="btn btn-sm" style="display:none;color:var(--danger);border-color:var(--danger)" onclick="deleteSelectedBackups()">✕ Auswahl löschen</button>
               <button class="btn btn-ghost btn-sm" onclick="loadBackupFiles()">↺ Aktualisieren</button>
               <button class="btn btn-primary btn-sm" onclick="createBackupNow()">+ Jetzt sichern</button>
             </div>
@@ -661,237 +662,253 @@
 
     <!-- EINSTELLUNGEN (Admin only) -->
     <div class="page" id="page-settings">
-      <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="help-layout">
+        <nav class="help-nav" style="width:170px">
+          <div class="help-nav-item active" onclick="selectSettingsCat('system')"><span class="help-nav-icon">⚙️</span><span class="help-nav-label">System</span></div>
+          <div class="help-nav-item" onclick="selectSettingsCat('display')"><span class="help-nav-icon">📺</span><span class="help-nav-label">Display</span></div>
+          <div class="help-nav-item" onclick="selectSettingsCat('aushaenge')"><span class="help-nav-icon">📢</span><span class="help-nav-label">Aushänge</span></div>
+          <div class="help-nav-item" onclick="selectSettingsCat('agb')"><span class="help-nav-icon">📋</span><span class="help-nav-label">AGB</span></div>
+          <div class="help-nav-item" onclick="selectSettingsCat('push')"><span class="help-nav-icon">🔔</span><span class="help-nav-label">Push-Nachrichten</span></div>
+          <div class="help-nav-item" onclick="selectSettingsCat('notfall')"><span class="help-nav-icon">🚨</span><span class="help-nav-label">Notfall-Alarm</span></div>
+          <div class="help-nav-item" onclick="selectSettingsCat('backup')"><span class="help-nav-icon">💾</span><span class="help-nav-label">Auto-Backup</span></div>
+          <div style="padding:12px 16px;margin-top:auto;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--surface)">
+            <button class="btn btn-primary" style="width:100%;font-size:13px" onclick="saveSettings()">Speichern</button>
+          </div>
+        </nav>
+        <div class="help-content">
 
-        <!-- SYSTEM -->
-        <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">SYSTEM</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Makerspace-Name</label>
-              <input class="form-input" id="cfg-space-name" placeholder="z.B. FabLab Musterstadt">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Wird auf allen Seiten unter dem SpaceCaptain-Logo angezeigt</div>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">NFC-Schreibgerät</label>
-              <input class="form-input" id="cfg-nfc-url" placeholder="http://nfc-writer.local">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">ESP32-URL (z.B. http://nfc-writer.local) · leer = deaktiviert</div>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Lab-Manager-Session</label>
-              <input class="form-input" id="cfg-jwt-min" type="number" min="5" max="1440" placeholder="480">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Minuten · aktuell: <span id="cfg-jwt-human">—</span> — gilt ab dem nächsten Login</div>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Gast-Login-Link Gültigkeit</label>
-              <input class="form-input" id="cfg-token-days" type="number" min="1" max="3650" placeholder="365">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Tage · gilt für neu generierte Links</div>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Reservierungsfenster</label>
-              <input class="form-input" id="cfg-queue-min" type="number" min="1" max="60" placeholder="5">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Minuten · Zeit zum Einschalten nach Benachrichtigung</div>
-            </div>
-          </div>
-          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px">
-            <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">MODAL-VERHALTEN</div>
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-              <input type="checkbox" id="cfg-backdrop-input" style="width:16px;height:16px;accent-color:var(--accent)">
-              <span style="font-size:14px">Eingabe-Modals bei Klick ausserhalb schliessen</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-              <input type="checkbox" id="cfg-backdrop-display" style="width:16px;height:16px;accent-color:var(--accent)">
-              <span style="font-size:14px">Anzeige-Modals bei Klick ausserhalb schliessen</span>
-            </label>
-            <div style="font-size:12px;color:var(--text-dim)">Anzeige-Modals: Login-Link, QR-Code · Eingabe-Modals: Formulare zum Bearbeiten</div>
-          </div>
-        </div>
-
-        <!-- DISPLAY -->
-        <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">DISPLAY</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
-            <div class="form-group" style="margin:0">
-              <label class="form-label">TV-Display Aktualisierung</label>
-              <input class="form-input" id="cfg-display-refresh" type="number" min="10" max="300" placeholder="30">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Sekunden</div>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Maschinen pro Seite</label>
-              <input class="form-input" id="cfg-display-page-size" type="number" min="1" max="50" placeholder="8">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">TV-Display</div>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Dashboard Aktualisierung</label>
-              <input class="form-input" id="cfg-dashboard-refresh" type="number" min="5" max="300" placeholder="30">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Sekunden</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- MITTEILUNGEN -->
-        <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">MITTEILUNGEN</div>
-          <div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:6px;padding:12px 16px;font-size:13px;color:var(--text-mid);line-height:1.6;margin-bottom:16px">
-            Inhalte werden über die Mitteilungsverwaltung gesteuert — zeitgesteuert und wiederkehrend.
-            <button class="btn btn-ghost btn-sm" style="margin-left:12px" onclick="navigateTo('announcements')">→ Zur Mitteilungsverwaltung</button>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Mitteilung Schriftgrösse</label>
-              <input class="form-input" id="cfg-announcement-size" type="number" min="10" max="72" placeholder="20">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Pixel</div>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Lauftext Schriftgrösse</label>
-              <input class="form-input" id="cfg-ticker-size" type="number" min="10" max="72" placeholder="18">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Pixel</div>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Lauftext Geschwindigkeit</label>
-              <input class="form-input" id="cfg-ticker-speed" type="number" min="20" max="400" placeholder="80">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">px/s · Langsam: 40 · Normal: 80 · Schnell: 160</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- AGB -->
-        <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">ALLGEMEINE GESCHÄFTSBEDINGUNGEN</div>
-          <div class="form-group" style="margin:0">
-            <label class="form-label">AGB-Text <span style="color:var(--text-dim);font-weight:400">Markdown</span></label>
-            <textarea class="form-input" id="cfg-agb-text" rows="8" placeholder="## Allgemeine Geschäftsbedingungen&#10;&#10;Bitte lies die folgenden Bedingungen sorgfältig..." style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
-            <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Leer = keine AGB-Pflicht bei der Registrierung. Unterstützt Markdown: **fett**, *kursiv*, ## Überschriften, - Listen.</div>
-          </div>
-        </div>
-
-        <!-- BENACHRICHTIGUNGEN -->
-        <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">BENACHRICHTIGUNGEN (NTFY)</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Server-URL</label>
-              <input class="form-input" id="cfg-ntfy-server" placeholder="https://ntfy.sh">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Standard: https://ntfy.sh — für selbst gehostete Instanz anpassen.</div>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Auth-Token</label>
-              <input class="form-input" id="cfg-ntfy-token" type="password" placeholder="leer = kein Token">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Nur bei selbst gehosteter Instanz mit Auth</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- NOTFALL-ALARM -->
-        <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">NOTFALL-ALARM</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Trigger-Token</label>
-              <input class="form-input" id="cfg-emergency-token" type="text" placeholder="z.B. xK9pQ3rTvZ…" autocomplete="off">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Shelly X-Emergency-Token</div>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Auto-Stop Sirene/Licht</label>
-              <input class="form-input" id="cfg-emergency-duration" type="number" min="0" max="3600" placeholder="0">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Sekunden · 0 = manuell</div>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">ntfy-Topic für Alarm</label>
-              <select class="form-input" id="cfg-emergency-topic">
-                <option value="">— Kein Topic —</option>
-              </select>
-            </div>
-          </div>
-          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-            <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px">SMART PLUGS</div>
-            <div style="display:grid;grid-template-columns:1fr 160px 1fr;gap:12px;align-items:end;margin-bottom:12px">
-              <div class="form-group" style="margin:0">
-                <label class="form-label">Sirene — IP-Adresse</label>
-                <input class="form-input" id="cfg-emergency-plug-ip" placeholder="192.168.1.50">
+          <!-- SYSTEM -->
+          <div class="help-panel active" id="settings-panel-system">
+            <div class="help-panel-header"><span class="help-panel-icon">⚙️</span><span class="help-panel-title">System</span></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Makerspace-Name</label>
+                  <input class="form-input" id="cfg-space-name" placeholder="z.B. FabLab Musterstadt">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Wird auf allen Seiten unter dem SpaceCaptain-Logo angezeigt</div>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">NFC-Schreibgerät</label>
+                  <input class="form-input" id="cfg-nfc-url" placeholder="http://nfc-writer.local">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">ESP32-URL · leer = deaktiviert</div>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Lab-Manager-Session</label>
+                  <input class="form-input" id="cfg-jwt-min" type="number" min="5" max="1440" placeholder="480">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Minuten · aktuell: <span id="cfg-jwt-human">—</span> — gilt ab dem nächsten Login</div>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Reservierungsfenster</label>
+                  <input class="form-input" id="cfg-queue-min" type="number" min="1" max="60" placeholder="5">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Minuten · Zeit zum Einschalten nach Benachrichtigung</div>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Dashboard Aktualisierung</label>
+                  <input class="form-input" id="cfg-dashboard-refresh" type="number" min="5" max="300" placeholder="30">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Sekunden</div>
+                </div>
               </div>
-              <div class="form-group" style="margin:0">
-                <label class="form-label">Typ</label>
-                <select class="form-input" id="cfg-emergency-plug-type">
-                  <option value="">— Kein Plug —</option>
-                  <option value="shelly">Shelly</option>
-                  <option value="mystrom">myStrom</option>
-                </select>
-              </div>
-              <div class="form-group" style="margin:0">
-                <label class="form-label">Token</label>
-                <input class="form-input" id="cfg-emergency-plug-token" type="password" placeholder="leer = kein Token">
+              <div style="padding-top:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px">
+                <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">MODAL-VERHALTEN</div>
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                  <input type="checkbox" id="cfg-backdrop-input" style="width:16px;height:16px;accent-color:var(--accent)">
+                  <span style="font-size:14px">Eingabe-Modals bei Klick ausserhalb schliessen</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                  <input type="checkbox" id="cfg-backdrop-display" style="width:16px;height:16px;accent-color:var(--accent)">
+                  <span style="font-size:14px">Anzeige-Modals bei Klick ausserhalb schliessen</span>
+                </label>
+                <div style="font-size:12px;color:var(--text-dim)">Anzeige-Modals: Login-Link, QR-Code · Eingabe-Modals: Formulare zum Bearbeiten</div>
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 160px 1fr;gap:12px;align-items:end">
-              <div class="form-group" style="margin:0">
-                <label class="form-label">Blinklicht — IP-Adresse</label>
-                <input class="form-input" id="cfg-emergency-plug2-ip" placeholder="192.168.1.51">
-              </div>
-              <div class="form-group" style="margin:0">
-                <label class="form-label">Typ</label>
-                <select class="form-input" id="cfg-emergency-plug2-type">
-                  <option value="">— Kein Plug —</option>
-                  <option value="shelly">Shelly</option>
-                  <option value="mystrom">myStrom</option>
-                </select>
-              </div>
-              <div class="form-group" style="margin:0">
-                <label class="form-label">Token</label>
-                <input class="form-input" id="cfg-emergency-plug2-token" type="password" placeholder="leer = kein Token">
-              </div>
-            </div>
-            <div style="font-size:12px;color:var(--text-dim);margin-top:8px">Token: myStrom → API-Key · Shelly → user:passwort</div>
           </div>
-          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-              <div style="font-size:12px;color:var(--text-dim);letter-spacing:1px">TEST-BEFEHL (curl)</div>
-              <button class="btn btn-ghost btn-sm" onclick="_copyEmergencyCurl(this)" style="font-size:11px;padding:3px 10px">📋 Kopieren</button>
-            </div>
-            <pre id="emergency-curl-preview" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;font-family:var(--mono);font-size:12px;color:var(--accent2);line-height:1.7;overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin:0">curl -k -X POST https://&lt;server-ip&gt;/api/emergency/trigger -H "X-Emergency-Token: &lt;token&gt;"</pre>
-          </div>
-          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:16px">
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Anzeigetext</label>
-              <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">TV-Display während Alarm</div>
-              <textarea class="form-input" id="cfg-emergency-text" rows="4" placeholder="🚑 Notruf: 144&#10;🚒 Feuerwehr: 118&#10;☎ AED: Eingang Hauptgebäude" style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">ntfy-Nachricht</label>
-              <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px"><code>{ts}</code> = Zeitstempel der Auslösung</div>
-              <textarea class="form-input" id="cfg-emergency-ntfy-message" rows="4" placeholder="Notfall-Alarm ausgelöst am {ts}. Bitte sofort reagieren." style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
-            </div>
-          </div>
-        </div>
 
-        <!-- AUTO-BACKUP -->
-        <div class="table-wrap" style="padding:20px">
-          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)">AUTOMATISCHES BACKUP</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Automatisches Backup aktivieren</label>
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
-                <input type="checkbox" id="cfg-auto-backup-enabled" style="width:16px;height:16px;cursor:pointer">
-                <span style="font-size:13px;color:var(--text-dim)">Täglich um die konfigurierte Stunde sichern</span>
-              </label>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Backup-Uhrzeit</label>
-              <input type="time" class="form-input" id="cfg-auto-backup-time" style="width:120px">
-              <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Lokale Serverzeit (TZ in .env)</div>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Aufbewahrung</label>
-              <input type="number" class="form-input" id="cfg-auto-backup-keep" min="1" max="365" style="width:100px">
-              <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Ältere Backups werden automatisch gelöscht. Speicherort: via BACKUP_DIR in .env</div>
+          <!-- DISPLAY -->
+          <div class="help-panel" id="settings-panel-display">
+            <div class="help-panel-header"><span class="help-panel-icon">📺</span><span class="help-panel-title">Display</span></div>
+            <div style="padding:20px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">TV-Display Aktualisierung</label>
+                  <input class="form-input" id="cfg-display-refresh" type="number" min="10" max="300" placeholder="30">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Sekunden</div>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Maschinen pro Seite</label>
+                  <input class="form-input" id="cfg-display-page-size" type="number" min="1" max="50" placeholder="8">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">TV-Display</div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div>
-          <button class="btn btn-primary" onclick="saveSettings()">Einstellungen speichern</button>
-        </div>
-      </div>
+          <!-- AUSHÄNGE -->
+          <div class="help-panel" id="settings-panel-aushaenge">
+            <div class="help-panel-header"><span class="help-panel-icon">📢</span><span class="help-panel-title">Aushänge</span></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Aushang Schriftgrösse</label>
+                  <input class="form-input" id="cfg-announcement-size" type="number" min="10" max="72" placeholder="20">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Pixel</div>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Lauftext Schriftgrösse</label>
+                  <input class="form-input" id="cfg-ticker-size" type="number" min="10" max="72" placeholder="18">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Pixel</div>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Lauftext Geschwindigkeit</label>
+                  <input class="form-input" id="cfg-ticker-speed" type="number" min="20" max="400" placeholder="80">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">px/s · Langsam: 40 · Normal: 80 · Schnell: 160</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AGB -->
+          <div class="help-panel" id="settings-panel-agb">
+            <div class="help-panel-header"><span class="help-panel-icon">📋</span><span class="help-panel-title">AGB</span></div>
+            <div style="padding:20px">
+              <div class="form-group" style="margin:0">
+                <label class="form-label">AGB-Text <span style="color:var(--text-dim);font-weight:400">Markdown</span></label>
+                <textarea class="form-input" id="cfg-agb-text" rows="12" placeholder="## Allgemeine Geschäftsbedingungen&#10;&#10;Bitte lies die folgenden Bedingungen sorgfältig..." style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
+                <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Leer = keine AGB-Pflicht bei der Registrierung. Unterstützt Markdown: **fett**, *kursiv*, ## Überschriften, - Listen.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PUSH-NACHRICHTEN -->
+          <div class="help-panel" id="settings-panel-push">
+            <div class="help-panel-header"><span class="help-panel-icon">🔔</span><span class="help-panel-title">Push-Nachrichten</span></div>
+            <div style="padding:20px">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Server-URL</label>
+                  <input class="form-input" id="cfg-ntfy-server" placeholder="https://ntfy.sh">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Standard: https://ntfy.sh — für selbst gehostete Instanz anpassen.</div>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Auth-Token</label>
+                  <input class="form-input" id="cfg-ntfy-token" type="password" placeholder="leer = kein Token">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Nur bei selbst gehosteter Instanz mit Auth</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- NOTFALL-ALARM -->
+          <div class="help-panel" id="settings-panel-notfall">
+            <div class="help-panel-header"><span class="help-panel-icon">🚨</span><span class="help-panel-title">Notfall-Alarm</span></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Trigger-Token</label>
+                  <input class="form-input" id="cfg-emergency-token" type="text" placeholder="z.B. xK9pQ3rTvZ…" autocomplete="off">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Shelly X-Emergency-Token</div>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Auto-Stop Sirene/Licht</label>
+                  <input class="form-input" id="cfg-emergency-duration" type="number" min="0" max="3600" placeholder="0">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Sekunden · 0 = manuell</div>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">ntfy-Topic für Alarm</label>
+                  <select class="form-input" id="cfg-emergency-topic">
+                    <option value="">— Kein Topic —</option>
+                  </select>
+                </div>
+              </div>
+              <div style="padding-top:16px;border-top:1px solid var(--border)">
+                <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px">SMART PLUGS</div>
+                <div style="display:grid;grid-template-columns:1fr 160px 1fr;gap:12px;align-items:end;margin-bottom:12px">
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Sirene — IP-Adresse</label>
+                    <input class="form-input" id="cfg-emergency-plug-ip" placeholder="192.168.1.50">
+                  </div>
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Typ</label>
+                    <select class="form-input" id="cfg-emergency-plug-type">
+                      <option value="">— Kein Plug —</option>
+                      <option value="shelly">Shelly</option>
+                      <option value="mystrom">myStrom</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Token</label>
+                    <input class="form-input" id="cfg-emergency-plug-token" type="password" placeholder="leer = kein Token">
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 160px 1fr;gap:12px;align-items:end">
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Blinklicht — IP-Adresse</label>
+                    <input class="form-input" id="cfg-emergency-plug2-ip" placeholder="192.168.1.51">
+                  </div>
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Typ</label>
+                    <select class="form-input" id="cfg-emergency-plug2-type">
+                      <option value="">— Kein Plug —</option>
+                      <option value="shelly">Shelly</option>
+                      <option value="mystrom">myStrom</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Token</label>
+                    <input class="form-input" id="cfg-emergency-plug2-token" type="password" placeholder="leer = kein Token">
+                  </div>
+                </div>
+                <div style="font-size:12px;color:var(--text-dim);margin-top:8px">Token: myStrom → API-Key · Shelly → user:passwort</div>
+              </div>
+              <div style="padding-top:16px;border-top:1px solid var(--border)">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                  <div style="font-size:12px;color:var(--text-dim);letter-spacing:1px">TEST-BEFEHL (curl)</div>
+                  <button class="btn btn-ghost btn-sm" onclick="_copyEmergencyCurl(this)" style="font-size:11px;padding:3px 10px">📋 Kopieren</button>
+                </div>
+                <pre id="emergency-curl-preview" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;font-family:var(--mono);font-size:12px;color:var(--accent2);line-height:1.7;overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin:0">curl -k -X POST https://&lt;server-ip&gt;/api/emergency/trigger -H "X-Emergency-Token: &lt;token&gt;"</pre>
+              </div>
+              <div style="padding-top:16px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Anzeigetext</label>
+                  <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">TV-Display während Alarm</div>
+                  <textarea class="form-input" id="cfg-emergency-text" rows="4" placeholder="🚑 Notruf: 144&#10;🚒 Feuerwehr: 118&#10;☎ AED: Eingang Hauptgebäude" style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">ntfy-Nachricht</label>
+                  <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px"><code>{ts}</code> = Zeitstempel der Auslösung</div>
+                  <textarea class="form-input" id="cfg-emergency-ntfy-message" rows="4" placeholder="Notfall-Alarm ausgelöst am {ts}. Bitte sofort reagieren." style="resize:vertical;font-family:var(--mono);font-size:13px;line-height:1.6"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AUTO-BACKUP -->
+          <div class="help-panel" id="settings-panel-backup">
+            <div class="help-panel-header"><span class="help-panel-icon">💾</span><span class="help-panel-title">Auto-Backup</span></div>
+            <div style="padding:20px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Automatisches Backup aktivieren</label>
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+                    <input type="checkbox" id="cfg-auto-backup-enabled" style="width:16px;height:16px;cursor:pointer">
+                    <span style="font-size:13px;color:var(--text-dim)">Täglich um die konfigurierte Stunde sichern</span>
+                  </label>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Backup-Uhrzeit</label>
+                  <input type="time" class="form-input" id="cfg-auto-backup-time" style="width:120px">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Lokale Serverzeit (TZ in .env)</div>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Aufbewahrung</label>
+                  <input type="number" class="form-input" id="cfg-auto-backup-keep" min="1" max="365" style="width:100px">
+                  <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Ältere Backups werden automatisch gelöscht. Speicherort: via BACKUP_DIR in .env</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /.help-content -->
+      </div><!-- /.help-layout -->
     </div>
 
     <!-- BENACHRICHTIGUNGEN-SEITE -->
@@ -1039,7 +1056,7 @@
 
     <!-- ═══ MITTEILUNGEN ════════════════════════════════════════════════ -->
     <div class="page" id="page-announcements">
-      <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" id="ann-search" placeholder="Mitteilung suchen…" oninput="filterAnnouncements(this.value)"></div>
+      <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" id="ann-search" placeholder="Aushang suchen…" oninput="filterAnnouncements(this.value)"></div>
       <div id="ann-list"><div class="loading"><div class="spinner"></div>Laden…</div></div>
     </div>
 
@@ -1061,8 +1078,8 @@
             <div class="help-nav-item" onclick="selectHelpCat('permissions')"><span class="help-nav-icon">🔑</span><span class="help-nav-label">Berechtigungen</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('automations')"><span class="help-nav-icon">⚡</span><span class="help-nav-label">Automationen</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('maintenance')"><span class="help-nav-icon">🔧</span><span class="help-nav-label">Maschinenpflege</span></div>
-            <div class="help-nav-item" onclick="selectHelpCat('announcements')"><span class="help-nav-icon">📢</span><span class="help-nav-label">Mitteilungen</span></div>
-            <div class="help-nav-item" onclick="selectHelpCat('notifications')"><span class="help-nav-icon">🔔</span><span class="help-nav-label">Benachrichtigungen</span></div>
+            <div class="help-nav-item" onclick="selectHelpCat('announcements')"><span class="help-nav-icon">📢</span><span class="help-nav-label">Aushänge</span></div>
+            <div class="help-nav-item" onclick="selectHelpCat('notifications')"><span class="help-nav-icon">🔔</span><span class="help-nav-label">Push-Nachrichten</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('emergency')"><span class="help-nav-icon">🚨</span><span class="help-nav-label">Notfall-Alarm</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('stats')"><span class="help-nav-icon">📊</span><span class="help-nav-label">Statistiken</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('log')"><span class="help-nav-icon">📋</span><span class="help-nav-label">Aktivitätslog</span></div>
@@ -1491,12 +1508,23 @@
             <div class="help-article">
               <div class="help-article-title">Was sind Automationen?</div>
               <div class="help-article-body">
-                Automationen schalten eine Ziel-Maschine (z.B. Kaffeemaschine, Absaugung) automatisch ein und aus — basierend auf kombinierten Bedingungen. Alle Bedingungen einer Regel müssen gleichzeitig wahr sein (AND-Verknüpfung).
+                Automationen führen eine Aktion automatisch aus — basierend auf kombinierten Bedingungen. Alle Bedingungen einer Regel müssen gleichzeitig wahr sein (AND-Verknüpfung).
                 <ul style="margin-top:10px">
-                  <li>Die <strong>Ziel-Maschine</strong> muss einen konfigurierten Smart Plug haben</li>
-                  <li>Mehrere Regeln können dieselbe Ziel-Maschine steuern</li>
-                  <li>Optional: <strong>Nachlaufzeit</strong> — wie lange die Ziel-Maschine nach Bedingungsende noch eingeschaltet bleibt</li>
+                  <li>Mehrere Regeln können unabhängig voneinander feuern</li>
+                  <li>Optional: <strong>Nachlaufzeit</strong> — wie lange nach Bedingungsende noch gewartet wird (nur bei Maschinen-Aktionen relevant)</li>
                 </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Aktionstypen</div>
+              <div class="help-article-body">
+                <ul>
+                  <li><strong>🔌 Maschine schalten:</strong> Schaltet eine Ziel-Maschine (mit Smart Plug) ein, wenn alle Bedingungen erfüllt sind — und aus, wenn sie nicht mehr erfüllt sind. Mit Nachlaufzeit möglich.</li>
+                  <li><strong>🟢 Raum öffnen:</strong> Öffnet den Raum einmalig, sobald alle Bedingungen erstmals erfüllt werden. Ideal für zeitgesteuertes Öffnen am Morgen.</li>
+                  <li><strong>🔴 Raum schliessen:</strong> Schliesst den Raum einmalig, sobald alle Bedingungen erstmals erfüllt werden. Maschinen mit «Bei Raumschluss ausschalten» werden abgeschaltet, laufende Sessions bleiben aktiv.</li>
+                  <li><strong>🔔 Push-Nachricht:</strong> Sendet eine ntfy-Push-Nachricht an ein konfiguriertes Manager-Topic, sobald alle Bedingungen erstmals erfüllt werden.</li>
+                </ul>
+                <div class="help-tip"><strong>Zeitgesteuerter Raum:</strong> Für automatisches Öffnen und Schliessen je eine separate Regel mit «Raum öffnen» resp. «Raum schliessen» erstellen — z.B. Zeitplan Mo–Fr 08:00–18:00 für Öffnen, 18:00–23:59 für Schliessen.</div>
               </div>
             </div>
             <div class="help-article">
@@ -1504,9 +1532,10 @@
               <div class="help-article-body">
                 <ol>
                   <li>Sidebar → <strong>Automationen</strong> → «+ Neue Regel»</li>
-                  <li><strong>Name</strong> vergeben (optional), <strong>Ziel-Maschine</strong> wählen</li>
+                  <li><strong>Name</strong> vergeben (optional), <strong>Aktionstyp</strong> wählen</li>
+                  <li>Je nach Aktionstyp: Ziel-Maschine, ntfy-Topic und Nachrichtentext wählen</li>
                   <li>Über «+ Bedingung» eine oder mehrere Bedingungen hinzufügen</li>
-                  <li><strong>Nachlaufzeit</strong> einstellen (0 = sofort ausschalten)</li>
+                  <li><strong>Nachlaufzeit</strong> einstellen (nur für Maschinen-Aktionen, 0 = sofort ausschalten)</li>
                 </ol>
               </div>
             </div>
@@ -1543,10 +1572,11 @@
               <div class="help-article-body">
                 In der Regelliste wird der aktuelle Watcher-Status angezeigt:
                 <ul style="margin-top:8px">
-                  <li><strong style="color:#22c55e">● AN</strong> — alle Bedingungen erfüllt, Ziel-Maschine eingeschaltet</li>
-                  <li><strong style="color:var(--accent)">⏱ Xs</strong> — Bedingungen nicht mehr erfüllt, Nachlauf läuft</li>
-                  <li><strong style="color:var(--text-muted)">● AUS</strong> — Bedingungen nicht erfüllt, Ziel-Maschine ausgeschaltet</li>
+                  <li><strong style="color:#22c55e">● AN</strong> — alle Bedingungen erfüllt und Aktion ausgelöst (bei Maschine: Plug EIN; bei Raum/Push: einmalig gefeuert)</li>
+                  <li><strong style="color:var(--accent)">⏱ Xs</strong> — Bedingungen nicht mehr erfüllt, Nachlauf läuft (nur Maschinen-Aktionen)</li>
+                  <li><strong style="color:var(--text-muted)">● AUS</strong> — Bedingungen nicht erfüllt, Regel wartet</li>
                 </ul>
+                <div class="help-tip">Raum- und Push-Aktionen feuern <em>einmalig</em> beim Übergang in den AN-Zustand und setzen sich automatisch zurück, sobald die Bedingungen nicht mehr erfüllt sind — damit sie am nächsten Tag erneut feuern können.</div>
               </div>
             </div>
             <div class="help-article">
@@ -1602,14 +1632,14 @@
           </div>
         </div>
 
-        <!-- ── Mitteilungen ── -->
+        <!-- ── Aushänge ── -->
             <div class="help-panel" id="help-panel-announcements">
-              <div class="help-panel-header"><span class="help-panel-icon">📢</span><span class="help-panel-title">Mitteilungen</span></div>
+              <div class="help-panel-header"><span class="help-panel-icon">📢</span><span class="help-panel-title">Aushänge</span></div>
               <div class="help-cat-body">
             <div class="help-article">
-              <div class="help-article-title">Mitteilung erstellen</div>
+              <div class="help-article-title">Aushang erstellen</div>
               <div class="help-article-body">
-                Sidebar → <strong>Mitteilungen</strong> → «+ Neue Mitteilung».
+                Sidebar → <strong>Aushänge</strong> → «+ Neuer Aushang».
                 <ul style="margin-top:8px">
                   <li><strong>Einmalig:</strong> gilt von einem Start- bis Endzeitpunkt</li>
                   <li><strong>Wiederkehrend:</strong> gilt an bestimmten Wochentagen zu festgelegten Zeiten — ideal für regelmässige Öffnungszeiten oder Kurshinweise</li>
@@ -1620,30 +1650,31 @@
             <div class="help-article">
               <div class="help-article-title">Ankündigung (Display-Overlay)</div>
               <div class="help-article-body">
-                Zusätzlich zu den terminierten Mitteilungen gibt es in <strong>Einstellungen → Display</strong> ein statisches Ankündigungs-Textfeld und einen Lauftext-Ticker. Diese erscheinen dauerhaft auf der Display-Seite bis sie gelöscht werden.
+                Zusätzlich zu den terminierten Aushänge gibt es in <strong>Einstellungen → Display</strong> ein statisches Ankündigungs-Textfeld und einen Lauftext-Ticker. Diese erscheinen dauerhaft auf der Display-Seite bis sie gelöscht werden.
               </div>
             </div>
           </div>
         </div>
 
-        <!-- ── Benachrichtigungen ── -->
+        <!-- ── Push-Nachrichten ── -->
             <div class="help-panel" id="help-panel-notifications">
-              <div class="help-panel-header"><span class="help-panel-icon">🔔</span><span class="help-panel-title">Benachrichtigungen</span></div>
+              <div class="help-panel-header"><span class="help-panel-icon">🔔</span><span class="help-panel-title">Push-Nachrichten</span></div>
               <div class="help-cat-body">
             <div class="help-article">
-              <div class="help-article-title">Wie Benachrichtigungen funktionieren</div>
+              <div class="help-article-title">Wie Push-Nachrichten funktionieren</div>
               <div class="help-article-body">
-                SpaceCaptain nutzt <strong>ntfy</strong> für Push-Benachrichtigungen. Jeder Gast erhält automatisch ein eigenes ntfy-Topic. Benachrichtigungen werden ausgelöst, wenn:
+                SpaceCaptain nutzt <strong>ntfy</strong> für Push-Nachrichten. Jeder Gast erhält automatisch ein eigenes ntfy-Topic. Push-Nachrichten werden ausgelöst, wenn:
                 <ul style="margin-top:8px">
                   <li>Eine Maschine in der Warteschlange frei wird («Du bist dran!»)</li>
                   <li>Ein Notfall-Alarm ausgelöst wird</li>
+                  <li>Eine Automationsregel mit Aktionstyp «Push-Nachricht» feuert</li>
                 </ul>
               </div>
             </div>
             <div class="help-article">
               <div class="help-article-title">ntfy einrichten (Einstellungen)</div>
               <div class="help-article-body">
-                Sidebar → <strong>Einstellungen → Benachrichtigungen</strong>:
+                Sidebar → <strong>Einstellungen → Push-Nachrichten</strong>:
                 <ol style="margin-top:8px">
                   <li><strong>ntfy-Server:</strong> Standard ist <code>https://ntfy.sh</code>. Eigenen Server einsetzen für mehr Datenschutz.</li>
                   <li><strong>ntfy-Token:</strong> Nur nötig wenn der Server eine Authentifizierung verlangt</li>
@@ -1654,21 +1685,21 @@
             <div class="help-article">
               <div class="help-article-title">Gast mit ntfy verbinden</div>
               <div class="help-article-body">
-                Jeder Gast hat ein eigenes Topic (sichtbar in der Gästedetail-Ansicht). Der Gast installiert die <strong>ntfy-App</strong> (iOS/Android) oder öffnet die Web-Oberfläche und abonniert sein Topic. Danach erhält er automatisch Benachrichtigungen.
+                Jeder Gast hat ein eigenes Topic (sichtbar in der Gästedetail-Ansicht). Der Gast installiert die <strong>ntfy-App</strong> (iOS/Android) oder öffnet die Web-Oberfläche und abonniert sein Topic. Danach erhält er automatisch Push-Nachrichten.
                 <div class="help-tip">Das Topic-URL wird dem Gast auch direkt in der Gäste-App unter «Einstellungen» als QR-Code angezeigt.</div>
               </div>
             </div>
             <div class="help-article">
               <div class="help-article-title">ntfy-Topics für Lab Manager konfigurieren</div>
               <div class="help-article-body">
-                Neben den automatischen Gast-Topics können eigene ntfy-Kanäle für betriebliche Benachrichtigungen hinterlegt werden (z.B. für Notfall-Alarm-Meldungen an das Team).
+                Neben den automatischen Gast-Topics können eigene ntfy-Kanäle für betriebliche Push-Nachrichten hinterlegt werden (z.B. für Notfall-Alarm-Meldungen an das Team).
                 <ol style="margin-top:8px">
-                  <li>Sidebar → <strong>Benachrichtigungen</strong> → «+ Topic hinzufügen»</li>
+                  <li>Sidebar → <strong>Push-Nachrichten</strong> → «+ Topic hinzufügen»</li>
                   <li><strong>Anzeigename</strong> und <strong>Topic-String</strong> eingeben (geheimen, schwer erratbaren String wählen)</li>
                   <li>QR-Code scannen mit der ntfy-App um das Topic zu abonnieren</li>
-                  <li>Das Topic steht dann unter <strong>Einstellungen → Notfall-Alarm → ntfy-Topic</strong> zur Auswahl</li>
+                  <li>Das Topic steht dann unter <strong>Einstellungen → Notfall-Alarm → ntfy-Topic</strong> und in <strong>Automationen → Aktionstyp «Push-Nachricht»</strong> zur Auswahl</li>
                 </ol>
-                <div class="help-tip"><strong>Unterschied zu Gast-Topics:</strong> Gast-Topics sind automatisch generiert für persönliche Benachrichtigungen (Warteschlange). Manager-Topics sind manuell konfigurierte Kanäle für Alarm- und Systemmeldungen.</div>
+                <div class="help-tip"><strong>Unterschied zu Gast-Topics:</strong> Gast-Topics sind automatisch generiert für persönliche Push-Nachrichten (Warteschlange). Manager-Topics sind manuell konfigurierte Kanäle für Alarm- und Automationsmeldungen.</div>
               </div>
             </div>
           </div>
@@ -2064,6 +2095,13 @@
               </div>
             </div>
             <div class="help-article">
+              <div class="help-article-title">Backups löschen</div>
+              <div class="help-article-body">
+                Einzeln: Datei in der Liste → <strong>✕</strong>.<br>
+                Mehrere auf einmal: Checkboxen auswählen (oder «Alle» in der Kopfzeile), dann <strong>«X löschen»</strong> oben rechts klicken.
+              </div>
+            </div>
+            <div class="help-article">
               <div class="help-article-title">Restore aus gespeichertem Backup</div>
               <div class="help-article-body">
                 Sidebar → <strong>Backup</strong> → in der Dateiliste auf <strong>↩ Restore</strong> klicken.
@@ -2084,7 +2122,7 @@
             <div class="help-article">
               <div class="help-article-title">Was ist im Backup enthalten?</div>
               <div class="help-article-body">
-                <strong>Enthalten:</strong> Einstellungen, Benutzer, Gäste, Maschinen, Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Mitteilungen, ntfy-Topics, Automationsregeln.<br><br>
+                <strong>Enthalten:</strong> Einstellungen, Benutzer, Gäste, Maschinen, Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln.<br><br>
                 <strong>Nicht enthalten:</strong> Aktive Warteschlangen-Einträge und NFC-Gast-Tokens (temporäre Laufzeitdaten, die nach einem Restore automatisch neu erstellt werden).
               </div>
             </div>
@@ -2239,7 +2277,7 @@ const GET=(p)=>api('GET',p);
 const POST=(p,b)=>api('POST',p,b);
 const PUT=(p,b)=>api('PUT',p,b);
 const PATCH=(p,b)=>api('PATCH',p,b);
-const DELETE=(p)=>api('DELETE',p);
+const DELETE=(p,b)=>api('DELETE',p,b);
 
 // ═══════════════════════════════════════════════════════
 // AUTH
@@ -2269,7 +2307,7 @@ function doLogout() {
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',plugs:'Plug-Pool',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Mitteilungen',notifications:'Benachrichtigungen',backup:'Backup & Restore',settings:'Einstellungen',automations:'Automationen',info:'Info',help:'Hilfe & Dokumentation'};
+const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',plugs:'Plug-Pool',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Aushänge',notifications:'Push-Nachrichten',backup:'Backup & Restore',settings:'Einstellungen',automations:'Automationen',info:'Info',help:'Hilfe & Dokumentation'};
 const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',machines:'machines',permissions:'permissions',maintenance:'maintenance',backup:'backup',settings:'settings'};
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
@@ -2279,13 +2317,13 @@ const pageActions={
   automations:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('automations')" title="Hilfe zu Automationen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddRule()">+ Neue Regel</button>`,
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
   maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-ghost" onclick="showFreeRecord()">+ Freie Wartung</button> <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`,
-  announcements:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('announcements')" title="Hilfe zu Mitteilungen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddAnnouncement()">+ Neue Mitteilung</button>`,
-  notifications:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('notifications')" title="Hilfe zu Benachrichtigungen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddTopic()">+ Topic hinzufügen</button>`,
+  announcements:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('announcements')" title="Hilfe zu Aushängen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddAnnouncement()">+ Neuer Aushang</button>`,
+  notifications:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('notifications')" title="Hilfe zu Push-Nachrichten">? Hilfe</button> <button class="btn btn-primary" onclick="showAddTopic()">+ Topic hinzufügen</button>`,
   stats:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('stats')" title="Hilfe zu Statistiken">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="loadStats()">↺ Aktualisieren</button>`,
   log:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('log')" title="Hilfe zum Aktivitätslog">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="loadLog()">↺ Aktualisieren</button>`,
   backup:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('backup')" title="Hilfe zu Backup">? Hilfe</button>`,
   settings:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('settings')" title="Hilfe zu Einstellungen">? Hilfe</button>`,
-  dashboard:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>`,
+  dashboard:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button> <button id="dash-refresh-countdown" class="btn btn-ghost btn-sm" onclick="dashboardRefreshNow()" style="font-family:var(--mono);font-size:11px">↻ …</button>`,
 };
 function navigate(el) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -2329,6 +2367,17 @@ function initHelp() {
   selectHelpCat(_helpActiveCat);
 }
 
+function selectSettingsCat(id) {
+  const ids = ['system','display','aushaenge','agb','push','notfall','backup'];
+  const nav = document.querySelectorAll('#page-settings .help-nav-item');
+  nav.forEach((item, i) => item.classList.toggle('active', ids[i] === id));
+  document.querySelectorAll('#page-settings .help-panel').forEach(p =>
+    p.classList.toggle('active', p.id === 'settings-panel-' + id)
+  );
+  const content = document.querySelector('#page-settings .help-content');
+  if (content) content.scrollTop = 0;
+}
+
 function selectHelpCat(id) {
   _helpActiveCat = id;
   document.getElementById('help-search').value = '';
@@ -2354,8 +2403,8 @@ function helpSearch(query) {
   document.querySelectorAll('.help-panel').forEach(p => p.classList.remove('active'));
   const catNames = {
     start:'Erste Schritte', guests:'Gästeverwaltung', machines:'Maschinen',
-    permissions:'Berechtigungen', maintenance:'Maschinenpflege', announcements:'Mitteilungen',
-    notifications:'Benachrichtigungen', emergency:'Notfall-Alarm', stats:'Statistiken',
+    permissions:'Berechtigungen', maintenance:'Maschinenpflege', announcements:'Aushänge',
+    notifications:'Push-Nachrichten', emergency:'Notfall-Alarm', stats:'Statistiken',
     log:'Aktivitätslog', display:'Display & Kiosk', nfc:'NFC-Writer',
     settings:'Einstellungen', backup:'Backup & Restore', problems:'Häufige Probleme'
   };
@@ -2418,7 +2467,7 @@ function renderAnnouncementList(data) {
   const el = document.getElementById('ann-list');
   if (!el) return;
   if (!data.length) {
-    el.innerHTML = `<div style="color:var(--text-dim);font-size:13px;padding:24px;text-align:center">Noch keine Mitteilungen vorhanden.</div>`;
+    el.innerHTML = `<div style="color:var(--text-dim);font-size:13px;padding:24px;text-align:center">Noch keine Aushänge vorhanden.</div>`;
     return;
   }
   const order = { aktiv: 0, geplant: 1, abgelaufen: 2, deaktiviert: 3 };
@@ -2448,12 +2497,12 @@ function _annFormHtml(a) {
   const days = a && a.recur_days ? a.recur_days.split(',').map(Number) : [];
   return `
     <div class="form-group"><label class="form-label">Text *</label>
-      <textarea class="form-input" id="ann-text" rows="3" placeholder="Text der Mitteilung">${a ? a.text.replace(/</g,'&lt;') : ''}</textarea></div>
+      <textarea class="form-input" id="ann-text" rows="3" placeholder="Text des Aushangs">${a ? a.text.replace(/</g,'&lt;') : ''}</textarea></div>
     <div class="form-group" style="margin-bottom:12px">
       <label class="form-label">Anzeige</label>
       <div style="display:flex;gap:12px">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
-          <input type="radio" name="ann-display" value="banner" ${(!a||a.display_type==='banner')?'checked':''}> 📢 Mitteilungs-Karte
+          <input type="radio" name="ann-display" value="banner" ${(!a||a.display_type==='banner')?'checked':''}> 📢 Aushang-Karte
         </label>
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
           <input type="radio" name="ann-display" value="ticker" ${(a&&a.display_type==='ticker')?'checked':''}> 🎞 Lauftext
@@ -2541,12 +2590,12 @@ function filterAnnouncements(q) {
 }
 
 function showAddAnnouncement() {
-  openModal('Neue Mitteilung', _annFormHtml(null),
+  openModal('Neuer Aushang', _annFormHtml(null),
     async () => {
       const body = _annPayload();
       if (!body.text) { showToast('Text ist erforderlich','error'); return false; }
       const res = await api('POST', '/announcements', body);
-      if (res) { closeModal(); showToast('Mitteilung erstellt','success'); loadAnnouncements(); }
+      if (res) { closeModal(); showToast('Aushang erstellt','success'); loadAnnouncements(); }
     }, 'Erstellen');
 }
 
@@ -2554,7 +2603,7 @@ async function showEditAnnouncement(id) {
   const data = await api('GET', '/announcements');
   const a = data && data.find(x => x.id === id);
   if (!a) return;
-  openModal('Mitteilung bearbeiten', _annFormHtml(a),
+  openModal('Aushang bearbeiten', _annFormHtml(a),
     async () => {
       const body = _annPayload();
       if (!body.text) { showToast('Text ist erforderlich','error'); return false; }
@@ -2564,7 +2613,7 @@ async function showEditAnnouncement(id) {
 }
 
 async function deleteAnnouncement(id) {
-  if (!confirm('Mitteilung löschen?')) return;
+  if (!confirm('Aushang löschen?')) return;
   const res = await api('DELETE', `/announcements/${id}`);
   if (res) { showToast('Gelöscht','success'); loadAnnouncements(); }
 }
@@ -2587,7 +2636,7 @@ function fmtDate(isoStr) {
   });
 }
 function fmtLocalDate(isoStr) {
-  // Für Zeiten die bereits als Lokalzeit gespeichert sind (z.B. Mitteilungen)
+  // Für Zeiten die bereits als Lokalzeit gespeichert sind (z.B. Aushänge)
   if (!isoStr) return '—';
   const d = new Date(isoStr.replace(' ', 'T'));
   if (isNaN(d)) return isoStr;
@@ -2616,6 +2665,12 @@ async function loadAll() {
     document.getElementById('badge-guests').textContent   = stats.total_guests;
     document.getElementById('badge-lm').textContent       = stats.total_managers;
     document.getElementById('badge-machines').textContent = stats.total_machines;
+  }
+  // Topbar für die initiale Seite befüllen (navigate() wird beim Start nicht aufgerufen)
+  const activeNav = document.querySelector('.nav-item.active');
+  if (activeNav) {
+    const page = activeNav.dataset.page;
+    document.getElementById('topbar-actions').innerHTML = pageActions[page] ? pageActions[page]() : '';
   }
   // Sofort rendern — Dashboard und Log sind damit schon sichtbar
   renderGuests(); renderLM(); renderMachines(); renderPermGuestList(); renderPermMachineList(); renderDashboard();
@@ -2746,7 +2801,7 @@ function renderDashboard() {
     }
 
     const userLine = isActive
-      ? `<div style="font-size:11px;color:var(--accent2);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">◉ ${m.current_guest_name||m.current_guest_name===null&&m.session_manager_id?'Manager':'In Benutzung'}</div>`
+      ? `<div style="font-size:11px;color:var(--accent2);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">◉ ${m.current_guest_name ? m.current_guest_name : m.session_manager_id ? 'Manager' : 'In Benutzung'}</div>`
       : '';
 
     const cardBg = isActive
@@ -4355,7 +4410,6 @@ async function loadSettings() {
   clientSettings.modal_backdrop_display = s.modal_backdrop_display;
   document.getElementById('cfg-nfc-url').value = s.nfc_writer_url || '';
   document.getElementById('cfg-jwt-min').value = s.jwt_expire_minutes;
-  document.getElementById('cfg-token-days').value = s.guest_token_days;
   document.getElementById('cfg-backdrop-input').checked   = s.modal_backdrop_input;
   document.getElementById('cfg-backdrop-display').checked = s.modal_backdrop_display;
   document.getElementById('cfg-queue-min').value = s.queue_reservation_minutes ?? 5;
@@ -4399,7 +4453,6 @@ async function saveSettings() {
   const payload = {
     nfc_writer_url:          document.getElementById('cfg-nfc-url').value.trim(),
     jwt_expire_minutes:      parseInt(document.getElementById('cfg-jwt-min').value) || 480,
-    guest_token_days:        parseInt(document.getElementById('cfg-token-days').value) || 365,
     modal_backdrop_input:    document.getElementById('cfg-backdrop-input').checked,
     modal_backdrop_display:  document.getElementById('cfg-backdrop-display').checked,
     queue_reservation_minutes: parseInt(document.getElementById('cfg-queue-min').value) || 5,
@@ -4476,13 +4529,32 @@ function _checkIdleAlarm(machines) {
   }
 }
 
+let _dashRefreshTotal = 30;
+let _dashRefreshRemaining = 30;
+
 async function startDashboardRefresh() {
   let ms = 30000;
   try {
     const s = await GET('/settings');
     if (s?.dashboard_refresh_seconds) ms = s.dashboard_refresh_seconds * 1000;
   } catch {}
+  _dashRefreshTotal = Math.round(ms / 1000);
+  _dashRefreshRemaining = _dashRefreshTotal;
+
+  const updateCountdown = () => {
+    const cdEl = document.getElementById('dash-refresh-countdown');
+    if (cdEl) cdEl.textContent = `↻ ${_dashRefreshRemaining}s`;
+  };
+  updateCountdown();
+
+  setInterval(() => {
+    _dashRefreshRemaining--;
+    if (_dashRefreshRemaining <= 0) _dashRefreshRemaining = _dashRefreshTotal;
+    updateCountdown();
+  }, 1000);
+
   setInterval(async () => {
+    _dashRefreshRemaining = _dashRefreshTotal;
     const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
     if (activePage === 'machines' || activePage === 'dashboard') refreshLiveData();
     if (activePage === 'automations') {
@@ -4490,6 +4562,11 @@ async function startDashboardRefresh() {
       if (states) { _autoStates = states; renderAutomations(); }
     }
   }, ms);
+}
+
+function dashboardRefreshNow() {
+  _dashRefreshRemaining = _dashRefreshTotal;
+  refreshLiveData();
 }
 startDashboardRefresh();
 
@@ -4628,30 +4705,61 @@ async function doImport(input) {
   input.value = '';
 }
 
+function _updateBackupSelection() {
+  const boxes = document.querySelectorAll('.backup-cb');
+  const checked = [...boxes].filter(b => b.checked);
+  const all = document.getElementById('backup-cb-all');
+  if (all) all.indeterminate = checked.length > 0 && checked.length < boxes.length;
+  if (all) all.checked = boxes.length > 0 && checked.length === boxes.length;
+  const btn = document.getElementById('backup-delete-selected');
+  if (btn) {
+    btn.style.display = checked.length > 0 ? '' : 'none';
+    btn.textContent = `✕ ${checked.length} löschen`;
+  }
+}
+
 async function loadBackupFiles() {
   const el = document.getElementById('backup-files-list');
   if (!el) return;
   el.innerHTML = '<div class="loading"><div class="spinner"></div>Laden…</div>';
   const files = await GET('/backup/files');
   if (!Array.isArray(files) || files.length === 0) {
-    el.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:16px 0">Keine automatischen Backups vorhanden. Aktiviere automatisches Backup in den Einstellungen oder erstelle jetzt ein Backup.</div>';
+    el.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:16px 0">Keine Backups vorhanden. Aktiviere automatisches Backup in den Einstellungen oder erstelle jetzt ein Backup.</div>';
+    const btn = document.getElementById('backup-delete-selected');
+    if (btn) btn.style.display = 'none';
     return;
   }
   const rows = files.map(f => {
     const dt = new Date(f.created_at + 'Z').toLocaleString('de-CH', {dateStyle:'short', timeStyle:'short'});
     const kb = (f.size_bytes / 1024).toFixed(1);
+    const fn = f.filename.replace(/'/g, "\\'");
     return `<tr>
+      <td style="width:28px"><input type="checkbox" class="backup-cb" value="${f.filename}" onchange="_updateBackupSelection()"></td>
       <td style="font-family:var(--mono);font-size:12px">${f.filename}</td>
       <td style="font-size:12px;color:var(--text-dim)">${dt}</td>
       <td style="font-size:12px;color:var(--text-dim)">${kb} KB</td>
       <td style="text-align:right">
-        <button class="btn btn-ghost btn-sm" onclick="downloadBackupFile('${f.filename}')">⬇ Download</button>
-        <button class="btn btn-ghost btn-sm" onclick="restoreBackupFile('${f.filename}')">↩ Restore</button>
-        <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteBackupFile('${f.filename}')">✕</button>
+        <button class="btn btn-ghost btn-sm" onclick="downloadBackupFile('${fn}')">⬇ Download</button>
+        <button class="btn btn-ghost btn-sm" onclick="restoreBackupFile('${fn}')">↩ Restore</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteBackupFile('${fn}')">✕</button>
       </td>
     </tr>`;
   }).join('');
-  el.innerHTML = `<table class="data-table"><thead><tr><th>Datei</th><th>Erstellt</th><th>Grösse</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  el.innerHTML = `<table class="data-table"><thead><tr>
+    <th style="width:28px"><input type="checkbox" id="backup-cb-all" onchange="document.querySelectorAll('.backup-cb').forEach(b=>b.checked=this.checked);_updateBackupSelection()"></th>
+    <th>Datei</th><th>Erstellt</th><th>Grösse</th><th></th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function deleteSelectedBackups() {
+  const checked = [...document.querySelectorAll('.backup-cb:checked')].map(b => b.value);
+  if (!checked.length) return;
+  if (!confirm(`${checked.length} Backup${checked.length>1?'s':''} wirklich löschen?`)) return;
+  const res = await DELETE('/backup/files', {filenames: checked});
+  if (res && res.ok) {
+    showToast(`${res.deleted} Backup${res.deleted!==1?'s':''} gelöscht`, 'success');
+    await loadBackupFiles();
+  }
 }
 
 async function createBackupNow() {
@@ -4730,8 +4838,7 @@ function renderRoomStatus() {
     dot.style.boxShadow   = '0 0 6px rgba(34,197,94,.6)';
     label.textContent     = 'Raum geöffnet';
     label.style.color     = '#22c55e';
-    since.textContent     = room_open_since
-      ? `seit ${new Date(room_open_since).toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'})} Uhr` : '';
+    since.textContent     = '';
     btnO.style.display = 'none';
     btnC.style.display = '';
   } else {
@@ -4766,16 +4873,19 @@ const COND_LABELS = {
   session_active: '👤 Aktive Session',
 };
 
-let _rules     = [];
+let _rules      = [];
 let _ruleStates = {};
+let _ntfyTopics = [];
 
 async function loadAutomations() {
-  const [rules, states] = await Promise.all([
+  const [rules, states, topics] = await Promise.all([
     apiSilent('GET', '/automations'),
     apiSilent('GET', '/automations/states'),
+    apiSilent('GET', '/ntfy-topics'),
   ]);
   if (rules)  { _rules = rules; }
   if (states) { _ruleStates = states; }
+  if (topics) { _ntfyTopics = topics; }
   renderAutomations();
   const b = document.getElementById('badge-automations');
   if (b) { b.textContent = _rules.length; b.style.display = ''; }
@@ -4837,13 +4947,20 @@ function _renderAutomationsList(rules) {
       ? `<span style="font-size:11px;color:var(--success);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:1px 7px">🟢 Raum öffnen</span>`
       : r.action_type === 'room_close'
         ? `<span style="font-size:11px;color:var(--danger);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:1px 7px">🔴 Raum schliessen</span>`
-        : '';
+        : r.action_type === 'notify'
+          ? `<span style="font-size:11px;color:var(--accent2);background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);border-radius:4px;padding:1px 7px">🔔 Push-Nachricht</span>`
+          : '';
+    const notifyTopic = r.action_type === 'notify' && r.notify_topic_id
+      ? _ntfyTopics.find(t => t.id === r.notify_topic_id) : null;
     const targetLabel = r.action_type === 'machine' && r.target_machine_name
-      ? `<span style="font-size:12px;color:var(--text-muted)">→ ${escHtml(r.target_machine_name)}</span>` : '';
+      ? `<span style="font-size:12px;color:var(--text-muted)">→ ${escHtml(r.target_machine_name)}</span>`
+      : r.action_type === 'notify' && notifyTopic
+        ? `<span style="font-size:12px;color:var(--text-muted)">→ ${escHtml(notifyTopic.title)}</span>`
+        : '';
     return `<div class="machine-card" style="margin-bottom:10px;padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
       <div style="flex:1;min-width:200px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
-          <strong>${escHtml(r.name || r.target_machine_name || (r.action_type==='room_open'?'Raum öffnen':'Raum schliessen'))}</strong>
+          <strong>${escHtml(r.name || r.target_machine_name || (r.action_type==='room_open'?'Raum öffnen':r.action_type==='room_close'?'Raum schliessen':'Push-Nachricht'))}</strong>
           ${targetLabel}
           ${actionChip}
           ${stateChip}
@@ -4984,6 +5101,7 @@ function _ruleModalBody(r) {
         <option value="machine"    ${at==='machine'   ?'selected':''}>🏭 Maschine schalten</option>
         <option value="room_open"  ${at==='room_open' ?'selected':''}>🟢 Raum öffnen</option>
         <option value="room_close" ${at==='room_close'?'selected':''}>🔴 Raum schliessen</option>
+        <option value="notify"     ${at==='notify'    ?'selected':''}>🔔 Push-Nachricht senden</option>
       </select>
     </div>
     <div id="rule-room-hint" style="display:${at==='room_open'||at==='room_close'?'block':'none'};margin:-4px 0 12px;padding:10px 12px;background:rgba(244,166,34,.08);border:1px solid rgba(244,166,34,.3);border-radius:8px;font-size:12px;color:var(--text-mid);line-height:1.5">
@@ -4995,6 +5113,17 @@ function _ruleModalBody(r) {
         <option value="">Auswählen…</option>${machOpts}
       </select>
       ${r&&isMachine?`<input type="hidden" id="rule-target-hidden" value="${r.target_machine_id}">`:''}</div>
+    <div id="rule-notify-row" class="form-group" style="${at==='notify'?'':'display:none'}">
+      <label class="form-label">ntfy-Topic</label>
+      <select class="form-input" id="rule-notify-topic">
+        <option value="">Auswählen…</option>
+        ${_ntfyTopics.map(t=>`<option value="${t.id}" ${r?.notify_topic_id===t.id?'selected':''}>${escHtml(t.title)}</option>`).join('')}
+      </select>
+    </div>
+    <div id="rule-notify-msg-row" class="form-group" style="${at==='notify'?'':'display:none'}">
+      <label class="form-label">Nachricht <span style="font-weight:400;color:var(--text-muted)">— leer = Regelname</span></label>
+      <input class="form-input" id="rule-notify-msg" value="${escHtml(r?.notify_message||'')}" placeholder="z.B. Laser läuft noch nach 18:00 Uhr">
+    </div>
     <div style="margin-bottom:8px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <label class="form-label" style="margin:0">Bedingungen <span style="color:var(--text-muted);font-weight:400">(alle müssen gleichzeitig wahr sein)</span></label>
@@ -5011,10 +5140,14 @@ function _ruleModalBody(r) {
 
 function _onActionTypeChange(val) {
   const isMachine = val === 'machine';
-  document.getElementById('rule-target-row').style.display  = isMachine ? '' : 'none';
-  document.getElementById('rule-delay-row').style.display   = isMachine ? '' : 'none';
-  document.getElementById('rule-room-hint').style.display   = isMachine ? 'none' : 'block';
-  document.getElementById('rule-cond-menu-wrap').innerHTML  = _addCondMenu(val);
+  const isRoom    = val === 'room_open' || val === 'room_close';
+  const isNotify  = val === 'notify';
+  document.getElementById('rule-target-row').style.display     = isMachine ? '' : 'none';
+  document.getElementById('rule-delay-row').style.display      = isMachine ? '' : 'none';
+  document.getElementById('rule-room-hint').style.display      = isRoom    ? 'block' : 'none';
+  document.getElementById('rule-notify-row').style.display     = isNotify  ? '' : 'none';
+  document.getElementById('rule-notify-msg-row').style.display = isNotify  ? '' : 'none';
+  document.getElementById('rule-cond-menu-wrap').innerHTML     = _addCondMenu(val);
 }
 
 function _collectRule() {
@@ -5042,14 +5175,18 @@ function _collectRule() {
       if (!c.time_on || !c.time_off || c.time_off <= c.time_on) { showToast('Zeitplan: gültige Zeiten eingeben','error'); return null; }
     }
   }
+  let notify_topic_id = null;
+  let notify_message  = null;
+  if (action_type === 'notify') {
+    notify_topic_id = parseInt(document.getElementById('rule-notify-topic')?.value) || null;
+    if (!notify_topic_id) { showToast('ntfy-Topic auswählen','error'); return null; }
+    notify_message = document.getElementById('rule-notify-msg')?.value.trim() || null;
+  }
   const conditions = _editConditions.map(({_uid, ...c}) => c);
-  return {name, action_type, target_machine_id, off_delay_sec: delay, conditions};
+  return {name, action_type, target_machine_id, off_delay_sec: delay, conditions, notify_topic_id, notify_message};
 }
 
 function showAddRule() {
-  if (!cache.machines.some(m => m.plug_type && m.plug_type !== 'none')) {
-    showToast('Keine Maschinen mit Plug konfiguriert','error'); return;
-  }
   _editConditions = [];
   openModal('Neue Regel', _ruleModalBody(null), async () => {
     const payload = _collectRule(); if (!payload) return;
@@ -5794,7 +5931,7 @@ async function sendTestNotification(id, btn) {
   const res = await POST(`/ntfy-topics/${id}/test`);
   btn.disabled = false;
   btn.textContent = orig;
-  if (res) showToast('Test-Benachrichtigung gesendet', 'success');
+  if (res) showToast('Test-Push-Nachricht gesendet', 'success');
 }
 
 // Topics für Einstellungs-Dropdown laden (Emergency-Topic Selektor)
@@ -5821,7 +5958,7 @@ function _topicFormHtml(t) {
     </div>
     <div class="form-group">
       <label class="form-label">Beschreibung <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
-      <textarea class="form-input" id="tf-desc" rows="2" placeholder="Benachrichtigungen bei Notfall-Alarm">${escHtml(t?.description||'')}</textarea>
+      <textarea class="form-input" id="tf-desc" rows="2" placeholder="Push-Nachrichten bei Notfall-Alarm">${escHtml(t?.description||'')}</textarea>
     </div>`;
 }
 

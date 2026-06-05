@@ -465,6 +465,15 @@ async def run_migrations(engine: AsyncEngine) -> None:
             "room_access_denied",
         ])
 
+        # ── v1.30: notify-Aktion für automation_rules ─────────────────────────
+        await _add_column_if_missing(conn, "automation_rules", "notify_topic_id",
+                                     "INT DEFAULT NULL")
+        await _add_column_if_missing(conn, "automation_rules", "notify_message",
+                                     "TEXT DEFAULT NULL")
+        await _extend_enum_if_needed(conn, "activity_log", "type", [
+            "rule_notify",
+        ])
+
     log.info("Migrationen abgeschlossen")
 
 
