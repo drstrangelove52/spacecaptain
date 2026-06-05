@@ -16,7 +16,7 @@ from typing import List
 from app.services.auth import require_admin
 
 from app.database import get_db
-from app.models import User, Machine, MachinePlug, Permission, LogType
+from app.models import User, Machine, MachinePlug, Permission, LogType, MachineCategory, MachineLocation
 from app.models import Plug as PlugModel
 from app.schemas import MachineCreate, MachineUpdate, MachineOut
 from app.services.auth import get_current_user
@@ -504,6 +504,20 @@ async def import_machines_confirm(
 
     res = await db.execute(select(Machine.name))
     existing_names = {r[0] for r in res.all()}
+
+    # Fehlende Kategorien und Standorte automatisch anlegen
+    existing_cats = {c.name for c in (await db.execute(select(MachineCategory.name))).scalars().all()}
+    existing_locs = {l.name for l in (await db.execute(select(MachineLocation.name))).scalars().all()}
+    for row in [r for r in rows if r.get("action") == "import"]:
+        cat = (row.get("category") or "Sonstiges").strip() or "Sonstiges"
+        if cat not in existing_cats:
+            db.add(MachineCategory(name=cat, icon="🔧", sort_order=len(existing_cats)))
+            existing_cats.add(cat)
+        loc = (row.get("location") or "").strip() or None
+        if loc and loc not in existing_locs:
+            db.add(MachineLocation(name=loc, sort_order=len(existing_locs)))
+            existing_locs.add(loc)
+    await db.flush()
 
     imported = 0
     skipped  = 0
