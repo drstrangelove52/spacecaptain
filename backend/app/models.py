@@ -339,6 +339,14 @@ class MachineCategory(Base):
     created_at: Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class MachineLocation(Base):
+    __tablename__ = "machine_locations"
+    id:         Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name:       Mapped[str]           = mapped_column(String(100), unique=True, nullable=False)
+    sort_order: Mapped[int]           = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class Plug(Base):
     __tablename__ = "plugs"
     id:                     Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)

@@ -226,6 +226,24 @@ class MachineCategoryUpdate(BaseModel):
     sort_order: Optional[int] = None
 
 
+# ── Machine Locations ─────────────────────────────────────
+class MachineLocationOut(BaseModel):
+    id: int
+    name: str
+    sort_order: int
+
+    class Config:
+        from_attributes = True
+
+class MachineLocationCreate(BaseModel):
+    name: str
+    sort_order: int = 0
+
+class MachineLocationUpdate(BaseModel):
+    name: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
 # ── Plug Pool ─────────────────────────────────────────────
 class PlugCreate(BaseModel):
     name: str

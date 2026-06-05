@@ -43,7 +43,7 @@ def get_settings() -> Settings:
     return Settings()
 
 
-APP_VERSION = "1.30"
+APP_VERSION = "1.31"
 
 import os as _os, zoneinfo as _zi
 BUILD_NR = _os.environ.get("BUILD_NR", "")

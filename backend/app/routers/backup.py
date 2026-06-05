@@ -14,7 +14,7 @@ from app.models import (
     User, Guest, Machine, Permission,
     ActivityLog, MachineSession, LogType, SessionEndedBy,
     MaintenanceInterval, MaintenanceRecord, SystemSettings, Announcement, NtfyTopic,
-    Plug, MachinePlug, AutomationRule, RuleCondition,
+    Plug, MachinePlug, AutomationRule, RuleCondition, MachineLocation,
 )
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
@@ -47,6 +47,7 @@ async def _build_export_data(db: AsyncSession) -> dict:
     maint_recs = (await db.execute(select(MaintenanceRecord).order_by(MaintenanceRecord.id))).scalars().all()
     announcements = (await db.execute(select(Announcement).order_by(Announcement.id))).scalars().all()
     ntfy_topics   = (await db.execute(select(NtfyTopic).order_by(NtfyTopic.id))).scalars().all()
+    locations     = (await db.execute(select(MachineLocation).order_by(MachineLocation.sort_order, MachineLocation.name))).scalars().all()
     plugs         = (await db.execute(select(Plug).order_by(Plug.id))).scalars().all()
     machine_plugs_rows = (await db.execute(
         select(MachinePlug).order_by(MachinePlug.machine_id, MachinePlug.sort_order)
@@ -83,6 +84,10 @@ async def _build_export_data(db: AsyncSession) -> dict:
             "title":       t.title,
             "description": t.description,
         } for t in ntfy_topics],
+        "machine_locations": [{
+            "name":       l.name,
+            "sort_order": l.sort_order,
+        } for l in locations],
         "users": [{
             "name": u.name, "email": u.email, "role": u.role,
             "phone": u.phone, "area": u.area, "is_active": u.is_active,
@@ -327,6 +332,23 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
             if field in valid_fields:
                 setattr(cfg, field, value)
         await db.flush()
+
+    # ── Standorte ─────────────────────────────────────────
+    existing_locs = {l.name: l for l in (await db.execute(select(MachineLocation))).scalars().all()}
+    for l in payload.get("machine_locations", []):
+        if not l.get("name"):
+            continue
+        if l["name"] in existing_locs:
+            if overwrite:
+                existing_locs[l["name"]].sort_order = l.get("sort_order", 0)
+                stats["updated"] += 1
+            else:
+                stats["skipped"] += 1
+            continue
+        db.add(MachineLocation(name=l["name"], sort_order=l.get("sort_order", 0)))
+        stats.setdefault("machine_locations", 0)
+        stats["machine_locations"] += 1
+    await db.flush()
 
     # ── Benutzer ──────────────────────────────────────────
     existing_users = {u.email: u for u in (await db.execute(select(User))).scalars().all()}

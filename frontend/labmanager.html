@@ -427,6 +427,9 @@
         <select class="filter-input" id="machine-filter-cat" onchange="filterMachines()" style="width:160px">
           <option value="">Alle Kategorien</option>
         </select>
+        <select class="filter-input" id="machine-filter-loc" onchange="filterMachines()" style="width:150px">
+          <option value="">Alle Standorte</option>
+        </select>
         <select class="filter-input" id="machine-filter-status" onchange="filterMachines()" style="width:140px">
           <option value="">Alle Status</option>
           <option value="online">Online</option>
@@ -434,7 +437,7 @@
           <option value="offline">Offline</option>
           <option value="maintenance">Wartung</option>
         </select>
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('machine-search').value='';document.getElementById('machine-filter-cat').value='';document.getElementById('machine-filter-status').value='';filterMachines()">✕ Reset</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('machine-search').value='';document.getElementById('machine-filter-cat').value='';document.getElementById('machine-filter-loc').value='';document.getElementById('machine-filter-status').value='';filterMachines()">✕ Reset</button>
         <div class="view-toggle">
           <button id="view-grid-btn" title="Kachelansicht" onclick="setMachineView('grid')">⊞</button>
           <button id="view-table-btn" title="Tabellenansicht" onclick="setMachineView('table')">≡</button>
@@ -2237,7 +2240,7 @@ function escHtml(s) {
 }
 let token = localStorage.getItem('ms_token') || '';
 let currentUser = null;
-let cache = { guests:[], machines:[], users:[], permissions:[], categories:[] };
+let cache = { guests:[], machines:[], users:[], permissions:[], categories:[], locations:[] };
 let clientSettings = { modal_backdrop_input: true, modal_backdrop_display: true };
 let selectedPermGuestId = null;
 let selectedPermMachineId = null;
@@ -2312,7 +2315,7 @@ const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',mach
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button> <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`,
-  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button> <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)"> <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`,
+  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button> <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)"> <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ Standorte</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`,
   plugs:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('plugs')" title="Hilfe zu Plug-Pool">? Hilfe</button> <button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`,
   automations:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('automations')" title="Hilfe zu Automationen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddRule()">+ Neue Regel</button>`,
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
@@ -2648,10 +2651,11 @@ function fmtLocalDate(isoStr) {
 
 async function loadAll() {
   // Basis-Daten zuerst laden und sofort rendern (kein Plug-Status nötig)
-  const [guests,users,machines,perms,stats,cats,plugsData] = await Promise.all([
-    GET('/guests'),GET('/users'),GET('/machines'),GET('/permissions'),GET('/dashboard'),GET('/categories'),GET('/plugs')
+  const [guests,users,machines,perms,stats,cats,locs,plugsData] = await Promise.all([
+    GET('/guests'),GET('/users'),GET('/machines'),GET('/permissions'),GET('/dashboard'),GET('/categories'),GET('/locations'),GET('/plugs')
   ]);
   if (cats)      { cache.categories=cats; _refreshCatFilter(); }
+  if (locs)      { cache.locations=locs; _refreshLocFilter(); }
   if (guests)    cache.guests   = guests;
   if (users)     cache.users    = users;
   if (machines)  cache.machines = machines;
@@ -3111,7 +3115,9 @@ function _emojiOutside(e){if(!document.getElementById('_emoji-picker')?.contains
 function _catIcon(name){const c=cache.categories.find(x=>x.name===name);return c?c.icon:'🔧';}
 function _catOptions(selected=''){return cache.categories.map(c=>`<option value="${escHtml(c.name)}"${c.name===selected?' selected':''}>${escHtml(c.icon)} ${escHtml(c.name)}</option>`).join('');}
 function _refreshCatFilter(){const s=document.getElementById('machine-filter-cat');if(!s)return;const cur=s.value;s.innerHTML='<option value="">Alle Kategorien</option>'+cache.categories.map(c=>`<option value="${escHtml(c.name)}"${c.name===cur?' selected':''}>${escHtml(c.icon)} ${escHtml(c.name)}</option>`).join('');}
+function _refreshLocFilter(){const s=document.getElementById('machine-filter-loc');if(!s)return;const cur=s.value;s.innerHTML='<option value="">Alle Standorte</option>'+cache.locations.map(l=>`<option value="${escHtml(l.name)}"${l.name===cur?' selected':''}>${escHtml(l.name)}</option>`).join('');}
 async function loadCategories(){const data=await GET('/categories');if(data){cache.categories=data;_refreshCatFilter();}}
+async function loadLocations(){const data=await GET('/locations');if(data){cache.locations=data;_refreshLocFilter();}}
 
 function _renderCatList(){
   return cache.categories.map(c=>`
@@ -3167,6 +3173,61 @@ async function deleteCategory(id,name){
   if(!confirm(`Kategorie „${name}" wirklich löschen?`))return;
   const res=await DELETE(`/categories/${id}`);
   if(res){await loadCategories();document.getElementById('cat-list').innerHTML=_renderCatList();showToast(`${name} gelöscht`,'warn');}
+}
+
+// ── Standorte ─────────────────────────────────────────────────────────────────
+function _locOptions(selected=''){
+  const opts=cache.locations.map(l=>`<option value="${escHtml(l.name)}"${l.name===selected?' selected':''}>${escHtml(l.name)}</option>`).join('');
+  return `<option value="">— kein Standort —</option>`+opts;
+}
+function _renderLocList(){
+  return cache.locations.map(l=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <input class="form-input form-input-sm" id="loc-name-${l.id}" value="${escHtml(l.name)}" placeholder="Name" style="flex:1;min-width:0">
+      <input class="form-input form-input-sm" id="loc-order-${l.id}" type="number" value="${l.sort_order}" title="Reihenfolge" style="width:52px;flex-shrink:0">
+      <button class="btn btn-ghost btn-sm" onclick="saveLocation(${l.id})" title="Speichern">💾</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteLocation(${l.id},'${escHtml(l.name)}')" title="Löschen">✕</button>
+    </div>`).join('');
+}
+
+async function showLocationsModal(){
+  openModal('Standorte verwalten',`
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);display:flex;gap:8px;margin-bottom:6px;padding:0 2px">
+      <span style="flex:1">NAME</span>
+      <span style="width:52px;text-align:center">POS</span>
+      <span style="width:66px"></span>
+    </div>
+    <div id="loc-list">${_renderLocList()}</div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px">NEUER STANDORT</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="form-input form-input-sm" id="new-loc-name" placeholder="Name" style="flex:1;min-width:0">
+        <button class="btn btn-primary btn-sm" onclick="addLocation()" style="flex-shrink:0">+ Hinzufügen</button>
+      </div>
+    </div>
+  `);
+  document.getElementById('modal-footer').innerHTML='<button class="btn btn-ghost" onclick="closeModal()">Schließen</button>';
+}
+
+async function saveLocation(id){
+  const name=document.getElementById(`loc-name-${id}`)?.value.trim();
+  const sort_order=parseInt(document.getElementById(`loc-order-${id}`)?.value)||0;
+  if(!name){showToast('Name darf nicht leer sein','warn');return;}
+  const res=await PATCH(`/locations/${id}`,{name,sort_order});
+  if(res){await loadLocations();showToast('Gespeichert!','success');document.getElementById('loc-list').innerHTML=_renderLocList();}
+}
+
+async function addLocation(){
+  const name=document.getElementById('new-loc-name')?.value.trim();
+  if(!name){showToast('Name darf nicht leer sein','warn');return;}
+  const res=await POST('/locations',{name,sort_order:cache.locations.length});
+  if(res){await loadLocations();document.getElementById('loc-list').innerHTML=_renderLocList();document.getElementById('new-loc-name').value='';showToast(`${name} hinzugefügt`,'success');}
+}
+
+async function deleteLocation(id,name){
+  if(!confirm(`Standort „${name}" wirklich löschen?`))return;
+  const res=await DELETE(`/locations/${id}`);
+  if(res){await loadLocations();document.getElementById('loc-list').innerHTML=_renderLocList();showToast(`${name} gelöscht`,'warn');}
 }
 
 let _machineView=localStorage.getItem('machineView')||'grid';
@@ -3285,16 +3346,18 @@ async function confirmCsvImport(){
 function filterMachines() {
   const q=(document.getElementById('machine-search')?.value||'').toLowerCase();
   const cat=document.getElementById('machine-filter-cat')?.value||'';
+  const loc=document.getElementById('machine-filter-loc')?.value||'';
   const statusF=document.getElementById('machine-filter-status')?.value||'';
   let filtered=cache.machines.filter(m=>{
     if (q && !m.name.toLowerCase().includes(q) && !(m.location||'').toLowerCase().includes(q) && !(m.manufacturer||'').toLowerCase().includes(q) && !(m.model||'').toLowerCase().includes(q)) return false;
     if (cat && m.category!==cat) return false;
+    if (loc && (m.location||'')!==loc) return false;
     if (statusF==='inuse' && !m.in_use) return false;
     else if (statusF && statusF!=='inuse' && m.status!==statusF) return false;
     return true;
   });
   const countEl=document.getElementById('machine-filter-count');
-  if (countEl) countEl.textContent=(q||cat||statusF)?`${filtered.length} von ${cache.machines.length} Maschinen`:'' ;
+  if (countEl) countEl.textContent=(q||cat||loc||statusF)?`${filtered.length} von ${cache.machines.length} Maschinen`:'' ;
   const sorted=[...filtered];
   const {col,dir}=_machineSort;
   if (col) {
@@ -3400,6 +3463,7 @@ function _machineTable(machines) {
       <td>${session}</td>
       <td>${plug}</td>
       <td style="white-space:nowrap">
+        ${m.plug_type!=='none'&&m.status==='online'?`<button class="btn ${m.plug_on?'btn-success-outline':'btn-success'} btn-sm" onclick="managerSwitchMachine(${m.id},'on',this)" title="Einschalten" style="font-size:15px;padding:2px 7px">⚡</button> <button class="btn ${m.plug_on?'btn-danger-filled':'btn-danger'} btn-sm" onclick="managerSwitchMachine(${m.id},'off',this)" title="Ausschalten" style="font-size:15px;padding:2px 7px">○</button> `:''}
         <button class="btn btn-ghost btn-sm" onclick="editMachine(${m.id})">✏</button>
         <button class="btn btn-ghost btn-sm" onclick="openQRModal(${m.id})">▦</button>
         ${currentUser?.role==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>`:''}
@@ -3444,9 +3508,9 @@ function formatDuration(min) {
 }
 
 async function managerSwitchMachine(id, action, btn) {
-  btn.disabled=true; btn.textContent='…';
+  const origHtml=btn.innerHTML; btn.disabled=true; btn.textContent='…';
   const res=await POST(`/machines/${id}/switch?action=${action}`);
-  btn.disabled=false; btn.textContent=action==='on'?'⚡ EIN':'○ AUS';
+  btn.disabled=false; btn.innerHTML=origHtml;
   if (res&&res.ok) { showToast(`${res.machine}: ${action==='on'?'Eingeschaltet':'Ausgeschaltet'}`,'success'); await loadAll(); }
 }
 
@@ -3463,7 +3527,7 @@ function showAddMachine() {
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="mc-serial" placeholder="SN-123456"></div>
-      <div class="form-group"><label class="form-label">Standort</label><input class="form-input" id="mc-loc" placeholder="Raum A"></div>
+      <div class="form-group"><label class="form-label">Standort</label><select class="form-input" id="mc-loc">${_locOptions()}</select></div>
     </div>
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="mc-comment" rows="2" placeholder="z.B. Linse verschmutzt, bitte melden"></textarea></div>
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="mc-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden&#10;Wird vor dem Einschalten als Pflicht-Bestätigung angezeigt."></textarea></div>
@@ -3587,7 +3651,7 @@ function editMachine(id) {
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="e-serial" value="${escHtml(m.serial_number||'')}"></div>
-      <div class="form-group"><label class="form-label">Standort</label><input class="form-input" id="e-loc" value="${escHtml(m.location||'')}"></div>
+      <div class="form-group"><label class="form-label">Standort</label><select class="form-input" id="e-loc">${_locOptions(m.location||'')}</select></div>
     </div>
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="e-comment" rows="2" placeholder="z.B. Linse verschmutzt">${m.comment||''}</textarea></div>
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="e-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden">${m.safety_notes||''}</textarea></div>

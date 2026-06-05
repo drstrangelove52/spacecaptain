@@ -474,6 +474,16 @@ async def run_migrations(engine: AsyncEngine) -> None:
             "rule_notify",
         ])
 
+        # ── v1.31: Standortverwaltung ──────────────────────────────────────────
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS machine_locations (
+                id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name        VARCHAR(100) NOT NULL UNIQUE,
+                sort_order  INT          NOT NULL DEFAULT 0,
+                created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
+
     log.info("Migrationen abgeschlossen")
 
 
