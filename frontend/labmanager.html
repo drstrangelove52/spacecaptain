@@ -824,43 +824,21 @@
               </div>
               <div style="padding-top:16px;border-top:1px solid var(--border)">
                 <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px">SMART PLUGS</div>
-                <div style="display:grid;grid-template-columns:1fr 160px 1fr;gap:12px;align-items:end;margin-bottom:12px">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                   <div class="form-group" style="margin:0">
-                    <label class="form-label">Sirene — IP-Adresse</label>
-                    <input class="form-input" id="cfg-emergency-plug-ip" placeholder="192.168.1.50">
-                  </div>
-                  <div class="form-group" style="margin:0">
-                    <label class="form-label">Typ</label>
-                    <select class="form-input" id="cfg-emergency-plug-type">
+                    <label class="form-label">Sirene</label>
+                    <select class="form-input" id="cfg-emergency-plug-id">
                       <option value="">— Kein Plug —</option>
-                      <option value="shelly">Shelly</option>
-                      <option value="mystrom">myStrom</option>
                     </select>
                   </div>
                   <div class="form-group" style="margin:0">
-                    <label class="form-label">Token</label>
-                    <input class="form-input" id="cfg-emergency-plug-token" type="password" placeholder="leer = kein Token">
-                  </div>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 160px 1fr;gap:12px;align-items:end">
-                  <div class="form-group" style="margin:0">
-                    <label class="form-label">Blinklicht — IP-Adresse</label>
-                    <input class="form-input" id="cfg-emergency-plug2-ip" placeholder="192.168.1.51">
-                  </div>
-                  <div class="form-group" style="margin:0">
-                    <label class="form-label">Typ</label>
-                    <select class="form-input" id="cfg-emergency-plug2-type">
+                    <label class="form-label">Blinklicht</label>
+                    <select class="form-input" id="cfg-emergency-plug2-id">
                       <option value="">— Kein Plug —</option>
-                      <option value="shelly">Shelly</option>
-                      <option value="mystrom">myStrom</option>
                     </select>
                   </div>
-                  <div class="form-group" style="margin:0">
-                    <label class="form-label">Token</label>
-                    <input class="form-input" id="cfg-emergency-plug2-token" type="password" placeholder="leer = kein Token">
-                  </div>
                 </div>
-                <div style="font-size:12px;color:var(--text-dim);margin-top:8px">Token: myStrom → API-Key · Shelly → user:passwort</div>
+                <div style="font-size:12px;color:var(--text-dim);margin-top:8px">Plugs werden beim Alarm ein- und nach der Auto-Stop-Zeit ausgeschaltet. Plug-Pool verwalten → <a href="#" onclick="navigateTo('plugs');return false" style="color:var(--accent)">Plugs</a></div>
               </div>
               <div style="padding-top:16px;border-top:1px solid var(--border)">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -931,7 +909,7 @@
 
         <!-- Logo + Version -->
         <div class="card" style="padding:28px 28px 24px;display:flex;align-items:center;gap:24px">
-          <img src="/SpaceCaptain.svg" alt="SpaceCaptain" style="height:64px;width:auto;flex-shrink:0">
+          <img src="/SpaceCaptain.svg" alt="SpaceCaptain" style="height:96px;width:auto;flex-shrink:0">
           <div>
             <div style="font-family:var(--display);font-size:24px;font-weight:900;color:var(--accent);letter-spacing:2px">SpaceCaptain</div>
             <div id="app-version-login" style="font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px;margin-top:4px"></div>
@@ -4489,12 +4467,9 @@ async function loadSettings() {
   document.getElementById('cfg-emergency-token').value = s.emergency_trigger_token ?? '';
   _updateEmergencyCurlPreview();
   document.getElementById('cfg-emergency-duration').value = s.emergency_duration_sec ?? 0;
-  document.getElementById('cfg-emergency-plug-ip').value = s.emergency_plug_ip ?? '';
-  document.getElementById('cfg-emergency-plug-type').value = s.emergency_plug_type ?? '';
-  document.getElementById('cfg-emergency-plug-token').value = s.emergency_plug_token ?? '';
-  document.getElementById('cfg-emergency-plug2-ip').value = s.emergency_plug2_ip ?? '';
-  document.getElementById('cfg-emergency-plug2-type').value = s.emergency_plug2_type ?? '';
-  document.getElementById('cfg-emergency-plug2-token').value = s.emergency_plug2_token ?? '';
+  _emergencyPlugId = s.emergency_plug_id ?? null;
+  _emergencyPlug2Id = s.emergency_plug2_id ?? null;
+  _fillEmergencyPlugDropdowns();
   document.getElementById('cfg-emergency-text').value = s.emergency_text ?? '';
   document.getElementById('cfg-emergency-ntfy-message').value = s.emergency_ntfy_message ?? '';
   document.getElementById('cfg-auto-backup-enabled').checked = !!s.auto_backup_enabled;
@@ -4532,12 +4507,8 @@ async function saveSettings() {
     emergency_trigger_token:   document.getElementById('cfg-emergency-token').value.trim() || null,
     emergency_duration_sec:    parseInt(document.getElementById('cfg-emergency-duration').value) || 0,
     emergency_ntfy_topic_id:   parseInt(document.getElementById('cfg-emergency-topic').value) || null,
-    emergency_plug_ip:         document.getElementById('cfg-emergency-plug-ip').value.trim() || null,
-    emergency_plug_type:       document.getElementById('cfg-emergency-plug-type').value || null,
-    emergency_plug_token:      document.getElementById('cfg-emergency-plug-token').value.trim() || null,
-    emergency_plug2_ip:        document.getElementById('cfg-emergency-plug2-ip').value.trim() || null,
-    emergency_plug2_type:      document.getElementById('cfg-emergency-plug2-type').value || null,
-    emergency_plug2_token:     document.getElementById('cfg-emergency-plug2-token').value.trim() || null,
+    emergency_plug_id:         parseInt(document.getElementById('cfg-emergency-plug-id').value) || null,
+    emergency_plug2_id:        parseInt(document.getElementById('cfg-emergency-plug2-id').value) || null,
     emergency_text:            document.getElementById('cfg-emergency-text').value || null,
     emergency_ntfy_message:    document.getElementById('cfg-emergency-ntfy-message').value || null,
     auto_backup_enabled:       document.getElementById('cfg-auto-backup-enabled').checked,
@@ -5918,6 +5889,8 @@ document.getElementById('info-year').textContent = new Date().getFullYear();
 // ═══════════════════════════════════════════════════════
 let _emergencyPollTimer = null;
 let _emergencyNtfyTopicId = null;
+let _emergencyPlugId = null;
+let _emergencyPlug2Id = null;
 
 async function checkEmergencyStatus() {
   try {
@@ -6085,11 +6058,23 @@ function _plugOptionLabel(p, excludeMachineId) {
   return label;
 }
 
+function _fillEmergencyPlugDropdowns() {
+  const opts = '<option value="">— Kein Plug —</option>' +
+    [..._plugs].sort((a,b)=>a.name.localeCompare(b.name,'de'))
+      .map(p=>`<option value="${p.id}">${escHtml(p.name)} · ${_plugTypeLabel(p.plug_type)} · ${escHtml(p.plug_ip)}</option>`)
+      .join('');
+  const d1 = document.getElementById('cfg-emergency-plug-id');
+  const d2 = document.getElementById('cfg-emergency-plug2-id');
+  if (d1) { d1.innerHTML = opts; if (_emergencyPlugId) d1.value = _emergencyPlugId; }
+  if (d2) { d2.innerHTML = opts; if (_emergencyPlug2Id) d2.value = _emergencyPlug2Id; }
+}
+
 async function loadPlugs() {
   const data = await GET('/plugs');
   if (!data) return;
   _plugs = data;
   renderPlugs();
+  _fillEmergencyPlugDropdowns();
 }
 
 function sortPlugTable(col) {

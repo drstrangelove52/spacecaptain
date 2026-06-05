@@ -35,12 +35,8 @@ class SettingsOut(BaseModel):
     emergency_ntfy_message: Optional[str] = None
     emergency_duration_sec: int = 0
     emergency_ntfy_topic_id: Optional[int] = None
-    emergency_plug_ip: Optional[str] = None
-    emergency_plug_type: Optional[str] = None
-    emergency_plug_token: Optional[str] = None
-    emergency_plug2_ip: Optional[str] = None
-    emergency_plug2_type: Optional[str] = None
-    emergency_plug2_token: Optional[str] = None
+    emergency_plug_id: Optional[int] = None
+    emergency_plug2_id: Optional[int] = None
     auto_backup_enabled: bool = False
     auto_backup_hour: int = 3
     auto_backup_minute: int = 0
@@ -76,12 +72,8 @@ class SettingsUpdate(BaseModel):
     emergency_ntfy_message: Optional[str] = None
     emergency_duration_sec: Optional[int] = None
     emergency_ntfy_topic_id: Optional[int] = None
-    emergency_plug_ip: Optional[str] = None
-    emergency_plug_type: Optional[str] = None
-    emergency_plug_token: Optional[str] = None
-    emergency_plug2_ip: Optional[str] = None
-    emergency_plug2_type: Optional[str] = None
-    emergency_plug2_token: Optional[str] = None
+    emergency_plug_id: Optional[int] = None
+    emergency_plug2_id: Optional[int] = None
     auto_backup_enabled: Optional[bool] = None
     auto_backup_hour: Optional[int] = None
     auto_backup_minute: Optional[int] = None
@@ -164,18 +156,10 @@ async def update_settings(
         row.emergency_duration_sec = max(0, payload.emergency_duration_sec)
     if payload.emergency_ntfy_topic_id is not None:
         row.emergency_ntfy_topic_id = payload.emergency_ntfy_topic_id or None
-    if payload.emergency_plug_ip is not None:
-        row.emergency_plug_ip = payload.emergency_plug_ip or None
-    if payload.emergency_plug_type is not None:
-        row.emergency_plug_type = payload.emergency_plug_type or None
-    if payload.emergency_plug_token is not None:
-        row.emergency_plug_token = payload.emergency_plug_token or None
-    if payload.emergency_plug2_ip is not None:
-        row.emergency_plug2_ip = payload.emergency_plug2_ip or None
-    if payload.emergency_plug2_type is not None:
-        row.emergency_plug2_type = payload.emergency_plug2_type or None
-    if payload.emergency_plug2_token is not None:
-        row.emergency_plug2_token = payload.emergency_plug2_token or None
+    if payload.emergency_plug_id is not None:
+        row.emergency_plug_id = payload.emergency_plug_id or None
+    if payload.emergency_plug2_id is not None:
+        row.emergency_plug2_id = payload.emergency_plug2_id or None
     if payload.auto_backup_enabled is not None:
         row.auto_backup_enabled = payload.auto_backup_enabled
     if payload.auto_backup_hour is not None:

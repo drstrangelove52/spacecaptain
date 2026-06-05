@@ -4,7 +4,6 @@ Notfall-Alarm — Trigger, Cancel, Status
 import asyncio
 import logging
 from datetime import datetime, timezone
-from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -12,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import get_db
-from app.models import EmergencyState, NtfyTopic, LogType
+from app.models import EmergencyState, NtfyTopic, Plug, LogType
 from app.routers.auth import get_current_user
 from app.services.auth import require_admin
 from app.services.logger import log as activity_log
@@ -42,19 +41,17 @@ async def _get_state(db: AsyncSession) -> EmergencyState:
     return state
 
 
-async def _switch_emergency_plugs(cfg, action: str):
+async def _switch_emergency_plugs(plug1_id, plug2_id, action: str, db: AsyncSession):
     """Schaltet Notfall-Plugs (Sirene + Licht) ein oder aus."""
-    for ip, plug_type, plug_token in [
-        (cfg.emergency_plug_ip,  cfg.emergency_plug_type,  cfg.emergency_plug_token),
-        (cfg.emergency_plug2_ip, cfg.emergency_plug2_type, cfg.emergency_plug2_token),
-    ]:
-        if ip and plug_type and plug_type != "none":
-            fake = SimpleNamespace(
-                plug_type=plug_type, plug_ip=ip,
-                plug_token=plug_token, plug_extra=None
-            )
-            ok, msg = await switch_plug(fake, action)
-            log.info(f"Notfall-Plug {ip} ({plug_type}) {action}: {msg}")
+    for plug_id in [plug1_id, plug2_id]:
+        if not plug_id:
+            continue
+        result = await db.execute(select(Plug).where(Plug.id == plug_id))
+        plug = result.scalar_one_or_none()
+        if not plug or plug.plug_type == "none":
+            continue
+        ok, msg = await switch_plug(plug, action)
+        log.info(f"Notfall-Plug {plug.plug_ip} ({plug.plug_type}) {action}: {msg}")
 
 
 @router.get("/status")
@@ -97,7 +94,7 @@ async def trigger_emergency(request: Request, db: AsyncSession = Depends(get_db)
     await db.commit()
 
     # Plugs einschalten
-    await _switch_emergency_plugs(cfg, "on")
+    await _switch_emergency_plugs(cfg.emergency_plug_id, cfg.emergency_plug2_id, "on", db)
 
     # ntfy-Benachrichtigung senden
     if cfg.emergency_ntfy_topic_id:
@@ -125,7 +122,7 @@ async def trigger_emergency(request: Request, db: AsyncSession = Depends(get_db)
         if _auto_stop_task and not _auto_stop_task.done():
             _auto_stop_task.cancel()
         _auto_stop_task = asyncio.create_task(
-            _auto_stop_plugs(cfg, cfg.emergency_duration_sec)
+            _auto_stop_plugs(cfg.emergency_plug_id, cfg.emergency_plug2_id, cfg.emergency_duration_sec)
         )
 
     await activity_log(db, LogType.emergency_triggered,
@@ -151,7 +148,7 @@ async def cancel_emergency(
     await db.commit()
 
     cfg = await get_system_settings(db)
-    await _switch_emergency_plugs(cfg, "off")
+    await _switch_emergency_plugs(cfg.emergency_plug_id, cfg.emergency_plug2_id, "off", db)
 
     # ntfy-Benachrichtigung bei Quittierung
     if cfg.emergency_ntfy_topic_id:
@@ -182,11 +179,13 @@ async def cancel_emergency(
     return {"ok": True}
 
 
-async def _auto_stop_plugs(cfg, duration_sec: int):
+async def _auto_stop_plugs(plug1_id, plug2_id, duration_sec: int):
     """Schaltet Plugs nach Ablauf der konfigurierten Dauer aus. Display bleibt aktiv."""
     try:
         await asyncio.sleep(duration_sec)
-        await _switch_emergency_plugs(cfg, "off")
+        from app.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as db:
+            await _switch_emergency_plugs(plug1_id, plug2_id, "off", db)
         log.info(f"Notfall-Plugs nach {duration_sec} Sekunden automatisch ausgeschaltet")
     except asyncio.CancelledError:
         pass

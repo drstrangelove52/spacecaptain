@@ -484,6 +484,12 @@ async def run_migrations(engine: AsyncEngine) -> None:
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """))
 
+        # ── v1.32: Notfall-Plugs über Plug-Pool ───────────────────────────────
+        await _add_column_if_missing(conn, "system_settings", "emergency_plug_id",
+                                     "INT UNSIGNED DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "emergency_plug2_id",
+                                     "INT UNSIGNED DEFAULT NULL")
+
     log.info("Migrationen abgeschlossen")
 
 
