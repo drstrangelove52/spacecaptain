@@ -490,6 +490,9 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "system_settings", "emergency_plug2_id",
                                      "INT UNSIGNED DEFAULT NULL")
 
+        # ── v1.33: LogType.system ─────────────────────────────────────────────
+        await _extend_enum_if_needed(conn, "activity_log", "type", ["system"])
+
     log.info("Migrationen abgeschlossen")
 
 
