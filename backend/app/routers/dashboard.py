@@ -21,6 +21,22 @@ from app.services.auth import get_current_user
 
 router = APIRouter(tags=["dashboard & log"])
 
+_AUTOMATION_TYPES = {"rule_on", "rule_off", "rule_notify", "room_opened", "room_closed"}
+_SYSTEM_TYPES     = {"idle_timeout", "system"}
+
+def _resolve_user_name(l, users: dict) -> str | None:
+    if l.user_id:
+        return users.get(l.user_id)
+    stored = (l.meta or {}).get("user_name")
+    if stored:
+        return stored
+    type_val = l.type.value if hasattr(l.type, "value") else str(l.type)
+    if type_val in _AUTOMATION_TYPES:
+        return "Automation"
+    if type_val in _SYSTEM_TYPES:
+        return "System"
+    return None
+
 
 @router.get("/dashboard", response_model=DashboardStats)
 async def dashboard(db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
@@ -99,7 +115,7 @@ async def activity_log(
             "created_at":   _local_iso(l.created_at),
             "guest_name":   guests.get(l.guest_id)   if l.guest_id   else None,
             "machine_name": machines.get(l.machine_id) if l.machine_id else None,
-            "user_name":    users.get(l.user_id) if l.user_id else (l.meta or {}).get("user_name"),
+            "user_name":    _resolve_user_name(l, users),
         })
     return {"total": total, "logs": out}
 
