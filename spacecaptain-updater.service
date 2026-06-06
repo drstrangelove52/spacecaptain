@@ -1,0 +1,17 @@
+[Unit]
+Description=SpaceCaptain Update Watcher
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=martin
+WorkingDirectory=/home/martin/spacecaptain
+ExecStart=/home/martin/spacecaptain/spacecaptain-updater.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

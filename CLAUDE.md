@@ -42,6 +42,7 @@ backend/app/
   routers/locations.py       — Maschinenstandorte CRUD
   routers/guest_auth.py      — Gast-Zugang inkl. Raum-Sperre
   routers/backup.py          — Backup REST-Endpoints
+  routers/update.py          — In-App Update: GET /status + POST /trigger (schreibt update_trigger/trigger)
 
 frontend/
   labmanager.html            — Komplette Admin-UI (single file, kein Framework)
@@ -184,7 +185,22 @@ BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build backend
 
 # DB-Shell
 docker compose exec db mariadb -u spacecaptain -p spacecaptain
+
+# Update-Watcher Status (Host)
+sudo systemctl status spacecaptain-updater
+
+# Update-Log ansehen
+tail -f update_trigger/update.log
 ```
+
+## In-App Update
+
+- `POST /api/update/trigger` schreibt `update_trigger/trigger` (Dateiinhalt: ISO-Timestamp)
+- `update_trigger/` ist ein gemeinsames Volume zwischen Backend-Container (`/app/update_trigger`) und Host (`./update_trigger`)
+- `spacecaptain-updater.sh` läuft auf dem Host als `systemd`-Service (`spacecaptain-updater.service`), pollt alle 5s, führt `git pull` + `docker compose up --build backend` aus
+- `update_trigger/update.log` — Log des letzten Updates, `st_mtime` dient als `last_triggered`-Timestamp im Status-Endpoint
+- Kein Docker Socket im Container nötig — der Watcher hat nur Dateisystem-Zugriff auf das Trigger-Verzeichnis
+- `watcher_ready` im Status: `TRIGGER_DIR.exists()` — zeigt an ob das Volume korrekt gemountet ist
 
 ## Was vermeiden
 

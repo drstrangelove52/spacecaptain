@@ -674,6 +674,7 @@
           <div class="help-nav-item" onclick="selectSettingsCat('push')"><span class="help-nav-icon">🔔</span><span class="help-nav-label">Push-Nachrichten</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('notfall')"><span class="help-nav-icon">🚨</span><span class="help-nav-label">Notfall-Alarm</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('backup')"><span class="help-nav-icon">💾</span><span class="help-nav-label">Auto-Backup</span></div>
+          <div class="help-nav-item" onclick="selectSettingsCat('update')" id="nav-settings-update"><span class="help-nav-icon">🔄</span><span class="help-nav-label">Update</span></div>
           <div style="padding:12px 16px;margin-top:auto;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--surface)">
             <button class="btn btn-primary" style="width:100%;font-size:13px" onclick="saveSettings()">Speichern</button>
           </div>
@@ -885,6 +886,58 @@
                   <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Ältere Backups werden automatisch gelöscht. Speicherort: via BACKUP_DIR in .env</div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- UPDATE -->
+          <div class="help-panel" id="settings-panel-update">
+            <div class="help-panel-header"><span class="help-panel-icon">🔄</span><span class="help-panel-title">Update</span></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
+
+              <!-- Versions-Info -->
+              <div style="display:flex;align-items:center;gap:16px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 18px">
+                <div style="font-size:28px;line-height:1">🔄</div>
+                <div>
+                  <div style="font-family:var(--mono);font-size:13px;color:var(--text)" id="update-version-display">—</div>
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:2px" id="update-last-triggered">—</div>
+                </div>
+                <div style="margin-left:auto">
+                  <span id="update-watcher-badge" style="font-size:11px;padding:3px 8px;border-radius:4px;font-family:var(--mono)">—</span>
+                </div>
+              </div>
+
+              <!-- Update-Button -->
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <button class="btn btn-primary" id="update-trigger-btn" onclick="triggerUpdate()" style="align-self:flex-start">
+                  ↑ Update starten
+                </button>
+                <div style="font-size:12px;color:var(--text-dim);line-height:1.6">
+                  Führt auf dem Host <code style="background:var(--surface2);padding:1px 4px;border-radius:3px">git pull</code> und
+                  <code style="background:var(--surface2);padding:1px 4px;border-radius:3px">docker compose up --build</code> aus.<br>
+                  Der Backend-Container wird neu gestartet — die Verbindung unterbricht kurz.
+                </div>
+              </div>
+
+              <!-- Watcher nicht aktiv: Warnung -->
+              <div id="update-setup-warning" style="display:none;background:rgba(200,100,100,.1);border:1px solid rgba(200,100,100,.3);border-left:3px solid #f88;border-radius:6px;padding:12px 16px;font-size:12px;color:var(--text-mid)">
+                Update-Watcher nicht eingerichtet — der Button bleibt gesperrt bis der Service läuft. Siehe Anleitung unten.
+              </div>
+
+              <!-- Einrichtungsanleitung (immer sichtbar) -->
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:16px 18px;font-size:12px;line-height:1.8;color:var(--text-mid)">
+                <div style="font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Update-Watcher einrichten</div>
+                Einmaliger Setup auf dem Host-Server — der Watcher lauscht auf den Update-Trigger und führt <code style="background:var(--bg);padding:1px 4px;border-radius:3px">git pull</code> + <code style="background:var(--bg);padding:1px 4px;border-radius:3px">docker compose up --build</code> aus:
+                <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin:10px 0;font-size:11px;overflow-x:auto;color:var(--text)">chmod +x ~/spacecaptain/spacecaptain-updater.sh
+sudo cp spacecaptain-updater.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now spacecaptain-updater
+
+# Backend neu starten, damit das Trigger-Verzeichnis gemountet wird
+cd ~/spacecaptain
+BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build backend</pre>
+                Log: <code style="background:var(--bg);padding:1px 4px;border-radius:3px">tail -f ~/spacecaptain/update_trigger/update.log</code>
+              </div>
+
             </div>
           </div>
 
@@ -2349,7 +2402,7 @@ function initHelp() {
 }
 
 function selectSettingsCat(id) {
-  const ids = ['system','display','aushaenge','agb','push','notfall','backup'];
+  const ids = ['system','display','aushaenge','agb','push','notfall','backup','update'];
   const nav = document.querySelectorAll('#page-settings .help-nav-item');
   nav.forEach((item, i) => item.classList.toggle('active', ids[i] === id));
   document.querySelectorAll('#page-settings .help-panel').forEach(p =>
@@ -2357,6 +2410,7 @@ function selectSettingsCat(id) {
   );
   const content = document.querySelector('#page-settings .help-content');
   if (content) content.scrollTop = 0;
+  if (id === 'update') loadUpdateStatus();
 }
 
 function selectHelpCat(id) {
@@ -4519,6 +4573,68 @@ async function saveSettings() {
   };
   const res = await PATCH('/settings', payload);
   if (res) { await loadSettings(); showToast('Einstellungen gespeichert', 'success'); }
+}
+
+// ── Update ───────────────────────────────────────────
+async function loadUpdateStatus() {
+  const d = await GET('/update/status');
+  if (!d) return;
+  document.getElementById('update-version-display').textContent =
+    `v${d.version}${d.build ? ' · Build ' + d.build : ''}`;
+  document.getElementById('update-last-triggered').textContent =
+    d.last_triggered
+      ? 'Letzter Update: ' + new Date(d.last_triggered).toLocaleString('de-CH')
+      : 'Noch kein Update ausgeführt';
+  const badge = document.getElementById('update-watcher-badge');
+  const warning = document.getElementById('update-setup-warning');
+  const btn = document.getElementById('update-trigger-btn');
+  if (d.watcher_ready) {
+    badge.textContent = '● Watcher aktiv';
+    badge.style.cssText = 'font-size:11px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(100,200,100,.15);color:#6dc;border:1px solid rgba(100,200,100,.3)';
+    warning.style.display = 'none';
+    btn.disabled = d.pending;
+    btn.textContent = d.pending ? '⏳ Update läuft…' : '↑ Update starten';
+  } else {
+    badge.textContent = '○ Watcher nicht eingerichtet';
+    badge.style.cssText = 'font-size:11px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(200,100,100,.15);color:#f88;border:1px solid rgba(200,100,100,.3)';
+    warning.style.display = 'block';
+    btn.disabled = true;
+  }
+}
+
+async function triggerUpdate() {
+  if (!confirm('Update starten?\n\nDer Backend-Container wird nach dem git pull neu gebaut und gestartet. Die Verbindung unterbricht kurz.')) return;
+  const btn = document.getElementById('update-trigger-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Wird ausgeführt…';
+  const res = await POST('/update/trigger', {});
+  if (res) {
+    showToast('Update ausgelöst — Backend wird in wenigen Sekunden neu gestartet', 'success');
+    btn.textContent = '⏳ Update läuft…';
+    _pollUpdateStatus();
+  } else {
+    btn.disabled = false;
+    btn.textContent = '↑ Update starten';
+  }
+}
+
+function _pollUpdateStatus() {
+  const interval = setInterval(async () => {
+    try {
+      const r = await fetch('/api/update/status', {
+        headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }
+      });
+      if (!r.ok) return; // Backend noch nicht bereit
+      const d = await r.json();
+      if (!d.pending) {
+        clearInterval(interval);
+        await loadUpdateStatus();
+        showToast('Update abgeschlossen', 'success');
+      }
+    } catch (_) {
+      // Backend startet noch — weiter warten
+    }
+  }, 4000);
 }
 
 // ── Audio-Warnung für Leerlauf ───────────────────────

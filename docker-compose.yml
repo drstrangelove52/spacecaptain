@@ -47,6 +47,7 @@ services:
     volumes:
       - ./backend:/app
       - ${BACKUP_DIR:-./backups}:/app/backups
+      - ./update_trigger:/app/update_trigger
 
   frontend:
     image: nginx:alpine

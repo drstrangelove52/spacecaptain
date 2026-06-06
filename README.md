@@ -23,6 +23,7 @@ Fragen oder Ideen? → [GitHub Issue erstellen](https://github.com/drstrangelove
 - **Notfall-Alarm** — Auslösung per physischem Knopf, schaltet Sirene und Blinklicht ein, benachrichtigt Lab Manager per Push
 - **Aktivitätslog** — vollständiges Audit-Trail inkl. IP-Adressen
 - **Backup / Restore** — automatisches tägliches oder manuelles JSON-Backup aller Daten, Import mit Overwrite- oder Merge-Modus
+- **In-App Update** — `git pull` + Docker-Rebuild direkt aus dem Browser auslösen (optional, erfordert einmaligen Host-Setup)
 - **Smart Plug Support** — myStrom, Shelly Gen1, Shelly Gen2/Gen3/Gen4
 
 ---
@@ -104,6 +105,8 @@ docker exec spacecaptain_proxy nginx -s reload
 
 ## Update
 
+### Manuell (immer möglich)
+
 ```bash
 git pull
 BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build backend
@@ -112,6 +115,25 @@ BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build backend
 DB-Migrationen laufen automatisch beim Backend-Start.
 
 > **`BUILD_NR`** setzt eine monoton steigende Build-Nummer, die im Sidebar-Footer sichtbar ist (`v1.xx · Build 123`). So ist auf einen Blick erkennbar, ob zwei Server auf demselben Stand sind. Ohne diesen Prefix läuft SpaceCaptain normal — die Build-Nummer wird dann nur nicht angezeigt.
+
+### In-App Update (optional)
+
+Der Update-Button unter **Einstellungen → Update** löst `git pull` + `docker compose up --build` direkt aus dem Browser aus. Dafür muss einmalig ein leichtgewichtiger Hintergrund-Service auf dem Host eingerichtet werden:
+
+```bash
+# Skript ausführbar machen
+chmod +x ~/spacecaptain/spacecaptain-updater.sh
+
+# Systemd-Service installieren und aktivieren
+sudo cp spacecaptain-updater.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now spacecaptain-updater
+
+# Backend neu starten, damit das Trigger-Volume gemountet wird
+BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build backend
+```
+
+Der Service läuft dauerhaft im Hintergrund und wartet auf den Update-Trigger aus dem UI. Logs werden in `update_trigger/update.log` geschrieben.
 
 ---
 

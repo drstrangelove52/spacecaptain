@@ -459,6 +459,26 @@ Die Info-Seite zeigt:
 
 ---
 
+## 12a. Einstellungen → Update *(nur Admin)*
+
+Unter **Einstellungen → 🔄 Update** kann SpaceCaptain direkt aus dem Browser aktualisiert werden, ohne auf den Server einloggen zu müssen.
+
+### Voraussetzung
+
+Der Update-Watcher muss einmalig auf dem Host eingerichtet sein (siehe [README — In-App Update](../README.md#in-app-update-optional)). Das Panel zeigt einen Badge, ob der Watcher aktiv ist.
+
+### Update durchführen
+
+1. **Einstellungen → Update** öffnen
+2. Aktuellen Stand (Version + Build-Nr.) prüfen
+3. **Update starten** klicken und bestätigen
+4. Der Watcher auf dem Host führt automatisch `git pull` + `docker compose up --build backend` aus
+5. Der Backend-Container startet neu — die Verbindung unterbricht für wenige Sekunden, danach steht die neue Version bereit
+
+> **Hinweis:** Ein Backup vor dem Update wird empfohlen. DB-Migrationen laufen beim Backend-Start automatisch.
+
+---
+
 ## 13. Rollen und Rechte
 
 | Funktion | Manager | Admin |
