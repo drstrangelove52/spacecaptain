@@ -910,7 +910,7 @@
               <div style="display:flex;flex-direction:column;gap:12px">
                 <div style="display:flex;gap:10px;flex-wrap:wrap">
                   <button class="btn btn-primary" id="update-trigger-btn" onclick="triggerUpdate()">
-                    ↑ Update starten
+                    Update starten
                   </button>
                   <button class="btn btn-ghost" id="restart-trigger-btn" onclick="triggerRestart()">
                     ↺ Backend neu starten
@@ -4600,7 +4600,7 @@ async function loadUpdateStatus() {
     warning.style.display = 'none';
     updateBtn.disabled = d.pending;
     restartBtn.disabled = d.pending;
-    updateBtn.textContent = d.pending ? '⏳ Läuft…' : '↑ Update starten';
+    updateBtn.textContent = d.pending ? '⏳ Läuft…' : 'Update starten';
     restartBtn.textContent = d.pending ? '⏳ Läuft…' : '↺ Backend neu starten';
   } else {
     badge.textContent = '○ Watcher nicht eingerichtet';
@@ -4622,7 +4622,7 @@ async function triggerUpdate() {
     _pollUpdateStatus();
   } else {
     btn.disabled = false;
-    btn.textContent = '↑ Update starten';
+    btn.textContent = 'Update starten';
   }
 }
 
