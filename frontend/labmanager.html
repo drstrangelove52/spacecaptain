@@ -2301,7 +2301,7 @@ BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build backend</pre>
       <div style="font-family:var(--mono);font-size:10px;color:var(--accent2);word-break:break-all;margin-bottom:16px" id="qr-modal-url"></div>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="writeNfcTagModal()" id="nfc-modal-btn">📡 NFC beschreiben</button>
-        <button class="btn btn-danger btn-sm" onclick="regenMachineQRModal()">↺ QR neu generieren</button>
+        <button class="btn btn-danger btn-sm" title="Generiert einen neuen QR-Code (alter Code wird ungültig)" onclick="regenMachineQRModal()">↺ QR neu generieren</button>
       </div>
       <div id="nfc-modal-status" style="display:none;margin-top:12px;border-radius:6px;padding:10px 12px;font-size:13px;text-align:left"></div>
     </div>
@@ -2570,8 +2570,8 @@ function renderAnnouncementList(data) {
           <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">${annMeta(a)}</div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
-          <button class="btn btn-ghost btn-sm" onclick="showEditAnnouncement(${a.id})">✎</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(${a.id})">✕</button>
+          <button class="btn btn-ghost btn-sm" title="Bearbeiten" onclick="showEditAnnouncement(${a.id})">✎</button>
+          <button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteAnnouncement(${a.id})">✕</button>
         </div>
       </div>
     </div>`).join('');
@@ -2855,7 +2855,7 @@ function renderDashboard() {
         }</td>
         <td style="font-family:var(--mono);font-size:13px;color:var(--text-dim)">${dur}</td>
         <td style="font-family:var(--mono);font-size:13px;color:var(--accent)">${watt}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="managerSwitchMachine(${m.id},'off',this)">○ AUS</button></td>
+        <td><button class="btn btn-danger btn-sm" title="Ausschalten" onclick="managerSwitchMachine(${m.id},'off',this)">○ AUS</button></td>
       </tr>${idleBanner}`;
     }).join('');
   }
@@ -2920,8 +2920,8 @@ function renderGuests() {
     <td><span class="badge badge-cyan">${g.permission_count} Maschinen</span></td>
     <td><span class="badge ${g.is_active?'badge-green':'badge-gray'}">${g.is_active?'aktiv':'inaktiv'}</span></td>
     <td style="display:flex;gap:6px;padding:8px 16px">
-      <button class="btn btn-ghost btn-sm" onclick="editGuest(${g.id})">✏</button>
-      ${currentUser?.role==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteGuest(${g.id},'${g.name}')">✕</button>`:''}
+      <button class="btn btn-ghost btn-sm" title="Bearbeiten" onclick="editGuest(${g.id})">✏</button>
+      ${currentUser?.role==='admin'?`<button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteGuest(${g.id},'${g.name}')">✕</button>`:''}
     </td>
   </tr>`).join('');
 }
@@ -3010,7 +3010,7 @@ function _showTokenOnce(url, inputId, label) {
     </div>
     <div style="display:flex;gap:6px;align-items:center;margin-bottom:14px">
       <input class="form-input" style="font-size:11px;font-family:var(--mono)" id="${inputId}" value="${url}" readonly>
-      <button class="btn btn-ghost btn-sm" onclick="copyLoginLink('${inputId}')" type="button">📋</button>
+      <button class="btn btn-ghost btn-sm" title="Link kopieren" onclick="copyLoginLink('${inputId}')" type="button">📋</button>
     </div>
     <div style="text-align:center">
       <img id="token-qr-img" src="" alt="QR-Code" style="width:200px;height:200px;border:1px solid var(--border);border-radius:6px;background:var(--surface2)">
@@ -3080,8 +3080,8 @@ function renderLM() {
     <td style="font-size:12px;color:var(--text-dim)">${u.area||'—'}</td>
     <td><span class="badge ${u.is_active?'badge-green':'badge-gray'}">${u.is_active?'aktiv':'inaktiv'}</span></td>
     <td style="display:flex;gap:6px;padding:8px 16px">
-      <button class="btn btn-ghost btn-sm" onclick="editLM(${u.id})">✏</button>
-      ${currentUser?.role==='admin'&&currentUser?.id!==u.id?`<button class="btn btn-danger btn-sm" onclick="deleteLM(${u.id},'${u.name}')">✕</button>`:''}
+      <button class="btn btn-ghost btn-sm" title="Bearbeiten" onclick="editLM(${u.id})">✏</button>
+      ${currentUser?.role==='admin'&&currentUser?.id!==u.id?`<button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteLM(${u.id},'${u.name}')">✕</button>`:''}
     </td>
   </tr>`).join('');
 }
@@ -3507,7 +3507,7 @@ function _machineCard(m) {
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="editMachine(${m.id})">✏ Bearbeiten</button>
       <button class="btn btn-ghost btn-sm" onclick="openQRModal(${m.id})">▦ QR/NFC</button>
-      ${currentUser?.role==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>`:''}
+      ${currentUser?.role==='admin'?`<button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>`:''}
     </div>
   </div>`;
 }
@@ -3546,9 +3546,9 @@ function _machineTable(machines) {
       <td>${plug}</td>
       <td style="white-space:nowrap">
         ${m.plug_type!=='none'&&m.status==='online'?`<button class="btn ${m.plug_on?'btn-success-outline':'btn-success'} btn-sm" onclick="managerSwitchMachine(${m.id},'on',this)" title="Einschalten" style="font-size:15px;padding:2px 7px">⚡</button> <button class="btn ${m.plug_on?'btn-danger-filled':'btn-danger'} btn-sm" onclick="managerSwitchMachine(${m.id},'off',this)" title="Ausschalten" style="font-size:15px;padding:2px 7px">○</button> `:''}
-        <button class="btn btn-ghost btn-sm" onclick="editMachine(${m.id})">✏</button>
-        <button class="btn btn-ghost btn-sm" onclick="openQRModal(${m.id})">▦</button>
-        ${currentUser?.role==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>`:''}
+        <button class="btn btn-ghost btn-sm" title="Bearbeiten" onclick="editMachine(${m.id})">✏</button>
+        <button class="btn btn-ghost btn-sm" title="QR-Code / NFC" onclick="openQRModal(${m.id})">▦</button>
+        ${currentUser?.role==='admin'?`<button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>`:''}
       </td>
     </tr>`;
   }).join('');
@@ -3684,7 +3684,7 @@ function _renderEditPlugList() {
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:6px 8px;background:var(--surface2);border-radius:6px">
       <span style="font-size:11px;color:var(--accent);min-width:20px">${idx===0?'★':''}</span>
       <span style="flex:1"><strong>${escHtml(p.name)}</strong> <span style="color:var(--text-dim);font-size:12px">${escHtml(p.plug_ip)} · ${_plugTypeLabel(p.plug_type)}</span></span>
-      <button type="button" class="btn btn-ghost btn-sm" onclick="_removeEditPlug(${p.id})" style="color:var(--error);padding:2px 6px">×</button>
+      <button type="button" class="btn btn-ghost btn-sm" title="Plug entfernen" onclick="_removeEditPlug(${p.id})" style="color:var(--error);padding:2px 6px">×</button>
     </div>`).join('');
 }
 
@@ -5027,9 +5027,9 @@ async function loadBackupFiles() {
       <td style="font-size:12px;color:var(--text-dim)">${dt}</td>
       <td style="font-size:12px;color:var(--text-dim)">${kb} KB</td>
       <td style="text-align:right">
-        <button class="btn btn-ghost btn-sm" onclick="downloadBackupFile('${fn}')">⬇ Download</button>
-        <button class="btn btn-ghost btn-sm" onclick="restoreBackupFile('${fn}')">↩ Restore</button>
-        <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteBackupFile('${fn}')">✕</button>
+        <button class="btn btn-ghost btn-sm" title="Backup herunterladen" onclick="downloadBackupFile('${fn}')">⬇ Download</button>
+        <button class="btn btn-ghost btn-sm" title="Backup wiederherstellen" onclick="restoreBackupFile('${fn}')">↩ Restore</button>
+        <button class="btn btn-ghost btn-sm" title="Löschen" style="color:var(--danger)" onclick="deleteBackupFile('${fn}')">✕</button>
       </td>
     </tr>`;
   }).join('');
@@ -5111,7 +5111,7 @@ async function restoreBackupFile(filename) {
           </div>
           ${extras ? `<div style="margin-top:8px;font-size:12px;color:var(--text-dim)">${extras}</div>` : ''}
         </div>
-        <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="this.closest('#restore-result').style.display='none'">✕</button>
+        <button class="btn btn-ghost btn-sm" title="Schliessen" style="flex-shrink:0" onclick="this.closest('#restore-result').style.display='none'">✕</button>
       </div>
     </div>`;
   }
@@ -5297,8 +5297,8 @@ function _renderAutomationsList(rules) {
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
           <input type="checkbox" ${r.enabled?'checked':''} onchange="toggleRule(${r.id},this.checked)"> Aktiv
         </label>
-        <button class="btn btn-ghost btn-sm" onclick="editRule(${r.id})">✎</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteRule(${r.id},'${escHtml(r.name||r.target_machine_name)}')">✕</button>
+        <button class="btn btn-ghost btn-sm" title="Bearbeiten" onclick="editRule(${r.id})">✎</button>
+        <button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteRule(${r.id},'${escHtml(r.name||r.target_machine_name)}')">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -5368,7 +5368,7 @@ function _condForm(c, uid) {
   return `<div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px" data-cuid="${uid}">
     ${isVertical ? '' : `<span style="font-size:12px;font-weight:600;color:var(--text-mid);width:90px;flex-shrink:0;padding-top:6px">${COND_LABELS[c.type]||c.type}</span>`}
     <div style="display:flex;gap:6px;align-items:flex-start;flex:1;flex-wrap:wrap">${fields}</div>
-    <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="removeCondition(${uid})">✕</button>
+    <button class="btn btn-ghost btn-sm" title="Bedingung entfernen" style="flex-shrink:0" onclick="removeCondition(${uid})">✕</button>
   </div>`;
 }
 
