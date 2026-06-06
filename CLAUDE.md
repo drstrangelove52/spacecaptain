@@ -196,9 +196,12 @@ tail -f update_trigger/update.log
 ## In-App Update
 
 - `POST /api/update/trigger` schreibt `update_trigger/trigger` (Dateiinhalt: ISO-Timestamp)
+- `POST /api/update/restart` schreibt `update_trigger/restart` — startet Backend ohne git pull + Rebuild neu
+- `GET /api/update/log-bundle` gibt ein ZIP zurück mit System-Info, anonymisierten Settings, DB-Übersicht, aktiven Sessions, Aktivitätslog (letzte 200) und update.log — für Ferndiagnose
 - `update_trigger/` ist ein gemeinsames Volume zwischen Backend-Container (`/app/update_trigger`) und Host (`./update_trigger`)
-- `spacecaptain-updater.sh` läuft auf dem Host als `systemd`-Service (`spacecaptain-updater.service`), pollt alle 5s, führt `git pull` + `docker compose up --build backend` aus
-- `update_trigger/update.log` — Log des letzten Updates, `st_mtime` dient als `last_triggered`-Timestamp im Status-Endpoint
+- `spacecaptain-updater.sh` läuft auf dem Host als `systemd`-Service (`spacecaptain-updater.service`), pollt alle 5s, führt je nach Trigger `git pull` + `docker compose up --build backend` (Update) oder nur `docker compose up -d backend` (Restart) aus
+- `update_trigger/update.log` — Log aller Aktionen, `st_mtime` dient als `last_triggered`-Timestamp
+- `update_trigger/update.status` — letztes Ergebnis: `updated` / `up_to_date` / `restarted` / `error`
 - Kein Docker Socket im Container nötig — der Watcher hat nur Dateisystem-Zugriff auf das Trigger-Verzeichnis
 - `watcher_ready` im Status: `TRIGGER_DIR.exists()` — zeigt an ob das Volume korrekt gemountet ist
 
