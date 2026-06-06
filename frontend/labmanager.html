@@ -535,8 +535,8 @@
       <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);margin-bottom:12px" id="log-count"></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th style="white-space:nowrap">Zeitstempel</th><th>Typ</th><th>Nachricht</th><th>Ausgeführt von</th><th>Gast</th><th>Maschine</th></tr></thead>
-          <tbody id="full-log"><tr><td colspan="6"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody>
+          <thead><tr><th style="white-space:nowrap">Zeitstempel</th><th>Typ</th><th>Nachricht</th><th>Ausgeführt von</th></tr></thead>
+          <tbody id="full-log"><tr><td colspan="4"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -4367,27 +4367,31 @@ const logColors={
   emergency_cancelled: 'var(--success)',
 };
 const logTypeLabels={
-  access_granted:      '✓ Zugang gewährt',
-  access_denied:       '✗ Zugang verweigert',
-  plug_on:             '⚡ Plug EIN',
-  plug_off:            '○ Plug AUS',
-  session_started:     '▶ Session gestartet',
-  idle_off:            '⏱ Leerlauf-Stop',
-  guest_created:       '+ Gast erstellt',
-  guest_deleted:       '− Gast gelöscht',
-  guest_registered:    '📋 Selbstregistrierung',
-  guest_approved:      '✓ Gast freigeschaltet',
-  guest_login:         '👤 Gast-Login',
-  login:               '⎋ Manager-Login',
-  machine_created:     '+ Maschine erstellt',
-  machine_deleted:     '− Maschine gelöscht',
-  permission_granted:  '+ Berechtigung erteilt',
-  permission_revoked:  '− Berechtigung entzogen',
-  maintenance_due:     '🔧 Wartung fällig',
-  maintenance_done:    '🔧 Wartung durchgeführt',
-  error:               '⚠ Fehler',
-  emergency_triggered: '🚨 Notfall ausgelöst',
-  emergency_cancelled: '✓ Notfall quittiert',
+  access_granted:      'Zugang gewährt',
+  access_denied:       'Zugang verweigert',
+  plug_on:             'Plug EIN',
+  plug_off:            'Plug AUS',
+  session_started:     'Session gestartet',
+  session_ended:       'Session beendet',
+  idle_off:            'Leerlauf-Stop',
+  guest_created:       'Gast erstellt',
+  guest_deleted:       'Gast gelöscht',
+  guest_registered:    'Selbstregistrierung',
+  guest_approved:      'Gast freigeschaltet',
+  guest_login:         'Gast-Login',
+  login:               'Manager-Login',
+  machine_created:     'Maschine erstellt',
+  machine_deleted:     'Maschine gelöscht',
+  permission_granted:  'Berechtigung erteilt',
+  permission_revoked:  'Berechtigung entzogen',
+  maintenance_due:     'Wartung fällig',
+  maintenance_done:    'Wartung durchgeführt',
+  backup_exported:     'Backup exportiert',
+  backup_imported:     'Backup importiert',
+  system:              'System',
+  error:               'Fehler',
+  emergency_triggered: 'Notfall ausgelöst',
+  emergency_cancelled: 'Notfall quittiert',
 };
 
 async function loadLogFilterOptions() {
@@ -4397,10 +4401,8 @@ async function loadLogFilterOptions() {
   const tSel=document.getElementById('f-type');
   gSel.innerHTML='<option value="">Alle Gäste</option>'+opts.guests.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
   mSel.innerHTML='<option value="">Alle Maschinen</option>'+opts.machines.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
-  const dynamicTypes = opts.types.filter(t => !t.startsWith('emergency_'));
   tSel.innerHTML='<option value="">Alle Typen</option>'
-    + '<option value="emergency_triggered,emergency_cancelled">🚨 Notfall</option>'
-    + dynamicTypes.map(t=>`<option value="${t}">${logTypeLabels[t]||t}</option>`).join('');
+    + Object.entries(logTypeLabels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
 }
 
 async function loadLog() {
@@ -4429,16 +4431,18 @@ async function loadLog() {
 
   const render=(containerId,limit=999)=>{
     const el=document.getElementById(containerId); if (!el) return;
-    if (!logs.length) { el.innerHTML='<tr><td colspan="6" style="color:var(--text-dim);text-align:center;padding:24px;font-family:var(--mono);font-size:12px">Keine Einträge gefunden.</td></tr>'; return; }
+    if (!logs.length) { el.innerHTML='<tr><td colspan="4" style="color:var(--text-dim);text-align:center;padding:24px;font-family:var(--mono);font-size:12px">Keine Einträge gefunden.</td></tr>'; return; }
     el.innerHTML=logs.slice(0,limit).map(l=>{
       const dt=fmtDate(l.created_at);
+      const ctx=[];
+      if (l.guest_name)   ctx.push(l.guest_name);
+      if (l.machine_name) ctx.push(l.machine_name);
+      const msg=l.message+(ctx.length?` <span style="color:var(--text-dim);font-size:12px"> · ${ctx.join(' · ')}</span>`:'');
       return `<tr>
         <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);white-space:nowrap">${dt}</td>
         <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);white-space:nowrap">${logTypeLabels[l.type]||l.type}</td>
-        <td style="font-size:13px">${l.message}</td>
+        <td style="font-size:13px">${msg}</td>
         <td class="log-tag">${l.user_name||'—'}</td>
-        <td class="log-tag">${l.guest_name||'—'}</td>
-        <td class="log-tag">${l.machine_name||'—'}</td>
       </tr>`;
     }).join('');
   };
