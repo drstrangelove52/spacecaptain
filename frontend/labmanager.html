@@ -906,15 +906,20 @@
                 </div>
               </div>
 
-              <!-- Update-Button -->
-              <div style="display:flex;flex-direction:column;gap:10px">
-                <button class="btn btn-primary" id="update-trigger-btn" onclick="triggerUpdate()" style="align-self:flex-start">
-                  ↑ Update starten
-                </button>
+              <!-- Aktions-Buttons -->
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                  <button class="btn btn-primary" id="update-trigger-btn" onclick="triggerUpdate()">
+                    ↑ Update starten
+                  </button>
+                  <button class="btn btn-ghost" id="restart-trigger-btn" onclick="triggerRestart()">
+                    ↺ Backend neu starten
+                  </button>
+                </div>
                 <div style="font-size:12px;color:var(--text-dim);line-height:1.6">
-                  Führt auf dem Host <code style="background:var(--surface2);padding:1px 4px;border-radius:3px">git pull</code> und
-                  <code style="background:var(--surface2);padding:1px 4px;border-radius:3px">docker compose up --build</code> aus.<br>
-                  Der Backend-Container wird neu gestartet — die Verbindung unterbricht kurz.
+                  <strong style="color:var(--text)">Update:</strong> führt <code style="background:var(--surface2);padding:1px 4px;border-radius:3px">git pull</code> + <code style="background:var(--surface2);padding:1px 4px;border-radius:3px">docker compose up --build</code> aus.<br>
+                  <strong style="color:var(--text)">Neustart:</strong> startet den Backend-Container ohne Rebuild neu (z.B. nach Konfigurationsänderungen).<br>
+                  Die Verbindung unterbricht in beiden Fällen kurz.
                 </div>
               </div>
 
@@ -4587,18 +4592,22 @@ async function loadUpdateStatus() {
       : 'Noch kein Update ausgeführt';
   const badge = document.getElementById('update-watcher-badge');
   const warning = document.getElementById('update-setup-warning');
-  const btn = document.getElementById('update-trigger-btn');
+  const updateBtn = document.getElementById('update-trigger-btn');
+  const restartBtn = document.getElementById('restart-trigger-btn');
   if (d.watcher_ready) {
     badge.textContent = '● Watcher aktiv';
     badge.style.cssText = 'font-size:11px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(100,200,100,.15);color:#6dc;border:1px solid rgba(100,200,100,.3)';
     warning.style.display = 'none';
-    btn.disabled = d.pending;
-    btn.textContent = d.pending ? '⏳ Update läuft…' : '↑ Update starten';
+    updateBtn.disabled = d.pending;
+    restartBtn.disabled = d.pending;
+    updateBtn.textContent = d.pending ? '⏳ Läuft…' : '↑ Update starten';
+    restartBtn.textContent = d.pending ? '⏳ Läuft…' : '↺ Backend neu starten';
   } else {
     badge.textContent = '○ Watcher nicht eingerichtet';
     badge.style.cssText = 'font-size:11px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(200,100,100,.15);color:#f88;border:1px solid rgba(200,100,100,.3)';
     warning.style.display = 'block';
-    btn.disabled = true;
+    updateBtn.disabled = true;
+    restartBtn.disabled = true;
   }
 }
 
@@ -4606,15 +4615,29 @@ async function triggerUpdate() {
   if (!confirm('Update starten?\n\nDer Backend-Container wird nach dem git pull neu gebaut und gestartet. Die Verbindung unterbricht kurz.')) return;
   const btn = document.getElementById('update-trigger-btn');
   btn.disabled = true;
-  btn.textContent = '⏳ Wird ausgeführt…';
+  btn.textContent = '⏳ Läuft…';
   const res = await POST('/update/trigger', {});
   if (res) {
     showToast('Update ausgelöst — Backend wird in wenigen Sekunden neu gestartet', 'success');
-    btn.textContent = '⏳ Update läuft…';
     _pollUpdateStatus();
   } else {
     btn.disabled = false;
     btn.textContent = '↑ Update starten';
+  }
+}
+
+async function triggerRestart() {
+  if (!confirm('Backend neu starten?\n\nDer Container wird ohne Rebuild neu gestartet. Die Verbindung unterbricht kurz.')) return;
+  const btn = document.getElementById('restart-trigger-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Läuft…';
+  const res = await POST('/update/restart', {});
+  if (res) {
+    showToast('Neustart ausgelöst — Backend startet in wenigen Sekunden', 'success');
+    _pollUpdateStatus();
+  } else {
+    btn.disabled = false;
+    btn.textContent = '↺ Backend neu starten';
   }
 }
 
@@ -4631,8 +4654,10 @@ function _pollUpdateStatus() {
         await loadUpdateStatus();
         if (d.last_result === 'up_to_date') {
           showToast('Bereits aktuell — kein Update nötig', 'info');
+        } else if (d.last_result === 'restarted') {
+          showToast('Backend erfolgreich neu gestartet', 'success');
         } else if (d.last_result === 'error') {
-          showToast('Update fehlgeschlagen — Log prüfen', 'error');
+          showToast('Vorgang fehlgeschlagen — Log prüfen', 'error');
         } else {
           showToast('Update abgeschlossen', 'success');
         }

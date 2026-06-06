@@ -8,6 +8,7 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TRIGGER_FILE="$PROJECT_DIR/update_trigger/trigger"
+RESTART_FILE="$PROJECT_DIR/update_trigger/restart"
 LOG_FILE="$PROJECT_DIR/update_trigger/update.log"
 STATUS_FILE="$PROJECT_DIR/update_trigger/update.status"
 
@@ -20,6 +21,19 @@ log() {
 log "Update-Watcher gestartet (Projekt: $PROJECT_DIR)"
 
 while true; do
+  if [ -f "$RESTART_FILE" ]; then
+    log "Restart-Trigger erkannt — starte Backend neu..."
+    rm -f "$RESTART_FILE"
+    cd "$PROJECT_DIR"
+    if BUILD_NR=$(git rev-list --count HEAD) docker compose up -d backend >> "$LOG_FILE" 2>&1; then
+      log "Neustart abgeschlossen"
+      echo "restarted" > "$STATUS_FILE"
+    else
+      log "FEHLER: Neustart fehlgeschlagen"
+      echo "error" > "$STATUS_FILE"
+    fi
+  fi
+
   if [ -f "$TRIGGER_FILE" ]; then
     log "Trigger erkannt — starte Update..."
     rm -f "$TRIGGER_FILE"
