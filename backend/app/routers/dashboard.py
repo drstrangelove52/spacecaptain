@@ -99,7 +99,7 @@ async def activity_log(
             "created_at":   _local_iso(l.created_at),
             "guest_name":   guests.get(l.guest_id)   if l.guest_id   else None,
             "machine_name": machines.get(l.machine_id) if l.machine_id else None,
-            "user_name":    users.get(l.user_id)     if l.user_id    else None,
+            "user_name":    users.get(l.user_id) if l.user_id else (l.meta or {}).get("user_name"),
         })
     return {"total": total, "logs": out}
 
