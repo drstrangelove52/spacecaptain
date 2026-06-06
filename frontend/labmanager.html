@@ -4622,7 +4622,7 @@ function _pollUpdateStatus() {
   const interval = setInterval(async () => {
     try {
       const r = await fetch('/api/update/status', {
-        headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }
+        headers: { Authorization: 'Bearer ' + (localStorage.getItem('ms_token') || '') }
       });
       if (!r.ok) return; // Backend noch nicht bereit
       const d = await r.json();
