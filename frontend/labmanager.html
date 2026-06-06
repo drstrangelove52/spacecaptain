@@ -913,7 +913,7 @@
                     Update starten
                   </button>
                   <button class="btn btn-ghost" id="restart-trigger-btn" onclick="triggerRestart()">
-                    ↺ Backend neu starten
+                    Backend neu starten
                   </button>
                 </div>
                 <div style="font-size:12px;color:var(--text-dim);line-height:1.6">
@@ -4601,7 +4601,7 @@ async function loadUpdateStatus() {
     updateBtn.disabled = d.pending;
     restartBtn.disabled = d.pending;
     updateBtn.textContent = d.pending ? '⏳ Läuft…' : 'Update starten';
-    restartBtn.textContent = d.pending ? '⏳ Läuft…' : '↺ Backend neu starten';
+    restartBtn.textContent = d.pending ? '⏳ Läuft…' : 'Backend neu starten';
   } else {
     badge.textContent = '○ Watcher nicht eingerichtet';
     badge.style.cssText = 'font-size:11px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(200,100,100,.15);color:#f88;border:1px solid rgba(200,100,100,.3)';
@@ -4637,7 +4637,7 @@ async function triggerRestart() {
     _pollUpdateStatus();
   } else {
     btn.disabled = false;
-    btn.textContent = '↺ Backend neu starten';
+    btn.textContent = 'Backend neu starten';
   }
 }
 
