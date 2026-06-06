@@ -2297,8 +2297,11 @@ BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build backend</pre>
     <div class="modal-header"><div class="modal-title" id="qr-modal-title">QR / NFC</div><button class="modal-close" onclick="closeQRModal()">✕</button></div>
     <div class="modal-body" style="text-align:center">
       <div class="qr-img-box" style="margin:0 auto 12px"><img id="qr-modal-img" src="" alt="QR Code"></div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px">GÄSTE-URL</div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--accent2);word-break:break-all;margin-bottom:16px" id="qr-modal-url"></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:6px;text-align:left">GÄSTE-URL</div>
+      <div style="display:flex;align-items:center;gap:6px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:7px 10px;margin-bottom:16px">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--accent2);word-break:break-all;flex:1;text-align:left;line-height:1.4" id="qr-modal-url"></span>
+        <button class="btn btn-ghost btn-sm" title="URL kopieren" onclick="_copyQrUrl()" style="flex-shrink:0;padding:3px 8px">📋</button>
+      </div>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="writeNfcTagModal()" id="nfc-modal-btn">📡 NFC beschreiben</button>
         <button class="btn btn-danger btn-sm" title="Generiert einen neuen QR-Code (alter Code wird ungültig)" onclick="regenMachineQRModal()">↺ QR neu generieren</button>
@@ -4304,6 +4307,11 @@ async function openQRModal(machineId) {
 
 function closeQRModal() {
   document.getElementById('modal-qr-overlay').style.display = 'none';
+}
+
+function _copyQrUrl() {
+  const url = document.getElementById('qr-modal-url').textContent;
+  navigator.clipboard.writeText(url).then(() => showToast('URL kopiert', 'success'));
 }
 
 async function writeNfcTagModal() {
