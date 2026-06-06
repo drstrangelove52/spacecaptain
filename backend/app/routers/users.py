@@ -5,7 +5,7 @@ from sqlalchemy import select, func
 from typing import List
 
 from app.database import get_db
-from app.models import User, LogType
+from app.models import User, UserRole, LogType
 from app.schemas import UserCreate, UserUpdate, UserOut
 from app.services.auth import get_current_user, require_admin, hash_password
 from app.services import logger as log_svc
@@ -99,6 +99,13 @@ async def delete_user(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(404, "Nicht gefunden")
+    if user.role == UserRole.admin:
+        remaining = await db.scalar(
+            select(func.count()).select_from(User)
+            .where(User.role == UserRole.admin, User.id != user_id)
+        )
+        if remaining == 0:
+            raise HTTPException(400, "Letzten Administrator nicht löschbar")
     await db.delete(user)
     await db.commit()
     return {"ok": True}

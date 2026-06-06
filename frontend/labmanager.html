@@ -3081,7 +3081,7 @@ function renderLM() {
     <td><span class="badge ${u.is_active?'badge-green':'badge-gray'}">${u.is_active?'aktiv':'inaktiv'}</span></td>
     <td style="display:flex;gap:6px;padding:8px 16px">
       <button class="btn btn-ghost btn-sm" onclick="editLM(${u.id})">✏</button>
-      ${currentUser?.role==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteLM(${u.id},'${u.name}')">✕</button>`:''}
+      ${currentUser?.role==='admin'&&currentUser?.id!==u.id?`<button class="btn btn-danger btn-sm" onclick="deleteLM(${u.id},'${u.name}')">✕</button>`:''}
     </td>
   </tr>`).join('');
 }
