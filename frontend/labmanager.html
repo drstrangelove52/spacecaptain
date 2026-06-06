@@ -190,14 +190,14 @@
   input[type="date"].filter-input::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.6;cursor:pointer}
   input[type="date"].filter-input::-webkit-calendar-picker-indicator:hover{opacity:1}
   /* LOG */
-  .log-entry{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(42,47,62,.5)}
+  .log-entry{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(42,47,62,.5)}
   .log-entry:last-child{border-bottom:none}
-  .log-time{font-family:var(--mono);font-size:11px;color:var(--text-dim);white-space:nowrap;min-width:160px;padding-top:2px}
-  .log-dot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0}
-  .log-content{flex:1;font-size:14px;color:var(--text);line-height:1.5}
+  .log-time{font-family:var(--mono);font-size:11px;color:var(--text-dim);white-space:nowrap;min-width:140px;flex-shrink:0}
+  .log-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .log-content{flex:1;font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
   .log-content strong{color:var(--text)}
-  .log-tags{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}
-  .log-tag{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:2px;background:var(--surface2);color:var(--text-dim)}
+  .log-tags{display:contents}
+  .log-tag{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:2px;background:var(--surface2);color:var(--text-dim);white-space:nowrap}
   /* QR FLOW */
   .qr-flow{display:flex;gap:0;margin-bottom:24px}
   .qr-step{flex:1;background:var(--surface);border:1px solid var(--border);padding:20px;position:relative}
@@ -571,8 +571,8 @@
       <div class="section-header" style="margin-top:24px"><div class="section-title">Einzelne Sessions</div></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Maschine</th><th>Nutzer</th><th>Start</th><th>Dauer</th><th>Verbrauch</th><th>Beendet durch</th></tr></thead>
-          <tbody id="stats-tbody"><tr><td colspan="6"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody>
+          <thead><tr><th>Start</th><th>Ende</th><th>Dauer</th><th>Maschine</th><th>Nutzer</th><th>Verbrauch</th><th>Beendet durch</th></tr></thead>
+          <tbody id="stats-tbody"><tr><td colspan="7"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -4444,8 +4444,9 @@ async function loadLog() {
         <div class="log-time">${dt}</div>
         <div class="log-dot" style="background:${color}"></div>
         <div class="log-content">
-          <span class="badge badge-gray" style="margin-bottom:4px">${logTypeLabels[l.type]||l.type}</span> ${l.message}
-          ${tags.length?`<div class="log-tags">${tags.join('')}</div>`:''}
+          <span class="badge badge-gray">${logTypeLabels[l.type]||l.type}</span>
+          <span>${l.message}</span>
+          <div class="log-tags">${tags.join('')}</div>
         </div>
       </div>`;
     }).join('');
@@ -4910,7 +4911,7 @@ async function loadStats() {
   const endedByLabel={guest:'Gast',manager:'Manager',idle_timeout:'⏱ Leerlauf',system:'System'};
   const tbody=document.getElementById('stats-tbody');
   if (!data.sessions.length) {
-    tbody.innerHTML='<tr><td colspan="6" style="color:var(--text-dim);text-align:center;padding:24px;font-family:var(--mono);font-size:12px">Keine Sessions im gewählten Zeitraum.</td></tr>';
+    tbody.innerHTML='<tr><td colspan="7" style="color:var(--text-dim);text-align:center;padding:24px;font-family:var(--mono);font-size:12px">Keine Sessions im gewählten Zeitraum.</td></tr>';
     return;
   }
   tbody.innerHTML=data.sessions.map(s=>{
@@ -4918,14 +4919,16 @@ async function loadStats() {
     const wh=s.energy_wh!=null
       ? (s.energy_wh < 1 ? `${s.energy_wh.toFixed(3)} Wh` : `${s.energy_wh.toFixed(1)} Wh`)
       : '—';
-    const dt=fmtDate(s.started_at);
+    const dtStart=fmtDate(s.started_at);
+    const dtEnd=s.ended_at?fmtDate(s.ended_at):'<span style="color:var(--accent2)">aktiv</span>';
     const eb=endedByLabel[s.ended_by]||s.ended_by||'—';
     const ebColor=s.ended_by==='idle_timeout'?'var(--accent)':s.ended_by==='manager'?'var(--accent2)':'var(--text-dim)';
     return `<tr>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);white-space:nowrap">${dtStart}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);white-space:nowrap">${dtEnd}</td>
+      <td><span class="badge badge-cyan">${dur}</span></td>
       <td><strong>${s.machine_name}</strong></td>
       <td style="font-family:var(--mono);font-size:13px;${s.manager_id && !s.guest_id ? 'color:var(--accent2)' : ''}">${s.user_name || '—'}</td>
-      <td style="font-family:var(--mono);font-size:13px;color:var(--text-dim)">${dt}</td>
-      <td><span class="badge badge-cyan">${dur}</span></td>
       <td style="font-family:var(--mono);font-size:13px">${wh}</td>
       <td style="font-family:var(--mono);font-size:13px;color:${ebColor}">${eb}</td>
     </tr>`;
