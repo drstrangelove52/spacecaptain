@@ -535,8 +535,8 @@
       <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);margin-bottom:12px" id="log-count"></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th style="white-space:nowrap">Zeitstempel</th><th>Typ</th><th>Nachricht</th><th>Gast</th><th>Maschine</th></tr></thead>
-          <tbody id="full-log"><tr><td colspan="5"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody>
+          <thead><tr><th style="white-space:nowrap">Zeitstempel</th><th>Typ</th><th>Nachricht</th><th>Ausgeführt von</th><th>Gast</th><th>Maschine</th></tr></thead>
+          <tbody id="full-log"><tr><td colspan="6"><div class="loading"><div class="spinner"></div>Laden…</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -4429,15 +4429,14 @@ async function loadLog() {
 
   const render=(containerId,limit=999)=>{
     const el=document.getElementById(containerId); if (!el) return;
-    if (!logs.length) { el.innerHTML='<tr><td colspan="5" style="color:var(--text-dim);text-align:center;padding:24px;font-family:var(--mono);font-size:12px">Keine Einträge gefunden.</td></tr>'; return; }
+    if (!logs.length) { el.innerHTML='<tr><td colspan="6" style="color:var(--text-dim);text-align:center;padding:24px;font-family:var(--mono);font-size:12px">Keine Einträge gefunden.</td></tr>'; return; }
     el.innerHTML=logs.slice(0,limit).map(l=>{
-      const color=logColors[l.type]||'var(--accent2)';
       const dt=fmtDate(l.created_at);
-      const msg=l.message+(l.meta?.ip?` <span class="log-tag">🌐 ${l.meta.ip}</span>`:'')+(l.user_name?` <span class="log-tag">◈ ${l.user_name}</span>`:'');
       return `<tr>
         <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);white-space:nowrap">${dt}</td>
-        <td style="white-space:nowrap"><span class="badge badge-gray" style="border-left:3px solid ${color}">${logTypeLabels[l.type]||l.type}</span></td>
-        <td style="font-size:13px">${msg}</td>
+        <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);white-space:nowrap">${logTypeLabels[l.type]||l.type}</td>
+        <td style="font-size:13px">${l.message}</td>
+        <td class="log-tag">${l.user_name||'—'}</td>
         <td class="log-tag">${l.guest_name||'—'}</td>
         <td class="log-tag">${l.machine_name||'—'}</td>
       </tr>`;
