@@ -657,6 +657,7 @@
             </div>
           </div>
           <div id="backup-files-list"><div class="loading"><div class="spinner"></div>Laden…</div></div>
+          <div id="restore-result" style="display:none;margin-top:12px"></div>
         </div>
       </div>
     </div>
@@ -5081,7 +5082,40 @@ async function restoreBackupFile(filename) {
   if (!res) return;
   const s = res.imported;
   const mode = overwrite ? 'überschreibend' : 'ergänzend';
-  showToast(`Restore (${mode}): +${s.users} Benutzer, +${s.guests} Gäste, +${s.machines} Maschinen, ${s.updated||0} aktualisiert, ${s.skipped} übersprungen`, 'success');
+
+  const resultEl = document.getElementById('restore-result');
+  if (resultEl) {
+    const labels = {
+      users: 'Benutzer', guests: 'Gäste', machines: 'Maschinen', plugs: 'Plugs',
+      machine_plugs: 'Maschinen-Plugs', permissions: 'Berechtigungen',
+      sessions: 'Sessions', activity_log: 'Aktivitätslog',
+      announcements: 'Aushänge', ntfy_topics: 'ntfy-Topics',
+      maintenance_intervals: 'Wartungsintervalle', maintenance_records: 'Wartungsprotokoll'
+    };
+    const added = Object.entries(labels)
+      .filter(([k]) => s[k] > 0)
+      .map(([k, label]) => `<span style="background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:2px 8px">+${s[k]} ${label}</span>`)
+      .join('');
+    const extras = [
+      s.updated > 0 ? `${s.updated} aktualisiert` : '',
+      s.skipped > 0 ? `${s.skipped} übersprungen` : ''
+    ].filter(Boolean).join(' · ');
+    resultEl.style.display = '';
+    resultEl.innerHTML = `<div class="card" style="padding:16px;border-left:3px solid var(--accent)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">Restore abgeschlossen · <span style="font-weight:400;color:var(--text-dim)">${mode}</span></div>
+          <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;font-family:var(--mono)">${filename}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:12px">
+            ${added || '<span style="color:var(--text-dim)">Keine neuen Einträge</span>'}
+          </div>
+          ${extras ? `<div style="margin-top:8px;font-size:12px;color:var(--text-dim)">${extras}</div>` : ''}
+        </div>
+        <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="this.closest('#restore-result').style.display='none'">✕</button>
+      </div>
+    </div>`;
+  }
+  showToast('Restore erfolgreich', 'success');
   await loadAll();
 }
 
