@@ -4629,7 +4629,13 @@ function _pollUpdateStatus() {
       if (!d.pending) {
         clearInterval(interval);
         await loadUpdateStatus();
-        showToast('Update abgeschlossen', 'success');
+        if (d.last_result === 'up_to_date') {
+          showToast('Bereits aktuell — kein Update nötig', 'info');
+        } else if (d.last_result === 'error') {
+          showToast('Update fehlgeschlagen — Log prüfen', 'error');
+        } else {
+          showToast('Update abgeschlossen', 'success');
+        }
       }
     } catch (_) {
       // Backend startet noch — weiter warten

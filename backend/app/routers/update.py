@@ -11,6 +11,7 @@ router = APIRouter(prefix="/update", tags=["update"])
 TRIGGER_DIR = Path("/app/update_trigger")
 TRIGGER_FILE = TRIGGER_DIR / "trigger"
 LOG_FILE = TRIGGER_DIR / "update.log"
+STATUS_FILE = TRIGGER_DIR / "update.status"
 
 
 @router.get("/status")
@@ -19,12 +20,14 @@ async def get_update_status(_: User = Depends(require_admin)):
     last_triggered = None
     if LOG_FILE.exists():
         last_triggered = datetime.fromtimestamp(LOG_FILE.stat().st_mtime).isoformat()
+    last_result = STATUS_FILE.read_text().strip() if STATUS_FILE.exists() else None
     return {
         "version": APP_VERSION,
         "build": BUILD_NR,
         "pending": TRIGGER_FILE.exists(),
         "watcher_ready": watcher_ready,
         "last_triggered": last_triggered,
+        "last_result": last_result,
     }
 
 
