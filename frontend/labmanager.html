@@ -915,6 +915,9 @@
                   <button class="btn btn-ghost" id="restart-trigger-btn" onclick="triggerRestart()">
                     Backend neu starten
                   </button>
+                  <button class="btn btn-ghost" onclick="downloadLogBundle()">
+                    ⬇ Log-Bundle
+                  </button>
                 </div>
                 <div style="font-size:12px;color:var(--text-dim);line-height:1.6">
                   <strong style="color:var(--text)">Update:</strong> führt <code style="background:var(--surface2);padding:1px 4px;border-radius:3px">git pull</code> + <code style="background:var(--surface2);padding:1px 4px;border-radius:3px">docker compose up --build</code> aus.<br>
@@ -4639,6 +4642,20 @@ async function triggerRestart() {
     btn.disabled = false;
     btn.textContent = 'Backend neu starten';
   }
+}
+
+async function downloadLogBundle() {
+  const r = await fetch('/api/update/log-bundle', {
+    headers: { Authorization: 'Bearer ' + (localStorage.getItem('ms_token') || '') }
+  });
+  if (!r.ok) { showToast('Log-Bundle konnte nicht erstellt werden', 'error'); return; }
+  const blob = await r.blob();
+  const cd = r.headers.get('Content-Disposition') || '';
+  const fn = cd.match(/filename=([^\s;]+)/)?.[1] || 'spacecaptain-bundle.zip';
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fn; a.click();
+  URL.revokeObjectURL(url);
 }
 
 function _pollUpdateStatus() {
