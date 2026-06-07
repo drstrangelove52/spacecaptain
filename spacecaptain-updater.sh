@@ -57,7 +57,7 @@ while true; do
     else
       BUILD_NR=$(git rev-list --count HEAD)
       log "Build-Nr: $BUILD_NR — starte docker compose up..."
-      if BUILD_NR=$BUILD_NR docker compose up -d --build backend >> "$LOG_FILE" 2>&1; then
+      if BUILD_NR=$BUILD_NR docker compose up -d --build --force-recreate backend >> "$LOG_FILE" 2>&1; then
         log "Update abgeschlossen (Build $BUILD_NR)"
         echo "updated" > "$STATUS_FILE"
       else
