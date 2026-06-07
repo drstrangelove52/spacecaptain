@@ -25,7 +25,9 @@ while true; do
     log "Restart-Trigger erkannt — starte Backend neu..."
     rm -f "$RESTART_FILE"
     cd "$PROJECT_DIR"
-    if BUILD_NR=$(git rev-list --count HEAD) docker compose up -d backend >> "$LOG_FILE" 2>&1; then
+    _RESTART_BUILD=$(git rev-list --count HEAD)
+    echo "$_RESTART_BUILD" > "$PROJECT_DIR/update_trigger/build_nr"
+    if BUILD_NR=$_RESTART_BUILD docker compose up -d backend >> "$LOG_FILE" 2>&1; then
       log "Neustart abgeschlossen"
       echo "restarted" > "$STATUS_FILE"
     else
@@ -56,6 +58,7 @@ while true; do
       echo "up_to_date" > "$STATUS_FILE"
     else
       BUILD_NR=$(git rev-list --count HEAD)
+      echo "$BUILD_NR" > "$PROJECT_DIR/update_trigger/build_nr"
       log "Build-Nr: $BUILD_NR — starte docker compose up..."
       if BUILD_NR=$BUILD_NR docker compose up -d --build --force-recreate backend >> "$LOG_FILE" 2>&1; then
         log "Update abgeschlossen (Build $BUILD_NR)"

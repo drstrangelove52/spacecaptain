@@ -46,7 +46,18 @@ def get_settings() -> Settings:
 APP_VERSION = "1.33"
 
 import os as _os, zoneinfo as _zi
-BUILD_NR = _os.environ.get("BUILD_NR", "")
+
+def _read_build_nr() -> str:
+    try:
+        with open("/app/update_trigger/build_nr") as _f:
+            v = _f.read().strip()
+            if v:
+                return v
+    except OSError:
+        pass
+    return _os.environ.get("BUILD_NR", "")
+
+BUILD_NR = _read_build_nr()
 
 # Patch: Zeitzone aus Umgebungsvariable lesen (wird in docker-compose gesetzt)
 _tz_name = _os.environ.get("TZ", "UTC")
