@@ -31,6 +31,9 @@ async def create_user(
     exists = await db.execute(select(User).where(User.email == payload.email))
     if exists.scalar_one_or_none():
         raise HTTPException(400, "Email bereits vergeben")
+    dup = await db.execute(select(User).where(User.name == payload.name))
+    if dup.scalar_one_or_none():
+        raise HTTPException(400, f"Name '{payload.name}' bereits vergeben")
 
     user = User(
         name=payload.name,
@@ -68,7 +71,13 @@ async def update_user(
     if not user:
         raise HTTPException(404, "Benutzer nicht gefunden")
 
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    update_data = payload.model_dump(exclude_unset=True)
+    if "name" in update_data:
+        dup = await db.execute(select(User).where(User.name == update_data["name"], User.id != user_id))
+        if dup.scalar_one_or_none():
+            raise HTTPException(400, f"Name '{update_data['name']}' bereits vergeben")
+
+    for field, value in update_data.items():
         if field == "password":
             setattr(user, "password_hash", hash_password(value))
         else:
@@ -77,7 +86,7 @@ async def update_user(
 
     await db.commit()
     await db.refresh(user)
-    changed = list(payload.model_dump(exclude_unset=True, exclude={"password"}).keys())
+    changed = list(update_data.keys() - {"password"})
     if payload.password:
         changed.append("password")
     await log_svc.log(db, LogType.user_updated,

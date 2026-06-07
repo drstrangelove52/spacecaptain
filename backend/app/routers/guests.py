@@ -11,7 +11,7 @@ def _hash(pw: str) -> str:
     return bcrypt.hashpw(pw.encode(), bcrypt.gensalt(12)).decode()
 from app.models import User, Guest, Machine, Permission, LogType
 from app.schemas import GuestCreate, GuestUpdate, GuestOut, GuestRegister
-from app.services.auth import get_current_user, require_admin
+from app.services.auth import get_current_user
 from app.services import logger as log_svc
 
 router = APIRouter(prefix="/guests", tags=["guests"])
@@ -126,6 +126,9 @@ async def create_guest(
     existing = await db.execute(select(Guest).where(Guest.username == payload.username))
     if existing.scalar_one_or_none():
         raise HTTPException(400, f"Benutzername '{payload.username}' bereits vergeben")
+    dup = await db.execute(select(Guest).where(Guest.name == payload.name))
+    if dup.scalar_one_or_none():
+        raise HTTPException(400, f"Name '{payload.name}' bereits vergeben")
 
     data = payload.model_dump(exclude={'password'})
     # Leere Strings → None (verhindert UNIQUE-Konflikt bei email/phone)
@@ -172,6 +175,10 @@ async def update_guest(
         existing = await db.execute(select(Guest).where(Guest.username == update_data['username']))
         if existing.scalar_one_or_none():
             raise HTTPException(400, f"Benutzername bereits vergeben")
+    if 'name' in update_data and update_data['name'] != guest.name:
+        dup = await db.execute(select(Guest).where(Guest.name == update_data['name']))
+        if dup.scalar_one_or_none():
+            raise HTTPException(400, f"Name '{update_data['name']}' bereits vergeben")
     # Leere Strings → None
     for field in ('email', 'phone', 'note'):
         if field in update_data and update_data[field] == '':
@@ -196,7 +203,7 @@ async def update_guest(
 async def delete_guest(
     guest_id: int,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(require_admin),
+    current: User = Depends(get_current_user),
 ):
     result = await db.execute(select(Guest).where(Guest.id == guest_id))
     guest = result.scalar_one_or_none()

@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List
 
-from app.services.auth import require_admin
+from app.services.auth import require_admin, require_power_manager
 
 from app.database import get_db
 from app.models import User, Machine, MachinePlug, Permission, LogType, MachineCategory, MachineLocation
@@ -219,8 +219,11 @@ async def list_machines_live(
 async def create_machine(
     payload: MachineCreate,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_power_manager),
 ):
+    dup = await db.execute(select(Machine).where(Machine.name == payload.name))
+    if dup.scalar_one_or_none():
+        raise HTTPException(400, f"Maschinen-Name '{payload.name}' bereits vergeben")
     machine = Machine(**payload.model_dump(), qr_token=_gen_qr_token())
     db.add(machine)
     await db.commit()
@@ -251,13 +254,17 @@ async def update_machine(
     machine_id: int,
     payload: MachineUpdate,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_power_manager),
 ):
     result = await db.execute(select(Machine).where(Machine.id == machine_id))
     machine = result.scalar_one_or_none()
     if not machine:
         raise HTTPException(404, "Maschine nicht gefunden")
     changes = payload.model_dump(exclude_unset=True)
+    if "name" in changes:
+        dup = await db.execute(select(Machine).where(Machine.name == changes["name"], Machine.id != machine_id))
+        if dup.scalar_one_or_none():
+            raise HTTPException(400, f"Maschinen-Name '{changes['name']}' bereits vergeben")
     for field, value in changes.items():
         setattr(machine, field, value)
     await db.commit()
@@ -273,7 +280,7 @@ async def update_machine(
 async def delete_machine(
     machine_id: int,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(require_admin),
+    current: User = Depends(require_power_manager),
 ):
     result = await db.execute(select(Machine).where(Machine.id == machine_id))
     machine = result.scalar_one_or_none()
@@ -289,7 +296,7 @@ async def delete_machine(
 async def regenerate_qr(
     machine_id: int,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_power_manager),
 ):
     """Neuen QR-Token für die Maschine generieren (invalidiert alte QR-Codes)."""
     result = await db.execute(select(Machine).where(Machine.id == machine_id))
@@ -460,7 +467,7 @@ def _parse_csv_row(row: dict, existing_names: set[str], row_nr: int) -> dict:
 async def import_machines_preview(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(require_admin),
+    current: User = Depends(require_power_manager),
 ):
     content = await file.read()
     try:
@@ -496,7 +503,7 @@ async def import_machines_preview(
 async def import_machines_confirm(
     payload: dict,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(require_admin),
+    current: User = Depends(require_power_manager),
 ):
     rows = payload.get("rows", [])
     if not rows:

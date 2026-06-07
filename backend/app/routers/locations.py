@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import MachineLocation, User
 from app.schemas import MachineLocationCreate, MachineLocationOut, MachineLocationUpdate
-from app.services.auth import get_current_user
+from app.services.auth import get_current_user, require_power_manager
 
 router = APIRouter(prefix="/locations", tags=["locations"])
 
@@ -22,7 +22,7 @@ async def list_locations(db: AsyncSession = Depends(get_db)):
 async def create_location(
     payload: MachineLocationCreate,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_power_manager),
 ):
     existing = await db.execute(select(MachineLocation).where(MachineLocation.name == payload.name))
     if existing.scalar_one_or_none():
@@ -39,7 +39,7 @@ async def update_location(
     loc_id: int,
     payload: MachineLocationUpdate,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_power_manager),
 ):
     loc = await db.get(MachineLocation, loc_id)
     if not loc:
@@ -55,7 +55,7 @@ async def update_location(
 async def delete_location(
     loc_id: int,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_power_manager),
 ):
     loc = await db.get(MachineLocation, loc_id)
     if not loc:

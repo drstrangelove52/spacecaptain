@@ -8,6 +8,7 @@ from datetime import datetime, date, time
 from app.database import get_db
 from app.models import Announcement, LogType
 from app.routers.auth import get_current_user
+from app.services.auth import require_power_manager
 from app.services.logger import log as activity_log
 from app.config import APP_TIMEZONE
 
@@ -124,7 +125,7 @@ async def active_announcements(db: AsyncSession = Depends(get_db)):
 async def create_announcement(
     body: AnnouncementIn,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_power_manager),
 ):
     ann = Announcement(**body.model_dump())
     db.add(ann)
@@ -140,7 +141,7 @@ async def update_announcement(
     ann_id: int,
     body: AnnouncementIn,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_power_manager),
 ):
     result = await db.execute(select(Announcement).where(Announcement.id == ann_id))
     ann = result.scalar_one_or_none()
@@ -159,7 +160,7 @@ async def update_announcement(
 async def delete_announcement(
     ann_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_power_manager),
 ):
     result = await db.execute(select(Announcement).where(Announcement.id == ann_id))
     ann = result.scalar_one_or_none()

@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models import MachineCategory
 from app.schemas import MachineCategoryCreate, MachineCategoryOut, MachineCategoryUpdate
 from app.routers.auth import get_current_user
+from app.services.auth import require_power_manager
 from app.models import User
 
 router = APIRouter(prefix="/categories", tags=["categories"])
@@ -23,7 +24,7 @@ async def list_categories(db: AsyncSession = Depends(get_db)):
 async def create_category(
     payload: MachineCategoryCreate,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_power_manager),
 ):
     existing = await db.execute(select(MachineCategory).where(MachineCategory.name == payload.name))
     if existing.scalar_one_or_none():
@@ -40,7 +41,7 @@ async def update_category(
     cat_id: int,
     payload: MachineCategoryUpdate,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_power_manager),
 ):
     cat = await db.get(MachineCategory, cat_id)
     if not cat:
@@ -56,7 +57,7 @@ async def update_category(
 async def delete_category(
     cat_id: int,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_power_manager),
 ):
     cat = await db.get(MachineCategory, cat_id)
     if not cat:

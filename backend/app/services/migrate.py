@@ -493,6 +493,9 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # ── v1.33: LogType.system ─────────────────────────────────────────────
         await _extend_enum_if_needed(conn, "activity_log", "type", ["system"])
 
+        # ── v1.34: Power-Manager Rolle ────────────────────────────────────────
+        await _extend_enum_if_needed(conn, "users", "role", ["power_manager"])
+
     log.info("Migrationen abgeschlossen")
 
 

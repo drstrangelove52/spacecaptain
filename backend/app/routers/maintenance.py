@@ -12,7 +12,7 @@ from app.database import get_db
 from app.models import (
     User, Machine, MaintenanceInterval, MaintenanceRecord, LogType
 )
-from app.services.auth import get_current_user
+from app.services.auth import get_current_user, require_power_manager
 from app.services import logger as log_svc
 from app.config import APP_TIMEZONE
 
@@ -180,7 +180,7 @@ async def list_intervals(
 async def create_interval(
     payload: IntervalCreate,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_power_manager),
 ):
     if not payload.interval_hours and not payload.interval_days:
         raise HTTPException(400, "Mindestens interval_hours oder interval_days muss angegeben sein")
@@ -208,7 +208,7 @@ async def update_interval(
     interval_id: int,
     payload: IntervalUpdate,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_power_manager),
 ):
     iv = await db.get(MaintenanceInterval, interval_id)
     if not iv:
@@ -233,7 +233,7 @@ async def update_interval(
 async def delete_interval(
     interval_id: int,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(get_current_user),
+    current: User = Depends(require_power_manager),
 ):
     iv = await db.get(MaintenanceInterval, interval_id)
     if not iv:

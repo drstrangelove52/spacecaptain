@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import User, AutomationRule, RuleCondition, Machine, LogType
-from app.services.auth import require_admin
+from app.services.auth import require_power_manager as require_admin
 from app.services import logger as log_svc
 
 router = APIRouter(prefix="/automations", tags=["automations"])

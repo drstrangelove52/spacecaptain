@@ -57,6 +57,12 @@ async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+async def require_power_manager(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role not in ("admin", "power_manager"):
+        raise HTTPException(status_code=403, detail="Power-Manager oder Admin erforderlich")
+    return current_user
+
+
 def decode_guest_token(token: str) -> dict | None:
     """Dekodiert einen Gast-JWT und gibt das Payload zurück, oder None bei Fehler."""
     try:

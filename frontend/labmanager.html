@@ -87,6 +87,7 @@
   .badge-red{background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
   .badge-cyan{background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3)}
   .badge-gray{background:rgba(100,116,139,.15);color:var(--text-dim);border:1px solid rgba(100,116,139,.3)}
+  .badge-purple{background:rgba(168,85,247,.15);color:#c084fc;border:1px solid rgba(168,85,247,.3)}
   /* GRID */
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
   /* MACHINE CARDS */
@@ -2323,6 +2324,8 @@ function escHtml(s) {
 }
 let token = localStorage.getItem('ms_token') || '';
 let currentUser = null;
+function _isAdmin()     { return currentUser?.role === 'admin'; }
+function _isPowerPlus() { return currentUser?.role === 'admin' || currentUser?.role === 'power_manager'; }
 let cache = { guests:[], machines:[], users:[], permissions:[], categories:[], locations:[] };
 let clientSettings = { modal_backdrop_input: true, modal_backdrop_display: true };
 let selectedPermGuestId = null;
@@ -2379,9 +2382,9 @@ async function doLogin() {
   currentUser = await GET('/auth/me');
   if (currentUser) {
     document.getElementById('current-user-label').textContent=currentUser.name;
-    document.getElementById('nav-settings').style.display      = currentUser.role==='admin' ? '' : 'none';
-    document.getElementById('nav-backup').style.display        = currentUser.role==='admin' ? '' : 'none';
-    document.getElementById('nav-notifications').style.display = currentUser.role==='admin' ? '' : 'none';
+    document.getElementById('nav-settings').style.display      = _isAdmin()      ? '' : 'none';
+    document.getElementById('nav-backup').style.display        = _isAdmin()      ? '' : 'none';
+    document.getElementById('nav-notifications').style.display = _isPowerPlus()  ? '' : 'none';
   }
   loadAll();
 }
@@ -2397,14 +2400,14 @@ const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'La
 const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',machines:'machines',permissions:'permissions',maintenance:'maintenance',backup:'backup',settings:'settings'};
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
-  labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button> <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`,
-  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button> <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)"> <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ Standorte</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`,
-  plugs:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('plugs')" title="Hilfe zu Plug-Pool">? Hilfe</button> <button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`,
-  automations:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('automations')" title="Hilfe zu Automationen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddRule()">+ Neue Regel</button>`,
+  labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>${_isAdmin()?` <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`:''}`,
+  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)"> <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ Standorte</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`:''}`,
+  plugs:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('plugs')" title="Hilfe zu Plug-Pool">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`:''}`,
+  automations:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('automations')" title="Hilfe zu Automationen">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddRule()">+ Neue Regel</button>`:''}`,
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
-  maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-ghost" onclick="showFreeRecord()">+ Freie Wartung</button> <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`,
-  announcements:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('announcements')" title="Hilfe zu Aushängen">? Hilfe</button> <button class="btn btn-primary" onclick="showAddAnnouncement()">+ Neuer Aushang</button>`,
-  notifications:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('notifications')" title="Hilfe zu Push-Nachrichten">? Hilfe</button> <button class="btn btn-primary" onclick="showAddTopic()">+ Topic hinzufügen</button>`,
+  maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-ghost" onclick="showFreeRecord()">+ Freie Wartung</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`:''}`,
+  announcements:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('announcements')" title="Hilfe zu Aushängen">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddAnnouncement()">+ Neuer Aushang</button>`:''}`,
+  notifications:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('notifications')" title="Hilfe zu Push-Nachrichten">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddTopic()">+ Topic hinzufügen</button>`:''}`,
   stats:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('stats')" title="Hilfe zu Statistiken">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="loadStats()">↺ Aktualisieren</button>`,
   log:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('log')" title="Hilfe zum Aktivitätslog">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="loadLog()">↺ Aktualisieren</button>`,
   backup:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('backup')" title="Hilfe zu Backup">? Hilfe</button>`,
@@ -2573,8 +2576,8 @@ function renderAnnouncementList(data) {
           <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">${annMeta(a)}</div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
-          <button class="btn btn-ghost btn-sm" title="Bearbeiten" onclick="showEditAnnouncement(${a.id})">✎</button>
-          <button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteAnnouncement(${a.id})">✕</button>
+          ${_isPowerPlus()?`<button class="btn btn-ghost btn-sm" title="Bearbeiten" onclick="showEditAnnouncement(${a.id})">✎</button>`:''}
+          ${_isPowerPlus()?`<button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteAnnouncement(${a.id})">✕</button>`:''}
         </div>
       </div>
     </div>`).join('');
@@ -2924,7 +2927,7 @@ function renderGuests() {
     <td><span class="badge ${g.is_active?'badge-green':'badge-gray'}">${g.is_active?'aktiv':'inaktiv'}</span></td>
     <td style="display:flex;gap:6px;padding:8px 16px">
       <button class="btn btn-ghost btn-sm" title="Bearbeiten" onclick="editGuest(${g.id})">✏</button>
-      ${currentUser?.role==='admin'?`<button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteGuest(${g.id},'${g.name}')">✕</button>`:''}
+      <button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteGuest(${g.id},'${g.name}')">✕</button>
     </td>
   </tr>`).join('');
 }
@@ -3079,12 +3082,12 @@ function renderLM() {
   tbody.innerHTML=sorted.map(u=>`<tr>
     <td><strong>${u.name}</strong></td>
     <td style="font-family:var(--mono)">${u.email}</td>
-    <td><span class="badge ${u.role==='admin'?'badge-red':'badge-orange'}">${u.role}</span></td>
+    <td><span class="badge ${u.role==='admin'?'badge-red':u.role==='power_manager'?'badge-purple':'badge-orange'}">${u.role==='power_manager'?'Power-Manager':u.role}</span></td>
     <td style="font-size:12px;color:var(--text-dim)">${u.area||'—'}</td>
     <td><span class="badge ${u.is_active?'badge-green':'badge-gray'}">${u.is_active?'aktiv':'inaktiv'}</span></td>
     <td style="display:flex;gap:6px;padding:8px 16px">
       <button class="btn btn-ghost btn-sm" title="Bearbeiten" onclick="editLM(${u.id})">✏</button>
-      ${currentUser?.role==='admin'&&currentUser?.id!==u.id?`<button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteLM(${u.id},'${u.name}')">✕</button>`:''}
+      ${_isAdmin()&&currentUser?.id!==u.id?`<button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteLM(${u.id},'${u.name}')">✕</button>`:''}
     </td>
   </tr>`).join('');
 }
@@ -3097,7 +3100,7 @@ function showAddLM() {
     </div>
     <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="lm-email" type="email"></div>
     <div class="form-group"><label class="form-label">Passwort</label><input class="form-input" id="lm-pass" type="password"></div>
-    <div class="form-group"><label class="form-label">Rolle</label><select class="form-input" id="lm-role"><option value="manager">Manager</option><option value="admin">Admin</option></select></div>
+    <div class="form-group"><label class="form-label">Rolle</label><select class="form-input" id="lm-role"><option value="manager">Manager</option><option value="power_manager">Power-Manager</option><option value="admin">Admin</option></select></div>
     <div class="form-group"><label class="form-label">Zuständigkeitsbereich</label><input class="form-input" id="lm-area"></div>
   `, async()=>{
     const fn=document.getElementById('lm-fn').value.trim(), ln=document.getElementById('lm-ln').value.trim(), pass=document.getElementById('lm-pass').value;
@@ -3109,12 +3112,12 @@ function showAddLM() {
 
 function editLM(id) {
   const u=cache.users.find(x=>x.id===id); if (!u) return;
-  const isAdmin=currentUser&&currentUser.role==='admin';
+  const isAdmin=_isAdmin();
   openModal('Lab Manager bearbeiten',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${u.name}"></div>
     <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="e-email" value="${u.email}"></div>
     <div class="form-group"><label class="form-label">Neues Passwort</label><input class="form-input" id="e-pass" type="password" placeholder="Leer = nicht ändern"></div>
-    ${isAdmin?`<div class="form-group"><label class="form-label">Rolle</label><select class="form-input" id="e-role"><option value="manager" ${u.role==='manager'?'selected':''}>Manager</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></div>`:''}
+    ${isAdmin?`<div class="form-group"><label class="form-label">Rolle</label><select class="form-input" id="e-role"><option value="manager" ${u.role==='manager'?'selected':''}>Manager</option><option value="power_manager" ${u.role==='power_manager'?'selected':''}>Power-Manager</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></div>`:''}
     <div class="form-group"><label class="form-label">Bereich</label><input class="form-input" id="e-area" value="${u.area||''}"></div>
     ${isAdmin?`<div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-lm-active"><option value="true" ${u.is_active?'selected':''}>Aktiv</option><option value="false" ${!u.is_active?'selected':''}>Inaktiv</option></select></div>`:''}
     ${isAdmin?`<div style="border-top:2px solid rgba(255,255,255,0.15);margin-top:12px;padding-top:12px">
@@ -3508,9 +3511,9 @@ function _machineCard(m) {
       <button class="btn ${m.plug_on?'btn-danger-filled':'btn-danger'} btn-sm" onclick="managerSwitchMachine(${m.id},'off',this)" style="flex:1;justify-content:center">○ AUS</button>
     </div>`:''}
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-ghost btn-sm" onclick="editMachine(${m.id})">✏ Bearbeiten</button>
+      ${_isPowerPlus()?`<button class="btn btn-ghost btn-sm" onclick="editMachine(${m.id})">✏ Bearbeiten</button>`:''}
       <button class="btn btn-ghost btn-sm" onclick="openQRModal(${m.id})">▦ QR/NFC</button>
-      ${currentUser?.role==='admin'?`<button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>`:''}
+      ${_isPowerPlus()?`<button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>`:''}
     </div>
   </div>`;
 }
@@ -3549,9 +3552,9 @@ function _machineTable(machines) {
       <td>${plug}</td>
       <td style="white-space:nowrap">
         ${m.plug_type!=='none'&&m.status==='online'?`<button class="btn ${m.plug_on?'btn-success-outline':'btn-success'} btn-sm" onclick="managerSwitchMachine(${m.id},'on',this)" title="Einschalten" style="font-size:15px;padding:2px 7px">⚡</button> <button class="btn ${m.plug_on?'btn-danger-filled':'btn-danger'} btn-sm" onclick="managerSwitchMachine(${m.id},'off',this)" title="Ausschalten" style="font-size:15px;padding:2px 7px">○</button> `:''}
-        <button class="btn btn-ghost btn-sm" title="Bearbeiten" onclick="editMachine(${m.id})">✏</button>
+        ${_isPowerPlus()?`<button class="btn btn-ghost btn-sm" title="Bearbeiten" onclick="editMachine(${m.id})">✏</button>`:''}
         <button class="btn btn-ghost btn-sm" title="QR-Code / NFC" onclick="openQRModal(${m.id})">▦</button>
-        ${currentUser?.role==='admin'?`<button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>`:''}
+        ${_isPowerPlus()?`<button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteMachine(${m.id},'${m.name}')">✕</button>`:''}
       </td>
     </tr>`;
   }).join('');
@@ -4549,14 +4552,14 @@ if (_ltParam) {
       token = res.access_token;
       localStorage.setItem('ms_token', token);
       history.replaceState(null, '', window.location.pathname);
-      GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=u.role==='admin'?'':'none';document.getElementById('nav-backup').style.display=u.role==='admin'?'':'none';document.getElementById('nav-notifications').style.display=u.role==='admin'?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } });
+      GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=_isAdmin()?'':'none';document.getElementById('nav-backup').style.display=_isAdmin()?'':'none';document.getElementById('nav-notifications').style.display=_isPowerPlus()?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } });
     } else {
       document.getElementById('login-error').textContent='Ungültiger Login-Link.';
       document.getElementById('login-error').style.display='block';
     }
   });
 } else if (token) {
-  GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=u.role==='admin'?'':'none';document.getElementById('nav-backup').style.display=u.role==='admin'?'':'none';document.getElementById('nav-notifications').style.display=u.role==='admin'?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
+  GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=_isAdmin()?'':'none';document.getElementById('nav-backup').style.display=_isAdmin()?'':'none';document.getElementById('nav-notifications').style.display=_isPowerPlus()?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
 }
 document.getElementById('login-pass').addEventListener('keydown',e=>{ if (e.key==='Enter') doLogin(); });
 fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){_spaceName=n;document.getElementById('login-space-sub').textContent=n;document.getElementById('sidebar-space-sub').textContent=n;}}).catch(()=>{});
@@ -5305,8 +5308,8 @@ function _renderAutomationsList(rules) {
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
           <input type="checkbox" ${r.enabled?'checked':''} onchange="toggleRule(${r.id},this.checked)"> Aktiv
         </label>
-        <button class="btn btn-ghost btn-sm" title="Bearbeiten" onclick="editRule(${r.id})">✎</button>
-        <button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteRule(${r.id},'${escHtml(r.name||r.target_machine_name)}')">✕</button>
+        ${_isPowerPlus()?`<button class="btn btn-ghost btn-sm" title="Bearbeiten" onclick="editRule(${r.id})">✎</button>`:''}
+        ${_isPowerPlus()?`<button class="btn btn-danger btn-sm" title="Löschen" onclick="deleteRule(${r.id},'${escHtml(r.name||r.target_machine_name)}')">✕</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -5910,8 +5913,8 @@ function renderIntervals() {
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;min-width:120px">
           <button class="btn btn-success btn-sm" onclick="showRecordMaintenanceById(${iv.id})">✓ Durchgeführt</button>
-          <button class="btn btn-ghost btn-sm" onclick="showEditInterval(${iv.id})">✏ Bearbeiten</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteIntervalById(${iv.id})">✕</button>
+          ${_isPowerPlus()?`<button class="btn btn-ghost btn-sm" onclick="showEditInterval(${iv.id})">✏ Bearbeiten</button>`:''}
+          ${_isPowerPlus()?`<button class="btn btn-danger btn-sm" onclick="deleteIntervalById(${iv.id})">✕</button>`:''}
         </div>
       </div>
     </div>
@@ -6444,20 +6447,29 @@ function renderPlugsFiltered(plugs) {
       <td><strong>${escHtml(p.name)}</strong>${p.notes?`<div style="font-size:11px;color:var(--text-dim);margin-top:2px">${escHtml(p.notes)}</div>`:''}</td>
       <td><span class="badge badge-gray">${_plugTypeLabel(p.plug_type)}</span></td>
       <td><code style="font-size:12px;background:var(--surface2);padding:2px 6px;border-radius:4px">${escHtml(p.plug_ip)}</code></td>
-      <td>${p.plug_token?'<span style="color:var(--text-dim)">••••••</span>':'<span style="color:var(--text-dim)">—</span>'}</td>
+      <td id="plug-token-cell-${p.id}">${p.plug_token
+        ? `<span style="color:var(--text-dim);font-family:monospace">••••••</span><button class="btn btn-ghost btn-sm" onclick="togglePlugToken(${p.id})" title="Token anzeigen" style="padding:0 4px;font-size:12px;vertical-align:middle">👁</button>`
+        : '<span style="color:var(--text-dim)">—</span>'}</td>
       <td>${(p.machines&&p.machines.length)
         ? p.machines.map(m=>`<span style="color:var(--success);display:block">✓ ${escHtml(m.name)}</span>`).join('')
         : '<span style="color:var(--text-dim)">— frei —</span>'
       }</td>
       <td style="white-space:nowrap;text-align:right">
-        ${!(p.machines&&p.machines.length) ? `<button class="btn btn-ghost btn-sm" onclick="testSwitchPlug(${p.id},'on')" title="Test: EIN schalten" style="color:var(--success)">▶ EIN</button>
+        ${_isPowerPlus()&&!(p.machines&&p.machines.length) ? `<button class="btn btn-ghost btn-sm" onclick="testSwitchPlug(${p.id},'on')" title="Test: EIN schalten" style="color:var(--success)">▶ EIN</button>
         <button class="btn btn-ghost btn-sm" onclick="testSwitchPlug(${p.id},'off')" title="Test: AUS schalten" style="color:var(--text-dim)">■ AUS</button>` : ''}
-        <button class="btn btn-ghost btn-sm" onclick="showEditPlug(${p.id})" title="Bearbeiten">✏️</button>
-        <button class="btn btn-ghost btn-sm" onclick="deletePlug(${p.id})" ${(p.machines&&p.machines.length)?'disabled title="Zuerst alle Zuweisungen aufheben"':''} style="${(p.machines&&p.machines.length)?'opacity:.4':''};color:var(--error)">🗑</button>
+        ${_isPowerPlus()?`<button class="btn btn-ghost btn-sm" onclick="showEditPlug(${p.id})" title="Bearbeiten">✏️</button>`:''}
+        ${_isPowerPlus()?`<button class="btn btn-ghost btn-sm" onclick="deletePlug(${p.id})" ${(p.machines&&p.machines.length)?'disabled title="Zuerst alle Zuweisungen aufheben"':''} style="${(p.machines&&p.machines.length)?'opacity:.4':''};color:var(--error)">🗑</button>`:''}
       </td>
     </tr>`).join('')}
     </tbody>
   </table>`;
+}
+
+function _resetPlugTokenToggle() {
+  document.getElementById('plug-token').type = 'password';
+  const btn = document.getElementById('plug-token-toggle');
+  btn.textContent = '👁';
+  btn.title = 'Token anzeigen';
 }
 
 function showAddPlug() {
@@ -6467,6 +6479,7 @@ function showAddPlug() {
   document.getElementById('plug-type').value = 'shelly_gen2';
   document.getElementById('plug-ip').value = '';
   document.getElementById('plug-token').value = '';
+  _resetPlugTokenToggle();
   document.getElementById('plug-notes').value = '';
   document.getElementById('plug-modal').style.display = 'flex';
   setTimeout(()=>document.getElementById('plug-name').focus(), 50);
@@ -6480,9 +6493,24 @@ function showEditPlug(id) {
   document.getElementById('plug-name').value = p.name;
   document.getElementById('plug-type').value = p.plug_type;
   document.getElementById('plug-ip').value = p.plug_ip;
-  document.getElementById('plug-token').value = '';
+  document.getElementById('plug-token').value = p.plug_token || '';
+  _resetPlugTokenToggle();
   document.getElementById('plug-notes').value = p.notes||'';
   document.getElementById('plug-modal').style.display = 'flex';
+}
+
+function togglePlugTokenInput() {
+  const inp = document.getElementById('plug-token');
+  const btn = document.getElementById('plug-token-toggle');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    btn.textContent = '🙈';
+    btn.title = 'Token verbergen';
+  } else {
+    inp.type = 'password';
+    btn.textContent = '👁';
+    btn.title = 'Token anzeigen';
+  }
 }
 
 function closePlugModal(e) {
@@ -6531,6 +6559,26 @@ async function testSwitchPlug(id, action) {
   }
 }
 
+function togglePlugToken(id) {
+  const p = _plugs.find(x=>x.id===id);
+  if (!p?.plug_token) return;
+  const cell = document.getElementById(`plug-token-cell-${id}`);
+  const span = cell.querySelector('span');
+  const btn = cell.querySelector('button');
+  const masked = span.textContent === '••••••';
+  if (masked) {
+    span.textContent = p.plug_token;
+    span.style.color = '';
+    btn.title = 'Token verbergen';
+    btn.textContent = '🙈';
+  } else {
+    span.textContent = '••••••';
+    span.style.color = 'var(--text-dim)';
+    btn.title = 'Token anzeigen';
+    btn.textContent = '👁';
+  }
+}
+
 
 </script>
 
@@ -6561,8 +6609,11 @@ async function testSwitchPlug(id, action) {
       </div>
       <div class="form-group">
         <label class="form-label">Token / Auth <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
-        <input class="form-input" id="plug-token" type="password" placeholder="myStrom: API-Token · Shelly: admin:passwort">
-        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Beim Bearbeiten leer lassen um bestehenden Token zu behalten.</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input class="form-input" id="plug-token" type="password" placeholder="myStrom: API-Token · Shelly: admin:passwort" style="flex:1">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="togglePlugTokenInput()" id="plug-token-toggle" title="Token anzeigen" style="flex-shrink:0;padding:0 8px">👁</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Leer lassen um den bestehenden Token unverändert zu behalten.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Notiz</label>

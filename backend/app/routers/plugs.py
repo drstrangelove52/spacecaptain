@@ -7,7 +7,7 @@ from sqlalchemy import select, func
 from app.database import get_db
 from app.models import Plug, Machine, MachinePlug, SystemSettings, User, PlugType
 from app.schemas import PlugCreate, PlugUpdate, PlugOut
-from app.services.auth import get_current_user
+from app.services.auth import get_current_user, require_power_manager
 from app.services.plug import switch_plug
 
 router = APIRouter(prefix="/plugs", tags=["plugs"])
@@ -59,10 +59,13 @@ async def list_plugs(
 async def create_plug(
     payload: PlugCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_power_manager),
 ):
     if payload.plug_type not in VALID_TYPES:
         raise HTTPException(400, f"plug_type muss einer von {sorted(VALID_TYPES)} sein")
+    dup = await db.execute(select(Plug).where(Plug.name == payload.name))
+    if dup.scalar_one_or_none():
+        raise HTTPException(400, f"Plug-Name '{payload.name}' bereits vergeben")
     plug = Plug(**payload.model_dump())
     db.add(plug)
     await db.commit()
@@ -75,7 +78,7 @@ async def update_plug(
     plug_id: int,
     payload: PlugUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_power_manager),
 ):
     result = await db.execute(select(Plug).where(Plug.id == plug_id))
     plug = result.scalar_one_or_none()
@@ -84,6 +87,10 @@ async def update_plug(
     changes = payload.model_dump(exclude_unset=True)
     if "plug_type" in changes and changes["plug_type"] not in VALID_TYPES:
         raise HTTPException(400, f"plug_type muss einer von {sorted(VALID_TYPES)} sein")
+    if "name" in changes:
+        dup = await db.execute(select(Plug).where(Plug.name == changes["name"], Plug.id != plug_id))
+        if dup.scalar_one_or_none():
+            raise HTTPException(400, f"Plug-Name '{changes['name']}' bereits vergeben")
     for field, value in changes.items():
         setattr(plug, field, value)
     # Sync IP/token/type auf alle Maschinen wo dieser Plug PRIMÄR ist (sort_order=0)
@@ -106,7 +113,7 @@ async def update_plug(
 async def delete_plug(
     plug_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_power_manager),
 ):
     result = await db.execute(select(Plug).where(Plug.id == plug_id))
     plug = result.scalars().first()
@@ -125,7 +132,7 @@ async def assign_plug(
     plug_id: int,
     machine_id: int = Query(...),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_power_manager),
 ):
     result = await db.execute(select(Plug).where(Plug.id == plug_id))
     plug = result.scalar_one_or_none()
@@ -169,7 +176,7 @@ async def unassign_plug(
     plug_id: int,
     machine_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_power_manager),
 ):
     result = await db.execute(select(Plug).where(Plug.id == plug_id))
     plug = result.scalar_one_or_none()
@@ -242,7 +249,7 @@ async def test_switch_plug(
     plug_id: int,
     action: str = Query(...),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_power_manager),
 ):
     """Schaltet einen freien Plug zum Test — nur wenn noch keiner Maschine zugewiesen."""
     result = await db.execute(select(Plug).where(Plug.id == plug_id))

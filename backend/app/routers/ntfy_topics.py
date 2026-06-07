@@ -8,7 +8,7 @@ from datetime import datetime
 from app.database import get_db
 from app.models import NtfyTopic, SystemSettings, LogType
 from app.routers.auth import get_current_user
-from app.services.auth import require_admin
+from app.services.auth import require_power_manager as require_admin
 from app.services.ntfy import send_notification
 from app.services.logger import log as activity_log
 

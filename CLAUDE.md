@@ -149,8 +149,37 @@ Die Einstellungs-Seite im Frontend ist als Hilfe-Layout organisiert (7 Kategorie
 
 ## Rollen
 
-- **Admin**: voller Zugriff, darf Gäste/Maschinen löschen
-- **Lab Manager**: darf deaktivieren, aber nicht löschen — verhindert versehentlichen Datenverlust, Gast-History bleibt erhalten
+Drei Stufen: `manager` < `power_manager` < `admin`.
+
+- **Manager**: Betrieb — Gäste verwalten & löschen, Maschinen schalten, Berechtigungen vergeben, Wartung erfassen, Raum/Alarm steuern, eigenes Profil bearbeiten
+- **Power-Manager**: Konfiguration — zusätzlich Maschinen anlegen/bearbeiten/löschen, Plugs, Automationen, Aushänge, Wartungsintervalle, Kategorien/Standorte, Push-Topics verwalten
+- **Admin**: Systemverwaltung — zusätzlich Lab Manager verwalten, Backup/Restore, Einstellungen, In-App-Update
+
+**Rechtetabelle:**
+
+| Bereich / Aktion | Manager | Power-Manager | Admin |
+|---|:---:|:---:|:---:|
+| Gäste: anzeigen, freischalten, bearbeiten, anlegen, löschen | ✓ | ✓ | ✓ |
+| Gäste: Berechtigungen vergeben/entziehen | ✓ | ✓ | ✓ |
+| Maschinen: anzeigen, schalten (EIN/AUS) | ✓ | ✓ | ✓ |
+| Maschinen: anlegen, bearbeiten, löschen, QR neu generieren | ✗ | ✓ | ✓ |
+| Maschinen: CSV-Import, Kategorien, Standorte verwalten | ✗ | ✓ | ✓ |
+| Plug-Pool: anzeigen | ✓ | ✓ | ✓ |
+| Plug-Pool: anlegen, bearbeiten, löschen, testen, zuweisen | ✗ | ✓ | ✓ |
+| Automationen: anzeigen | ✓ | ✓ | ✓ |
+| Automationen: anlegen, bearbeiten, löschen | ✗ | ✓ | ✓ |
+| Maschinenpflege: Wartung erfassen, Übersicht | ✓ | ✓ | ✓ |
+| Maschinenpflege: Intervalle anlegen, bearbeiten, löschen | ✗ | ✓ | ✓ |
+| Aushänge: anlegen, bearbeiten, löschen | ✗ | ✓ | ✓ |
+| Push-Nachrichten (ntfy): Topics verwalten | ✗ | ✓ | ✓ |
+| Raum öffnen/schliessen, Notfall-Alarm | ✓ | ✓ | ✓ |
+| Berechtigungen, Log, Statistiken | ✓ | ✓ | ✓ |
+| Lab Manager: anlegen, bearbeiten, löschen, Rollen ändern | ✗ | ✗ | ✓ |
+| Backup & Restore | ✗ | ✗ | ✓ |
+| Einstellungen | ✗ | ✗ | ✓ |
+| In-App Update | ✗ | ✗ | ✓ |
+
+**Implementierung:** `require_power_manager` in `services/auth.py` prüft `role in ("admin", "power_manager")`. Frontend-Helpers `_isAdmin()` / `_isPowerPlus()` steuern Button-Sichtbarkeit. ENUM-Migration in `migrate.py` v1.34.
 
 ## Berechtigungshistorie (UI)
 

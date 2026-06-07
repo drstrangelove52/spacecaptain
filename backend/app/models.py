@@ -10,6 +10,7 @@ import enum
 
 class UserRole(str, enum.Enum):
     admin = "admin"
+    power_manager = "power_manager"
     manager = "manager"
 
 class MachineStatus(str, enum.Enum):
@@ -95,7 +96,7 @@ class QueueStatus(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
     id:            Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name:          Mapped[str]           = mapped_column(String(100), nullable=False)
+    name:          Mapped[str]           = mapped_column(String(100), unique=True, nullable=False)
     email:         Mapped[str]           = mapped_column(String(150), nullable=False, unique=True)
     password_hash: Mapped[str]           = mapped_column(String(255), nullable=False)
     role:          Mapped[UserRole]      = mapped_column(Enum(UserRole), default=UserRole.manager)
@@ -110,7 +111,7 @@ class User(Base):
 class Guest(Base):
     __tablename__ = "guests"
     id:            Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name:          Mapped[str]           = mapped_column(String(100), nullable=False)
+    name:          Mapped[str]           = mapped_column(String(100), unique=True, nullable=False)
     username:      Mapped[str]           = mapped_column(String(80), unique=True, nullable=False)
     email:         Mapped[Optional[str]] = mapped_column(String(150), unique=True)
     password_hash: Mapped[Optional[str]] = mapped_column(String(255))
@@ -128,7 +129,7 @@ class Guest(Base):
 class Machine(Base):
     __tablename__ = "machines"
     id:                 Mapped[int]             = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name:               Mapped[str]             = mapped_column(String(100), nullable=False)
+    name:               Mapped[str]             = mapped_column(String(100), unique=True, nullable=False)
     category:           Mapped[str]             = mapped_column(String(50), default="Sonstiges")
     manufacturer:       Mapped[Optional[str]]   = mapped_column(String(100))
     model:              Mapped[Optional[str]]   = mapped_column(String(100))
@@ -347,7 +348,7 @@ class MachineLocation(Base):
 class Plug(Base):
     __tablename__ = "plugs"
     id:                     Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name:                   Mapped[str]           = mapped_column(String(100), nullable=False)
+    name:                   Mapped[str]           = mapped_column(String(100), unique=True, nullable=False)
     plug_type:              Mapped[str]           = mapped_column(String(20), nullable=False)
     plug_ip:                Mapped[str]           = mapped_column(String(50), nullable=False)
     plug_token:             Mapped[Optional[str]] = mapped_column(String(255), default=None)
