@@ -885,8 +885,21 @@ async function switchMachine(action) {
 
     if (data.ok) {
       // Nach Einschalten: merken dass ICH diese Session habe
-      if (action === 'on') { S.myMachineOn = true; localStorage.setItem('active_machine_token', S.machineToken); }
-      if (action === 'off') { S.myMachineOn = false; S.machineToken = null; localStorage.removeItem('active_machine_token'); }
+      if (action === 'on') {
+        S.myMachineOn = true;
+        const list = JSON.parse(localStorage.getItem('active_machine_tokens') || '[]');
+        if (!list.find(e => e.token === S.machineToken)) {
+          list.push({token: S.machineToken, name: S.machine?.name || '?', category: S.machine?.category || 'Sonstiges'});
+          localStorage.setItem('active_machine_tokens', JSON.stringify(list));
+        }
+      }
+      if (action === 'off') {
+        S.myMachineOn = false;
+        const offToken = S.machineToken;
+        S.machineToken = null;
+        const list = JSON.parse(localStorage.getItem('active_machine_tokens') || '[]');
+        localStorage.setItem('active_machine_tokens', JSON.stringify(list.filter(e => e.token !== offToken)));
+      }
 
       // Sofort refreshen (nicht auf Timer warten)
       await refreshLive();
@@ -947,9 +960,9 @@ function stopSessionTimer() {
 function doLogout() {
   stopLiveRefresh();
   stopSessionTimer();
-  const activeMt = localStorage.getItem('active_machine_token');
+  const activeMtJson = localStorage.getItem('active_machine_tokens');
   localStorage.clear();
-  if (activeMt) localStorage.setItem('active_machine_token', activeMt);
+  if (activeMtJson) localStorage.setItem('active_machine_tokens', activeMtJson);
   S.guestToken = null; S.guestName = null; S.username = null; S.guestId = null; S.ntfyTopic = null;
   setHeaderUser(null);
   document.getElementById('login-username').value = '';
@@ -970,16 +983,21 @@ function hideDashboard() {
 }
 
 async function _restoreActiveMachine() {
-  const activeMt = localStorage.getItem('active_machine_token');
-  if (!activeMt || !S.guestId) return;
-  const m = await loadMachine(activeMt);
-  if (m && m.current_guest_id === S.guestId) {
-    S.machine = m;
-    S.machineToken = activeMt;
-    S.myMachineOn = true;
-  } else {
-    localStorage.removeItem('active_machine_token');
+  const list = JSON.parse(localStorage.getItem('active_machine_tokens') || '[]');
+  if (!list.length || !S.guestId) return;
+  const verified = [];
+  for (const entry of list) {
+    const m = await loadMachine(entry.token);
+    if (m && m.current_guest_id === S.guestId) {
+      verified.push({token: entry.token, name: m.name, category: m.category});
+    }
   }
+  localStorage.setItem('active_machine_tokens', JSON.stringify(verified));
+}
+
+async function resumeControlScreen(token) {
+  S.machineToken = token;
+  await showControlScreen();
 }
 
 function toggleSettings(btn) {
@@ -993,22 +1011,20 @@ function toggleSettings(btn) {
 function _updateActiveMachineBanner() {
   const banner = document.getElementById('active-session-banner');
   if (!banner) return;
-  const active = S.machine && S.machineToken &&
-    (S.myMachineOn || (S.machine.current_guest_id && S.machine.current_guest_id === S.guestId));
-  if (active) {
-    const icon = machineIcons[S.machine.category] || '🔧';
-    banner.style.display = 'block';
-    banner.innerHTML = `<button onclick="showControlScreen()" style="width:100%;background:rgba(34,197,94,.1);border:2px solid rgba(34,197,94,.45);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;text-align:left">
+  const list = JSON.parse(localStorage.getItem('active_machine_tokens') || '[]');
+  if (!list.length) { banner.style.display = 'none'; return; }
+  banner.style.display = 'block';
+  banner.innerHTML = list.map((entry, i) => {
+    const icon = machineIcons[entry.category] || '🔧';
+    return `<button onclick="resumeControlScreen('${escHtml(entry.token)}')" style="width:100%;background:rgba(34,197,94,.1);border:2px solid rgba(34,197,94,.45);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;text-align:left${i>0?';margin-top:8px':''}">
       <div style="font-size:28px">${icon}</div>
       <div style="flex:1">
-        <div style="font-family:var(--mono);font-size:10px;color:var(--success);letter-spacing:2px;margin-bottom:3px">LÄUFT</div>
-        <div style="font-family:var(--display);font-size:18px;font-weight:900;color:var(--text);letter-spacing:1px">${escHtml(S.machine.name)}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--success);letter-spacing:2px;margin-bottom:3px">⚡ LÄUFT</div>
+        <div style="font-family:var(--display);font-size:18px;font-weight:900;color:var(--text);letter-spacing:1px">${escHtml(entry.name)}</div>
       </div>
       <div style="font-family:var(--display);font-size:22px;font-weight:900;color:var(--success)">→</div>
     </button>`;
-  } else {
-    banner.style.display = 'none';
-  }
+  }).join('');
 }
 
 async function showGuestDashboard() {
