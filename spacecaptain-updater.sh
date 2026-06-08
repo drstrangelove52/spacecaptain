@@ -63,9 +63,6 @@ while true; do
       echo "$BUILD_NR" > "$PROJECT_DIR/update_trigger/build_nr"
       log "Build-Nr: $BUILD_NR — starte docker compose up..."
       if BUILD_NR=$BUILD_NR docker compose up -d --build --force-recreate backend >> "$LOG_FILE" 2>&1; then
-        log "Build abgeschlossen — starte Backend neu..."
-        sleep 5
-        docker compose restart backend >> "$LOG_FILE" 2>&1 || true
         log "Update abgeschlossen (Build $BUILD_NR)"
         echo "updated" > "$STATUS_FILE"
       else
