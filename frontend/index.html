@@ -182,6 +182,9 @@
     </div>
 
     <!-- Primäre Aktion: QR scannen -->
+    <!-- Laufende Maschine (Banner) -->
+    <div id="active-session-banner" style="display:none"></div>
+
     <div class="scan-hero">
       <span class="scan-hero-icon">▦</span>
       <div class="scan-hero-title">Maschine scannen</div>
@@ -390,6 +393,7 @@ function showScreen(id) {
     } else {
       _refreshLoginLinkStatus();
     }
+    _updateActiveMachineBanner();
   }
 }
 
@@ -832,11 +836,8 @@ function playGuestIdleBeep() {
 // ── Back to dashboard ────────────────────────────────
 function goBackToDashboard() {
   stopLiveRefresh();
-  // machineToken aus URL entfernen damit wir sauber zurückkommen
-  S.machineToken = null;
   document.getElementById('scan-username').textContent = S.username;
   showScreen('scan');
-  // Dashboard direkt zeigen
   showGuestDashboard();
 }
 
@@ -886,7 +887,7 @@ async function switchMachine(action) {
     if (data.ok) {
       // Nach Einschalten: merken dass ICH diese Session habe
       if (action === 'on') S.myMachineOn = true;
-      if (action === 'off') S.myMachineOn = false;
+      if (action === 'off') { S.myMachineOn = false; S.machineToken = null; }
 
       // Sofort refreshen (nicht auf Timer warten)
       await refreshLive();
@@ -973,6 +974,27 @@ function toggleSettings(btn) {
   const isOpen = panel.style.display !== 'none';
   panel.style.display = isOpen ? 'none' : 'flex';
   chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
+}
+
+function _updateActiveMachineBanner() {
+  const banner = document.getElementById('active-session-banner');
+  if (!banner) return;
+  const active = S.machine && S.machineToken &&
+    (S.myMachineOn || (S.machine.current_guest_id && S.machine.current_guest_id === S.guestId));
+  if (active) {
+    const icon = machineIcons[S.machine.category] || '🔧';
+    banner.style.display = 'block';
+    banner.innerHTML = `<button onclick="showControlScreen()" style="width:100%;background:rgba(34,197,94,.1);border:2px solid rgba(34,197,94,.45);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;text-align:left">
+      <div style="font-size:28px">${icon}</div>
+      <div style="flex:1">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--success);letter-spacing:2px;margin-bottom:3px">LÄUFT</div>
+        <div style="font-family:var(--display);font-size:18px;font-weight:900;color:var(--text);letter-spacing:1px">${escHtml(S.machine.name)}</div>
+      </div>
+      <div style="font-family:var(--display);font-size:22px;font-weight:900;color:var(--success)">→</div>
+    </button>`;
+  } else {
+    banner.style.display = 'none';
+  }
 }
 
 async function showGuestDashboard() {
