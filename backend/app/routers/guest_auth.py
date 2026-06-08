@@ -150,6 +150,7 @@ async def guest_login(payload: GuestLoginRequest, db: AsyncSession = Depends(get
         "access_token": token, "token_type": "bearer",
         "guest_id": guest.id, "guest_name": guest.name, "username": guest.username,
         "ntfy_topic": guest.ntfy_topic,
+        "has_login_token": guest.login_token is not None,
     }
 
 
@@ -178,6 +179,7 @@ async def guest_login_by_token(
         "access_token": token, "token_type": "bearer",
         "guest_id": guest.id, "guest_name": guest.name, "username": guest.username,
         "ntfy_topic": guest.ntfy_topic,
+        "has_login_token": guest.login_token is not None,
     }
 
 
@@ -445,6 +447,60 @@ async def change_password(payload: ChangePasswordRequest, db: AsyncSession = Dep
     await db.commit()
     await log_svc.log(db, LogType.login, f"Passwort geändert: {guest.name}", guest_id=guest.id)
     return {"ok": True, "message": "Passwort erfolgreich geändert"}
+
+
+# ── Self-Service: Login-Link & ntfy-Test ──────────────
+class GuestTokenRequest(BaseModel):
+    access_token: str
+
+@router.get("/my")
+async def guest_get_own_profile(access_token: str, db: AsyncSession = Depends(get_db)):
+    """Gibt öffentliche Profildaten des eingeloggten Gastes zurück."""
+    guest = await get_current_guest(access_token, db)
+    return {
+        "guest_id": guest.id,
+        "guest_name": guest.name,
+        "username": guest.username,
+        "ntfy_topic": guest.ntfy_topic,
+        "has_login_token": guest.login_token is not None,
+    }
+
+@router.post("/my/login-token")
+async def guest_generate_own_login_token(payload: GuestTokenRequest, db: AsyncSession = Depends(get_db)):
+    """Gast generiert sich selbst einen neuen Login-Link."""
+    guest = await get_current_guest(payload.access_token, db)
+    guest.login_token = secrets.token_urlsafe(32)
+    await db.commit()
+    await db.refresh(guest)
+    return {"login_token": guest.login_token, "has_login_token": True}
+
+@router.delete("/my/login-token")
+async def guest_revoke_own_login_token(payload: GuestTokenRequest, db: AsyncSession = Depends(get_db)):
+    """Gast widerruft seinen eigenen Login-Link."""
+    guest = await get_current_guest(payload.access_token, db)
+    guest.login_token = None
+    await db.commit()
+    return {"ok": True}
+
+@router.post("/my/ntfy-test")
+async def guest_test_own_ntfy(payload: GuestTokenRequest, db: AsyncSession = Depends(get_db)):
+    """Gast testet seine eigene ntfy-Benachrichtigung."""
+    guest = await get_current_guest(payload.access_token, db)
+    if not guest.ntfy_topic:
+        raise HTTPException(400, "Kein ntfy-Topic hinterlegt")
+    from app.services.ntfy import send_notification
+    cfg = await db.get(SystemSettings, 1)
+    ok = await send_notification(
+        server=cfg.ntfy_server if cfg and cfg.ntfy_server else "https://ntfy.sh",
+        token=cfg.ntfy_token if cfg else None,
+        topic=guest.ntfy_topic,
+        title="SpaceCaptain — Testbenachrichtigung",
+        message=f"Hallo {guest.name}! Deine ntfy-Benachrichtigungen funktionieren.",
+        priority="default",
+    )
+    if not ok:
+        raise HTTPException(500, "ntfy-Benachrichtigung konnte nicht gesendet werden")
+    return {"ok": True}
 
 
 # ── Statistiken ────────────────────────────────────────

@@ -157,7 +157,13 @@
       <div style="display:flex;gap:8px;align-items:center">
         <div id="ntfy-topic-value" style="flex:1;font-family:var(--mono);font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
         <button onclick="copyNtfyTopic()" style="flex-shrink:0;padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:16px;color:var(--text-mid)" title="Kopieren">📋</button>
+        <button id="btn-ntfy-test" onclick="selfTestNtfy(this)" style="flex-shrink:0;padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;font-family:var(--mono);color:var(--text-mid)" title="Test senden">▶ Test</button>
       </div>
+    </div>
+    <div id="login-link-box" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">LOGIN-LINK</div>
+      <div id="login-link-status" style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5">Lade…</div>
+      <div id="login-link-actions"></div>
     </div>
     <div class="scan-box">
       <div class="scan-icon">▦</div>
@@ -300,18 +306,19 @@ function escHtml(s) {
 }
 
 let S = {
-  machineToken:  null,
-  guestToken:    null,
-  guestName:     null,
-  username:      null,
-  guestId:       null,
-  ntfyTopic:     null,
-  machine:       null,
-  hasPermission: false,
-  myMachineOn:   false,
+  machineToken:   null,
+  guestToken:     null,
+  guestName:      null,
+  username:       null,
+  guestId:        null,
+  ntfyTopic:      null,
+  hasLoginToken:  null,  // null = unbekannt, true/false nach Login/Refresh
+  machine:        null,
+  hasPermission:  false,
+  myMachineOn:    false,
   _wasIdleWarning: false,
-  inQueue:       false,
-  queuePosition: null,
+  inQueue:        false,
+  queuePosition:  null,
 };
 
 // ── Helpers ───────────────────────────────────────────
@@ -330,6 +337,12 @@ function showScreen(id) {
         box.style.display = 'none';
       }
     }
+    // Login-Link-Box: sofort mit bekanntem State rendern, dann ggf. nachladen
+    if (S.hasLoginToken !== null) {
+      _renderLoginLinkBox(S.hasLoginToken);
+    } else {
+      _refreshLoginLinkStatus();
+    }
   }
 }
 
@@ -340,6 +353,102 @@ function copyNtfyTopic() {
     btn.textContent = '✓';
     setTimeout(() => btn.textContent = '📋', 1500);
   });
+}
+
+async function selfTestNtfy(btn) {
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    const r = await fetch(`${API}/guest/my/ntfy-test`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({access_token: S.guestToken})
+    });
+    btn.textContent = r.ok ? '✓' : '✗';
+    setTimeout(() => { btn.disabled = false; btn.textContent = '▶ Test'; }, 2000);
+  } catch { btn.disabled = false; btn.textContent = '▶ Test'; }
+}
+
+async function _refreshLoginLinkStatus() {
+  if (!S.guestToken) return;
+  try {
+    const r = await fetch(`${API}/guest/my?access_token=${encodeURIComponent(S.guestToken)}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    S.hasLoginToken = d.has_login_token;
+    _renderLoginLinkBox(S.hasLoginToken);
+  } catch {}
+}
+
+async function selfGenerateLoginToken() {
+  if (!confirm('Login-Link generieren? Du kannst dich damit ohne Passwort anmelden.')) return;
+  const r = await fetch(`${API}/guest/my/login-token`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({access_token: S.guestToken})
+  });
+  if (!r.ok) return;
+  const d = await r.json();
+  S.hasLoginToken = true;
+  _selfShowLoginLink(d.login_token);
+}
+
+async function selfRegenLoginToken() {
+  if (!confirm('Neuen Login-Link generieren? Der bisherige Link wird sofort ungültig.')) return;
+  const r = await fetch(`${API}/guest/my/login-token`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({access_token: S.guestToken})
+  });
+  if (!r.ok) return;
+  const d = await r.json();
+  S.hasLoginToken = true;
+  _selfShowLoginLink(d.login_token);
+}
+
+async function selfRevokeLoginToken() {
+  if (!confirm('Login-Link widerrufen? Du musst dich danach wieder mit Passwort anmelden.')) return;
+  const r = await fetch(`${API}/guest/my/login-token`, {
+    method: 'DELETE', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({access_token: S.guestToken})
+  });
+  if (!r.ok) return;
+  S.hasLoginToken = false;
+  _renderLoginLinkBox(false);
+}
+
+function _renderLoginLinkBox(hasToken) {
+  const statusEl = document.getElementById('login-link-status');
+  const actionsEl = document.getElementById('login-link-actions');
+  if (!statusEl || !actionsEl) return;
+  if (hasToken) {
+    statusEl.innerHTML = '<span style="color:var(--success)">✓ Link aktiv</span> — du kannst dich ohne Passwort anmelden.';
+    actionsEl.innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="selfRegenLoginToken()" style="padding:8px 14px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;color:var(--text-mid)">↺ Neu generieren</button>
+        <button onclick="selfRevokeLoginToken()" style="padding:8px 14px;background:transparent;border:1px solid rgba(239,68,68,.4);border-radius:6px;cursor:pointer;font-size:13px;color:#f87171">✕ Widerrufen</button>
+      </div>`;
+  } else {
+    statusEl.textContent = 'Kein Login-Link aktiv. Du kannst dir einen erstellen, um dich ohne Passwort anzumelden.';
+    actionsEl.innerHTML = `<button onclick="selfGenerateLoginToken()" style="padding:8px 14px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;color:var(--text-mid)">🔗 Login-Link erstellen</button>`;
+  }
+}
+
+function _selfShowLoginLink(loginToken) {
+  const url = `${window.location.origin}/?lt=${loginToken}`;
+  _renderLoginLinkBox(true);
+  // Link einmalig anzeigen
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:400px;width:100%">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;margin-bottom:10px">LOGIN-LINK — NUR JETZT SICHTBAR</div>
+      <div style="background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);border-radius:6px;padding:10px;font-size:12px;color:#ca8a04;margin-bottom:14px">
+        ⚠ Dieser Link wird nur einmal angezeigt. Bitte kopieren oder als Lesezeichen speichern.
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
+        <input id="self-lt-url" value="${url}" readonly style="flex:1;font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text)">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('self-lt-url').value)" style="padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:16px">📋</button>
+      </div>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:10px;background:var(--accent);border:none;border-radius:8px;cursor:pointer;font-weight:700;color:#000;font-size:14px">Verstanden</button>
+    </div>`;
+  document.body.appendChild(overlay);
 }
 
 function setHeaderUser(name) {
@@ -457,11 +566,12 @@ async function doLogin() {
       return;
     }
 
-    S.guestToken = data.access_token;
-    S.guestName  = data.guest_name;
-    S.username   = data.username;
-    S.guestId    = data.guest_id;
-    S.ntfyTopic  = data.ntfy_topic || null;
+    S.guestToken    = data.access_token;
+    S.guestName     = data.guest_name;
+    S.username      = data.username;
+    S.guestId       = data.guest_id;
+    S.ntfyTopic     = data.ntfy_topic || null;
+    S.hasLoginToken = data.has_login_token ?? null;
     localStorage.setItem('guest_token',    S.guestToken);
     localStorage.setItem('guest_name',     S.guestName);
     localStorage.setItem('guest_username', S.username);
@@ -959,11 +1069,12 @@ async function init() {
       });
       if (r.ok) {
         const d = await r.json();
-        S.guestToken = d.access_token;
-        S.guestName  = d.guest_name;
-        S.username   = d.username;
-        S.guestId    = d.guest_id;
-        S.ntfyTopic  = d.ntfy_topic || null;
+        S.guestToken    = d.access_token;
+        S.guestName     = d.guest_name;
+        S.username      = d.username;
+        S.guestId       = d.guest_id;
+        S.ntfyTopic     = d.ntfy_topic || null;
+        S.hasLoginToken = d.has_login_token ?? null;
         localStorage.setItem('guest_token',    S.guestToken);
         localStorage.setItem('guest_name',     S.guestName);
         localStorage.setItem('guest_username', S.username);

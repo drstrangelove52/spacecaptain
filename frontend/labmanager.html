@@ -3051,25 +3051,19 @@ function editGuest(id) {
     <div class="form-group"><label class="form-label">Telefon</label><input class="form-input" id="e-phone" value="${g.phone||''}"></div>
     <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-active"><option value="true" ${g.is_active?'selected':''}>aktiv</option><option value="false" ${!g.is_active?'selected':''}>inaktiv</option></select></div>
     <div style="border-top:2px solid rgba(255,255,255,0.15);margin-top:12px;padding-top:12px">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">LOGIN-LINK (OHNE PASSWORT)</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">LOGIN-LINK</div>
       ${g.has_login_token
-        ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        ? `<div style="display:flex;align-items:center;gap:10px">
              <span style="color:var(--success);font-size:13px">✓ Link aktiv</span>
-           </div>
-           <div style="display:flex;gap:6px">
-             <button class="btn btn-ghost btn-sm" onclick="regenLoginToken(${g.id})" type="button">↺ Neu generieren</button>
              <button class="btn btn-danger btn-sm" onclick="revokeLoginToken(${g.id})" type="button">✕ Widerrufen</button>
            </div>`
-        : `<button class="btn btn-ghost btn-sm" onclick="genLoginToken(${g.id})" type="button">🔗 Login-Link generieren</button>`
+        : `<span style="font-size:13px;color:var(--text-dim)">Kein Link aktiv</span>`
       }
     </div>
     ${g.ntfy_topic ? `
     <div style="border-top:2px solid rgba(255,255,255,0.15);margin-top:12px;padding-top:12px">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">NTFY BENACHRICHTIGUNGEN</div>
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-        <span style="font-family:var(--mono);font-size:13px;color:var(--accent2);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:4px 8px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.ntfy_topic}</span>
-        <button class="btn btn-ghost btn-sm" onclick="sendGuestTestNtfy(${g.id},'${g.ntfy_topic}',this)" type="button">▶ Test</button>
-      </div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px">NTFY</div>
+      <span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">${g.ntfy_topic}</span>
     </div>` : ''
     }
   `, async()=>{
@@ -3108,28 +3102,10 @@ function _showTokenOnce(url, inputId, label) {
   });
 }
 
-async function genLoginToken(guestId) {
-  const res = await POST(`/guests/${guestId}/login-token`, {});
-  if (res) { await loadAll(); const g=cache.guests.find(x=>x.id===guestId); _showTokenOnce(`${window.location.origin}/?lt=${res.login_token}`, 'gt-url', g?.name||'Gast-Login'); showToast('Login-Link generiert', 'success'); }
-}
-
-async function regenLoginToken(guestId) {
-  if (!confirm('Neuen Login-Link generieren? Der bisherige Link wird sofort ungültig.')) return;
-  const res = await POST(`/guests/${guestId}/login-token`, {});
-  if (res) { await loadAll(); const g=cache.guests.find(x=>x.id===guestId); _showTokenOnce(`${window.location.origin}/?lt=${res.login_token}`, 'gt-url', g?.name||'Gast-Login'); showToast('Login-Link neu generiert', 'success'); }
-}
-
 async function revokeLoginToken(guestId) {
   if (!confirm('Login-Link widerrufen? Der Gast muss danach wieder mit Passwort einloggen.')) return;
   await DELETE(`/guests/${guestId}/login-token`);
   closeModal(); await loadAll(); editGuest(guestId); showToast('Login-Link widerrufen', 'warn');
-}
-
-async function sendGuestTestNtfy(guestId, topic, btn) {
-  btn.disabled = true; btn.textContent = '…';
-  const res = await POST(`/guests/${guestId}/ntfy-test`, {});
-  btn.disabled = false; btn.textContent = '▶ Test';
-  if (res !== null) showToast(`Test-Nachricht an ${topic} gesendet`, 'success');
 }
 
 function copyLoginLink(inputId) {
