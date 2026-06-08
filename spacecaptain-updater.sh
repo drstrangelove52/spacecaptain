@@ -24,6 +24,7 @@ while true; do
   if [ -f "$RESTART_FILE" ]; then
     log "Restart-Trigger erkannt — starte Backend neu..."
     rm -f "$RESTART_FILE"
+    echo "running" > "$STATUS_FILE"
     cd "$PROJECT_DIR"
     _RESTART_BUILD=$(git rev-list --count HEAD)
     echo "$_RESTART_BUILD" > "$PROJECT_DIR/update_trigger/build_nr"
@@ -39,6 +40,7 @@ while true; do
   if [ -f "$TRIGGER_FILE" ]; then
     log "Trigger erkannt — starte Update..."
     rm -f "$TRIGGER_FILE"
+    echo "running" > "$STATUS_FILE"
 
     cd "$PROJECT_DIR"
 

@@ -4837,7 +4837,7 @@ function _pollUpdateStatus() {
       });
       if (!r.ok) return; // Backend noch nicht bereit
       const d = await r.json();
-      if (!d.pending) {
+      if (!d.pending && d.last_result !== 'running') {
         clearInterval(interval);
         await loadUpdateStatus();
         if (d.last_result === 'up_to_date') {
