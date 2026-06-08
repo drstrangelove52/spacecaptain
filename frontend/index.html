@@ -156,7 +156,7 @@
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <div id="ntfy-topic-value" style="flex:1;font-family:var(--mono);font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
-        <button onclick="copyNtfyTopic()" style="flex-shrink:0;padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:16px;color:var(--text-mid)" title="Kopieren">📋</button>
+        <button onclick="copyNtfyTopic(this)" style="flex-shrink:0;padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:16px;color:var(--text-mid)" title="Topic kopieren">📋</button>
         <button id="btn-ntfy-test" onclick="selfTestNtfy(this)" style="flex-shrink:0;padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;font-family:var(--mono);color:var(--text-mid)" title="Test senden">▶ Test</button>
       </div>
     </div>
@@ -346,12 +346,12 @@ function showScreen(id) {
   }
 }
 
-function copyNtfyTopic() {
+function copyNtfyTopic(btn) {
   if (!S.ntfyTopic) return;
   navigator.clipboard.writeText(S.ntfyTopic).then(() => {
-    const btn = event.target;
     btn.textContent = '✓';
-    setTimeout(() => btn.textContent = '📋', 1500);
+    btn.title = 'Kopiert!';
+    setTimeout(() => { btn.textContent = '📋'; btn.title = 'Topic kopieren'; }, 1500);
   });
 }
 
@@ -430,6 +430,16 @@ function _renderLoginLinkBox(hasToken) {
   }
 }
 
+function copyLoginUrl(btn) {
+  const el = document.getElementById('self-lt-url');
+  if (!el) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    btn.textContent = '✓';
+    btn.title = 'Kopiert!';
+    setTimeout(() => { btn.textContent = '📋'; btn.title = 'Link kopieren'; }, 1500);
+  });
+}
+
 function _selfShowLoginLink(loginToken) {
   const url = `${window.location.origin}/?lt=${loginToken}`;
   _renderLoginLinkBox(true);
@@ -444,7 +454,7 @@ function _selfShowLoginLink(loginToken) {
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
         <input id="self-lt-url" value="${url}" readonly style="flex:1;font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text)">
-        <button onclick="navigator.clipboard.writeText(document.getElementById('self-lt-url').value)" style="padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:16px">📋</button>
+        <button onclick="copyLoginUrl(this)" title="Link kopieren" style="padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:16px">📋</button>
       </div>
       <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:10px;background:var(--accent);border:none;border-radius:8px;cursor:pointer;font-weight:700;color:#000;font-size:14px">Verstanden</button>
     </div>`;
