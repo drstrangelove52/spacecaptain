@@ -838,7 +838,6 @@ function goBackToDashboard() {
   stopLiveRefresh();
   document.getElementById('scan-username').textContent = S.username;
   showScreen('scan');
-  showGuestDashboard();
 }
 
 // ── Sicherheitshinweis vor Einschalten ────────────────
@@ -886,8 +885,8 @@ async function switchMachine(action) {
 
     if (data.ok) {
       // Nach Einschalten: merken dass ICH diese Session habe
-      if (action === 'on') S.myMachineOn = true;
-      if (action === 'off') { S.myMachineOn = false; S.machineToken = null; }
+      if (action === 'on') { S.myMachineOn = true; localStorage.setItem('active_machine_token', S.machineToken); }
+      if (action === 'off') { S.myMachineOn = false; S.machineToken = null; localStorage.removeItem('active_machine_token'); }
 
       // Sofort refreshen (nicht auf Timer warten)
       await refreshLive();
@@ -948,7 +947,9 @@ function stopSessionTimer() {
 function doLogout() {
   stopLiveRefresh();
   stopSessionTimer();
+  const activeMt = localStorage.getItem('active_machine_token');
   localStorage.clear();
+  if (activeMt) localStorage.setItem('active_machine_token', activeMt);
   S.guestToken = null; S.guestName = null; S.username = null; S.guestId = null; S.ntfyTopic = null;
   setHeaderUser(null);
   document.getElementById('login-username').value = '';
@@ -966,6 +967,19 @@ document.getElementById('login-pass').addEventListener('keydown', e => { if (e.k
 
 function hideDashboard() {
   document.getElementById('screen-dashboard').style.display='none';
+}
+
+async function _restoreActiveMachine() {
+  const activeMt = localStorage.getItem('active_machine_token');
+  if (!activeMt || !S.guestId) return;
+  const m = await loadMachine(activeMt);
+  if (m && m.current_guest_id === S.guestId) {
+    S.machine = m;
+    S.machineToken = activeMt;
+    S.myMachineOn = true;
+  } else {
+    localStorage.removeItem('active_machine_token');
+  }
 }
 
 function toggleSettings(btn) {
@@ -1179,6 +1193,7 @@ async function init() {
           if (m) { S.machine = m; }
           await showControlScreen();
         } else {
+          await _restoreActiveMachine();
           document.getElementById('scan-username').textContent = S.username;
           showScreen('scan');
         }
@@ -1218,6 +1233,7 @@ async function init() {
       if (S.machineToken) {
         await showControlScreen();
       } else {
+        await _restoreActiveMachine();
         document.getElementById('scan-username').textContent = savedUsername;
         showScreen('scan');
       }
