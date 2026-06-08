@@ -97,6 +97,32 @@
   .toast{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:13px;animation:slideIn .2s ease;border-left:3px solid var(--success);max-width:280px;pointer-events:auto}
   .toast.error{border-left-color:var(--danger)}.toast.warn{border-left-color:var(--accent)}.toast.info{border-left-color:var(--accent2)}
   @keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+  /* USER STRIP */
+  .user-strip{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .user-strip-left{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+  .user-strip-timer{font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:right}
+
+  /* SCAN HERO */
+  @keyframes dashBreathe{0%,100%{border-color:var(--border)}50%{border-color:rgba(244,166,34,.45)}}
+  @keyframes floatIcon{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  .scan-hero{background:var(--surface2);border:2px dashed var(--border);border-radius:16px;padding:44px 24px;text-align:center;animation:dashBreathe 3.5s ease-in-out infinite}
+  .scan-hero-icon{font-size:72px;line-height:1;margin-bottom:16px;display:block;animation:floatIcon 3.5s ease-in-out infinite;filter:drop-shadow(0 0 18px rgba(244,166,34,.25))}
+  .scan-hero-title{font-family:var(--display);font-size:28px;font-weight:900;letter-spacing:2px;color:var(--text);margin-bottom:8px}
+  .scan-hero-desc{font-size:15px;color:var(--text-dim);line-height:1.6}
+  .btn-status{background:transparent!important;color:var(--accent2)!important;border:1px solid rgba(34,211,238,.4)!important;box-shadow:none!important}
+  .btn-status:active{background:rgba(34,211,238,.08)!important}
+
+  /* SETTINGS ACCORDION */
+  .settings-section{border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .settings-toggle{width:100%;background:var(--surface);border:none;padding:14px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase}
+  .settings-toggle:active{background:var(--surface2)}
+  .settings-chevron{font-size:18px;transition:transform .2s;display:inline-block;line-height:1}
+  .settings-panel{background:var(--surface2);padding:16px;display:flex;flex-direction:column;gap:14px;border-top:1px solid var(--border)}
+  .settings-inner{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
+  .settings-label{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+  .settings-btn{flex:1;padding:12px 16px;background:transparent;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text-mid);font-family:var(--body);font-weight:600}
+  .settings-btn-danger{border-color:rgba(239,68,68,.4)!important;color:#f87171!important}
 </style>
 </head>
 <body>
@@ -146,39 +172,59 @@
 
   <!-- NACH LOGIN OHNE QR — Anleitung zum Scannen -->
   <div class="screen" id="screen-scan">
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px">
-      <div style="font-size:24px">👤</div>
-      <div>
-        <div style="font-weight:600">Angemeldet als <span id="scan-username" style="color:var(--accent)"></span></div>
-        <div id="session-remaining" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px">Session aktiv</div>
+    <!-- Kompakte Benutzer-Zeile -->
+    <div class="user-strip">
+      <div class="user-strip-left">
+        <div class="power-dot power-on"></div>
+        <span>@<span id="scan-username" style="color:var(--accent)"></span></span>
+      </div>
+      <div id="session-remaining" class="user-strip-timer">Session aktiv</div>
+    </div>
+
+    <!-- Primäre Aktion: QR scannen -->
+    <div class="scan-hero">
+      <span class="scan-hero-icon">▦</span>
+      <div class="scan-hero-title">Maschine scannen</div>
+      <div class="scan-hero-desc">
+        Halte dein Handy an den <strong style="color:var(--text)">QR-Code</strong> oder das <strong style="color:var(--text)">NFC-Tag</strong> an der Maschine.
       </div>
     </div>
-    <div id="ntfy-topic-box" style="display:none;background:var(--surface);border:1px solid rgba(34,211,238,.25);border-radius:12px;padding:14px 16px">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--accent2);letter-spacing:2px;margin-bottom:8px">BENACHRICHTIGUNGEN (ntfy)</div>
-      <div style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5">
-        Trage dieses Topic in die <strong style="color:var(--text)">ntfy-App</strong> ein, um eine Benachrichtigung zu erhalten, wenn du mit einer Maschine loslegen kannst.
-      </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <div id="ntfy-topic-value" style="flex:1;font-family:var(--mono);font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
-        <button onclick="copyNtfyTopic(this)" style="flex-shrink:0;padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:16px;color:var(--text-mid)" title="Topic kopieren">📋</button>
-        <button id="btn-ntfy-test" onclick="selfTestNtfy(this)" style="flex-shrink:0;padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;font-family:var(--mono);color:var(--text-mid)" title="Test senden">▶ Test</button>
+
+    <!-- Sekundär: Maschinen-Übersicht -->
+    <button class="btn-big btn-status" onclick="showGuestDashboard()">◈ Maschinen-Status</button>
+
+    <!-- Einstellungen (eingeklappt) -->
+    <div class="settings-section">
+      <button class="settings-toggle" onclick="toggleSettings(this)">
+        <span>⚙ Einstellungen</span>
+        <span class="settings-chevron">›</span>
+      </button>
+      <div class="settings-panel" id="settings-panel" style="display:none">
+        <!-- ntfy (nur wenn konfiguriert) -->
+        <div id="ntfy-topic-box" style="display:none" class="settings-inner">
+          <div class="settings-label">Benachrichtigungen (ntfy)</div>
+          <div style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5">
+            Topic in die <strong style="color:var(--text)">ntfy-App</strong> eintragen, um benachrichtigt zu werden.
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div id="ntfy-topic-value" style="flex:1;font-family:var(--mono);font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+            <button onclick="copyNtfyTopic(this)" style="flex-shrink:0;padding:8px 10px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:15px;color:var(--text-mid)" title="Topic kopieren">📋</button>
+            <button id="btn-ntfy-test" onclick="selfTestNtfy(this)" style="flex-shrink:0;padding:8px 10px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--mono);color:var(--text-mid)">▶ Test</button>
+          </div>
+        </div>
+        <!-- Login-Link -->
+        <div id="login-link-box" class="settings-inner">
+          <div class="settings-label">Login-Link</div>
+          <div id="login-link-status" style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5">Lade…</div>
+          <div id="login-link-actions"></div>
+        </div>
+        <!-- Aktionen -->
+        <div style="display:flex;gap:8px">
+          <button class="settings-btn" onclick="showChangePassword()">🔑 Passwort ändern</button>
+          <button class="settings-btn settings-btn-danger" onclick="doLogout()">⎋ Abmelden</button>
+        </div>
       </div>
     </div>
-    <div id="login-link-box" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">LOGIN-LINK</div>
-      <div id="login-link-status" style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5">Lade…</div>
-      <div id="login-link-actions"></div>
-    </div>
-    <div class="scan-box">
-      <div class="scan-icon">▦</div>
-      <div class="scan-title">Maschine wählen</div>
-      <div class="scan-desc" style="margin-bottom:0">
-        Scanne den <strong>QR-Code</strong> oder das <strong>NFC-Tag</strong> an einer Maschine — du wirst automatisch zur Steuerung weitergeleitet.
-      </div>
-    </div>
-    <button class="btn-big btn-login" style="background:var(--accent2)" onclick="showGuestDashboard()">◈ Maschinen-Status anzeigen</button>
-    <button class="btn-secondary" onclick="showChangePassword()" style="color:var(--text-mid)">🔑 Passwort ändern</button>
-    <button class="btn-secondary" onclick="doLogout()">⎋ Abmelden</button>
   </div>
 
   <!-- MASCHINENSTEUERUNG -->
@@ -922,6 +968,14 @@ document.getElementById('login-pass').addEventListener('keydown', e => { if (e.k
 
 function hideDashboard() {
   document.getElementById('screen-dashboard').style.display='none';
+}
+
+function toggleSettings(btn) {
+  const panel = document.getElementById('settings-panel');
+  const chevron = btn.querySelector('.settings-chevron');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'flex';
+  chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
 }
 
 async function showGuestDashboard() {
