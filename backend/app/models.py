@@ -253,6 +253,7 @@ class SystemSettings(Base):
     room_open:                  Mapped[bool]           = mapped_column(Boolean, default=False)
     room_open_since:            Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
     room_open_auto:             Mapped[bool]           = mapped_column(Boolean, default=True)
+    guest_token_ttl_hours:      Mapped[int]            = mapped_column(Integer, default=8)
 
 
 class DeviceSchedule(Base):

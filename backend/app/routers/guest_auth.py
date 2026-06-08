@@ -33,8 +33,8 @@ settings = get_settings()
 log = logging.getLogger(__name__)
 
 
-def create_guest_token(guest_id: int) -> str:
-    expire = datetime.utcnow() + timedelta(hours=8)
+def create_guest_token(guest_id: int, ttl_hours: int = 8) -> str:
+    expire = datetime.utcnow() + timedelta(hours=ttl_hours)
     return jwt.encode(
         {"sub": str(guest_id), "type": "guest", "exp": expire},
         settings.jwt_secret, algorithm=settings.jwt_algorithm
@@ -143,9 +143,9 @@ async def guest_login(payload: GuestLoginRequest, db: AsyncSession = Depends(get
     if not bcrypt.checkpw(payload.password.encode(), guest.password_hash.encode()):
         raise HTTPException(401, "Ungültiger Benutzername oder Passwort")
 
-    token = create_guest_token(guest.id)
+    sys_settings = await get_system_settings(db)
+    token = create_guest_token(guest.id, ttl_hours=sys_settings.guest_token_ttl_hours)
     await log_svc.log(db, LogType.guest_login, f"Gast-Login: {guest.name} (@{guest.username})", guest_id=guest.id)
-    await _auto_open_room(db, guest.name)
     return {
         "access_token": token, "token_type": "bearer",
         "guest_id": guest.id, "guest_name": guest.name, "username": guest.username,
@@ -170,10 +170,10 @@ async def guest_login_by_token(
     if not guest:
         raise HTTPException(401, "Ungültiger oder abgelaufener Token-Link")
 
-    token = create_guest_token(guest.id)
+    sys_settings = await get_system_settings(db)
+    token = create_guest_token(guest.id, ttl_hours=sys_settings.guest_token_ttl_hours)
     await log_svc.log(db, LogType.guest_login,
         f"Gast-Login per Token-Link: {guest.name} (@{guest.username})", guest_id=guest.id)
-    await _auto_open_room(db, guest.name)
     return {
         "access_token": token, "token_type": "bearer",
         "guest_id": guest.id, "guest_name": guest.name, "username": guest.username,

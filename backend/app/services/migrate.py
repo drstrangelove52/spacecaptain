@@ -496,6 +496,10 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # ── v1.34: Power-Manager Rolle ────────────────────────────────────────
         await _extend_enum_if_needed(conn, "users", "role", ["power_manager"])
 
+        # ── v1.35: Gäste-Session Gültigkeit ──────────────────────────────────
+        await _add_column_if_missing(conn, "system_settings", "guest_token_ttl_hours",
+                                     "INT NOT NULL DEFAULT 8")
+
     log.info("Migrationen abgeschlossen")
 
 

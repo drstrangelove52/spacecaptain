@@ -45,6 +45,7 @@ class SettingsOut(BaseModel):
     room_open: bool = False
     room_open_since: Optional[datetime] = None
     room_open_auto: bool = True
+    guest_token_ttl_hours: int = 8
 
     class Config:
         from_attributes = True
@@ -80,6 +81,7 @@ class SettingsUpdate(BaseModel):
     auto_backup_keep: Optional[int] = None
     space_name: Optional[str] = None
     room_open_auto: Optional[bool] = None
+    guest_token_ttl_hours: Optional[int] = None
 
 
 @router.get("/public")
@@ -172,6 +174,8 @@ async def update_settings(
         row.space_name = payload.space_name.strip()
     if payload.room_open_auto is not None:
         row.room_open_auto = payload.room_open_auto
+    if payload.guest_token_ttl_hours is not None:
+        row.guest_token_ttl_hours = max(1, min(720, payload.guest_token_ttl_hours))
     await db.commit()
     await db.refresh(row)
     await activity_log(db, LogType.settings_changed,

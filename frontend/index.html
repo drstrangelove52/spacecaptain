@@ -146,7 +146,7 @@
       <div style="font-size:24px">👤</div>
       <div>
         <div style="font-weight:600">Angemeldet als <span id="scan-username" style="color:var(--accent)"></span></div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px">Session aktiv · 8h gültig</div>
+        <div id="session-remaining" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px">Session aktiv</div>
       </div>
     </div>
     <div id="ntfy-topic-box" style="display:none;background:var(--surface);border:1px solid rgba(34,211,238,.25);border-radius:12px;padding:14px 16px">
@@ -286,7 +286,7 @@
   <div style="max-width:480px;width:100%;margin:0 auto;padding:20px 16px;display:flex;flex-direction:column;gap:12px;flex:1">
     <div style="font-family:var(--display);font-size:20px;font-weight:900;color:var(--text);letter-spacing:1px">Maschinen-Status</div>
     <div id="gdash-content"><div style="text-align:center;padding:20px;font-family:var(--mono);font-size:12px;color:var(--text-dim)"><div class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;margin-right:6px"></div>Laden...</div></div>
-    <button class="btn-secondary" onclick="hideDashboard()">Zuruck</button>
+    <button class="btn-secondary" onclick="hideDashboard()">← Zurück</button>
   </div>
 </div>
 
@@ -468,6 +468,7 @@ async function doLogin() {
     localStorage.setItem('guest_id',       data.guest_id);
     if (S.ntfyTopic) localStorage.setItem('guest_ntfy_topic', S.ntfyTopic);
     setHeaderUser(S.username);
+    startSessionTimer(S.guestToken);
 
     if (S.machineToken) {
       await showControlScreen();
@@ -732,9 +733,51 @@ async function switchMachine(action) {
   }
 }
 
+// ── Session-Timer ─────────────────────────────────────
+let _sessionTimerInterval = null;
+
+function _jwtExp(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+    return payload.exp ? payload.exp * 1000 : null;
+  } catch { return null; }
+}
+
+function _fmtRemaining(ms) {
+  if (ms <= 0) return 'abgelaufen';
+  const totalMin = Math.ceil(ms / 60000);
+  if (totalMin < 60) return `${totalMin} min`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m > 0 ? `${h} h ${m} min` : `${h} h`;
+}
+
+function startSessionTimer(token) {
+  stopSessionTimer();
+  const expMs = _jwtExp(token);
+  if (!expMs) return;
+
+  function tick() {
+    const remaining = expMs - Date.now();
+    const el = document.getElementById('session-remaining');
+    if (el) el.textContent = `Session · noch ${_fmtRemaining(remaining)}`;
+    if (remaining <= 0) {
+      stopSessionTimer();
+      doLogout();
+    }
+  }
+  tick();
+  _sessionTimerInterval = setInterval(tick, 30000);
+}
+
+function stopSessionTimer() {
+  if (_sessionTimerInterval) { clearInterval(_sessionTimerInterval); _sessionTimerInterval = null; }
+}
+
 // ── Logout ────────────────────────────────────────────
 function doLogout() {
   stopLiveRefresh();
+  stopSessionTimer();
   localStorage.clear();
   S.guestToken = null; S.guestName = null; S.username = null; S.guestId = null; S.ntfyTopic = null;
   setHeaderUser(null);
@@ -769,7 +812,17 @@ async function showGuestDashboard() {
 
   const el = document.getElementById('gdash-content');
   if (!machines.length) { el.innerHTML='<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;text-align:center;padding:20px">Keine Maschinen.</div>'; return; }
-  el.innerHTML = machines.map(m => {
+
+  // Kategorien gruppieren und alphabetisch sortieren
+  const byCategory = {};
+  for (const m of machines) {
+    const cat = m.category || 'Sonstiges';
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(m);
+  }
+  const sortedCats = Object.keys(byCategory).sort((a, b) => a.localeCompare(b, 'de'));
+
+  function renderMachineRow(m) {
     const icon = machineIcons[m.category] || '🔧';
     const inUse = m.in_use;
     const available = m.status === 'online' && !inUse;
@@ -787,7 +840,6 @@ async function showGuestDashboard() {
       statusHtml = `<div style="font-family:var(--mono);font-size:11px;color:var(--success)">● VERFÜGBAR</div>`;
     }
 
-    // Warteliste-Button
     let queueHtml = '';
     const qe = myQueueMap[m.id];
     if (qe && qe.status === 'notified') {
@@ -806,13 +858,25 @@ async function showGuestDashboard() {
         <div style="font-size:24px;flex-shrink:0">${icon}</div>
         <div style="flex:1">
           <div style="font-family:var(--display);font-size:16px;font-weight:700">${m.name}</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:4px">${m.category}${m.location&&m.location!=='—'?' · '+m.location:''}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:4px">${m.location&&m.location!=='—'?m.location:''}</div>
           ${statusHtml}
         </div>
       </div>
       ${queueHtml}
     </div>`;
-  }).join('');
+  }
+
+  el.innerHTML = sortedCats.map(cat => {
+    const catIcon = machineIcons[cat] || '🔧';
+    const rows = byCategory[cat].map(renderMachineRow).join('');
+    return `<div>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0 6px;border-bottom:1px solid var(--border);margin-bottom:10px">
+        <span style="font-size:16px">${catIcon}</span>
+        <span style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase">${escHtml(cat)}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">${rows}</div>
+    </div>`;
+  }).join('<div style="height:16px"></div>');
 }
 
 async function dashToggleQueue(machineId, isInQueue) {
@@ -906,6 +970,7 @@ async function init() {
         localStorage.setItem('guest_id',       S.guestId);
         if (S.ntfyTopic) localStorage.setItem('guest_ntfy_topic', S.ntfyTopic);
         setHeaderUser(S.username);
+        startSessionTimer(S.guestToken);
         // URL bereinigen (lt-Parameter entfernen) ohne Reload
         const cleanUrl = window.location.pathname + (S.machineToken ? `?m=${S.machineToken}` : '');
         window.history.replaceState({}, '', cleanUrl);
@@ -935,18 +1000,27 @@ async function init() {
   }
 
   if (savedToken) {
-    S.guestToken = savedToken;
-    S.guestName  = savedName;
-    S.username   = savedUsername;
-    S.guestId    = parseInt(localStorage.getItem('guest_id')) || null;
-    S.ntfyTopic  = localStorage.getItem('guest_ntfy_topic') || null;
-    setHeaderUser(savedUsername);
-
-    if (S.machineToken) {
-      await showControlScreen();
+    // Abgelaufenes Token sofort erkennen — kein API-Call nötig
+    const expMs = _jwtExp(savedToken);
+    if (expMs && expMs <= Date.now()) {
+      localStorage.clear();
+      showScreen('login');
+      setTimeout(() => document.getElementById('login-username').focus(), 100);
     } else {
-      document.getElementById('scan-username').textContent = savedUsername;
-      showScreen('scan');
+      S.guestToken = savedToken;
+      S.guestName  = savedName;
+      S.username   = savedUsername;
+      S.guestId    = parseInt(localStorage.getItem('guest_id')) || null;
+      S.ntfyTopic  = localStorage.getItem('guest_ntfy_topic') || null;
+      setHeaderUser(savedUsername);
+      startSessionTimer(S.guestToken);
+
+      if (S.machineToken) {
+        await showControlScreen();
+      } else {
+        document.getElementById('scan-username').textContent = savedUsername;
+        showScreen('scan');
+      }
     }
   } else {
     // Immer Login anzeigen — mit oder ohne ?m= Parameter
