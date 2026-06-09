@@ -500,6 +500,14 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "system_settings", "guest_token_ttl_hours",
                                      "INT NOT NULL DEFAULT 8")
 
+        # ── v1.36: Tailscale Fernzugriff ──────────────────────────────────────
+        await _add_column_if_missing(conn, "system_settings", "ts_enabled",
+                                     "BOOLEAN NOT NULL DEFAULT FALSE")
+        await _add_column_if_missing(conn, "system_settings", "ts_authkey",
+                                     "VARCHAR(255) DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "ts_hostname",
+                                     "VARCHAR(100) NOT NULL DEFAULT 'spacecaptain'")
+
     log.info("Migrationen abgeschlossen")
 
 

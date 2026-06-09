@@ -46,6 +46,9 @@ class SettingsOut(BaseModel):
     room_open_since: Optional[datetime] = None
     room_open_auto: bool = True
     guest_token_ttl_hours: int = 8
+    ts_enabled: bool = False
+    ts_authkey: Optional[str] = None
+    ts_hostname: str = "spacecaptain"
 
     class Config:
         from_attributes = True
@@ -82,6 +85,9 @@ class SettingsUpdate(BaseModel):
     space_name: Optional[str] = None
     room_open_auto: Optional[bool] = None
     guest_token_ttl_hours: Optional[int] = None
+    ts_enabled: Optional[bool] = None
+    ts_authkey: Optional[str] = None
+    ts_hostname: Optional[str] = None
 
 
 @router.get("/public")
@@ -176,6 +182,12 @@ async def update_settings(
         row.room_open_auto = payload.room_open_auto
     if payload.guest_token_ttl_hours is not None:
         row.guest_token_ttl_hours = max(1, min(720, payload.guest_token_ttl_hours))
+    if payload.ts_enabled is not None:
+        row.ts_enabled = payload.ts_enabled
+    if payload.ts_authkey is not None:
+        row.ts_authkey = payload.ts_authkey or None
+    if payload.ts_hostname is not None:
+        row.ts_hostname = payload.ts_hostname.strip() or "spacecaptain"
     await db.commit()
     await db.refresh(row)
     await activity_log(db, LogType.settings_changed,

@@ -254,6 +254,9 @@ class SystemSettings(Base):
     room_open_since:            Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
     room_open_auto:             Mapped[bool]           = mapped_column(Boolean, default=True)
     guest_token_ttl_hours:      Mapped[int]            = mapped_column(Integer, default=8)
+    ts_enabled:                 Mapped[bool]           = mapped_column(Boolean, default=False)
+    ts_authkey:                 Mapped[Optional[str]]  = mapped_column(String(255), default=None)
+    ts_hostname:                Mapped[str]            = mapped_column(String(100), default="spacecaptain")
 
 
 class DeviceSchedule(Base):

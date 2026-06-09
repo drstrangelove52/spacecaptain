@@ -261,7 +261,10 @@ CREATE TABLE IF NOT EXISTS system_settings (
     auto_backup_minute        INT          NOT NULL DEFAULT 0,
     auto_backup_keep          INT          NOT NULL DEFAULT 30,
     space_name                VARCHAR(100) NOT NULL DEFAULT '',
-    guest_token_ttl_hours     INT          NOT NULL DEFAULT 8
+    guest_token_ttl_hours     INT          NOT NULL DEFAULT 8,
+    ts_enabled                BOOLEAN      NOT NULL DEFAULT FALSE,
+    ts_authkey                VARCHAR(255) DEFAULT NULL,
+    ts_hostname               VARCHAR(100) NOT NULL DEFAULT 'spacecaptain'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT IGNORE INTO system_settings (id) VALUES (1);

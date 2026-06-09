@@ -75,6 +75,26 @@ services:
     networks:
       - spacecaptain_net
 
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: spacecaptain_tailscale
+    hostname: ${TS_HOSTNAME:-spacecaptain}
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY:-}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+      - TS_ACCEPT_DNS=false
+    volumes:
+      - ./tailscale-state:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    network_mode: host
+    restart: unless-stopped
+    profiles:
+      - tailscale
+
 volumes:
   db_data:
 

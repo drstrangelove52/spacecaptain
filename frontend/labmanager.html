@@ -675,6 +675,7 @@
           <div class="help-nav-item" onclick="selectSettingsCat('push')"><span class="help-nav-icon">🔔</span><span class="help-nav-label">Push-Nachrichten</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('notfall')"><span class="help-nav-icon">🚨</span><span class="help-nav-label">Notfall-Alarm</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('backup')"><span class="help-nav-icon">💾</span><span class="help-nav-label">Auto-Backup</span></div>
+          <div class="help-nav-item" onclick="selectSettingsCat('tailscale')"><span class="help-nav-icon">🔒</span><span class="help-nav-label">Fernzugriff</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('update')" id="nav-settings-update"><span class="help-nav-icon">🔄</span><span class="help-nav-label">Update</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('datenverwaltung')"><span class="help-nav-icon">🗑</span><span class="help-nav-label">Datenverwaltung</span></div>
           <div style="padding:12px 16px;margin-top:auto;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--surface)">
@@ -893,6 +894,59 @@
                   <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Ältere Backups werden automatisch gelöscht. Speicherort: via BACKUP_DIR in .env</div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- TAILSCALE / FERNZUGRIFF -->
+          <div class="help-panel" id="settings-panel-tailscale">
+            <div class="help-panel-header"><span class="help-panel-icon">🔒</span><span class="help-panel-title">Fernzugriff via Tailscale</span></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
+
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 18px;font-size:13px;color:var(--text-mid);line-height:1.7">
+                Tailscale verbindet diesen Server sicher mit deinen Geräten (Laptop, Handy) — ohne Portweiterleitung und ohne VPN-Server. Die Verbindung läuft verschlüsselt über WireGuard.<br>
+                <span style="font-size:12px;color:var(--text-dim)">Auth Keys erstellen: <span style="font-family:var(--mono)">tailscale.com → Settings → Keys</span></span>
+              </div>
+
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Tailscale aktivieren</label>
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+                    <input type="checkbox" id="cfg-ts-enabled" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">
+                    <span style="font-size:13px;color:var(--text-dim)">Fernzugriff über Tailscale einschalten</span>
+                  </label>
+                </div>
+
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Gerätename im Tailnet</label>
+                  <input class="form-input" id="cfg-ts-hostname" placeholder="spacecaptain" oninput="_updateTsHostnamePreview()">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Erreichbar als <span id="cfg-ts-hostname-preview" style="font-family:var(--mono);color:var(--accent2)">spacecaptain.tailXXX.ts.net</span></div>
+                </div>
+
+                <div class="form-group" style="margin:0" id="cfg-ts-authkey-group">
+                  <label class="form-label">Auth Key <span style="font-weight:400;color:var(--text-dim)">(einmalig)</span></label>
+                  <input class="form-input" id="cfg-ts-authkey" type="password" placeholder="tskey-auth-…" autocomplete="off">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Wird nach dem ersten Verbinden automatisch gelöscht</div>
+                </div>
+
+              </div>
+
+              <!-- Status + Apply -->
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <button class="btn btn-primary" id="ts-apply-btn" onclick="tailscaleApply()">Auf Server anwenden</button>
+                <div id="ts-status-box" style="font-size:13px;font-family:var(--mono);padding:6px 12px;border-radius:6px;display:none"></div>
+              </div>
+
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 18px;font-size:12px;line-height:1.8;color:var(--text-mid)">
+                <div style="font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:8px">Voraussetzungen</div>
+                <ul style="padding-left:18px;display:flex;flex-direction:column;gap:4px">
+                  <li>Update-Watcher muss auf dem Host laufen (siehe Tab «Update»)</li>
+                  <li>VM benötigt Zugriff auf <span style="font-family:var(--mono)">/dev/net/tun</span> und Capabilities <span style="font-family:var(--mono)">NET_ADMIN</span>, <span style="font-family:var(--mono)">NET_RAW</span></li>
+                  <li>Auth Key bei tailscale.com erzeugen: <em>Settings → Keys → Generate auth key</em></li>
+                  <li>Empfohlen: <em>Reusable: off</em> und kurze Gültigkeitsdauer wählen</li>
+                </ul>
+              </div>
+
             </div>
           </div>
 
@@ -4667,6 +4721,11 @@ async function loadSettings() {
   document.getElementById('cfg-auto-backup-keep').value = s.auto_backup_keep ?? 30;
   document.getElementById('cfg-guest-ttl-hours').value = s.guest_token_ttl_hours ?? 8;
   document.getElementById('cfg-space-name').value = s.space_name ?? '';
+  document.getElementById('cfg-ts-enabled').checked = !!s.ts_enabled;
+  document.getElementById('cfg-ts-hostname').value = s.ts_hostname || 'spacecaptain';
+  document.getElementById('cfg-ts-authkey').value = '';  // Key nie zurück in die UI
+  _updateTsHostnamePreview();
+  tailscaleLoadStatus();
   const _sn = s.space_name || '';
   if (_sn) { _spaceName = _sn; document.getElementById('sidebar-space-sub').textContent = _sn; document.getElementById('login-space-sub').textContent = _sn; }
   // Topic-Dropdown füllen und Auswahl setzen
@@ -4706,9 +4765,55 @@ async function saveSettings() {
     auto_backup_keep:          parseInt(document.getElementById('cfg-auto-backup-keep').value) || 30,
     space_name:                document.getElementById('cfg-space-name').value.trim(),
     guest_token_ttl_hours:     parseInt(document.getElementById('cfg-guest-ttl-hours').value) || 8,
+    ts_enabled:                document.getElementById('cfg-ts-enabled').checked,
+    ts_hostname:               document.getElementById('cfg-ts-hostname').value.trim() || 'spacecaptain',
+    ts_authkey:                document.getElementById('cfg-ts-authkey').value.trim() || null,
   };
   const res = await PATCH('/settings', payload);
   if (res) { await loadSettings(); showToast('Einstellungen gespeichert', 'success'); }
+}
+
+function _updateTsHostnamePreview() {
+  const h = document.getElementById('cfg-ts-hostname').value.trim() || 'spacecaptain';
+  document.getElementById('cfg-ts-hostname-preview').textContent = `${h}.tailXXX.ts.net`;
+}
+
+async function tailscaleLoadStatus() {
+  const box = document.getElementById('ts-status-box');
+  if (!box) return;
+  const s = await apiSilent('GET', '/tailscale/status');
+  if (!s) { box.style.display = 'none'; return; }
+  const map = {
+    running:  ['background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.4);color:var(--success)', '● Verbunden'],
+    starting: ['background:rgba(234,179,8,.15);border:1px solid rgba(234,179,8,.4);color:#ca8a04',        '◌ Verbindet…'],
+    stopped:  ['background:rgba(100,116,139,.15);border:1px solid rgba(100,116,139,.4);color:var(--text-dim)', '○ Gestoppt'],
+    error:    ['background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:var(--danger)',   '✕ Fehler'],
+    unknown:  ['background:rgba(100,116,139,.15);border:1px solid rgba(100,116,139,.4);color:var(--text-dim)', '— Unbekannt'],
+  };
+  const [style, label] = map[s.status] || map.unknown;
+  box.style.cssText = `display:inline-block;${style}`;
+  box.textContent = label;
+}
+
+async function tailscaleApply() {
+  const btn = document.getElementById('ts-apply-btn');
+  btn.disabled = true;
+  // Zuerst Einstellungen speichern, dann Trigger auslösen
+  const payload = {
+    ts_enabled:  document.getElementById('cfg-ts-enabled').checked,
+    ts_hostname: document.getElementById('cfg-ts-hostname').value.trim() || 'spacecaptain',
+    ts_authkey:  document.getElementById('cfg-ts-authkey').value.trim() || null,
+  };
+  const saved = await PATCH('/settings', payload);
+  if (!saved) { btn.disabled = false; return; }
+  const res = await api('POST', '/tailscale/apply');
+  btn.disabled = false;
+  if (!res) return;
+  showToast(res.action === 'enable' ? 'Tailscale-Aktivierung angestossen' : 'Tailscale-Deaktivierung angestossen', 'success');
+  document.getElementById('cfg-ts-authkey').value = '';
+  // Status nach kurzer Verzögerung laden
+  setTimeout(tailscaleLoadStatus, 3000);
+  setTimeout(tailscaleLoadStatus, 8000);
 }
 
 // ── Datenverwaltung ──────────────────────────────────

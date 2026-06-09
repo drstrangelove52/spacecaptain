@@ -11,6 +11,8 @@ TRIGGER_FILE="$PROJECT_DIR/update_trigger/trigger"
 RESTART_FILE="$PROJECT_DIR/update_trigger/restart"
 LOG_FILE="$PROJECT_DIR/update_trigger/update.log"
 STATUS_FILE="$PROJECT_DIR/update_trigger/update.status"
+TAILSCALE_FILE="$PROJECT_DIR/update_trigger/tailscale_action"
+TAILSCALE_STATUS="$PROJECT_DIR/update_trigger/tailscale_status"
 
 mkdir -p "$PROJECT_DIR/update_trigger"
 
@@ -71,5 +73,37 @@ while true; do
       fi
     fi
   fi
+  if [ -f "$TAILSCALE_FILE" ]; then
+    TS_ACTION=$(sed -n '1p' "$TAILSCALE_FILE")
+    TS_KEY=$(sed -n '2p' "$TAILSCALE_FILE")
+    TS_HOST=$(sed -n '3p' "$TAILSCALE_FILE")
+    TS_HOST="${TS_HOST:-spacecaptain}"
+    rm -f "$TAILSCALE_FILE"
+    mkdir -p "$PROJECT_DIR/tailscale-state"
+
+    if [ "$TS_ACTION" = "enable" ]; then
+      log "Tailscale aktivieren (Hostname: $TS_HOST)..."
+      echo "starting" > "$TAILSCALE_STATUS"
+      cd "$PROJECT_DIR"
+      if TS_AUTHKEY="$TS_KEY" TS_HOSTNAME="$TS_HOST" docker compose --profile tailscale up -d tailscale >> "$LOG_FILE" 2>&1; then
+        log "Tailscale gestartet"
+        echo "running" > "$TAILSCALE_STATUS"
+      else
+        log "FEHLER: Tailscale Start fehlgeschlagen"
+        echo "error" > "$TAILSCALE_STATUS"
+      fi
+    elif [ "$TS_ACTION" = "disable" ]; then
+      log "Tailscale deaktivieren..."
+      cd "$PROJECT_DIR"
+      if docker compose stop tailscale >> "$LOG_FILE" 2>&1; then
+        log "Tailscale gestoppt"
+        echo "stopped" > "$TAILSCALE_STATUS"
+      else
+        log "FEHLER: Tailscale Stop fehlgeschlagen"
+        echo "error" > "$TAILSCALE_STATUS"
+      fi
+    fi
+  fi
+
   sleep 5
 done
