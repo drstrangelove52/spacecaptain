@@ -21,9 +21,11 @@ TIMEOUT = 5.0  # Sekunden für Status/Result-Abfragen
 
 async def _base_url(db: AsyncSession) -> str:
     s = await get_system_settings(db)
-    url = s.nfc_writer_url.rstrip("/")
+    url = (s.nfc_writer_url or "").strip().rstrip("/")
     if not url:
         raise HTTPException(503, "NFC-Schreibgerät nicht konfiguriert (URL in Einstellungen setzen)")
+    if not url.startswith(("http://", "https://")):
+        url = "http://" + url
     return url
 
 
@@ -43,6 +45,8 @@ async def nfc_status(db: AsyncSession = Depends(get_db), _: User = Depends(get_c
         raise HTTPException(503, "NFC-Schreibgerät nicht erreichbar")
     except httpx.TimeoutException:
         raise HTTPException(504, "NFC-Schreibgerät antwortet nicht")
+    except httpx.RequestError as e:
+        raise HTTPException(503, f"NFC-Schreibgerät Verbindungsfehler: {e}")
 
 
 @router.post("/write")
@@ -59,6 +63,8 @@ async def nfc_write(payload: WriteRequest, db: AsyncSession = Depends(get_db), _
         raise HTTPException(503, "NFC-Schreibgerät nicht erreichbar")
     except httpx.TimeoutException:
         raise HTTPException(504, "NFC-Schreibgerät antwortet nicht")
+    except httpx.RequestError as e:
+        raise HTTPException(503, f"NFC-Schreibgerät Verbindungsfehler: {e}")
 
 
 @router.get("/result")
@@ -72,3 +78,5 @@ async def nfc_result(db: AsyncSession = Depends(get_db), _: User = Depends(get_c
         raise HTTPException(503, "NFC-Schreibgerät nicht erreichbar")
     except httpx.TimeoutException:
         raise HTTPException(504, "NFC-Schreibgerät antwortet nicht")
+    except httpx.RequestError as e:
+        raise HTTPException(503, f"NFC-Schreibgerät Verbindungsfehler: {e}")
