@@ -275,7 +275,7 @@ class DeviceSchedule(Base):
 
 class AutomationRule(Base):
     __tablename__ = "automation_rules"
-    id:                Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id:                Mapped[int]           = mapped_column(UINT(unsigned=True), primary_key=True, autoincrement=True)
     name:              Mapped[str]           = mapped_column(String(100), default="")
     action_type:       Mapped[str]           = mapped_column(String(20), default="machine")  # machine | room_open | room_close | notify
     target_machine_id: Mapped[Optional[int]] = mapped_column(UINT(unsigned=True), ForeignKey("machines.id", ondelete="CASCADE"), nullable=True, default=None)
