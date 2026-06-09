@@ -281,7 +281,7 @@ class AutomationRule(Base):
     target_machine_id: Mapped[Optional[int]] = mapped_column(UINT(unsigned=True), ForeignKey("machines.id", ondelete="CASCADE"), nullable=True, default=None)
     off_delay_sec:     Mapped[int]           = mapped_column(Integer, default=0)
     enabled:           Mapped[bool]          = mapped_column(Boolean, default=True)
-    notify_topic_id:   Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("ntfy_topics.id", ondelete="SET NULL"), nullable=True, default=None)
+    notify_topic_id:   Mapped[Optional[int]] = mapped_column(UINT(unsigned=True), ForeignKey("ntfy_topics.id", ondelete="SET NULL"), nullable=True, default=None)
     notify_message:    Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
     created_at:        Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
     target_machine: Mapped[Optional["Machine"]]  = relationship("Machine", foreign_keys=[target_machine_id])
@@ -299,7 +299,7 @@ class RuleCondition(Base):
     """
     __tablename__ = "rule_conditions"
     id:                Mapped[int]            = mapped_column(Integer, primary_key=True, autoincrement=True)
-    rule_id:           Mapped[int]            = mapped_column(Integer, ForeignKey("automation_rules.id", ondelete="CASCADE"))
+    rule_id:           Mapped[int]            = mapped_column(UINT(unsigned=True), ForeignKey("automation_rules.id", ondelete="CASCADE"))
     type:              Mapped[str]            = mapped_column(String(30), nullable=False)
     # power
     source_machine_id: Mapped[Optional[int]]  = mapped_column(UINT(unsigned=True), ForeignKey("machines.id", ondelete="SET NULL"), default=None)
@@ -367,7 +367,7 @@ class MachinePlug(Base):
     __table_args__ = (UniqueConstraint("machine_id", "plug_id"),)
     id:         Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     machine_id: Mapped[int] = mapped_column(UINT(unsigned=True), ForeignKey("machines.id", ondelete="CASCADE"))
-    plug_id:    Mapped[int] = mapped_column(Integer, ForeignKey("plugs.id", ondelete="CASCADE"))
+    plug_id:    Mapped[int] = mapped_column(UINT(unsigned=True), ForeignKey("plugs.id", ondelete="CASCADE"))
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
 

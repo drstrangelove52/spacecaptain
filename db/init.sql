@@ -321,3 +321,97 @@ CREATE TABLE IF NOT EXISTS emergency_state (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT IGNORE INTO emergency_state (id, active) VALUES (1, 0);
+
+-- ── Maschinenstandorte ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS machine_locations (
+    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name       VARCHAR(100) NOT NULL UNIQUE,
+    sort_order INT          NOT NULL DEFAULT 0,
+    created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── Aushänge (zeitgesteuerte Ankündigungen) ───────────────────────────────────
+CREATE TABLE IF NOT EXISTS announcements (
+    id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    text             TEXT         NOT NULL,
+    is_active        TINYINT(1)   NOT NULL DEFAULT 1,
+    is_recurring     TINYINT(1)   NOT NULL DEFAULT 0,
+    start_at         DATETIME     DEFAULT NULL,
+    end_at           DATETIME     DEFAULT NULL,
+    recur_days       VARCHAR(20)  DEFAULT NULL,
+    recur_start_time TIME         DEFAULT NULL,
+    recur_end_time   TIME         DEFAULT NULL,
+    recur_valid_from DATE         DEFAULT NULL,
+    recur_valid_until DATE        DEFAULT NULL,
+    display_type     VARCHAR(20)  NOT NULL DEFAULT 'banner',
+    created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── Automationsregeln ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS automation_rules (
+    id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name              VARCHAR(100) NOT NULL DEFAULT '',
+    action_type       VARCHAR(20)  NOT NULL DEFAULT 'machine',
+    target_machine_id INT UNSIGNED DEFAULT NULL,
+    off_delay_sec     INT          NOT NULL DEFAULT 0,
+    enabled           TINYINT(1)   NOT NULL DEFAULT 1,
+    notify_topic_id   INT UNSIGNED DEFAULT NULL,
+    notify_message    TEXT         DEFAULT NULL,
+    created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (target_machine_id) REFERENCES machines(id)    ON DELETE CASCADE,
+    FOREIGN KEY (notify_topic_id)   REFERENCES ntfy_topics(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── Regel-Bedingungen ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS rule_conditions (
+    id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    rule_id           INT UNSIGNED NOT NULL,
+    type              VARCHAR(30)  NOT NULL,
+    source_machine_id INT UNSIGNED DEFAULT NULL,
+    power_on_w        FLOAT        DEFAULT NULL,
+    power_off_w       FLOAT        DEFAULT NULL,
+    days              VARCHAR(20)  DEFAULT NULL,
+    time_on           TIME         DEFAULT NULL,
+    time_off          TIME         DEFAULT NULL,
+    FOREIGN KEY (rule_id)           REFERENCES automation_rules(id) ON DELETE CASCADE,
+    FOREIGN KEY (source_machine_id) REFERENCES machines(id)         ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── Plug-Zuordnungen (Junction: Maschine ↔ Plug) ──────────────────────────────
+CREATE TABLE IF NOT EXISTS machine_plugs (
+    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    machine_id INT UNSIGNED NOT NULL,
+    plug_id    INT UNSIGNED NOT NULL,
+    sort_order INT          NOT NULL DEFAULT 0,
+    UNIQUE KEY uq_machine_plug (machine_id, plug_id),
+    FOREIGN KEY (machine_id) REFERENCES machines(id) ON DELETE CASCADE,
+    FOREIGN KEY (plug_id)    REFERENCES plugs(id)    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── Maschinen-Automationen (Leistungsbasiert) ──────────────────────────────────
+CREATE TABLE IF NOT EXISTS machine_automations (
+    id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    source_machine_id INT UNSIGNED NOT NULL,
+    target_machine_id INT UNSIGNED NOT NULL,
+    on_threshold_w    FLOAT        NOT NULL,
+    off_threshold_w   FLOAT        NOT NULL,
+    off_delay_sec     INT          NOT NULL DEFAULT 30,
+    enabled           TINYINT(1)   NOT NULL DEFAULT 1,
+    created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (source_machine_id) REFERENCES machines(id) ON DELETE CASCADE,
+    FOREIGN KEY (target_machine_id) REFERENCES machines(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── Zeitpläne pro Gerät ────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS device_schedules (
+    id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    machine_id        INT UNSIGNED NOT NULL,
+    name              VARCHAR(100) NOT NULL DEFAULT '',
+    days              VARCHAR(20)  NOT NULL,
+    time_on           TIME         NOT NULL,
+    time_off          TIME         NOT NULL,
+    require_room_open TINYINT(1)   NOT NULL DEFAULT 1,
+    enabled           TINYINT(1)   NOT NULL DEFAULT 1,
+    created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (machine_id) REFERENCES machines(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
