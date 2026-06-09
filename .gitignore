@@ -10,3 +10,4 @@ db_data/
 backups/
 certs/
 update_trigger/
+tailscale-state/
