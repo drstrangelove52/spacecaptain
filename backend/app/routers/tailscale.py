@@ -18,8 +18,9 @@ from app.services.system_settings import get_system_settings
 router = APIRouter(prefix="/tailscale", tags=["tailscale"])
 
 _TRIGGER_DIR = Path("/app/update_trigger")
-_ACTION_FILE = _TRIGGER_DIR / "tailscale_action"
-_STATUS_FILE = _TRIGGER_DIR / "tailscale_status"
+_ACTION_FILE  = _TRIGGER_DIR / "tailscale_action"
+_STATUS_FILE  = _TRIGGER_DIR / "tailscale_status"
+_STATE_FILE   = Path("/app/tailscale-state/tailscaled.state")
 
 
 @router.post("/apply")
@@ -47,9 +48,33 @@ async def tailscale_apply(
 
 
 @router.get("/status")
-async def tailscale_status(_: User = Depends(require_admin)):
-    """Gibt den letzten bekannten Tailscale-Status zurück."""
-    status = "unknown"
-    if _STATUS_FILE.exists():
-        status = _STATUS_FILE.read_text().strip()
-    return {"status": status, "watcher_ready": _TRIGGER_DIR.exists()}
+async def tailscale_status(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """
+    Ermittelt Tailscale-Status aus drei Quellen:
+    1. tailscale_status-Datei (vom Updater nach Trigger geschrieben)
+    2. tailscaled.state-Datei (beweist erfolgreiche Verbindung in der Vergangenheit)
+    3. ts_enabled in Settings (konfigurierter Sollzustand)
+    """
+    s = await get_system_settings(db)
+    file_status = _STATUS_FILE.read_text().strip() if _STATUS_FILE.exists() else None
+    ever_connected = _STATE_FILE.exists()
+
+    if not s.ts_enabled:
+        status = "stopped" if file_status in ("stopped", "running") else "disabled"
+    elif file_status in ("running", "starting", "error", "stopped"):
+        status = file_status
+    elif ever_connected:
+        # State-Datei vorhanden → Container läuft wahrscheinlich (nach Neustart reconnected)
+        status = "running"
+    else:
+        # Aktiviert, aber noch nie verbunden
+        status = "pending"
+
+    return {
+        "status": status,
+        "watcher_ready": _TRIGGER_DIR.exists(),
+        "ever_connected": ever_connected,
+    }

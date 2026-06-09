@@ -48,6 +48,7 @@ services:
       - ./backend:/app
       - ${BACKUP_DIR:-./backups}:/app/backups
       - ./update_trigger:/app/update_trigger
+      - ./tailscale-state:/app/tailscale-state:ro
 
   frontend:
     image: nginx:alpine
