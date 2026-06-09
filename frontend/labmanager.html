@@ -2583,7 +2583,7 @@ function initHelp() {
 }
 
 function selectSettingsCat(id) {
-  const ids = ['system','display','aushaenge','agb','push','notfall','backup','update','datenverwaltung'];
+  const ids = ['system','display','aushaenge','agb','push','notfall','backup','tailscale','update','datenverwaltung'];
   const nav = document.querySelectorAll('#page-settings .help-nav-item');
   nav.forEach((item, i) => item.classList.toggle('active', ids[i] === id));
   document.querySelectorAll('#page-settings .help-panel').forEach(p =>
