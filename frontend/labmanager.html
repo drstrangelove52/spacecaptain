@@ -4856,14 +4856,18 @@ async function loadUpdateStatus() {
     badge.textContent = '● Watcher aktiv';
     badge.style.cssText = 'font-size:11px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(100,200,100,.15);color:#6dc;border:1px solid rgba(100,200,100,.3)';
     warning.style.display = 'none';
-  } else if (d.volume_mounted) {
-    badge.textContent = '○ Watcher nicht aktiv';
-    badge.style.cssText = 'font-size:11px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(220,150,50,.15);color:#da7;border:1px solid rgba(220,150,50,.3)';
-    warning.style.display = '';
     updateBtn.disabled = d.pending;
     restartBtn.disabled = d.pending;
     updateBtn.textContent = d.pending ? '⏳ Läuft…' : 'Update starten';
     restartBtn.textContent = d.pending ? '⏳ Läuft…' : 'Backend neu starten';
+  } else if (d.volume_mounted) {
+    badge.textContent = '○ Watcher nicht aktiv';
+    badge.style.cssText = 'font-size:11px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(220,150,50,.15);color:#da7;border:1px solid rgba(220,150,50,.3)';
+    warning.style.display = '';
+    updateBtn.disabled = true;
+    restartBtn.disabled = true;
+    updateBtn.textContent = 'Update starten';
+    restartBtn.textContent = 'Backend neu starten';
   } else {
     badge.textContent = '○ Watcher nicht eingerichtet';
     badge.style.cssText = 'font-size:11px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(200,100,100,.15);color:#f88;border:1px solid rgba(200,100,100,.3)';
