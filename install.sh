@@ -313,8 +313,8 @@ print_summary() {
     echo -e "   ${GREEN}${BOLD}SpaceCaptain erfolgreich installiert!${NC}"
     sep
     echo ""
-    echo -e "   ${BOLD}URL:${NC}       https://$SERVER_HOST"
-    echo -e "   ${BOLD}Benutzer:${NC}  $ADMIN_NAME"
+    echo -e "   ${BOLD}URL:${NC}       https://$SERVER_HOST/labmanager"
+    echo -e "   ${BOLD}E-Mail:${NC}    $ADMIN_EMAIL"
     echo -e "   ${BOLD}Passwort:${NC}  $ADMIN_PASSWORD"
     echo ""
     echo -e "   ${YELLOW}Hinweis:${NC} Das Passwort wird nicht erneut angezeigt."
