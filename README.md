@@ -85,7 +85,9 @@ cd spacecaptain
 
 ```bash
 # TLS-Zertifikat erstellen (Pflicht — ohne Zertifikat startet Nginx nicht)
-bash gencert.sh <server-ip-oder-hostname>
+mkdir -p certs && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+  -keyout certs/key.pem -out certs/cert.pem \
+  -subj "/CN=<server-ip>" -addext "subjectAltName=IP:<server-ip>"
 
 # Container bauen und starten
 BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build
