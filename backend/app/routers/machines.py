@@ -98,15 +98,9 @@ async def list_machines_live(
             elif m.session_manager_id:
                 session_owner = user_map.get(m.session_manager_id, 'Unbekannt')
             elif m.session_started_at:
-                # Keine User-ID → Session durch Automation oder extern gestartet
-                sess_res = await db.execute(
-                    select(MachineSession)
-                    .where(MachineSession.machine_id == m.id, MachineSession.ended_at == None)
-                    .order_by(MachineSession.started_at.desc())
-                )
-                active_sess = sess_res.scalars().first()
-                if active_sess and active_sess.session_source == "automation":
-                    session_owner = "Automation"
+                # Keine guest_id, keine manager_id → kann nur Automation sein
+                # (externe Plug-Detektionen setzen immer eine session_manager_id)
+                session_owner = "Automation"
             session_duration_min = None
             if m.session_started_at:
                 session_duration_min = round((datetime.utcnow() - m.session_started_at).total_seconds() / 60, 1)

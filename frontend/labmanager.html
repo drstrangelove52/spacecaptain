@@ -3753,7 +3753,7 @@ function showAddMachine() {
       </div>
     </div>
     <div style="display:flex;align-items:flex-start;gap:12px;margin-top:10px">
-      <input type="checkbox" id="mc-force-off" style="width:16px;height:16px;cursor:pointer;accent-color:var(--danger);margin-top:2px;flex-shrink:0">
+      <input type="checkbox" id="mc-force-off" checked style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent2);margin-top:2px;flex-shrink:0">
       <div>
         <label class="form-label" style="margin-bottom:2px;cursor:pointer" for="mc-force-off">Bei Raumschluss ausschalten</label>
         <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Wenn aktiviert: Gerät wird automatisch ausgeschaltet wenn ${_spaceName} geschlossen wird (z.B. Kaffeemaschine, Lötstation).</div>
@@ -3879,7 +3879,7 @@ function editMachine(id) {
       </div>
     </div>
     <div style="display:flex;align-items:flex-start;gap:12px;margin-top:10px">
-      <input type="checkbox" id="e-force-off" ${m.force_off_on_close?'checked':''} style="width:16px;height:16px;cursor:pointer;accent-color:var(--danger);margin-top:2px;flex-shrink:0">
+      <input type="checkbox" id="e-force-off" ${m.force_off_on_close?'checked':''} style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent2);margin-top:2px;flex-shrink:0">
       <div>
         <label class="form-label" style="margin-bottom:2px;cursor:pointer" for="e-force-off">Bei Raumschluss ausschalten</label>
         <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Wenn aktiviert: Gerät wird automatisch ausgeschaltet wenn ${_spaceName} geschlossen wird (z.B. Kaffeemaschine, Lötstation).</div>
@@ -4861,6 +4861,10 @@ async function loadUpdateStatus() {
     badge.textContent = '● Watcher aktiv';
     badge.style.cssText = 'font-size:11px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(100,200,100,.15);color:#6dc;border:1px solid rgba(100,200,100,.3)';
     warning.style.display = 'none';
+  } else if (d.volume_mounted) {
+    badge.textContent = '○ Watcher nicht aktiv';
+    badge.style.cssText = 'font-size:11px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(220,150,50,.15);color:#da7;border:1px solid rgba(220,150,50,.3)';
+    warning.style.display = '';
     updateBtn.disabled = d.pending;
     restartBtn.disabled = d.pending;
     updateBtn.textContent = d.pending ? '⏳ Läuft…' : 'Update starten';
@@ -5576,8 +5580,8 @@ function _addCondMenu(actionType) {
   const entries = Object.entries(COND_LABELS).filter(([t]) => !exclude.includes(t));
   return `<div style="position:relative;display:inline-block">
     <button class="btn btn-ghost btn-sm" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'">+ Bedingung ▾</button>
-    <div style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-width:200px;padding:4px 0;box-shadow:0 4px 12px rgba(0,0,0,.3)">
-      ${entries.map(([t,l])=>`<div style="padding:8px 14px;cursor:pointer;font-size:13px" onmousedown="addCondition('${t}');this.closest('div[style*=absolute]').style.display='none'">${l}</div>`).join('')}
+    <div style="display:none;position:absolute;bottom:calc(100% + 4px);right:0;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-width:200px;padding:4px 0;box-shadow:0 4px 12px rgba(0,0,0,.3)">
+      ${entries.map(([t,l])=>`<div style="padding:8px 14px;cursor:pointer;font-size:13px;white-space:nowrap" onmousedown="addCondition('${t}');this.closest('div[style*=absolute]').style.display='none'">${l}</div>`).join('')}
     </div>
   </div>`;
 }

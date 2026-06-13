@@ -5,9 +5,9 @@ Requires=docker.service
 
 [Service]
 Type=simple
-User=martin
-WorkingDirectory=/home/martin/spacecaptain
-ExecStart=/home/martin/spacecaptain/spacecaptain-updater.sh
+User=__USER__
+WorkingDirectory=__INSTALL_DIR__
+ExecStart=__INSTALL_DIR__/spacecaptain-updater.sh
 Restart=always
 RestartSec=10
 StandardOutput=journal

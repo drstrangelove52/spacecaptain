@@ -25,11 +25,15 @@ TRIGGER_FILE = TRIGGER_DIR / "trigger"
 RESTART_FILE = TRIGGER_DIR / "restart"
 LOG_FILE = TRIGGER_DIR / "update.log"
 STATUS_FILE = TRIGGER_DIR / "update.status"
+HEARTBEAT_FILE = TRIGGER_DIR / "watcher_heartbeat"
 
 
 @router.get("/status")
 async def get_update_status(_: User = Depends(require_admin)):
-    watcher_ready = TRIGGER_DIR.exists()
+    watcher_ready = (
+        HEARTBEAT_FILE.exists()
+        and (datetime.now().timestamp() - HEARTBEAT_FILE.stat().st_mtime) < 30
+    )
     last_triggered = None
     if LOG_FILE.exists():
         last_triggered = datetime.fromtimestamp(LOG_FILE.stat().st_mtime).isoformat()
@@ -39,6 +43,7 @@ async def get_update_status(_: User = Depends(require_admin)):
         "build": BUILD_NR,
         "pending": TRIGGER_FILE.exists() or RESTART_FILE.exists(),
         "watcher_ready": watcher_ready,
+        "volume_mounted": TRIGGER_DIR.exists(),
         "last_triggered": last_triggered,
         "last_result": last_result,
     }

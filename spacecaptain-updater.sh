@@ -105,5 +105,6 @@ while true; do
     fi
   fi
 
+  date +%s > "$PROJECT_DIR/update_trigger/watcher_heartbeat"
   sleep 5
 done

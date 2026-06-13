@@ -21,29 +21,32 @@
   .header-sub{font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px}
   .header-time{margin-left:auto;font-family:var(--mono);font-size:48px;color:var(--accent2);letter-spacing:2px}
 
-  main{flex:1;padding:24px 32px;display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));align-content:start}
+  main{flex:1;padding:16px 20px;display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));align-content:start}
 
-  .machine-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .3s,background .3s,box-shadow .3s}
+  .machine-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .3s,background .3s,box-shadow .3s}
   .machine-card.in-use{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.6);box-shadow:0 0 0 1px rgba(34,211,238,.2),0 0 28px rgba(34,211,238,.15)}
   .machine-card.available{background:rgba(34,197,94,.05);border-color:rgba(34,197,94,.45)}
+  .machine-card.maintenance{background:rgba(244,166,34,.05);border-color:rgba(244,166,34,.4)}
   .machine-card.offline{opacity:.45}
-  .card-top{padding:20px 20px 12px;display:flex;gap:14px;align-items:flex-start}
-  .card-icon{font-size:36px;flex-shrink:0;margin-top:2px}
-  .card-info{flex:1}
-  .card-name{font-family:var(--display);font-size:24px;font-weight:900;letter-spacing:1px;line-height:1.1}
-  .card-cat{font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;margin-top:3px}
-  .card-status{padding:12px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px}
-  .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .card-top{padding:12px 16px 10px;display:flex;gap:10px;align-items:flex-start}
+  .card-icon{font-size:28px;flex-shrink:0;margin-top:2px}
+  .card-info{flex:1;min-width:0}
+  .card-name{font-family:var(--display);font-size:20px;font-weight:900;letter-spacing:1px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card-cat{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card-status{padding:0 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;height:48px;flex-shrink:0}
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
   .dot-on{background:var(--accent2);animation:pulse 2s infinite}
   .dot-off{background:var(--success)}
   .dot-grey{background:var(--text-dim)}
+  .dot-warning{background:var(--accent)}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-  .status-text{font-family:var(--mono);font-size:13px}
+  .status-text{font-family:var(--mono);font-size:12px}
   .status-user{font-weight:700;color:var(--accent2)}
   .status-avail{color:var(--success)}
   .status-offline{color:var(--text-dim)}
-  .card-watt{margin-left:auto;font-family:var(--mono);font-size:16px;color:var(--accent);font-weight:700}
-  .card-dur{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:2px}
+  .status-maintenance{color:var(--accent)}
+  .card-watt{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:700;flex-shrink:0}
+  .card-dur{font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:1px}
 
   .queue-section{padding:10px 20px 14px;border-top:1px solid var(--border)}
   .queue-title{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px}
@@ -243,12 +246,15 @@ function buildMachineCard(m) {
   const inUse = m.in_use || (m.plug_supported && m.plug_on === true);
   const adapterError = m.plug_supported && m.plug_error === 'unreachable';
   const available = m.status === 'online' && !inUse && !adapterError;
-  const offline = m.status !== 'online';
-  const cardClass = offline ? 'offline' : (inUse && !adapterError) ? 'in-use' : available ? 'available' : 'offline';
+  const maintenance = m.status === 'maintenance';
+  const offline = m.status !== 'online' && !maintenance;
+  const cardClass = maintenance ? 'maintenance' : offline ? 'offline' : (inUse && !adapterError) ? 'in-use' : available ? 'available' : 'offline';
 
   let statusHtml;
-  if (offline) {
-    statusHtml = `<div class="card-status"><div class="dot dot-grey"></div><div class="status-text status-offline">${m.status === 'maintenance' ? 'IN WARTUNG' : 'OFFLINE'}</div></div>`;
+  if (maintenance) {
+    statusHtml = `<div class="card-status"><div class="dot dot-warning"></div><div class="status-text status-maintenance">IN WARTUNG</div></div>`;
+  } else if (offline) {
+    statusHtml = `<div class="card-status"><div class="dot dot-grey"></div><div class="status-text status-offline">OFFLINE</div></div>`;
   } else if (adapterError) {
     statusHtml = `<div class="card-status"><div class="dot dot-grey"></div><div class="status-text status-offline">ADAPTER OFFLINE</div></div>`;
   } else if (inUse) {
@@ -276,7 +282,7 @@ function buildMachineCard(m) {
       <div class="card-icon">${icon}</div>
       <div class="card-info">
         <div class="card-name">${m.name}</div>
-        <div class="card-cat">${m.category}${m.location && m.location !== '—' ? ' // ' + m.location : ''}</div>
+        ${m.location && m.location !== '—' ? `<div class="card-cat">${m.location}</div>` : ''}
       </div>
     </div>
     ${statusHtml}

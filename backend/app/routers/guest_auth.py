@@ -398,6 +398,11 @@ async def guest_dashboard(db: AsyncSession = Depends(get_db)):
         if m.current_guest_id:
             g = await db.get(Guest, m.current_guest_id)
             current_guest_name = g.name if g else None
+        elif m.session_manager_id:
+            u = await db.get(User, m.session_manager_id)
+            current_guest_name = u.name if u else "Manager"
+        elif m.session_started_at:
+            current_guest_name = "Automation"
 
         session_duration_min = None
         if m.session_started_at:
@@ -416,7 +421,7 @@ async def guest_dashboard(db: AsyncSession = Depends(get_db)):
             "plug_supported":       plug_state.get("supported", False),
             "plug_error":           plug_state.get("error"),
             "power_w":              plug_state.get("power_w"),
-            "in_use":               m.current_guest_id is not None,
+            "in_use":               m.session_started_at is not None,
             "current_guest_id":     m.current_guest_id,
             "current_guest_name":   current_guest_name,
             "session_duration_min": session_duration_min,
