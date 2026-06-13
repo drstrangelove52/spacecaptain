@@ -273,7 +273,7 @@ create_admin() {
         -e SC_PASSWORD="$ADMIN_PASSWORD" \
         backend python3 -c "
 import os, bcrypt, asyncio
-from app.database import AsyncSessionLocal
+from app.database import AsyncSessionLocal, engine
 from app.models import User, UserRole
 
 name     = os.environ['SC_NAME']
@@ -292,6 +292,7 @@ async def create():
         )
         db.add(user)
         await db.commit()
+    await engine.dispose()
 
 asyncio.run(create())
 "
