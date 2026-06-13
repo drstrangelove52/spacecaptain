@@ -51,6 +51,10 @@ ask_questions() {
     sep
     echo ""
 
+    # Installationsverzeichnis
+    read -rp "$(echo -e "  ${BOLD}Installationsverzeichnis${NC} [$INSTALL_DIR]: ")" DIR_INPUT
+    INSTALL_DIR="${DIR_INPUT:-$INSTALL_DIR}"
+
     # Zeitzone
     CURRENT_TZ=$(timedatectl show --property=Timezone --value 2>/dev/null || echo "$DEFAULT_TZ")
     read -rp "$(echo -e "  ${BOLD}Zeitzone${NC} [$CURRENT_TZ]: ")" TZ_INPUT
@@ -81,6 +85,7 @@ ask_questions() {
     echo ""
     sep
     echo -e "  ${BOLD}Zusammenfassung:${NC}"
+    echo "    Verzeichnis: $INSTALL_DIR"
     echo "    Zeitzone:    $TIMEZONE"
     echo "    Server:      $SERVER_HOST"
     echo "    Admin:       $ADMIN_NAME ($ADMIN_EMAIL)"
