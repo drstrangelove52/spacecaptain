@@ -996,15 +996,10 @@
               <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:16px 18px;font-size:12px;line-height:1.8;color:var(--text-mid)">
                 <div style="font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Update-Watcher einrichten</div>
                 Einmaliger Setup auf dem Host-Server — der Watcher lauscht auf den Update-Trigger und führt <code style="background:var(--bg);padding:1px 4px;border-radius:3px">git pull</code> + <code style="background:var(--bg);padding:1px 4px;border-radius:3px">docker compose up --build</code> aus:
-                <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin:10px 0;font-size:11px;overflow-x:auto;color:var(--text)">chmod +x ~/spacecaptain/spacecaptain-updater.sh
-sudo cp spacecaptain-updater.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now spacecaptain-updater
-
-# Backend neu starten, damit das Trigger-Verzeichnis gemountet wird
-cd ~/spacecaptain
-BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build backend</pre>
-                Log: <code style="background:var(--bg);padding:1px 4px;border-radius:3px">tail -f ~/spacecaptain/update_trigger/update.log</code>
+                <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin:10px 0;font-size:11px;overflow-x:auto;color:var(--text)">cd /pfad/zu/spacecaptain
+sudo ./install-service.sh</pre>
+                Das Skript erkennt den Installationspfad automatisch, passt die Service-Datei an und startet den Watcher-Service.<br>
+                Log: <code style="background:var(--bg);padding:1px 4px;border-radius:3px">tail -f update_trigger/update.log</code>
               </div>
 
             </div>
