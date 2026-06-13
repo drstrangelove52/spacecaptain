@@ -139,38 +139,9 @@ DB-Migrationen laufen automatisch beim Backend-Start.
 
 > **`BUILD_NR`** setzt eine monoton steigende Build-Nummer, die im Sidebar-Footer sichtbar ist (`v1.xx · Build 123`). So ist auf einen Blick erkennbar, ob zwei Server auf demselben Stand sind. Ohne diesen Prefix läuft SpaceCaptain normal — die Build-Nummer wird dann nur nicht angezeigt.
 
-### In-App Update (optional)
+### In-App Update
 
-Der Update-Button unter **Einstellungen → Update** löst `git pull` + `docker compose up --build` direkt aus dem Browser aus.
-
-Bei Installation via `install.sh` ist der Update-Watcher bereits eingerichtet. Für manuelle Installationen einmalig ausführen:
-
-```bash
-chmod +x ~/spacecaptain/spacecaptain-updater.sh
-sudo tee /etc/systemd/system/spacecaptain-updater.service > /dev/null <<EOF
-[Unit]
-Description=SpaceCaptain Update Watcher
-After=docker.service
-Requires=docker.service
-
-[Service]
-Type=simple
-User=$USER
-WorkingDirectory=$HOME/spacecaptain
-ExecStart=$HOME/spacecaptain/spacecaptain-updater.sh
-Restart=always
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-EOF
-sudo systemctl daemon-reload
-sudo systemctl enable --now spacecaptain-updater
-```
-
-Der Service läuft dauerhaft im Hintergrund und wartet auf den Update-Trigger aus dem UI. Logs werden in `update_trigger/update.log` geschrieben.
+Der Update-Button unter **Einstellungen → Update** löst `git pull` + `docker compose up --build` direkt aus dem Browser aus. Bei Installation via `install.sh` ist der Update-Watcher bereits eingerichtet und läuft als systemd-Service im Hintergrund. Logs werden in `update_trigger/update.log` geschrieben.
 
 ---
 
