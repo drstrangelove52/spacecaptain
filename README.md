@@ -42,39 +42,50 @@ Fragen oder Ideen? → [GitHub Issue erstellen](https://github.com/drstrangelove
 
 - Docker und Docker Compose
 - Git
+- `openssl` und `python3` (auf den meisten Linux-Systemen vorinstalliert)
 - Port 80 und 443 frei (änderbar via `HTTP_PORT` / `HTTPS_PORT` in `.env`)
 
 > **Sicherheitshinweis:** SpaceCaptain ist für den Betrieb in einem internen Netzwerk (LAN) konzipiert. Eine direkte Erreichbarkeit aus dem Internet wird nicht empfohlen. Für externen Zugriff sollte ein VPN (z.B. WireGuard) vorgeschaltet werden.
 
-### Erstinstallation
+### Schnellinstallation (empfohlen)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/drstrangelove52/spacecaptain/main/install.sh -o install.sh
+bash install.sh
+```
+
+Das Script stellt drei Fragen, erledigt alles andere automatisch:
+
+1. **Zeitzone** (Standard: aktuelle Server-Zeitzone)
+2. **Server-IP oder Hostname** (Standard: automatisch erkannt)
+3. **Erster Admin-Benutzer** (Name, E-Mail, Passwort — oder Passwort wird generiert)
+
+Danach sind Repository, `.env`, TLS-Zertifikat, Container und Update-Watcher fertig eingerichtet. Am Ende zeigt das Script die URL und die Zugangsdaten an.
+
+### Manuelle Installation
+
+<details>
+<summary>Für fortgeschrittene Nutzer oder abweichende Setups</summary>
 
 ```bash
 # Repository klonen
 git clone https://github.com/drstrangelove52/spacecaptain.git
 cd spacecaptain
-
-# Umgebungsvariablen konfigurieren
-cp .env.example .env
-nano .env
 ```
 
-Mindestens anpassen:
+`.env` erstellen und mindestens diese Variablen setzen:
 
 | Variable | Beschreibung |
 |----------|-------------|
 | `DB_ROOT_PASSWORD` | Sicheres Root-Passwort für MariaDB |
 | `DB_PASSWORD` | Datenbankpasswort für die App |
-| `JWT_SECRET` | Zufälliger String (mind. 32 Zeichen) |
+| `JWT_SECRET` | Zufälliger String (mind. 32 Zeichen): `openssl rand -hex 32` |
 | `TIMEZONE` | Zeitzone des Servers (z.B. `Europe/Zurich`, `Europe/Berlin`) |
-
-JWT Secret generieren:
-```bash
-python3 -c "import secrets; print(secrets.token_hex(32))"
-```
+| `ALLOWED_ORIGINS` | HTTPS-URL des Servers (z.B. `https://192.168.1.10`) |
 
 ```bash
 # TLS-Zertifikat erstellen (Pflicht — ohne Zertifikat startet Nginx nicht)
-bash gencert.sh <server-ip>
+bash gencert.sh <server-ip-oder-hostname>
 
 # Container bauen und starten
 BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build
@@ -83,19 +94,31 @@ BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build
 docker compose logs -f backend
 ```
 
-### Erster Login
+Nach dem Start muss der erste Admin-Benutzer angelegt werden:
 
-- **URL**: `https://<server-ip>/labmanager`
-- **E-Mail**: `admin@spacecaptain.local`
-- **Passwort**: `admin1234`
+```bash
+docker compose exec backend python3 -c "
+import bcrypt, asyncio
+from app.database import AsyncSessionLocal
+from app.models import User, UserRole
 
-> **Passwort sofort nach dem ersten Login ändern!**
+async def create():
+    pw = bcrypt.hashpw(b'dein-passwort', bcrypt.gensalt(12)).decode()
+    async with AsyncSessionLocal() as db:
+        db.add(User(name='Admin', email='admin@example.com', password_hash=pw, role=UserRole.admin, is_active=True))
+        await db.commit()
+
+asyncio.run(create())
+"
+```
+
+</details>
 
 ---
 
 ## HTTPS einrichten
 
-Das selbstsignierte Zertifikat (erstellt via `gencert.sh`) liegt in `certs/cert.pem` und `certs/key.pem`. Für ein offizielles Zertifikat (z.B. Let's Encrypt) diese beiden Dateien einfach ersetzen und Nginx neu laden:
+Das selbstsignierte Zertifikat liegt in `certs/cert.pem` und `certs/key.pem`. Für ein offizielles Zertifikat (z.B. Let's Encrypt) diese beiden Dateien einfach ersetzen und Nginx neu laden:
 
 ```bash
 docker exec spacecaptain_proxy nginx -s reload
@@ -118,19 +141,33 @@ DB-Migrationen laufen automatisch beim Backend-Start.
 
 ### In-App Update (optional)
 
-Der Update-Button unter **Einstellungen → Update** löst `git pull` + `docker compose up --build` direkt aus dem Browser aus. Dafür muss einmalig ein leichtgewichtiger Hintergrund-Service auf dem Host eingerichtet werden:
+Der Update-Button unter **Einstellungen → Update** löst `git pull` + `docker compose up --build` direkt aus dem Browser aus.
+
+Bei Installation via `install.sh` ist der Update-Watcher bereits eingerichtet. Für manuelle Installationen einmalig ausführen:
 
 ```bash
-# Skript ausführbar machen
 chmod +x ~/spacecaptain/spacecaptain-updater.sh
+sudo tee /etc/systemd/system/spacecaptain-updater.service > /dev/null <<EOF
+[Unit]
+Description=SpaceCaptain Update Watcher
+After=docker.service
+Requires=docker.service
 
-# Systemd-Service installieren und aktivieren
-sudo cp spacecaptain-updater.service /etc/systemd/system/
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=$HOME/spacecaptain
+ExecStart=$HOME/spacecaptain/spacecaptain-updater.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now spacecaptain-updater
-
-# Backend neu starten, damit das Trigger-Volume gemountet wird
-BUILD_NR=$(git rev-list --count HEAD) docker compose up -d --build backend
 ```
 
 Der Service läuft dauerhaft im Hintergrund und wartet auf den Update-Trigger aus dem UI. Logs werden in `update_trigger/update.log` geschrieben.
