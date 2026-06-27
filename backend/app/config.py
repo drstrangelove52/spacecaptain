@@ -38,9 +38,26 @@ class Settings(BaseSettings):
         env_file = ".env"
 
 
+_WEAK_SECRETS = {"changeme", "secret", "password", "12345678", ""}
+
+def _validate_secrets(s: Settings) -> None:
+    errors = []
+    if s.jwt_secret in _WEAK_SECRETS or len(s.jwt_secret) < 32:
+        errors.append("JWT_SECRET muss mindestens 32 Zeichen lang sein und darf nicht 'changeme' sein")
+    if s.db_password in _WEAK_SECRETS:
+        errors.append("DB_PASSWORD darf nicht 'changeme' oder leer sein")
+    if errors:
+        raise RuntimeError(
+            "Unsichere Konfiguration — Server startet nicht:\n" + "\n".join(f"  - {e}" for e in errors)
+        )
+
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    s = Settings()
+    import os
+    if os.environ.get("SPACECAPTAIN_SKIP_SECRET_CHECK") != "1":
+        _validate_secrets(s)
+    return s
 
 
 APP_VERSION = "1.33"
