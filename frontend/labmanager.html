@@ -2913,9 +2913,45 @@ async function refreshLiveData() {
   _checkIdleAlarm(cache.machines);
   renderMachines();
   renderDashboard();
-  refreshMaintenanceOverview();
   const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
-  if (activePage === 'dashboard') { loadAdminQueues(); loadPendingGuests(); loadRoomStatus(); }
+  if (activePage === 'dashboard') loadDashboardSummary();
+}
+
+async function loadDashboardSummary() {
+  const s = await apiSilent('GET', '/dashboard/summary');
+  if (!s) return;
+
+  // Stat-Kacheln
+  const statPending = document.getElementById('stat-pending-reg');
+  const statMaint   = document.getElementById('stat-maint-due');
+  if (statPending) statPending.textContent = s.pending_guests;
+  if (statMaint)   statMaint.textContent   = s.maintenance_due;
+
+  // Nav-Badges
+  const badgePending = document.getElementById('badge-pending');
+  if (badgePending) {
+    badgePending.textContent   = s.pending_guests;
+    badgePending.style.display = s.pending_guests > 0 ? 'inline-flex' : 'none';
+  }
+  const badgeMaint = document.getElementById('badge-maintenance');
+  if (badgeMaint) {
+    badgeMaint.textContent   = s.maintenance_due > 0 ? s.maintenance_due : '!';
+    badgeMaint.style.display = s.maintenance_due > 0 ? 'inline-flex' : 'none';
+  }
+
+  // Raum-Status
+  _roomStatus = { room_open: s.room_open, room_open_since: s.room_open_since, room_open_auto: s.room_open_auto };
+  renderRoomStatus();
+
+  // Notfall-Banner (ersetzt checkEmergencyStatus bei Dashboard-Seite)
+  const banner = document.getElementById('emergency-banner');
+  if (s.emergency_active) {
+    const ts = s.triggered_at ? fmtDate(s.triggered_at) : '';
+    document.getElementById('emergency-banner-time').textContent = ts ? `seit ${ts}` : '';
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -5011,12 +5047,14 @@ async function startDashboardRefresh() {
   updateCountdown();
 
   setInterval(() => {
+    if (document.hidden) return;
     _dashRefreshRemaining--;
     if (_dashRefreshRemaining <= 0) _dashRefreshRemaining = _dashRefreshTotal;
     updateCountdown();
   }, 1000);
 
   setInterval(async () => {
+    if (document.hidden) return;
     _dashRefreshRemaining = _dashRefreshTotal;
     const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
     if (activePage === 'machines' || activePage === 'dashboard') refreshLiveData();
@@ -5025,6 +5063,15 @@ async function startDashboardRefresh() {
       if (states) { _autoStates = states; renderAutomations(); }
     }
   }, ms);
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      _dashRefreshRemaining = _dashRefreshTotal;
+      updateCountdown();
+      const activePage = document.querySelector('.page.active')?.id?.replace('page-','');
+      if (activePage === 'machines' || activePage === 'dashboard') refreshLiveData();
+    }
+  });
 }
 
 function dashboardRefreshNow() {
@@ -6387,7 +6434,7 @@ async function cancelEmergency() {
   );
 }
 
-// Emergency-Status alle 15s prüfen
+// Emergency-Status alle 15s prüfen (auf Dashboard-Seite kommt es zusätzlich via loadDashboardSummary)
 checkEmergencyStatus();
 setInterval(checkEmergencyStatus, 15000);
 

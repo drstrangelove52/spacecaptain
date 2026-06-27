@@ -15,9 +15,10 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.database import get_db
-from app.models import User, Guest, Machine, Permission, ActivityLog
+from app.models import User, Guest, Machine, Permission, ActivityLog, EmergencyState, MaintenanceInterval, MaintenanceRecord, MachineQueue, QueueStatus
 from app.schemas import LogOut, DashboardStats
 from app.services.auth import get_current_user
+from app.services.system_settings import get_system_settings
 
 router = APIRouter(tags=["dashboard & log"])
 
@@ -118,6 +119,80 @@ async def activity_log(
             "user_name":    _resolve_user_name(l, users),
         })
     return {"total": total, "logs": out}
+
+
+@router.get("/dashboard/summary")
+async def dashboard_summary(db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+    """Aggregiert alle Dashboard-Polling-Daten in einem einzigen Request."""
+    from datetime import timezone
+
+    # Pending Gäste
+    pending_count = (await db.execute(
+        select(func.count()).where(Guest.pending_approval == True)
+    )).scalar() or 0
+
+    # Wartung: due + warning zählen
+    intervals = (await db.execute(
+        select(MaintenanceInterval).where(MaintenanceInterval.is_active == True)
+    )).scalars().all()
+
+    machines_map = {m.id: m for m in (await db.execute(select(Machine))).scalars().all()}
+    maintenance_due = 0
+    now = datetime.utcnow()
+    for iv in intervals:
+        machine = machines_map.get(iv.machine_id)
+        if not machine:
+            continue
+        last = (await db.execute(
+            select(MaintenanceRecord)
+            .where(MaintenanceRecord.interval_id == iv.id)
+            .order_by(MaintenanceRecord.performed_at.desc()).limit(1)
+        )).scalars().first()
+
+        base_hours = last.hours_at_execution if last else 0.0
+        base_time  = last.performed_at if last else iv.created_at
+        hours_since = (machine.total_hours or 0.0) - (base_hours or 0.0)
+        days_since  = (now - base_time).total_seconds() / 86400
+
+        is_due = (
+            (iv.interval_hours and (iv.interval_hours - hours_since) <= 0) or
+            (iv.interval_days  and (iv.interval_days  - days_since)  <= 0)
+        )
+        is_warning = not is_due and (
+            (iv.interval_hours and iv.warning_hours is not None and (iv.interval_hours - hours_since) <= iv.warning_hours) or
+            (iv.interval_days  and iv.warning_days  is not None and (iv.interval_days  - days_since)  <= iv.warning_days)
+        )
+        if is_due or is_warning:
+            maintenance_due += 1
+
+    # Raum-Status
+    settings = await get_system_settings(db)
+    since_iso = None
+    if settings.room_open_since:
+        since_iso = settings.room_open_since.replace(tzinfo=timezone.utc).astimezone(APP_TIMEZONE).isoformat()
+
+    # Notfall-Status
+    em = (await db.execute(select(EmergencyState).where(EmergencyState.id == 1))).scalar_one_or_none()
+    emergency_active = bool(em and em.active)
+    triggered_at = None
+    if em and em.triggered_at:
+        triggered_at = em.triggered_at.replace(tzinfo=timezone.utc).astimezone(APP_TIMEZONE).isoformat()
+
+    # Wartelisten-Einträge
+    queue_count = (await db.execute(
+        select(func.count()).where(MachineQueue.status.in_([QueueStatus.waiting, QueueStatus.notified]))
+    )).scalar() or 0
+
+    return {
+        "pending_guests":    pending_count,
+        "maintenance_due":   maintenance_due,
+        "room_open":         settings.room_open,
+        "room_open_since":   since_iso,
+        "room_open_auto":    settings.room_open_auto,
+        "emergency_active":  emergency_active,
+        "triggered_at":      triggered_at,
+        "queue_count":       queue_count,
+    }
 
 
 @router.get("/log/filter-options")
