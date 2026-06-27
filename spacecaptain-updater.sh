@@ -47,14 +47,14 @@ while true; do
     cd "$PROJECT_DIR"
 
     log "git pull..."
-    GIT_OUT=$(git pull 2>&1)
-    echo "$GIT_OUT" >> "$LOG_FILE"
-    if [ $? -ne 0 ]; then
+    if ! GIT_OUT=$(git pull 2>&1); then
+      echo "$GIT_OUT" >> "$LOG_FILE"
       log "FEHLER: git pull fehlgeschlagen"
       echo "error" > "$STATUS_FILE"
       sleep 10
       continue
     fi
+    echo "$GIT_OUT" >> "$LOG_FILE"
     log "git pull erfolgreich"
 
     if echo "$GIT_OUT" | grep -q "Already up to date"; then
