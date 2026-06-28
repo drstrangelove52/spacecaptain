@@ -2,11 +2,16 @@
 import os
 import httpx
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 BACKEND_URL     = os.environ.get("BACKEND_URL", "http://backend:8000")
 MCP_BACKEND_KEY = os.environ.get("MCP_BACKEND_KEY", "")
 
-mcp = FastMCP("SpaceCaptain")
+mcp = FastMCP(
+    "SpaceCaptain",
+    host="0.0.0.0",
+    transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+)
 
 
 def _h() -> dict:
