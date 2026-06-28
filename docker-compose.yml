@@ -86,6 +86,8 @@ services:
       BACKEND_URL: http://backend:8000
       MCP_API_TOKEN: ${MCP_API_TOKEN:-}
       MCP_BACKEND_KEY: ${MCP_BACKEND_KEY:-}
+    ports:
+      - "${MCP_PORT:-8080}:8080"
     depends_on:
       - backend
     networks:
