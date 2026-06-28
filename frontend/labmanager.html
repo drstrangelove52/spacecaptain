@@ -1047,13 +1047,20 @@ sudo ./install-service.sh</pre>
                 Der Token oben ist der <strong style="color:var(--text)">einzige Schlüssel</strong> — er gilt für Claude Code <em>und</em> für die interne Verbindung zum Backend.
                 <br><br>
                 <strong style="color:var(--text)">1. Token kopieren → .env auf dem Server ergänzen:</strong>
-                <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin:8px 0;font-size:11px;overflow-x:auto;color:var(--text)" id="mcp-env-hint">MCP_BACKEND_KEY=&lt;Token von oben&gt;</pre>
+                <div style="position:relative;margin:8px 0">
+                  <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 40px 10px 12px;font-size:11px;overflow-x:auto;color:var(--text);margin:0" id="mcp-env-hint">MCP_BACKEND_KEY=&lt;Token von oben&gt;</pre>
+                  <button onclick="copyPre('mcp-env-hint',this)" title="Kopieren" style="position:absolute;top:6px;right:6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;color:var(--text-dim)">⎘</button>
+                </div>
                 <strong style="color:var(--text)">2. MCP-Container (neu) starten:</strong>
-                <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin:8px 0;font-size:11px;overflow-x:auto;color:var(--text)">docker compose --profile mcp up -d --build mcp_server</pre>
+                <div style="position:relative;margin:8px 0">
+                  <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 40px 10px 12px;font-size:11px;overflow-x:auto;color:var(--text);margin:0">docker compose --profile mcp up -d --build mcp_server</pre>
+                  <button onclick="copyPre(this.previousElementSibling,this)" title="Kopieren" style="position:absolute;top:6px;right:6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;color:var(--text-dim)">⎘</button>
+                </div>
                 <strong style="color:var(--text)">3. In Claude Code eintragen (einmalig):</strong>
-                <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin:8px 0;font-size:11px;overflow-x:auto;color:var(--text)" id="mcp-claude-cmd">claude mcp add --transport sse spacecaptain \
-  https://&lt;deine-domain&gt;/mcp/sse \
-  --header "Authorization: Bearer &lt;Token von oben&gt;" -s user</pre>
+                <div style="position:relative;margin:8px 0">
+                  <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 40px 10px 12px;font-size:11px;overflow-x:auto;color:var(--text);margin:0;white-space:pre-wrap;word-break:break-all" id="mcp-claude-cmd">claude mcp add --transport sse spacecaptain https://&lt;deine-domain&gt;/mcp/sse --header "Authorization: Bearer &lt;Token von oben&gt;" -s user</pre>
+                  <button onclick="copyPre('mcp-claude-cmd',this)" title="Kopieren" style="position:absolute;top:6px;right:6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;color:var(--text-dim)">⎘</button>
+                </div>
                 <span style="color:var(--text-dim)">Nach Token-Regenerierung: .env aktualisieren, Container neu starten, Claude-Code-Eintrag neu anlegen.</span>
               </div>
 
@@ -4814,6 +4821,7 @@ async function loadSettings() {
   document.getElementById('cfg-space-name').value = s.space_name ?? '';
   document.getElementById('cfg-mcp-enabled').checked = !!s.mcp_enabled;
   document.getElementById('cfg-mcp-token').value = s.mcp_api_token || '';
+  _updateMcpHints(s.mcp_api_token || '');
   document.getElementById('cfg-ts-enabled').checked = !!s.ts_enabled;
   document.getElementById('cfg-ts-hostname').value = s.ts_hostname || 'spacecaptain';
   document.getElementById('cfg-ts-authkey').value = '';  // Key nie zurück in die UI
@@ -4872,12 +4880,28 @@ function copyMcpToken() {
   if (!val) return;
   navigator.clipboard.writeText(val).then(() => showToast('Token kopiert', 'success'));
 }
+function copyPre(src, btn) {
+  const el = typeof src === 'string' ? document.getElementById(src) : src;
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    const orig = btn.textContent; btn.textContent = '✓'; btn.style.color = 'var(--success)';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1500);
+  });
+}
+function _updateMcpHints(token) {
+  const domain = window.location.hostname;
+  const envEl = document.getElementById('mcp-env-hint');
+  const cmdEl = document.getElementById('mcp-claude-cmd');
+  if (envEl) envEl.textContent = 'MCP_BACKEND_KEY=' + (token || '<Token von oben>');
+  if (cmdEl) cmdEl.textContent = `claude mcp add --transport sse spacecaptain https://${domain}/mcp/sse --header "Authorization: Bearer ${token || '<Token von oben>'}" -s user`;
+}
 
 async function regenerateMcpToken() {
   if (!confirm('Neuen MCP-Token generieren? Der alte Token wird ungültig.')) return;
   const s = await POST('/settings/mcp/regenerate-token');
   if (!s) return;
   document.getElementById('cfg-mcp-token').value = s.mcp_api_token || '';
+  _updateMcpHints(s.mcp_api_token || '');
   showToast('Neuer Token generiert', 'success');
 }
 
