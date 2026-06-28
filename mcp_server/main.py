@@ -5,7 +5,6 @@ import httpx
 import uvicorn
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://backend:8000")
@@ -14,13 +13,18 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "http://backend:8000")
 _token: str = ""
 
 
-class BearerAuthMiddleware(BaseHTTPMiddleware):
-    """Prüft Authorization: Bearer gegen den vom Backend geladenen Token."""
-    async def dispatch(self, request, call_next):
-        auth = request.headers.get("Authorization", "")
-        if not _token or not auth.startswith("Bearer ") or auth[7:] != _token:
-            return Response("Unauthorized", status_code=401)
-        return await call_next(request)
+def _make_auth_app(inner):
+    """Reines ASGI-Middleware — prüft Bearer-Token ohne Response-Body zu puffern (SSE-kompatibel)."""
+    async def auth_app(scope, receive, send):
+        if scope["type"] == "http":
+            headers = {k.lower(): v for k, v in scope.get("headers", [])}
+            auth = headers.get(b"authorization", b"").decode()
+            if not _token or not auth.startswith("Bearer ") or auth[7:] != _token:
+                resp = Response("Unauthorized", status_code=401)
+                await resp(scope, receive, send)
+                return
+        await inner(scope, receive, send)
+    return auth_app
 
 
 mcp = FastMCP(
@@ -112,6 +116,4 @@ async def _bootstrap() -> None:
 
 if __name__ == "__main__":
     asyncio.run(_bootstrap())
-    app = mcp.sse_app()
-    app.add_middleware(BearerAuthMiddleware)
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(_make_auth_app(mcp.sse_app()), host="0.0.0.0", port=8080)
