@@ -20,6 +20,15 @@ log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
 }
 
+# Liefert alle Container die neu gestartet/gebaut werden sollen (backend + laufende optionale)
+compose_services() {
+  local services="backend"
+  if docker compose ps --services --status running 2>/dev/null | grep -q "^mcp_server$"; then
+    services="$services mcp_server"
+  fi
+  echo "$services"
+}
+
 log "Update-Watcher gestartet (Projekt: $PROJECT_DIR)"
 
 while true; do
@@ -30,7 +39,9 @@ while true; do
     cd "$PROJECT_DIR"
     _RESTART_BUILD=$(git rev-list --count HEAD)
     echo "$_RESTART_BUILD" > "$PROJECT_DIR/update_trigger/build_nr"
-    if BUILD_NR=$_RESTART_BUILD docker compose up -d backend >> "$LOG_FILE" 2>&1; then
+    _RESTART_SERVICES=$(compose_services)
+    log "Neustart: $_RESTART_SERVICES"
+    if BUILD_NR=$_RESTART_BUILD docker compose --profile mcp up -d $_RESTART_SERVICES >> "$LOG_FILE" 2>&1; then
       log "Neustart abgeschlossen"
       echo "restarted" > "$STATUS_FILE"
     else
@@ -63,8 +74,9 @@ while true; do
     else
       BUILD_NR=$(git rev-list --count HEAD)
       echo "$BUILD_NR" > "$PROJECT_DIR/update_trigger/build_nr"
-      log "Build-Nr: $BUILD_NR — starte docker compose up..."
-      if BUILD_NR=$BUILD_NR docker compose up -d --build --force-recreate backend >> "$LOG_FILE" 2>&1; then
+      UPDATE_SERVICES=$(compose_services)
+      log "Build-Nr: $BUILD_NR — baue: $UPDATE_SERVICES"
+      if BUILD_NR=$BUILD_NR docker compose --profile mcp up -d --build --force-recreate $UPDATE_SERVICES >> "$LOG_FILE" 2>&1; then
         log "Update abgeschlossen (Build $BUILD_NR)"
         echo "updated" > "$STATUS_FILE"
       else
