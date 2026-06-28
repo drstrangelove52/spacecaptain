@@ -16,6 +16,7 @@ from app.routers import categories as categories_router
 from app.routers import locations as locations_router
 from app.routers import automations as automations_router
 from app.routers import update as update_router
+from app.routers import mcp_api as mcp_router
 from app.routers import tailscale as tailscale_router
 from app.routers import data_management as data_management_router
 from app.services.session import idle_watcher, plug_watcher, queue_watcher
@@ -117,5 +118,6 @@ app.include_router(locations_router.router,     prefix="/api")
 app.include_router(plugs_router.router,         prefix="/api")
 app.include_router(automations_router.router,   prefix="/api")
 app.include_router(update_router.router,        prefix="/api")
+app.include_router(mcp_router.router,           prefix="/api")
 app.include_router(tailscale_router.router,     prefix="/api")
 app.include_router(data_management_router.router, prefix="/api")

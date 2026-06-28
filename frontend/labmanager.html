@@ -677,6 +677,7 @@
           <div class="help-nav-item" onclick="selectSettingsCat('notfall')"><span class="help-nav-icon">🚨</span><span class="help-nav-label">Notfall-Alarm</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('backup')"><span class="help-nav-icon">💾</span><span class="help-nav-label">Auto-Backup</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('tailscale')"><span class="help-nav-icon">🔒</span><span class="help-nav-label">Fernzugriff</span></div>
+          <div class="help-nav-item" onclick="selectSettingsCat('mcp')"><span class="help-nav-icon">🤖</span><span class="help-nav-label">Claude MCP</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('update')" id="nav-settings-update"><span class="help-nav-icon">🔄</span><span class="help-nav-label">Update</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('datenverwaltung')"><span class="help-nav-icon">🗑</span><span class="help-nav-label">Datenverwaltung</span></div>
           <div style="padding:12px 16px;margin-top:auto;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--surface)">
@@ -1001,6 +1002,57 @@
 sudo ./install-service.sh</pre>
                 Das Skript erkennt den Installationspfad automatisch, passt die Service-Datei an und startet den Watcher-Service.<br>
                 Log: <code style="background:var(--bg);padding:1px 4px;border-radius:3px">tail -f update_trigger/update.log</code>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- MCP-SERVER -->
+          <div class="help-panel" id="settings-panel-mcp">
+            <div class="help-panel-header"><span class="help-panel-icon">🤖</span><span class="help-panel-title">Claude MCP-Server</span></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
+
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 18px;font-size:13px;color:var(--text-mid);line-height:1.7">
+                Verbindet Claude Code direkt mit SpaceCaptain — Raum steuern, Maschinen abfragen, Gäste freischalten, Log lesen, ohne Browser.<br>
+                <span style="font-size:12px;color:var(--text-dim)">Erfordert Docker-Profil <code style="font-family:var(--mono)">mcp</code> und Einträge in <code style="font-family:var(--mono)">.env</code>.</span>
+              </div>
+
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">MCP-Server aktivieren</label>
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+                    <input type="checkbox" id="cfg-mcp-enabled" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">
+                    <span style="font-size:13px;color:var(--text-dim)">Claude-Zugriff erlauben</span>
+                  </label>
+                </div>
+
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">API-Token</label>
+                  <div style="display:flex;gap:8px;margin-top:4px">
+                    <input type="text" id="cfg-mcp-token" class="form-input" readonly
+                      style="font-family:var(--mono);font-size:11px;flex:1;background:var(--surface2);cursor:default"
+                      placeholder="wird automatisch generiert">
+                    <button class="btn btn-sm btn-ghost" onclick="copyMcpToken()" title="Kopieren">⎘</button>
+                    <button class="btn btn-sm btn-ghost" onclick="regenerateMcpToken()" title="Neu generieren">⟳</button>
+                  </div>
+                  <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Diesen Token in Claude Code eintragen (siehe Anleitung unten)</div>
+                </div>
+
+              </div>
+
+              <!-- Einrichtungsanleitung -->
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:16px 18px;font-size:12px;line-height:1.8;color:var(--text-mid)">
+                <div style="font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Einrichtung (einmalig)</div>
+                <strong style="color:var(--text)">1. .env ergänzen</strong> (auf dem Server):
+                <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin:8px 0;font-size:11px;overflow-x:auto;color:var(--text)" id="mcp-env-hint">MCP_API_TOKEN=&lt;Token von oben&gt;
+MCP_BACKEND_KEY=&lt;beliebiger langer Zufalls-String&gt;</pre>
+                <strong style="color:var(--text)">2. MCP-Container starten:</strong>
+                <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin:8px 0;font-size:11px;overflow-x:auto;color:var(--text)">docker compose --profile mcp up -d mcp_server</pre>
+                <strong style="color:var(--text)">3. In Claude Code eintragen:</strong>
+                <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin:8px 0;font-size:11px;overflow-x:auto;color:var(--text)" id="mcp-claude-cmd">claude mcp add spacecaptain --transport sse \
+  --url https://&lt;deine-domain&gt;/mcp/sse \
+  --header "Authorization: Bearer &lt;Token von oben&gt;"</pre>
               </div>
 
             </div>
@@ -4758,6 +4810,8 @@ async function loadSettings() {
   document.getElementById('cfg-auto-backup-keep').value = s.auto_backup_keep ?? 30;
   document.getElementById('cfg-guest-ttl-hours').value = s.guest_token_ttl_hours ?? 8;
   document.getElementById('cfg-space-name').value = s.space_name ?? '';
+  document.getElementById('cfg-mcp-enabled').checked = !!s.mcp_enabled;
+  document.getElementById('cfg-mcp-token').value = s.mcp_api_token || '';
   document.getElementById('cfg-ts-enabled').checked = !!s.ts_enabled;
   document.getElementById('cfg-ts-hostname').value = s.ts_hostname || 'spacecaptain';
   document.getElementById('cfg-ts-authkey').value = '';  // Key nie zurück in die UI
@@ -4802,12 +4856,27 @@ async function saveSettings() {
     auto_backup_keep:          parseInt(document.getElementById('cfg-auto-backup-keep').value) || 30,
     space_name:                document.getElementById('cfg-space-name').value.trim(),
     guest_token_ttl_hours:     parseInt(document.getElementById('cfg-guest-ttl-hours').value) || 8,
+    mcp_enabled:               document.getElementById('cfg-mcp-enabled').checked,
     ts_enabled:                document.getElementById('cfg-ts-enabled').checked,
     ts_hostname:               document.getElementById('cfg-ts-hostname').value.trim() || 'spacecaptain',
     ts_authkey:                document.getElementById('cfg-ts-authkey').value.trim() || null,
   };
   const res = await PATCH('/settings', payload);
   if (res) { await loadSettings(); showToast('Einstellungen gespeichert', 'success'); }
+}
+
+function copyMcpToken() {
+  const val = document.getElementById('cfg-mcp-token').value;
+  if (!val) return;
+  navigator.clipboard.writeText(val).then(() => showToast('Token kopiert', 'success'));
+}
+
+async function regenerateMcpToken() {
+  if (!confirm('Neuen MCP-Token generieren? Der alte Token wird ungültig.')) return;
+  const s = await POST('/settings/mcp/regenerate-token');
+  if (!s) return;
+  document.getElementById('cfg-mcp-token').value = s.mcp_api_token || '';
+  showToast('Neuer Token generiert', 'success');
 }
 
 function _updateTsHostnamePreview() {

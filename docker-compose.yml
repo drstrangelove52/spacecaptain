@@ -76,6 +76,23 @@ services:
     networks:
       - spacecaptain_net
 
+  mcp_server:
+    build:
+      context: ./mcp_server
+      dockerfile: Dockerfile
+    container_name: spacecaptain_mcp
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:8000
+      MCP_API_TOKEN: ${MCP_API_TOKEN:-}
+      MCP_BACKEND_KEY: ${MCP_BACKEND_KEY:-}
+    depends_on:
+      - backend
+    networks:
+      - spacecaptain_net
+    profiles:
+      - mcp
+
   tailscale:
     image: tailscale/tailscale:latest
     container_name: spacecaptain_tailscale

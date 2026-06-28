@@ -508,6 +508,23 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "system_settings", "ts_hostname",
                                      "VARCHAR(100) NOT NULL DEFAULT 'spacecaptain'")
 
+        # ── v1.37: MCP-Server ─────────────────────────────────────────────────
+        await _add_column_if_missing(conn, "system_settings", "mcp_enabled",
+                                     "BOOLEAN NOT NULL DEFAULT FALSE")
+        await _add_column_if_missing(conn, "system_settings", "mcp_api_token",
+                                     "VARCHAR(64) DEFAULT NULL")
+        # Token beim ersten Start automatisch generieren
+        res = await conn.execute(text(
+            "SELECT mcp_api_token FROM system_settings WHERE id = 1"
+        ))
+        row = res.fetchone()
+        if row and row[0] is None:
+            token = secrets.token_urlsafe(32)
+            await conn.execute(text(
+                "UPDATE system_settings SET mcp_api_token = :t WHERE id = 1"
+            ), {"t": token})
+            log.info("Migration: mcp_api_token generiert")
+
     log.info("Migrationen abgeschlossen")
 
 

@@ -49,6 +49,8 @@ class SettingsOut(BaseModel):
     ts_enabled: bool = False
     ts_authkey: Optional[str] = None
     ts_hostname: str = "spacecaptain"
+    mcp_enabled: bool = False
+    mcp_api_token: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -88,6 +90,7 @@ class SettingsUpdate(BaseModel):
     ts_enabled: Optional[bool] = None
     ts_authkey: Optional[str] = None
     ts_hostname: Optional[str] = None
+    mcp_enabled: Optional[bool] = None
 
 
 @router.get("/public")
@@ -188,6 +191,8 @@ async def update_settings(
         row.ts_authkey = payload.ts_authkey or None
     if payload.ts_hostname is not None:
         row.ts_hostname = payload.ts_hostname.strip() or "spacecaptain"
+    if payload.mcp_enabled is not None:
+        row.mcp_enabled = payload.mcp_enabled
     await db.commit()
     await db.refresh(row)
     await activity_log(db, LogType.settings_changed,
@@ -209,6 +214,20 @@ async def set_room_status(
     else:
         await close_room(db, user_id=current_user.id)
     return {"room_open": open_val}
+
+
+@router.post("/mcp/regenerate-token", response_model=SettingsOut)
+async def regenerate_mcp_token(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Generiert einen neuen MCP-API-Token und gibt die aktuellen Settings zurück."""
+    import secrets
+    row = await get_system_settings(db)
+    row.mcp_api_token = secrets.token_urlsafe(32)
+    await db.commit()
+    await db.refresh(row)
+    return row
 
 
 @router.get("/room")

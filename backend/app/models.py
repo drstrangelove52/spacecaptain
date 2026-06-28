@@ -257,6 +257,8 @@ class SystemSettings(Base):
     ts_enabled:                 Mapped[bool]           = mapped_column(Boolean, default=False)
     ts_authkey:                 Mapped[Optional[str]]  = mapped_column(String(255), default=None)
     ts_hostname:                Mapped[str]            = mapped_column(String(100), default="spacecaptain")
+    mcp_enabled:                Mapped[bool]           = mapped_column(Boolean, default=False)
+    mcp_api_token:              Mapped[Optional[str]]  = mapped_column(String(64), default=None)
 
 
 class DeviceSchedule(Base):
