@@ -1028,6 +1028,14 @@ sudo ./install-service.sh</pre>
                 </div>
 
                 <div class="form-group" style="margin:0">
+                  <label class="form-label">MCP-Benutzer</label>
+                  <select id="cfg-mcp-user-id" class="form-input" style="margin-top:4px">
+                    <option value="0">— kein Benutzer —</option>
+                  </select>
+                  <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Wird als «Ausgeführt von» in Wartungseinträgen und Logs angezeigt</div>
+                </div>
+
+                <div class="form-group" style="margin:0">
                   <label class="form-label">API-Token</label>
                   <div style="display:flex;gap:8px;margin-top:4px">
                     <input type="text" id="cfg-mcp-token" class="form-input" readonly
@@ -4822,6 +4830,10 @@ async function loadSettings() {
   document.getElementById('cfg-mcp-enabled').checked = !!s.mcp_enabled;
   document.getElementById('cfg-mcp-token').value = s.mcp_api_token || '';
   _updateMcpHints(s.mcp_api_token || '');
+  const mcpUserSel = document.getElementById('cfg-mcp-user-id');
+  mcpUserSel.innerHTML = '<option value="0">— kein Benutzer —</option>' +
+    (cache.users || []).map(u => `<option value="${u.id}"${u.id === s.mcp_user_id ? ' selected' : ''}>${u.name}</option>`).join('');
+
   document.getElementById('cfg-ts-enabled').checked = !!s.ts_enabled;
   document.getElementById('cfg-ts-hostname').value = s.ts_hostname || 'spacecaptain';
   document.getElementById('cfg-ts-authkey').value = '';  // Key nie zurück in die UI
@@ -4867,6 +4879,7 @@ async function saveSettings() {
     space_name:                document.getElementById('cfg-space-name').value.trim(),
     guest_token_ttl_hours:     parseInt(document.getElementById('cfg-guest-ttl-hours').value) || 8,
     mcp_enabled:               document.getElementById('cfg-mcp-enabled').checked,
+    mcp_user_id:               parseInt(document.getElementById('cfg-mcp-user-id').value) || 0,
     ts_enabled:                document.getElementById('cfg-ts-enabled').checked,
     ts_hostname:               document.getElementById('cfg-ts-hostname').value.trim() || 'spacecaptain',
     ts_authkey:                document.getElementById('cfg-ts-authkey').value.trim() || null,

@@ -51,6 +51,7 @@ class SettingsOut(BaseModel):
     ts_hostname: str = "spacecaptain"
     mcp_enabled: bool = False
     mcp_api_token: Optional[str] = None
+    mcp_user_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -91,6 +92,7 @@ class SettingsUpdate(BaseModel):
     ts_authkey: Optional[str] = None
     ts_hostname: Optional[str] = None
     mcp_enabled: Optional[bool] = None
+    mcp_user_id: Optional[int] = None
 
 
 @router.get("/public")
@@ -193,6 +195,8 @@ async def update_settings(
         row.ts_hostname = payload.ts_hostname.strip() or "spacecaptain"
     if payload.mcp_enabled is not None:
         row.mcp_enabled = payload.mcp_enabled
+    if payload.mcp_user_id is not None:
+        row.mcp_user_id = payload.mcp_user_id if payload.mcp_user_id > 0 else None
     await db.commit()
     await db.refresh(row)
     await activity_log(db, LogType.settings_changed,

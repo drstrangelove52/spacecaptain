@@ -513,6 +513,10 @@ async def run_migrations(engine: AsyncEngine) -> None:
                                      "BOOLEAN NOT NULL DEFAULT FALSE")
         await _add_column_if_missing(conn, "system_settings", "mcp_api_token",
                                      "VARCHAR(64) DEFAULT NULL")
+        # ── v1.38: MCP-Benutzer ───────────────────────────────────────────────
+        await _add_column_if_missing(conn, "system_settings", "mcp_user_id",
+                                     "INT NULL DEFAULT NULL")
+
         # Token beim ersten Start automatisch generieren
         res = await conn.execute(text(
             "SELECT mcp_api_token FROM system_settings WHERE id = 1"

@@ -262,11 +262,12 @@ async def mcp_log_maintenance(payload: dict, db: AsyncSession = Depends(get_db),
         raise HTTPException(404, "Maschine nicht gefunden")
 
     record_name = iv.name if iv else name
+    sys = await get_system_settings(db)
     record = MaintenanceRecord(
         interval_id=iv.id if iv else None,
         name=record_name,
         machine_id=machine.id,
-        performed_by=None,
+        performed_by=sys.mcp_user_id,
         performed_at=datetime.utcnow(),
         hours_at_execution=machine.total_hours,
         notes=notes,

@@ -259,6 +259,7 @@ class SystemSettings(Base):
     ts_hostname:                Mapped[str]            = mapped_column(String(100), default="spacecaptain")
     mcp_enabled:                Mapped[bool]           = mapped_column(Boolean, default=False)
     mcp_api_token:              Mapped[Optional[str]]  = mapped_column(String(64), default=None)
+    mcp_user_id:                Mapped[Optional[int]]  = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), default=None)
 
 
 class DeviceSchedule(Base):

@@ -264,7 +264,10 @@ CREATE TABLE IF NOT EXISTS system_settings (
     guest_token_ttl_hours     INT          NOT NULL DEFAULT 8,
     ts_enabled                BOOLEAN      NOT NULL DEFAULT FALSE,
     ts_authkey                VARCHAR(255) DEFAULT NULL,
-    ts_hostname               VARCHAR(100) NOT NULL DEFAULT 'spacecaptain'
+    ts_hostname               VARCHAR(100) NOT NULL DEFAULT 'spacecaptain',
+    mcp_enabled               BOOLEAN      NOT NULL DEFAULT FALSE,
+    mcp_api_token             VARCHAR(64)  DEFAULT NULL,
+    mcp_user_id               INT          NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT IGNORE INTO system_settings (id) VALUES (1);
