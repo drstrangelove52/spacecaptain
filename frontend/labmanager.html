@@ -1074,27 +1074,70 @@ sudo ./install-service.sh</pre>
               <!-- Verfügbare Tools -->
               <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:16px 18px">
                 <div style="font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:12px">Verfügbare Tools</div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px 20px;font-size:12px">
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">get_activity_log</code><span style="color:var(--text-dim)">Aktivitätslog (bis 100 Einträge)</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">get_status</code><span style="color:var(--text-dim)">Raum, Alarm, fällige Wartung</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_guest_permissions</code><span style="color:var(--text-dim)">Berechtigungen eines Gastes</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_guests</code><span style="color:var(--text-dim)">Alle Gäste</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_machines</code><span style="color:var(--text-dim)">Maschinen und Betriebsstatus</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_maintenance_due</code><span style="color:var(--text-dim)">Fällige Wartungsaufgaben</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_notify_topics</code><span style="color:var(--text-dim)">ntfy Push-Topics</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_pending_guests</code><span style="color:var(--text-dim)">Gäste auf Freischaltung</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">log_maintenance</code><span style="color:var(--text-dim)">Wartung erfassen</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">send_notification</code><span style="color:var(--text-dim)">Push-Nachricht senden</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_emergency</code><span style="color:var(--text-dim)">Notfall-Alarm ein-/ausschalten</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_guest_blocked</code><span style="color:var(--text-dim)">Gast sperren / entsperren</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_machine_status</code><span style="color:var(--text-dim)">Maschine ein-/ausschalten</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_permission</code><span style="color:var(--text-dim)">Berechtigung vergeben / entziehen</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_room</code><span style="color:var(--text-dim)">Raum öffnen / schliessen</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">trigger_backup</code><span style="color:var(--text-dim)">Manuelles Backup auslösen</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">trigger_restart_all</code><span style="color:var(--text-dim)">Alle Container neu starten</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">trigger_restart_backend</code><span style="color:var(--text-dim)">Backend neu starten</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">trigger_update</code><span style="color:var(--text-dim)">System-Update auslösen</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">approve_guest</code><span style="color:var(--text-dim)">Gast freischalten</span></div>
+                <div style="display:flex;flex-direction:column;gap:14px;font-size:12px">
+
+                  <div>
+                    <div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px">get_</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 20px">
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">get_activity_log</code><span style="color:var(--text-dim)">Aktivitätslog (bis 100 Einträge)</span></div>
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">get_status</code><span style="color:var(--text-dim)">Raum, Alarm, fällige Wartung</span></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px">list_</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 20px">
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_guest_permissions</code><span style="color:var(--text-dim)">Berechtigungen eines Gastes</span></div>
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_guests</code><span style="color:var(--text-dim)">Alle Gäste</span></div>
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_machines</code><span style="color:var(--text-dim)">Maschinen und Betriebsstatus</span></div>
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_maintenance_due</code><span style="color:var(--text-dim)">Fällige Wartungsaufgaben</span></div>
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_notify_topics</code><span style="color:var(--text-dim)">ntfy Push-Topics</span></div>
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_pending_guests</code><span style="color:var(--text-dim)">Gäste auf Freischaltung</span></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px">log_</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 20px">
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">log_maintenance</code><span style="color:var(--text-dim)">Wartung erfassen</span></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px">send_</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 20px">
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">send_notification</code><span style="color:var(--text-dim)">Push-Nachricht senden</span></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px">set_</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 20px">
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_emergency</code><span style="color:var(--text-dim)">Notfall-Alarm ein-/ausschalten</span></div>
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_guest_blocked</code><span style="color:var(--text-dim)">Gast sperren / entsperren</span></div>
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_machine_status</code><span style="color:var(--text-dim)">Maschine ein-/ausschalten</span></div>
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_permission</code><span style="color:var(--text-dim)">Berechtigung vergeben / entziehen</span></div>
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_room</code><span style="color:var(--text-dim)">Raum öffnen / schliessen</span></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px">trigger_</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 20px">
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">trigger_backup</code><span style="color:var(--text-dim)">Manuelles Backup auslösen</span></div>
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">trigger_restart_all</code><span style="color:var(--text-dim)">Alle Container neu starten</span></div>
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">trigger_restart_backend</code><span style="color:var(--text-dim)">Backend neu starten</span></div>
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">trigger_update</code><span style="color:var(--text-dim)">System-Update auslösen</span></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px">sonstige</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 20px">
+                      <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">approve_guest</code><span style="color:var(--text-dim)">Gast freischalten</span></div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
 
