@@ -185,8 +185,41 @@ async def mcp_trigger_update(db: AsyncSession = Depends(get_db), _=Depends(requi
     trigger_file = Path("/app/update_trigger/trigger")
     if not trigger_file.parent.exists():
         raise HTTPException(503, "Update-Trigger-Verzeichnis nicht verfügbar")
+    if trigger_file.exists() or Path("/app/update_trigger/restart").exists() or Path("/app/update_trigger/restart_all").exists():
+        raise HTTPException(409, "Vorgang läuft bereits")
     trigger_file.write_text(datetime.now().isoformat())
     return {"ok": True, "message": "Update ausgelöst"}
+
+
+@router.post("/restart-backend")
+async def mcp_restart_backend(_=Depends(require_mcp)):
+    from pathlib import Path
+    trigger_dir = Path("/app/update_trigger")
+    if not trigger_dir.exists():
+        raise HTTPException(503, "Update-Trigger-Verzeichnis nicht verfügbar")
+    if (trigger_dir / "trigger").exists() or (trigger_dir / "restart").exists() or (trigger_dir / "restart_all").exists():
+        raise HTTPException(409, "Vorgang läuft bereits")
+    (trigger_dir / "restart").write_text(datetime.now().isoformat())
+    return {"ok": True, "message": "Backend-Neustart ausgelöst"}
+
+
+@router.post("/restart-all")
+async def mcp_restart_all(_=Depends(require_mcp)):
+    from pathlib import Path
+    trigger_dir = Path("/app/update_trigger")
+    if not trigger_dir.exists():
+        raise HTTPException(503, "Update-Trigger-Verzeichnis nicht verfügbar")
+    if (trigger_dir / "trigger").exists() or (trigger_dir / "restart").exists() or (trigger_dir / "restart_all").exists():
+        raise HTTPException(409, "Vorgang läuft bereits")
+    (trigger_dir / "restart_all").write_text(datetime.now().isoformat())
+    return {"ok": True, "message": "Neustart aller Container ausgelöst"}
+
+
+@router.post("/backup")
+async def mcp_trigger_backup(db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
+    from app.services.backup_service import _create_backup
+    path = await _create_backup(db)
+    return {"ok": True, "message": f"Backup erstellt: {path.name}"}
 
 
 # ── Wartung ────────────────────────────────────────────────────────────────────

@@ -95,6 +95,24 @@ async def trigger_update() -> dict:
     return await _post("/update")
 
 
+@mcp.tool()
+async def trigger_restart_backend() -> dict:
+    """Backend (+ MCP-Server falls aktiv) ohne Rebuild neu starten."""
+    return await _post("/restart-backend")
+
+
+@mcp.tool()
+async def trigger_restart_all() -> dict:
+    """Alle Container (nginx, db, backend, MCP) ohne Rebuild neu starten."""
+    return await _post("/restart-all")
+
+
+@mcp.tool()
+async def trigger_backup() -> dict:
+    """Manuelles Backup der Datenbank auslösen."""
+    return await _post("/backup")
+
+
 # ── Wartung ────────────────────────────────────────────────────────────────────
 
 @mcp.tool()
