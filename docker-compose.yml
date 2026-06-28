@@ -38,6 +38,7 @@ services:
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost}
       NFC_WRITER_URL: ${NFC_WRITER_URL:-}
+      MCP_BACKEND_KEY: ${MCP_BACKEND_KEY:-}
       BUILD_NR: ${BUILD_NR:-}
     depends_on:
       db:

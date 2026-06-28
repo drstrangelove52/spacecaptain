@@ -1,11 +1,26 @@
 """SpaceCaptain MCP Server — gibt Claude Zugriff auf FabLab-Funktionen."""
 import os
 import httpx
+import uvicorn
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 BACKEND_URL     = os.environ.get("BACKEND_URL", "http://backend:8000")
 MCP_BACKEND_KEY = os.environ.get("MCP_BACKEND_KEY", "")
+
+
+class BearerAuthMiddleware(BaseHTTPMiddleware):
+    """Prüft Authorization: Bearer <MCP_BACKEND_KEY> auf allen Requests."""
+    async def dispatch(self, request, call_next):
+        if not MCP_BACKEND_KEY:
+            return Response("MCP_BACKEND_KEY nicht konfiguriert", status_code=503)
+        auth = request.headers.get("Authorization", "")
+        if not auth.startswith("Bearer ") or auth[7:] != MCP_BACKEND_KEY:
+            return Response("Unauthorized", status_code=401)
+        return await call_next(request)
+
 
 mcp = FastMCP(
     "SpaceCaptain",
@@ -77,5 +92,6 @@ async def trigger_update() -> dict:
 
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(mcp.sse_app(), host="0.0.0.0", port=8080)
+    app = mcp.sse_app()
+    app.add_middleware(BearerAuthMiddleware)
+    uvicorn.run(app, host="0.0.0.0", port=8080)
