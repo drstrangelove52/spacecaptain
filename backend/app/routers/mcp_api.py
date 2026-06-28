@@ -1,5 +1,4 @@
-"""Interne API-Endpunkte für den MCP-Server. Auth via X-MCP-Key Header."""
-import os
+"""Interne API-Endpunkte für den MCP-Server. Auth via X-MCP-Key Header (DB-Token)."""
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
@@ -13,8 +12,6 @@ from app.config import APP_TIMEZONE
 
 router = APIRouter(prefix="/mcp", tags=["mcp"])
 
-_MCP_BACKEND_KEY = os.environ.get("MCP_BACKEND_KEY", "")
-
 
 async def require_mcp(
     x_mcp_key: str | None = Header(None),
@@ -23,8 +20,17 @@ async def require_mcp(
     sys = await get_system_settings(db)
     if not sys.mcp_enabled:
         raise HTTPException(503, "MCP nicht aktiviert")
-    if not _MCP_BACKEND_KEY or x_mcp_key != _MCP_BACKEND_KEY:
+    if not sys.mcp_api_token or x_mcp_key != sys.mcp_api_token:
         raise HTTPException(403, "Ungültiger MCP-Key")
+
+
+@router.get("/bootstrap-token")
+async def mcp_bootstrap_token(db: AsyncSession = Depends(get_db)):
+    """Intern: MCP-Server lädt Token beim Start. Nur aus Docker-internem Netz erreichbar."""
+    sys = await get_system_settings(db)
+    if not sys.mcp_enabled or not sys.mcp_api_token:
+        raise HTTPException(503, "MCP nicht aktiv oder kein Token konfiguriert")
+    return {"token": sys.mcp_api_token}
 
 
 @router.get("/status")

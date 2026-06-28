@@ -22,9 +22,6 @@ class Settings(BaseSettings):
     # NFC-Schreibgerät (ESP32)
     nfc_writer_url: str = ""  # z.B. http://nfc-writer.local oder http://192.168.1.50 — leer = deaktiviert
 
-    # MCP-Server (interner Service-Key, nie nach aussen exponiert)
-    mcp_backend_key: str = ""
-
     @property
     def database_url(self) -> str:
         return (

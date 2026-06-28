@@ -1,5 +1,6 @@
 """SpaceCaptain MCP Server — gibt Claude Zugriff auf FabLab-Funktionen."""
 import os
+import asyncio
 import httpx
 import uvicorn
 from mcp.server.fastmcp import FastMCP
@@ -7,17 +8,17 @@ from mcp.server.transport_security import TransportSecuritySettings
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-BACKEND_URL     = os.environ.get("BACKEND_URL", "http://backend:8000")
-MCP_BACKEND_KEY = os.environ.get("MCP_BACKEND_KEY", "")
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://backend:8000")
+
+# Wird beim Start per Bootstrap-Call vom Backend geladen
+_token: str = ""
 
 
 class BearerAuthMiddleware(BaseHTTPMiddleware):
-    """Prüft Authorization: Bearer <MCP_BACKEND_KEY> auf allen Requests."""
+    """Prüft Authorization: Bearer gegen den vom Backend geladenen Token."""
     async def dispatch(self, request, call_next):
-        if not MCP_BACKEND_KEY:
-            return Response("MCP_BACKEND_KEY nicht konfiguriert", status_code=503)
         auth = request.headers.get("Authorization", "")
-        if not auth.startswith("Bearer ") or auth[7:] != MCP_BACKEND_KEY:
+        if not _token or not auth.startswith("Bearer ") or auth[7:] != _token:
             return Response("Unauthorized", status_code=401)
         return await call_next(request)
 
@@ -30,7 +31,7 @@ mcp = FastMCP(
 
 
 def _h() -> dict:
-    return {"X-MCP-Key": MCP_BACKEND_KEY}
+    return {"X-MCP-Key": _token}
 
 
 async def _get(path: str):
@@ -91,7 +92,26 @@ async def trigger_update() -> dict:
     return await _post("/update")
 
 
+async def _bootstrap() -> None:
+    """Token beim Start vom Backend laden — wartet bis Backend bereit ist."""
+    global _token
+    for attempt in range(20):
+        try:
+            async with httpx.AsyncClient(timeout=5) as c:
+                r = await c.get(f"{BACKEND_URL}/api/mcp/bootstrap-token")
+                if r.status_code == 200:
+                    _token = r.json()["token"]
+                    print(f"MCP: Token geladen ({_token[:8]}...)", flush=True)
+                    return
+                print(f"MCP Bootstrap: HTTP {r.status_code}, retry in 3s...", flush=True)
+        except Exception as e:
+            print(f"MCP Bootstrap attempt {attempt + 1}/20: {e}, retry in 3s...", flush=True)
+        await asyncio.sleep(3)
+    raise RuntimeError("MCP: Token-Bootstrap fehlgeschlagen — Backend nicht erreichbar oder MCP deaktiviert")
+
+
 if __name__ == "__main__":
+    asyncio.run(_bootstrap())
     app = mcp.sse_app()
     app.add_middleware(BearerAuthMiddleware)
     uvicorn.run(app, host="0.0.0.0", port=8080)
