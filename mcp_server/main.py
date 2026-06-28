@@ -14,15 +14,24 @@ _token: str = ""
 
 
 def _make_auth_app(inner):
-    """Reines ASGI-Middleware — prüft Bearer-Token ohne Response-Body zu puffern (SSE-kompatibel)."""
+    """Reines ASGI-Middleware — prüft Bearer-Token auf GET /sse.
+
+    POST /messages/ wird nicht geprüft: Claude Code sendet den Authorization-Header
+    nur auf dem initialen SSE-GET, nicht auf Folge-POSTs. Die Session-ID ist
+    implizite Auth (nur nach erfolgreichem GET /sse erhältlich). Eigentliche
+    Sicherheit liegt beim Backend-Check (X-MCP-Key).
+    """
     async def auth_app(scope, receive, send):
         if scope["type"] == "http":
-            headers = {k.lower(): v for k, v in scope.get("headers", [])}
-            auth = headers.get(b"authorization", b"").decode()
-            if not _token or not auth.startswith("Bearer ") or auth[7:] != _token:
-                resp = Response("Unauthorized", status_code=401)
-                await resp(scope, receive, send)
-                return
+            method = scope.get("method", "")
+            path = scope.get("path", "")
+            if method != "POST" or not path.startswith("/messages"):
+                headers = {k.lower(): v for k, v in scope.get("headers", [])}
+                auth = headers.get(b"authorization", b"").decode()
+                if not _token or not auth.startswith("Bearer ") or auth[7:] != _token:
+                    resp = Response("Unauthorized", status_code=401)
+                    await resp(scope, receive, send)
+                    return
         await inner(scope, receive, send)
     return auth_app
 
