@@ -242,7 +242,7 @@ async def mcp_maintenance_due(db: AsyncSession = Depends(get_db), _=Depends(requ
 async def mcp_log_maintenance(payload: dict, db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
     """Wartung erfassen. interval_id oder (machine_id + name) erforderlich."""
     from app.models import LogType
-    from app.services import log as log_svc
+    from app.services import logger as log_svc
     interval_id = payload.get("interval_id")
     machine_id  = payload.get("machine_id")
     notes       = payload.get("notes", "")
@@ -354,7 +354,7 @@ async def mcp_set_permission(
 ):
     """Maschinenberechtigung vergeben (grant=True) oder entziehen (grant=False)."""
     from app.models import LogType
-    from app.services import log as log_svc
+    from app.services import logger as log_svc
     guest   = (await db.execute(select(Guest).where(Guest.id == guest_id))).scalar_one_or_none()
     machine = await db.get(Machine, machine_id)
     if not guest:
