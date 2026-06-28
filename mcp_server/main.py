@@ -51,35 +51,7 @@ async def _patch(path: str, body: dict = {}):
         return r.json()
 
 
-@mcp.tool()
-async def get_status() -> dict:
-    """Aktueller SpaceCaptain-Status: Raum offen/zu, Notfall-Alarm, ausstehende Gast-Anmeldungen, Wartung fällig."""
-    return await _get("/status")
-
-
-@mcp.tool()
-async def list_machines() -> list:
-    """Alle Maschinen mit aktuellem Betriebsstatus (wer nutzt gerade welche Maschine)."""
-    return await _get("/machines")
-
-
-@mcp.tool()
-async def set_room(open: bool) -> dict:
-    """Raum öffnen (open=True) oder schliessen (open=False)."""
-    return await _post("/room", {"open": open})
-
-
-@mcp.tool()
-async def list_pending_guests() -> list:
-    """Gäste, die auf Freischaltung warten."""
-    return await _get("/guests/pending")
-
-
-@mcp.tool()
-async def approve_guest(guest_id: int) -> dict:
-    """Gast-Registrierung freischalten."""
-    return await _post(f"/guests/{guest_id}/approve")
-
+# ── get_ ───────────────────────────────────────────────────────────────────────
 
 @mcp.tool()
 async def get_activity_log(limit: int = 20) -> list:
@@ -90,36 +62,50 @@ async def get_activity_log(limit: int = 20) -> list:
 
 
 @mcp.tool()
-async def trigger_update() -> dict:
-    """System-Update auslösen (git pull + Docker rebuild)."""
-    return await _post("/update")
+async def get_status() -> dict:
+    """Aktueller SpaceCaptain-Status: Raum offen/zu, Notfall-Alarm, ausstehende Gast-Anmeldungen, Wartung fällig."""
+    return await _get("/status")
+
+
+# ── list_ ──────────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def list_guest_permissions(guest_id: int) -> dict:
+    """Maschinenberechtigungen eines Gastes anzeigen."""
+    return await _get(f"/guests/{guest_id}/permissions")
 
 
 @mcp.tool()
-async def trigger_restart_backend() -> dict:
-    """Backend (+ MCP-Server falls aktiv) ohne Rebuild neu starten."""
-    return await _post("/restart-backend")
+async def list_guests() -> list:
+    """Alle Gäste mit Status (aktiv, gesperrt, ausstehend)."""
+    return await _get("/guests")
 
 
 @mcp.tool()
-async def trigger_restart_all() -> dict:
-    """Alle Container (nginx, db, backend, MCP) ohne Rebuild neu starten."""
-    return await _post("/restart-all")
+async def list_machines() -> list:
+    """Alle Maschinen mit aktuellem Betriebsstatus (wer nutzt gerade welche Maschine)."""
+    return await _get("/machines")
 
-
-@mcp.tool()
-async def trigger_backup() -> dict:
-    """Manuelles Backup der Datenbank auslösen."""
-    return await _post("/backup")
-
-
-# ── Wartung ────────────────────────────────────────────────────────────────────
 
 @mcp.tool()
 async def list_maintenance_due() -> list:
     """Alle fälligen und warnenden Wartungsintervalle mit Maschinennamen und Details."""
     return await _get("/maintenance/due")
 
+
+@mcp.tool()
+async def list_notify_topics() -> list:
+    """Alle konfigurierten ntfy Push-Nachrichten-Topics."""
+    return await _get("/notify/topics")
+
+
+@mcp.tool()
+async def list_pending_guests() -> list:
+    """Gäste, die auf Freischaltung warten."""
+    return await _get("/guests/pending")
+
+
+# ── log_ ───────────────────────────────────────────────────────────────────────
 
 @mcp.tool()
 async def log_maintenance(
@@ -137,55 +123,7 @@ async def log_maintenance(
     })
 
 
-# ── Gäste ──────────────────────────────────────────────────────────────────────
-
-@mcp.tool()
-async def list_guests() -> list:
-    """Alle Gäste mit Status (aktiv, gesperrt, ausstehend)."""
-    return await _get("/guests")
-
-
-@mcp.tool()
-async def set_guest_blocked(guest_id: int, blocked: bool) -> dict:
-    """Gast sperren (blocked=True) oder entsperren (blocked=False)."""
-    return await _patch(f"/guests/{guest_id}/block", {"blocked": blocked})
-
-
-@mcp.tool()
-async def list_guest_permissions(guest_id: int) -> dict:
-    """Maschinenberechtigungen eines Gastes anzeigen."""
-    return await _get(f"/guests/{guest_id}/permissions")
-
-
-@mcp.tool()
-async def set_permission(guest_id: int, machine_id: int, grant: bool) -> dict:
-    """Maschinenberechtigung vergeben (grant=True) oder entziehen (grant=False)."""
-    return await _post(f"/guests/{guest_id}/permissions/{machine_id}", {"grant": grant})
-
-
-# ── Maschinen ──────────────────────────────────────────────────────────────────
-
-@mcp.tool()
-async def set_machine_status(machine_id: int, status: str) -> dict:
-    """Maschinenstatus setzen: 'online', 'offline' oder 'maintenance'."""
-    return await _patch(f"/machines/{machine_id}/status", {"status": status})
-
-
-# ── Notfall ────────────────────────────────────────────────────────────────────
-
-@mcp.tool()
-async def set_emergency(active: bool) -> dict:
-    """Notfall-Alarm auslösen (active=True) oder beenden (active=False)."""
-    return await _post("/emergency", {"active": active})
-
-
-# ── Push-Nachrichten ───────────────────────────────────────────────────────────
-
-@mcp.tool()
-async def list_notify_topics() -> list:
-    """Alle konfigurierten ntfy Push-Nachrichten-Topics."""
-    return await _get("/notify/topics")
-
+# ── send_ ──────────────────────────────────────────────────────────────────────
 
 @mcp.tool()
 async def send_notification(
@@ -203,6 +141,72 @@ async def send_notification(
         "message":   message,
         "priority":  priority,
     })
+
+
+# ── set_ ───────────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def set_emergency(active: bool) -> dict:
+    """Notfall-Alarm auslösen (active=True) oder beenden (active=False)."""
+    return await _post("/emergency", {"active": active})
+
+
+@mcp.tool()
+async def set_guest_blocked(guest_id: int, blocked: bool) -> dict:
+    """Gast sperren (blocked=True) oder entsperren (blocked=False)."""
+    return await _patch(f"/guests/{guest_id}/block", {"blocked": blocked})
+
+
+@mcp.tool()
+async def set_machine_status(machine_id: int, status: str) -> dict:
+    """Maschinenstatus setzen: 'online', 'offline' oder 'maintenance'."""
+    return await _patch(f"/machines/{machine_id}/status", {"status": status})
+
+
+@mcp.tool()
+async def set_permission(guest_id: int, machine_id: int, grant: bool) -> dict:
+    """Maschinenberechtigung vergeben (grant=True) oder entziehen (grant=False)."""
+    return await _post(f"/guests/{guest_id}/permissions/{machine_id}", {"grant": grant})
+
+
+@mcp.tool()
+async def set_room(open: bool) -> dict:
+    """Raum öffnen (open=True) oder schliessen (open=False)."""
+    return await _post("/room", {"open": open})
+
+
+# ── trigger_ ───────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def trigger_backup() -> dict:
+    """Manuelles Backup der Datenbank auslösen."""
+    return await _post("/backup")
+
+
+@mcp.tool()
+async def trigger_restart_all() -> dict:
+    """Alle Container (nginx, db, backend, MCP) ohne Rebuild neu starten."""
+    return await _post("/restart-all")
+
+
+@mcp.tool()
+async def trigger_restart_backend() -> dict:
+    """Backend (+ MCP-Server falls aktiv) ohne Rebuild neu starten."""
+    return await _post("/restart-backend")
+
+
+@mcp.tool()
+async def trigger_update() -> dict:
+    """System-Update auslösen (git pull + Docker rebuild)."""
+    return await _post("/update")
+
+
+# ── approve_ ───────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def approve_guest(guest_id: int) -> dict:
+    """Gast-Registrierung freischalten."""
+    return await _post(f"/guests/{guest_id}/approve")
 
 
 async def _bootstrap() -> None:
