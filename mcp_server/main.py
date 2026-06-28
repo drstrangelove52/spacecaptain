@@ -107,4 +107,4 @@ async def _bootstrap() -> None:
 
 if __name__ == "__main__":
     asyncio.run(_bootstrap())
-    uvicorn.run(mcp.sse_app(), host="0.0.0.0", port=8080)
+    uvicorn.run(mcp.streamable_http_app(), host="0.0.0.0", port=8080)
