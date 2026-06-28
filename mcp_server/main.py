@@ -1,35 +1,31 @@
 """SpaceCaptain MCP Server — gibt Claude Zugriff auf FabLab-Funktionen."""
 import os
 import httpx
-import uvicorn
 from mcp.server.fastmcp import FastMCP
 
 BACKEND_URL     = os.environ.get("BACKEND_URL", "http://backend:8000")
-MCP_API_TOKEN   = os.environ.get("MCP_API_TOKEN", "")
 MCP_BACKEND_KEY = os.environ.get("MCP_BACKEND_KEY", "")
 
 mcp = FastMCP("SpaceCaptain")
 
 
-def _headers() -> dict:
+def _h() -> dict:
     return {"X-MCP-Key": MCP_BACKEND_KEY}
 
 
-async def _get(path: str) -> dict:
+async def _get(path: str):
     async with httpx.AsyncClient(timeout=10) as c:
-        r = await c.get(f"{BACKEND_URL}/api/mcp{path}", headers=_headers())
+        r = await c.get(f"{BACKEND_URL}/api/mcp{path}", headers=_h())
         r.raise_for_status()
         return r.json()
 
 
-async def _post(path: str, body: dict = {}) -> dict:
+async def _post(path: str, body: dict = {}):
     async with httpx.AsyncClient(timeout=10) as c:
-        r = await c.post(f"{BACKEND_URL}/api/mcp{path}", json=body, headers=_headers())
+        r = await c.post(f"{BACKEND_URL}/api/mcp{path}", json=body, headers=_h())
         r.raise_for_status()
         return r.json()
 
-
-# ── Tools ──────────────────────────────────────────────────────────────────────
 
 @mcp.tool()
 async def get_status() -> dict:
@@ -75,28 +71,5 @@ async def trigger_update() -> dict:
     return await _post("/update")
 
 
-# ── Auth-Middleware (ASGI, SSE-kompatibel) ─────────────────────────────────────
-
-class BearerAuthMiddleware:
-    """Prüft Authorization: Bearer <MCP_API_TOKEN> vor jeder Anfrage."""
-
-    def __init__(self, app):
-        self.app = app
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] in ("http", "websocket"):
-            headers = {k.lower(): v for k, v in scope.get("headers", [])}
-            auth = headers.get(b"authorization", b"").decode()
-            expected = f"Bearer {MCP_API_TOKEN}"
-            if not MCP_API_TOKEN or auth != expected:
-                await send({"type": "http.response.start", "status": 401,
-                            "headers": [(b"content-type", b"text/plain")]})
-                await send({"type": "http.response.body", "body": b"Unauthorized"})
-                return
-        await self.app(scope, receive, send)
-
-
 if __name__ == "__main__":
-    sse_app = mcp.sse_app()
-    app = BearerAuthMiddleware(sse_app)
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    mcp.run(transport="sse", host="0.0.0.0", port=8080)
