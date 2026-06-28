@@ -89,8 +89,26 @@ async def get_status() -> dict:
 
 @mcp.tool()
 async def list_announcements() -> list:
-    """Alle aktuell aktiven Aushänge."""
+    """Alle Aushänge (aktiv und inaktiv)."""
     return await _get("/announcements")
+
+
+@mcp.tool()
+async def list_automations() -> list:
+    """Alle Automationsregeln mit Bedingungen und Ziel-Maschinen."""
+    return await _get("/automations")
+
+
+@mcp.tool()
+async def list_categories() -> list:
+    """Alle Maschinenkategorien."""
+    return await _get("/categories")
+
+
+@mcp.tool()
+async def list_locations() -> list:
+    """Alle Maschinenstandorte."""
+    return await _get("/locations")
 
 
 @mcp.tool()
@@ -109,6 +127,12 @@ async def list_guests() -> list:
 async def list_machines() -> list:
     """Alle Maschinen mit aktuellem Betriebsstatus (wer nutzt gerade welche Maschine)."""
     return await _get("/machines")
+
+
+@mcp.tool()
+async def list_queue() -> list:
+    """Aktuelle Warteliste — wer wartet auf welche Maschine."""
+    return await _get("/queue")
 
 
 @mcp.tool()
@@ -165,7 +189,7 @@ async def log_maintenance(
     })
 
 
-# ── create_ ────────────────────────────────────────────────────────────────────
+# ── create_ / delete_ / update_ ────────────────────────────────────────────────
 
 @mcp.tool()
 async def create_announcement(
@@ -181,6 +205,37 @@ async def create_announcement(
         "start_at": start_at,
         "end_at":   end_at,
     })
+
+
+@mcp.tool()
+async def delete_announcement(announcement_id: int) -> dict:
+    """Aushang löschen."""
+    from mcp.server.fastmcp import Context
+    async with httpx.AsyncClient(timeout=10) as c:
+        r = await c.delete(f"{BACKEND_URL}/api/mcp/announcements/{announcement_id}", headers=_h())
+        r.raise_for_status()
+        return r.json()
+
+
+@mcp.tool()
+async def update_announcement(
+    announcement_id: int,
+    text: str | None = None,
+    is_active: bool | None = None,
+    start_at: str | None = None,
+    end_at: str | None = None,
+) -> dict:
+    """Aushang bearbeiten. Nur angegebene Felder werden geändert."""
+    body = {k: v for k, v in {"text": text, "is_active": is_active, "start_at": start_at, "end_at": end_at}.items() if v is not None}
+    return await _patch(f"/announcements/{announcement_id}", body)
+
+
+# ── end_ ───────────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def end_session(machine_id: int) -> dict:
+    """Laufende Session einer Maschine manuell beenden."""
+    return await _post(f"/sessions/{machine_id}/end")
 
 
 # ── send_ ──────────────────────────────────────────────────────────────────────
@@ -203,7 +258,7 @@ async def send_notification(
     })
 
 
-# ── set_ ───────────────────────────────────────────────────────────────────────
+# ── set_ / switch_ ─────────────────────────────────────────────────────────────
 
 @mcp.tool()
 async def set_emergency(active: bool) -> dict:
@@ -233,6 +288,19 @@ async def set_permission(guest_id: int, machine_id: int, grant: bool) -> dict:
 async def set_room(open: bool) -> dict:
     """Raum öffnen (open=True) oder schliessen (open=False)."""
     return await _post("/room", {"open": open})
+
+
+@mcp.tool()
+async def switch_plug(plug_id: int, action: str) -> dict:
+    """Plug schalten: action = 'on' oder 'off'."""
+    return await _post(f"/plugs/{plug_id}/switch", {"action": action})
+
+
+@mcp.tool()
+async def update_guest(guest_id: int, name: str | None = None, email: str | None = None) -> dict:
+    """Gast-Stammdaten bearbeiten (name, email)."""
+    body = {k: v for k, v in {"name": name, "email": email}.items() if v is not None}
+    return await _patch(f"/guests/{guest_id}", body)
 
 
 # ── trigger_ ───────────────────────────────────────────────────────────────────

@@ -7,7 +7,9 @@ from datetime import datetime, timezone
 from app.database import get_db
 from app.models import (Machine, Guest, ActivityLog, MaintenanceInterval,
                          MaintenanceRecord, EmergencyState, MachineQueue, QueueStatus, User,
-                         Permission, NtfyTopic, Plug, Announcement, MachineSession)
+                         Permission, NtfyTopic, Plug, Announcement, MachineSession,
+                         AutomationRule, RuleCondition, MachineCategory, MachineLocation,
+                         SessionEndedBy)
 from app.services.system_settings import get_system_settings
 from app.config import APP_TIMEZONE
 
@@ -606,24 +608,19 @@ async def mcp_list_plugs(db: AsyncSession = Depends(get_db), _=Depends(require_m
 
 @router.get("/announcements")
 async def mcp_list_announcements(db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
-    """Alle aktiven Aushänge."""
-    now = datetime.utcnow()
+    """Alle Aushänge (aktiv und inaktiv)."""
     announcements = (await db.execute(
-        select(Announcement)
-        .where(and_(
-            Announcement.is_active == True,
-            Announcement.start_at <= now,
-            Announcement.end_at >= now,
-        ))
-        .order_by(Announcement.start_at)
+        select(Announcement).order_by(Announcement.created_at.desc())
     )).scalars().all()
     return [
         {
-            "id":       a.id,
-            "title":    a.title,
-            "content":  a.content,
-            "start_at": a.start_at.isoformat(),
-            "end_at":   a.end_at.isoformat(),
+            "id":           a.id,
+            "text":         a.text,
+            "is_active":    a.is_active,
+            "is_recurring": a.is_recurring,
+            "display_type": a.display_type,
+            "start_at":     a.start_at.isoformat() if a.start_at else None,
+            "end_at":       a.end_at.isoformat() if a.end_at else None,
         }
         for a in announcements
     ]
@@ -634,23 +631,60 @@ async def mcp_create_announcement(
     payload: dict,
     db: AsyncSession = Depends(get_db), _=Depends(require_mcp),
 ):
-    """Aushang erstellen. title, content, start_at (ISO), end_at (ISO) erforderlich."""
-    title    = payload.get("title", "").strip()
-    content  = payload.get("content", "").strip()
+    """Aushang erstellen. text und start_at + end_at (ISO) erforderlich."""
+    text     = payload.get("text", "").strip()
     start_at = payload.get("start_at")
     end_at   = payload.get("end_at")
-    if not title or not content or not start_at or not end_at:
-        raise HTTPException(400, "title, content, start_at und end_at erforderlich")
+    if not text or not start_at or not end_at:
+        raise HTTPException(400, "text, start_at und end_at erforderlich")
     try:
         start_dt = datetime.fromisoformat(start_at.replace("Z", "+00:00")).replace(tzinfo=None)
         end_dt   = datetime.fromisoformat(end_at.replace("Z", "+00:00")).replace(tzinfo=None)
     except ValueError:
         raise HTTPException(400, "Ungültiges Datumsformat (ISO 8601 erwartet)")
-    a = Announcement(title=title, content=content, start_at=start_dt, end_at=end_dt, is_active=True)
+    a = Announcement(
+        text=text, start_at=start_dt, end_at=end_dt,
+        is_active=True, display_type=payload.get("display_type", "banner"),
+    )
     db.add(a)
     await db.commit()
     await db.refresh(a)
-    return {"ok": True, "id": a.id, "title": a.title}
+    return {"ok": True, "id": a.id, "text": a.text}
+
+
+@router.patch("/announcements/{announcement_id}")
+async def mcp_update_announcement(
+    announcement_id: int, payload: dict,
+    db: AsyncSession = Depends(get_db), _=Depends(require_mcp),
+):
+    """Aushang bearbeiten (text, is_active, start_at, end_at)."""
+    a = await db.get(Announcement, announcement_id)
+    if not a:
+        raise HTTPException(404, "Aushang nicht gefunden")
+    if "text" in payload:
+        a.text = payload["text"].strip()
+    if "is_active" in payload:
+        a.is_active = bool(payload["is_active"])
+    if "start_at" in payload and payload["start_at"]:
+        a.start_at = datetime.fromisoformat(payload["start_at"].replace("Z", "+00:00")).replace(tzinfo=None)
+    if "end_at" in payload and payload["end_at"]:
+        a.end_at = datetime.fromisoformat(payload["end_at"].replace("Z", "+00:00")).replace(tzinfo=None)
+    await db.commit()
+    return {"ok": True, "id": a.id, "text": a.text, "is_active": a.is_active}
+
+
+@router.delete("/announcements/{announcement_id}")
+async def mcp_delete_announcement(
+    announcement_id: int,
+    db: AsyncSession = Depends(get_db), _=Depends(require_mcp),
+):
+    """Aushang löschen."""
+    a = await db.get(Announcement, announcement_id)
+    if not a:
+        raise HTTPException(404, "Aushang nicht gefunden")
+    await db.delete(a)
+    await db.commit()
+    return {"ok": True}
 
 
 # ── Statistiken ────────────────────────────────────────────────────────────────
@@ -698,6 +732,145 @@ async def mcp_list_users(db: AsyncSession = Depends(get_db), _=Depends(require_m
         {"id": u.id, "name": u.name, "username": u.username, "email": u.email, "role": u.role}
         for u in users
     ]
+
+
+# ── Gäste Update ───────────────────────────────────────────────────────────────
+
+@router.patch("/guests/{guest_id}")
+async def mcp_update_guest(
+    guest_id: int, payload: dict,
+    db: AsyncSession = Depends(get_db), _=Depends(require_mcp),
+):
+    """Gast-Stammdaten bearbeiten (name, email)."""
+    guest = (await db.execute(select(Guest).where(Guest.id == guest_id))).scalar_one_or_none()
+    if not guest:
+        raise HTTPException(404, "Gast nicht gefunden")
+    if "name" in payload:
+        guest.name = payload["name"].strip()
+    if "email" in payload:
+        guest.email = payload["email"].strip() or None
+    await db.commit()
+    return {"ok": True, "id": guest.id, "name": guest.name, "email": guest.email}
+
+
+# ── Sessions ───────────────────────────────────────────────────────────────────
+
+@router.post("/sessions/{machine_id}/end")
+async def mcp_end_session(
+    machine_id: int,
+    db: AsyncSession = Depends(get_db), _=Depends(require_mcp),
+):
+    """Laufende Session einer Maschine manuell beenden."""
+    from app.services.session import end_session
+    machine = await db.get(Machine, machine_id)
+    if not machine:
+        raise HTTPException(404, "Maschine nicht gefunden")
+    if not machine.current_guest_id:
+        raise HTTPException(409, "Keine aktive Session auf dieser Maschine")
+    await end_session(db, machine, ended_by=SessionEndedBy.manager)
+    return {"ok": True, "machine": machine.name}
+
+
+# ── Queue ──────────────────────────────────────────────────────────────────────
+
+@router.get("/queue")
+async def mcp_list_queue(db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
+    """Aktuelle Warteliste (waiting + notified)."""
+    entries = (await db.execute(
+        select(MachineQueue)
+        .where(MachineQueue.status.in_([QueueStatus.waiting, QueueStatus.notified]))
+        .order_by(MachineQueue.joined_at)
+    )).scalars().all()
+    machines_map = {m.id: m.name for m in (await db.execute(select(Machine))).scalars().all()}
+    guests_map   = {g.id: g.name for g in (await db.execute(select(Guest))).scalars().all()}
+    return [
+        {
+            "id":          e.id,
+            "machine_id":  e.machine_id,
+            "machine":     machines_map.get(e.machine_id, "?"),
+            "guest_id":    e.guest_id,
+            "guest":       guests_map.get(e.guest_id, "?"),
+            "status":      e.status,
+            "joined_at":   e.joined_at.isoformat(),
+            "notified_at": e.notified_at.isoformat() if e.notified_at else None,
+        }
+        for e in entries
+    ]
+
+
+# ── Automationen ───────────────────────────────────────────────────────────────
+
+@router.get("/automations")
+async def mcp_list_automations(db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
+    """Alle Automationsregeln mit Bedingungen."""
+    rules = (await db.execute(select(AutomationRule).order_by(AutomationRule.name))).scalars().all()
+    machines_map = {m.id: m.name for m in (await db.execute(select(Machine))).scalars().all()}
+    topics_map   = {t.id: t.title for t in (await db.execute(select(NtfyTopic))).scalars().all()}
+    result = []
+    for r in rules:
+        conditions = (await db.execute(
+            select(RuleCondition).where(RuleCondition.rule_id == r.id)
+        )).scalars().all()
+        result.append({
+            "id":             r.id,
+            "name":           r.name,
+            "enabled":        r.enabled,
+            "action_type":    r.action_type,
+            "target_machine": machines_map.get(r.target_machine_id) if r.target_machine_id else None,
+            "off_delay_sec":  r.off_delay_sec,
+            "notify_topic":   topics_map.get(r.notify_topic_id) if r.notify_topic_id else None,
+            "notify_message": r.notify_message,
+            "conditions": [
+                {
+                    "type":           c.type,
+                    "source_machine": machines_map.get(c.source_machine_id) if c.source_machine_id else None,
+                    "power_on_w":     c.power_on_w,
+                    "power_off_w":    c.power_off_w,
+                    "days":           c.days,
+                    "time_on":        str(c.time_on) if c.time_on else None,
+                    "time_off":       str(c.time_off) if c.time_off else None,
+                }
+                for c in conditions
+            ],
+        })
+    return result
+
+
+# ── Plug-Test ──────────────────────────────────────────────────────────────────
+
+@router.post("/plugs/{plug_id}/switch")
+async def mcp_test_plug(
+    plug_id: int, payload: dict,
+    db: AsyncSession = Depends(get_db), _=Depends(require_mcp),
+):
+    """Plug schalten (action: 'on' oder 'off'). Funktioniert auch für zugewiesene Plugs."""
+    from app.services.plug import switch_plug
+    from types import SimpleNamespace
+    plug = await db.get(Plug, plug_id)
+    if not plug:
+        raise HTTPException(404, "Plug nicht gefunden")
+    action = payload.get("action", "on")
+    if action not in ("on", "off"):
+        raise HTTPException(400, "action muss 'on' oder 'off' sein")
+    proxy = SimpleNamespace(plug_type=plug.plug_type, plug_ip=plug.plug_ip, plug_token=plug.plug_token)
+    ok, msg = await switch_plug(proxy, action)
+    return {"ok": ok, "plug": plug.label, "action": action, "message": msg}
+
+
+# ── Kategorien & Standorte ─────────────────────────────────────────────────────
+
+@router.get("/categories")
+async def mcp_list_categories(db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
+    """Alle Maschinenkategorien."""
+    cats = (await db.execute(select(MachineCategory).order_by(MachineCategory.sort_order, MachineCategory.name))).scalars().all()
+    return [{"id": c.id, "name": c.name, "icon": c.icon} for c in cats]
+
+
+@router.get("/locations")
+async def mcp_list_locations(db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
+    """Alle Maschinenstandorte."""
+    locs = (await db.execute(select(MachineLocation).order_by(MachineLocation.sort_order, MachineLocation.name))).scalars().all()
+    return [{"id": l.id, "name": l.name} for l in locs]
 
 
 # ── Gast-Details ───────────────────────────────────────────────────────────────
