@@ -1,39 +1,21 @@
-"""SpaceCaptain MCP Server — gibt Claude Zugriff auf FabLab-Funktionen."""
+"""SpaceCaptain MCP Server — gibt Claude Zugriff auf FabLab-Funktionen.
+
+Auth-Architektur:
+- Port 8080 ist NUR im Docker-internen Netz / LAN erreichbar (nicht via nginx exponiert)
+- Eigentliche Auth: Backend prüft X-MCP-Key gegen mcp_api_token in DB
+- Token wird beim Start via Bootstrap-Call vom Backend geladen
+"""
 import os
 import asyncio
 import httpx
 import uvicorn
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
-from starlette.responses import Response
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://backend:8000")
 
 # Wird beim Start per Bootstrap-Call vom Backend geladen
 _token: str = ""
-
-
-def _make_auth_app(inner):
-    """Reines ASGI-Middleware — prüft Bearer-Token auf GET /sse.
-
-    POST /messages/ wird nicht geprüft: Claude Code sendet den Authorization-Header
-    nur auf dem initialen SSE-GET, nicht auf Folge-POSTs. Die Session-ID ist
-    implizite Auth (nur nach erfolgreichem GET /sse erhältlich). Eigentliche
-    Sicherheit liegt beim Backend-Check (X-MCP-Key).
-    """
-    async def auth_app(scope, receive, send):
-        if scope["type"] == "http":
-            method = scope.get("method", "")
-            path = scope.get("path", "")
-            if method != "POST" or not path.startswith("/messages"):
-                headers = {k.lower(): v for k, v in scope.get("headers", [])}
-                auth = headers.get(b"authorization", b"").decode()
-                if not _token or not auth.startswith("Bearer ") or auth[7:] != _token:
-                    resp = Response("Unauthorized", status_code=401)
-                    await resp(scope, receive, send)
-                    return
-        await inner(scope, receive, send)
-    return auth_app
 
 
 mcp = FastMCP(
@@ -125,4 +107,4 @@ async def _bootstrap() -> None:
 
 if __name__ == "__main__":
     asyncio.run(_bootstrap())
-    uvicorn.run(_make_auth_app(mcp.sse_app()), host="0.0.0.0", port=8080)
+    uvicorn.run(mcp.sse_app(), host="0.0.0.0", port=8080)
