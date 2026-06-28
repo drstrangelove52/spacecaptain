@@ -1051,8 +1051,8 @@ sudo ./install-service.sh</pre>
                 <strong style="color:var(--text)">2. MCP-Container (neu) starten:</strong>
                 <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin:8px 0;font-size:11px;overflow-x:auto;color:var(--text)">docker compose --profile mcp up -d --build mcp_server</pre>
                 <strong style="color:var(--text)">3. In Claude Code eintragen (einmalig):</strong>
-                <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin:8px 0;font-size:11px;overflow-x:auto;color:var(--text)" id="mcp-claude-cmd">claude mcp add spacecaptain --transport sse \
-  --url https://&lt;deine-domain&gt;/mcp/sse \
+                <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin:8px 0;font-size:11px;overflow-x:auto;color:var(--text)" id="mcp-claude-cmd">claude mcp add --transport sse spacecaptain \
+  https://&lt;deine-domain&gt;/mcp/sse \
   --header "Authorization: Bearer &lt;Token von oben&gt;" -s user</pre>
                 <span style="color:var(--text-dim)">Nach Token-Regenerierung: .env aktualisieren, Container neu starten, Claude-Code-Eintrag neu anlegen.</span>
               </div>
