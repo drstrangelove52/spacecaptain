@@ -93,7 +93,7 @@ def _check_token(request: Request) -> bool:
 async def handle_sse(request: Request) -> Response:
     if not _check_token(request):
         return Response("Unauthorized", status_code=401)
-    sse = SseServerTransport("/mcp/messages/")
+    sse = SseServerTransport("/messages/")
     async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
         await mcp._mcp_server.run(
             streams[0], streams[1], mcp._mcp_server.create_initialization_options()
@@ -104,7 +104,7 @@ async def handle_sse(request: Request) -> Response:
 async def handle_messages(request: Request) -> Response:
     if not _check_token(request):
         return Response("Unauthorized", status_code=401)
-    sse = SseServerTransport("/mcp/messages/")
+    sse = SseServerTransport("/messages/")
     await sse.handle_post_message(request.scope, request.receive, request._send)
     return Response()
 
