@@ -234,6 +234,28 @@ tail -f update_trigger/update.log
 - Kein Docker Socket im Container nötig — der Watcher hat nur Dateisystem-Zugriff auf das Trigger-Verzeichnis
 - `watcher_ready` im Status: `TRIGGER_DIR.exists()` — zeigt an ob das Volume korrekt gemountet ist
 
+## MCP-Server
+
+Optionaler Service (`mcp_server/`), aktiviert mit `--profile mcp`. Gibt Claude direkten Zugriff auf FabLab-Funktionen ohne Browser.
+
+**Dateien:**
+- `mcp_server/main.py` — FastMCP-App mit Tools + `BearerAuthMiddleware`
+- `backend/app/routers/mcp_api.py` — interne Backend-Endpunkte (`/api/mcp/*`)
+
+**Auth-Kette (ein einziger Token):**
+```
+Claude Code  →  Authorization: Bearer MCP_BACKEND_KEY  →  MCP-Server (BearerAuthMiddleware prüft)
+MCP-Server   →  X-MCP-Key: MCP_BACKEND_KEY             →  Backend (require_mcp prüft)
+```
+
+`MCP_BACKEND_KEY` muss in `.env` stehen und via `docker-compose.yml` an **beide** Container übergeben werden — Backend UND mcp_server. Fehlt er beim Backend → 403.
+
+**Settings-DB:** `mcp_enabled` (Schalter) und `mcp_api_token` (generierter Wert, wird im UI als Vorlage für `MCP_BACKEND_KEY` angezeigt). Migration v1.37 in `migrate.py`.
+
+**Neue Tools:** in `mcp_server/main.py` als `@mcp.tool()` + passenden Endpunkt in `mcp_api.py` mit `Depends(require_mcp)`.
+
+**FastMCP-Falle:** `host="0.0.0.0"` und `transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False)` im Konstruktor zwingend — sonst 403 bei LAN-Hostnamen.
+
 ## Was vermeiden
 
 - `--reload` ohne `--reload-dir /app/app` — WatchFiles überwacht sonst `/app/backups` und löst bei jedem neuen Backup-File einen Reload aus
