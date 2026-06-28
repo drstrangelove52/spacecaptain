@@ -23,6 +23,7 @@ router = APIRouter(prefix="/update", tags=["update"])
 TRIGGER_DIR = Path("/app/update_trigger")
 TRIGGER_FILE = TRIGGER_DIR / "trigger"
 RESTART_FILE = TRIGGER_DIR / "restart"
+RESTART_ALL_FILE = TRIGGER_DIR / "restart_all"
 LOG_FILE = TRIGGER_DIR / "update.log"
 STATUS_FILE = TRIGGER_DIR / "update.status"
 HEARTBEAT_FILE = TRIGGER_DIR / "watcher_heartbeat"
@@ -41,7 +42,7 @@ async def get_update_status(_: User = Depends(require_admin)):
     return {
         "version": APP_VERSION,
         "build": BUILD_NR,
-        "pending": TRIGGER_FILE.exists() or RESTART_FILE.exists(),
+        "pending": TRIGGER_FILE.exists() or RESTART_FILE.exists() or RESTART_ALL_FILE.exists(),
         "watcher_ready": watcher_ready,
         "volume_mounted": TRIGGER_DIR.exists(),
         "last_triggered": last_triggered,
@@ -55,7 +56,7 @@ def _check_watcher_ready():
             status_code=503,
             detail="Update-Verzeichnis nicht gemountet — Update-Watcher nicht eingerichtet"
         )
-    if TRIGGER_FILE.exists() or RESTART_FILE.exists():
+    if TRIGGER_FILE.exists() or RESTART_FILE.exists() or RESTART_ALL_FILE.exists():
         raise HTTPException(status_code=409, detail="Vorgang läuft bereits")
 
 
@@ -71,6 +72,13 @@ async def trigger_restart(_: User = Depends(require_admin)):
     _check_watcher_ready()
     RESTART_FILE.write_text(datetime.now().isoformat())
     return {"status": "restart_triggered"}
+
+
+@router.post("/restart-all")
+async def trigger_restart_all(_: User = Depends(require_admin)):
+    _check_watcher_ready()
+    RESTART_ALL_FILE.write_text(datetime.now().isoformat())
+    return {"status": "restart_all_triggered"}
 
 
 @router.get("/log-bundle")

@@ -9,6 +9,7 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TRIGGER_FILE="$PROJECT_DIR/update_trigger/trigger"
 RESTART_FILE="$PROJECT_DIR/update_trigger/restart"
+RESTART_ALL_FILE="$PROJECT_DIR/update_trigger/restart_all"
 LOG_FILE="$PROJECT_DIR/update_trigger/update.log"
 STATUS_FILE="$PROJECT_DIR/update_trigger/update.status"
 TAILSCALE_FILE="$PROJECT_DIR/update_trigger/tailscale_action"
@@ -32,6 +33,23 @@ compose_services() {
 log "Update-Watcher gestartet (Projekt: $PROJECT_DIR)"
 
 while true; do
+  if [ -f "$RESTART_ALL_FILE" ]; then
+    log "Restart-All-Trigger erkannt — starte alle Container neu..."
+    rm -f "$RESTART_ALL_FILE"
+    echo "running" > "$STATUS_FILE"
+    cd "$PROJECT_DIR"
+    _RESTART_BUILD=$(git rev-list --count HEAD)
+    echo "$_RESTART_BUILD" > "$PROJECT_DIR/update_trigger/build_nr"
+    log "Neustart aller Container (Build: $_RESTART_BUILD)..."
+    if BUILD_NR=$_RESTART_BUILD docker compose --profile mcp up -d >> "$LOG_FILE" 2>&1; then
+      log "Neustart aller Container abgeschlossen"
+      echo "restarted" > "$STATUS_FILE"
+    else
+      log "FEHLER: Neustart aller Container fehlgeschlagen"
+      echo "error" > "$STATUS_FILE"
+    fi
+  fi
+
   if [ -f "$RESTART_FILE" ]; then
     log "Restart-Trigger erkannt — starte Backend neu..."
     rm -f "$RESTART_FILE"
