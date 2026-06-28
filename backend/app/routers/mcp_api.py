@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from app.database import get_db
 from app.models import (Machine, Guest, ActivityLog, MaintenanceInterval,
                          MaintenanceRecord, EmergencyState, MachineQueue, QueueStatus, User,
-                         Permission, NtfyTopic)
+                         Permission, NtfyTopic, Plug, Announcement, MachineSession)
 from app.services.system_settings import get_system_settings
 from app.config import APP_TIMEZONE
 
@@ -423,6 +423,86 @@ async def mcp_set_permission(
 
 # ── Maschinen ──────────────────────────────────────────────────────────────────
 
+@router.get("/machines/{machine_id}")
+async def mcp_get_machine(
+    machine_id: int,
+    db: AsyncSession = Depends(get_db), _=Depends(require_mcp),
+):
+    """Einzelne Maschine mit laufender Session, Plug-Status und Wartungshistorie."""
+    machine = await db.get(Machine, machine_id)
+    if not machine:
+        raise HTTPException(404, "Maschine nicht gefunden")
+    guest = None
+    if machine.current_guest_id:
+        g = await db.get(Guest, machine.current_guest_id)
+        guest = g.name if g else None
+    plug = await db.get(Plug, machine.plug_id) if machine.plug_id else None
+    records = (await db.execute(
+        select(MaintenanceRecord)
+        .where(MaintenanceRecord.machine_id == machine_id)
+        .order_by(MaintenanceRecord.performed_at.desc())
+        .limit(5)
+    )).scalars().all()
+    users_map = {u.id: u.name for u in (await db.execute(select(User))).scalars().all()}
+    return {
+        "id":            machine.id,
+        "name":          machine.name,
+        "category":      machine.category,
+        "location":      machine.location,
+        "status":        machine.status,
+        "total_hours":   round(machine.total_hours or 0, 1),
+        "in_use":        machine.current_guest_id is not None,
+        "current_guest": guest,
+        "session_started_at": machine.session_started_at.isoformat() if machine.session_started_at else None,
+        "plug": {
+            "id": plug.id, "ip": plug.ip, "type": plug.plug_type,
+        } if plug else None,
+        "recent_maintenance": [
+            {
+                "name":         r.name,
+                "performed_at": r.performed_at.isoformat(),
+                "performed_by": users_map.get(r.performed_by) if r.performed_by else None,
+                "notes":        r.notes,
+            }
+            for r in records
+        ],
+    }
+
+
+@router.get("/maintenance/history")
+async def mcp_maintenance_history(
+    machine_id: int = Query(...),
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db), _=Depends(require_mcp),
+):
+    """Wartungshistorie einer Maschine (neueste zuerst)."""
+    machine = await db.get(Machine, machine_id)
+    if not machine:
+        raise HTTPException(404, "Maschine nicht gefunden")
+    records = (await db.execute(
+        select(MaintenanceRecord)
+        .where(MaintenanceRecord.machine_id == machine_id)
+        .order_by(MaintenanceRecord.performed_at.desc())
+        .limit(limit)
+    )).scalars().all()
+    users_map = {u.id: u.name for u in (await db.execute(select(User))).scalars().all()}
+    return {
+        "machine_id":   machine_id,
+        "machine_name": machine.name,
+        "records": [
+            {
+                "id":           r.id,
+                "name":         r.name,
+                "performed_at": r.performed_at.isoformat(),
+                "performed_by": users_map.get(r.performed_by) if r.performed_by else None,
+                "hours_at_execution": r.hours_at_execution,
+                "notes":        r.notes,
+            }
+            for r in records
+        ],
+    }
+
+
 @router.patch("/machines/{machine_id}/status")
 async def mcp_set_machine_status(
     machine_id: int, payload: dict,
@@ -501,3 +581,173 @@ async def mcp_list_topics(db: AsyncSession = Depends(get_db), _=Depends(require_
     """Alle konfigurierten ntfy-Topics."""
     topics = (await db.execute(select(NtfyTopic).order_by(NtfyTopic.title))).scalars().all()
     return [{"id": t.id, "key": t.key, "title": t.title, "topic": t.topic} for t in topics]
+
+
+# ── Plugs ──────────────────────────────────────────────────────────────────────
+
+@router.get("/plugs")
+async def mcp_list_plugs(db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
+    """Plug-Pool mit zugewiesenen Maschinen."""
+    plugs = (await db.execute(select(Plug).order_by(Plug.label))).scalars().all()
+    machines_map = {m.plug_id: m.name for m in (await db.execute(select(Machine))).scalars().all() if m.plug_id}
+    return [
+        {
+            "id":       p.id,
+            "label":    p.label,
+            "ip":       p.ip,
+            "type":     p.plug_type,
+            "machine":  machines_map.get(p.id),
+        }
+        for p in plugs
+    ]
+
+
+# ── Aushänge ───────────────────────────────────────────────────────────────────
+
+@router.get("/announcements")
+async def mcp_list_announcements(db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
+    """Alle aktiven Aushänge."""
+    now = datetime.utcnow()
+    announcements = (await db.execute(
+        select(Announcement)
+        .where(and_(
+            Announcement.is_active == True,
+            Announcement.start_at <= now,
+            Announcement.end_at >= now,
+        ))
+        .order_by(Announcement.start_at)
+    )).scalars().all()
+    return [
+        {
+            "id":       a.id,
+            "title":    a.title,
+            "content":  a.content,
+            "start_at": a.start_at.isoformat(),
+            "end_at":   a.end_at.isoformat(),
+        }
+        for a in announcements
+    ]
+
+
+@router.post("/announcements")
+async def mcp_create_announcement(
+    payload: dict,
+    db: AsyncSession = Depends(get_db), _=Depends(require_mcp),
+):
+    """Aushang erstellen. title, content, start_at (ISO), end_at (ISO) erforderlich."""
+    title    = payload.get("title", "").strip()
+    content  = payload.get("content", "").strip()
+    start_at = payload.get("start_at")
+    end_at   = payload.get("end_at")
+    if not title or not content or not start_at or not end_at:
+        raise HTTPException(400, "title, content, start_at und end_at erforderlich")
+    try:
+        start_dt = datetime.fromisoformat(start_at.replace("Z", "+00:00")).replace(tzinfo=None)
+        end_dt   = datetime.fromisoformat(end_at.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError:
+        raise HTTPException(400, "Ungültiges Datumsformat (ISO 8601 erwartet)")
+    a = Announcement(title=title, content=content, start_at=start_dt, end_at=end_dt, is_active=True)
+    db.add(a)
+    await db.commit()
+    await db.refresh(a)
+    return {"ok": True, "id": a.id, "title": a.title}
+
+
+# ── Statistiken ────────────────────────────────────────────────────────────────
+
+@router.get("/stats")
+async def mcp_get_stats(db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
+    """Nutzungsstatistiken: Maschinen, Gäste, Sessions."""
+    from sqlalchemy import desc
+    total_guests   = (await db.scalar(select(func.count()).select_from(Guest))) or 0
+    active_guests  = (await db.scalar(select(func.count()).where(Guest.is_active == True, Guest.is_blocked == False, Guest.pending_approval == False))) or 0
+    blocked_guests = (await db.scalar(select(func.count()).where(Guest.is_blocked == True))) or 0
+    pending_guests = (await db.scalar(select(func.count()).where(Guest.pending_approval == True))) or 0
+    total_machines = (await db.scalar(select(func.count()).select_from(Machine))) or 0
+    online_machines = (await db.scalar(select(func.count()).where(Machine.status == "online"))) or 0
+    active_sessions = (await db.scalar(select(func.count()).where(MachineSession.ended_at.is_(None)))) or 0
+    total_sessions  = (await db.scalar(select(func.count()).select_from(MachineSession))) or 0
+    machines = (await db.execute(select(Machine).order_by(desc(Machine.total_hours)).limit(5))).scalars().all()
+    return {
+        "guests": {
+            "total": total_guests,
+            "active": active_guests,
+            "blocked": blocked_guests,
+            "pending": pending_guests,
+        },
+        "machines": {
+            "total": total_machines,
+            "online": online_machines,
+            "active_sessions": active_sessions,
+            "total_sessions": total_sessions,
+        },
+        "top_machines_by_hours": [
+            {"id": m.id, "name": m.name, "total_hours": round(m.total_hours or 0, 1)}
+            for m in machines
+        ],
+    }
+
+
+# ── Benutzer ───────────────────────────────────────────────────────────────────
+
+@router.get("/users")
+async def mcp_list_users(db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
+    """Alle Lab-Manager-Konten."""
+    users = (await db.execute(select(User).order_by(User.name))).scalars().all()
+    return [
+        {"id": u.id, "name": u.name, "username": u.username, "email": u.email, "role": u.role}
+        for u in users
+    ]
+
+
+# ── Gast-Details ───────────────────────────────────────────────────────────────
+
+@router.get("/guests/{guest_id}")
+async def mcp_get_guest(
+    guest_id: int,
+    db: AsyncSession = Depends(get_db), _=Depends(require_mcp),
+):
+    """Einzelner Gast mit Berechtigungen und letzter Aktivität."""
+    guest = (await db.execute(select(Guest).where(Guest.id == guest_id))).scalar_one_or_none()
+    if not guest:
+        raise HTTPException(404, "Gast nicht gefunden")
+    perms = (await db.execute(
+        select(Permission).where(Permission.guest_id == guest_id)
+    )).scalars().all()
+    machines_map = {m.id: m.name for m in (await db.execute(select(Machine))).scalars().all()}
+    last_log = (await db.execute(
+        select(ActivityLog)
+        .where(ActivityLog.guest_id == guest_id)
+        .order_by(ActivityLog.created_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+    last_session = (await db.execute(
+        select(MachineSession)
+        .where(MachineSession.guest_id == guest_id)
+        .order_by(MachineSession.started_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+    return {
+        "id":               guest.id,
+        "name":             guest.name,
+        "username":         guest.username,
+        "email":            guest.email,
+        "is_active":        guest.is_active,
+        "is_blocked":       guest.is_blocked,
+        "pending_approval": guest.pending_approval,
+        "created_at":       guest.created_at.isoformat(),
+        "permissions": [
+            {
+                "machine_id":   p.machine_id,
+                "machine_name": machines_map.get(p.machine_id, "?"),
+                "is_blocked":   p.is_blocked,
+            }
+            for p in perms
+        ],
+        "last_activity":  last_log.created_at.isoformat() if last_log else None,
+        "last_session": {
+            "machine":    machines_map.get(last_session.machine_id, "?"),
+            "started_at": last_session.started_at.isoformat(),
+            "ended_at":   last_session.ended_at.isoformat() if last_session.ended_at else None,
+        } if last_session else None,
+    }

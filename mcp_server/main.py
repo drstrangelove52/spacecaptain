@@ -62,12 +62,36 @@ async def get_activity_log(limit: int = 20) -> list:
 
 
 @mcp.tool()
+async def get_guest(guest_id: int) -> dict:
+    """Einzelner Gast mit Berechtigungen und letzter Aktivität."""
+    return await _get(f"/guests/{guest_id}")
+
+
+@mcp.tool()
+async def get_machine(machine_id: int) -> dict:
+    """Einzelne Maschine mit laufender Session, Plug-Status und Wartungshistorie."""
+    return await _get(f"/machines/{machine_id}")
+
+
+@mcp.tool()
+async def get_stats() -> dict:
+    """Nutzungsstatistiken: Gäste, Maschinen, Sessions, Top-Maschinen nach Stunden."""
+    return await _get("/stats")
+
+
+@mcp.tool()
 async def get_status() -> dict:
     """Aktueller SpaceCaptain-Status: Raum offen/zu, Notfall-Alarm, ausstehende Gast-Anmeldungen, Wartung fällig."""
     return await _get("/status")
 
 
 # ── list_ ──────────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def list_announcements() -> list:
+    """Alle aktuell aktiven Aushänge."""
+    return await _get("/announcements")
+
 
 @mcp.tool()
 async def list_guest_permissions(guest_id: int) -> dict:
@@ -94,15 +118,33 @@ async def list_maintenance_due() -> list:
 
 
 @mcp.tool()
+async def list_plugs() -> list:
+    """Plug-Pool mit zugewiesenen Maschinen."""
+    return await _get("/plugs")
+
+
+@mcp.tool()
 async def list_notify_topics() -> list:
     """Alle konfigurierten ntfy Push-Nachrichten-Topics."""
     return await _get("/notify/topics")
 
 
 @mcp.tool()
+async def list_maintenance_history(machine_id: int, limit: int = 20) -> dict:
+    """Wartungshistorie einer Maschine (neueste zuerst, max 100)."""
+    return await _get(f"/maintenance/history?machine_id={machine_id}&limit={min(limit, 100)}")
+
+
+@mcp.tool()
 async def list_pending_guests() -> list:
     """Gäste, die auf Freischaltung warten."""
     return await _get("/guests/pending")
+
+
+@mcp.tool()
+async def list_users() -> list:
+    """Alle Lab-Manager-Konten (Name, Username, Rolle)."""
+    return await _get("/users")
 
 
 # ── log_ ───────────────────────────────────────────────────────────────────────
@@ -120,6 +162,24 @@ async def log_maintenance(
         "machine_id":  machine_id,
         "name":        name,
         "notes":       notes,
+    })
+
+
+# ── create_ ────────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def create_announcement(
+    title: str,
+    content: str,
+    start_at: str,
+    end_at: str,
+) -> dict:
+    """Aushang erstellen. start_at und end_at als ISO-8601 (z.B. '2026-06-29T08:00:00')."""
+    return await _post("/announcements", {
+        "title":    title,
+        "content":  content,
+        "start_at": start_at,
+        "end_at":   end_at,
     })
 
 
