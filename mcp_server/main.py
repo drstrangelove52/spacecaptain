@@ -44,6 +44,13 @@ async def _post(path: str, body: dict = {}):
         return r.json()
 
 
+async def _patch(path: str, body: dict = {}):
+    async with httpx.AsyncClient(timeout=10) as c:
+        r = await c.patch(f"{BACKEND_URL}/api/mcp{path}", json=body, headers=_h())
+        r.raise_for_status()
+        return r.json()
+
+
 @mcp.tool()
 async def get_status() -> dict:
     """Aktueller SpaceCaptain-Status: Raum offen/zu, Notfall-Alarm, ausstehende Gast-Anmeldungen, Wartung fällig."""
@@ -86,6 +93,98 @@ async def get_activity_log(limit: int = 20) -> list:
 async def trigger_update() -> dict:
     """System-Update auslösen (git pull + Docker rebuild)."""
     return await _post("/update")
+
+
+# ── Wartung ────────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def list_maintenance_due() -> list:
+    """Alle fälligen und warnenden Wartungsintervalle mit Maschinennamen und Details."""
+    return await _get("/maintenance/due")
+
+
+@mcp.tool()
+async def log_maintenance(
+    interval_id: int | None = None,
+    machine_id: int | None = None,
+    name: str | None = None,
+    notes: str = "",
+) -> dict:
+    """Wartung erfassen. Entweder interval_id (bevorzugt) oder machine_id + name angeben."""
+    return await _post("/maintenance/record", {
+        "interval_id": interval_id,
+        "machine_id":  machine_id,
+        "name":        name,
+        "notes":       notes,
+    })
+
+
+# ── Gäste ──────────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def list_guests() -> list:
+    """Alle Gäste mit Status (aktiv, gesperrt, ausstehend)."""
+    return await _get("/guests")
+
+
+@mcp.tool()
+async def set_guest_blocked(guest_id: int, blocked: bool) -> dict:
+    """Gast sperren (blocked=True) oder entsperren (blocked=False)."""
+    return await _patch(f"/guests/{guest_id}/block", {"blocked": blocked})
+
+
+@mcp.tool()
+async def list_guest_permissions(guest_id: int) -> dict:
+    """Maschinenberechtigungen eines Gastes anzeigen."""
+    return await _get(f"/guests/{guest_id}/permissions")
+
+
+@mcp.tool()
+async def set_permission(guest_id: int, machine_id: int, grant: bool) -> dict:
+    """Maschinenberechtigung vergeben (grant=True) oder entziehen (grant=False)."""
+    return await _post(f"/guests/{guest_id}/permissions/{machine_id}", {"grant": grant})
+
+
+# ── Maschinen ──────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def set_machine_status(machine_id: int, status: str) -> dict:
+    """Maschinenstatus setzen: 'online', 'offline' oder 'maintenance'."""
+    return await _patch(f"/machines/{machine_id}/status", {"status": status})
+
+
+# ── Notfall ────────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def set_emergency(active: bool) -> dict:
+    """Notfall-Alarm auslösen (active=True) oder beenden (active=False)."""
+    return await _post("/emergency", {"active": active})
+
+
+# ── Push-Nachrichten ───────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def list_notify_topics() -> list:
+    """Alle konfigurierten ntfy Push-Nachrichten-Topics."""
+    return await _get("/notify/topics")
+
+
+@mcp.tool()
+async def send_notification(
+    message: str,
+    title: str = "SpaceCaptain",
+    topic_id: int | None = None,
+    topic_key: str | None = None,
+    priority: str = "default",
+) -> dict:
+    """Push-Nachricht senden. topic_id oder topic_key erforderlich. priority: min/low/default/high/urgent."""
+    return await _post("/notify", {
+        "topic_id":  topic_id,
+        "topic_key": topic_key,
+        "title":     title,
+        "message":   message,
+        "priority":  priority,
+    })
 
 
 async def _bootstrap() -> None:
