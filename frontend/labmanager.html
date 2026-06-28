@@ -1058,7 +1058,7 @@ sudo ./install-service.sh</pre>
                 </div>
                 <strong style="color:var(--text)">3. In Claude Code eintragen (einmalig):</strong>
                 <div style="position:relative;margin:8px 0">
-                  <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 40px 10px 12px;font-size:11px;overflow-x:auto;color:var(--text);margin:0;white-space:pre-wrap;word-break:break-all" id="mcp-claude-cmd">claude mcp add --transport sse spacecaptain https://&lt;deine-domain&gt;/mcp/sse --header "Authorization: Bearer &lt;Token von oben&gt;" -s user</pre>
+                  <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 40px 10px 12px;font-size:11px;overflow-x:auto;color:var(--text);margin:0;white-space:pre-wrap;word-break:break-all" id="mcp-claude-cmd">claude mcp add --transport http spacecaptain https://&lt;deine-domain&gt;/mcp/ --header "Authorization: Bearer &lt;Token von oben&gt;" -s user</pre>
                   <button onclick="copyPre('mcp-claude-cmd',this)" title="Kopieren" style="position:absolute;top:6px;right:6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;color:var(--text-dim)">⎘</button>
                 </div>
                 <span style="color:var(--text-dim)">Nach Token-Regenerierung: .env aktualisieren, Container neu starten, Claude-Code-Eintrag neu anlegen.</span>
@@ -4893,7 +4893,7 @@ function _updateMcpHints(token) {
   const envEl = document.getElementById('mcp-env-hint');
   const cmdEl = document.getElementById('mcp-claude-cmd');
   if (envEl) envEl.textContent = 'MCP_BACKEND_KEY=' + (token || '<Token von oben>');
-  if (cmdEl) cmdEl.textContent = `claude mcp add --transport sse spacecaptain https://${domain}/mcp/sse --header "Authorization: Bearer ${token || '<Token von oben>'}" -s user`;
+  if (cmdEl) cmdEl.textContent = `claude mcp add --transport http spacecaptain https://${domain}/mcp/ --header "Authorization: Bearer ${token || '<Token von oben>'}" -s user`;
 }
 
 async function regenerateMcpToken() {
