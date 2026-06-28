@@ -1013,32 +1013,8 @@ sudo ./install-service.sh</pre>
             <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
 
               <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 18px;font-size:13px;color:var(--text-mid);line-height:1.7">
-                Verbindet Claude Code direkt mit SpaceCaptain — Raum steuern, Maschinen abfragen, Gäste freischalten, Log lesen, ohne Browser.<br>
-                <span style="font-size:12px;color:var(--text-dim)">Erfordert Docker-Profil <code style="font-family:var(--mono)">mcp</code> und Einträge in <code style="font-family:var(--mono)">.env</code>.</span>
-              </div>
-
-              <!-- Verfügbare Tools -->
-              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:16px 18px">
-                <div style="font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:12px">Verfügbare Tools</div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px 20px;font-size:12px">
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">get_status</code><span style="color:var(--text-dim)">Raum, Alarm, fällige Wartung</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_machines</code><span style="color:var(--text-dim)">Maschinen und Betriebsstatus</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_machine_status</code><span style="color:var(--text-dim)">Maschine ein-/ausschalten</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_room</code><span style="color:var(--text-dim)">Raum öffnen / schliessen</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_pending_guests</code><span style="color:var(--text-dim)">Gäste auf Freischaltung</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">approve_guest</code><span style="color:var(--text-dim)">Gast freischalten</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_guests</code><span style="color:var(--text-dim)">Alle Gäste</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_guest_blocked</code><span style="color:var(--text-dim)">Gast sperren / entsperren</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_guest_permissions</code><span style="color:var(--text-dim)">Berechtigungen eines Gastes</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_permission</code><span style="color:var(--text-dim)">Berechtigung vergeben / entziehen</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_maintenance_due</code><span style="color:var(--text-dim)">Fällige Wartungsaufgaben</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">log_maintenance</code><span style="color:var(--text-dim)">Wartung erfassen</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_emergency</code><span style="color:var(--text-dim)">Notfall-Alarm ein-/ausschalten</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_notify_topics</code><span style="color:var(--text-dim)">ntfy Push-Topics</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">send_notification</code><span style="color:var(--text-dim)">Push-Nachricht senden</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">get_activity_log</code><span style="color:var(--text-dim)">Aktivitätslog (bis 100 Einträge)</span></div>
-                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">trigger_update</code><span style="color:var(--text-dim)">System-Update auslösen</span></div>
-                </div>
+                Verbindet Claude Code direkt mit SpaceCaptain — Raum steuern, Maschinen abfragen, Gäste freischalten, Wartung erfassen, ohne Browser.<br>
+                <span style="font-size:12px;color:var(--text-dim)">Erfordert Docker-Profil <code style="font-family:var(--mono)">mcp</code>. Der Token wird automatisch aus der Datenbank geladen — kein <code style="font-family:var(--mono)">.env</code>-Eintrag nötig.</span>
               </div>
 
               <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
@@ -1068,7 +1044,7 @@ sudo ./install-service.sh</pre>
                     <button class="btn btn-sm btn-ghost" onclick="copyMcpToken()" title="Kopieren">⎘</button>
                     <button class="btn btn-sm btn-ghost" onclick="regenerateMcpToken()" title="Neu generieren">⟳</button>
                   </div>
-                  <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Als <code style="font-family:var(--mono)">MCP_BACKEND_KEY</code> in .env eintragen → dann in Claude Code (siehe Anleitung)</div>
+                  <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Für Claude Code als Bearer-Token im Header verwenden (siehe Anleitung unten)</div>
                 </div>
 
               </div>
@@ -1076,24 +1052,43 @@ sudo ./install-service.sh</pre>
               <!-- Einrichtungsanleitung -->
               <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:16px 18px;font-size:12px;line-height:1.8;color:var(--text-mid)">
                 <div style="font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:10px">Einrichtung (einmalig)</div>
-                Der Token oben ist der <strong style="color:var(--text)">einzige Schlüssel</strong> — er gilt für Claude Code <em>und</em> für die interne Verbindung zum Backend.
+                Der Token oben ist der <strong style="color:var(--text)">einzige Schlüssel</strong>. Der MCP-Server lädt ihn automatisch aus der Datenbank — kein Eintrag in <code style="font-family:var(--mono)">.env</code> erforderlich.
                 <br><br>
-                <strong style="color:var(--text)">1. Token kopieren → .env auf dem Server ergänzen:</strong>
-                <div style="position:relative;margin:8px 0">
-                  <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 40px 10px 12px;font-size:11px;overflow-x:auto;color:var(--text);margin:0" id="mcp-env-hint">MCP_BACKEND_KEY=&lt;Token von oben&gt;</pre>
-                  <button onclick="copyPre('mcp-env-hint',this)" title="Kopieren" style="position:absolute;top:6px;right:6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;color:var(--text-dim)">⎘</button>
-                </div>
-                <strong style="color:var(--text)">2. MCP-Container (neu) starten:</strong>
+                <strong style="color:var(--text)">1. MCP-Container starten:</strong>
                 <div style="position:relative;margin:8px 0">
                   <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 40px 10px 12px;font-size:11px;overflow-x:auto;color:var(--text);margin:0">docker compose --profile mcp up -d --build mcp_server</pre>
                   <button onclick="copyPre(this.previousElementSibling,this)" title="Kopieren" style="position:absolute;top:6px;right:6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;color:var(--text-dim)">⎘</button>
                 </div>
-                <strong style="color:var(--text)">3. In Claude Code eintragen (einmalig):</strong>
+                <strong style="color:var(--text)">2. In Claude Code eintragen (einmalig):</strong>
                 <div style="position:relative;margin:8px 0">
                   <pre style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 40px 10px 12px;font-size:11px;overflow-x:auto;color:var(--text);margin:0;white-space:pre-wrap;word-break:break-all" id="mcp-claude-cmd">claude mcp add --transport http spacecaptain https://&lt;deine-domain&gt;/mcp/ --header "Authorization: Bearer &lt;Token von oben&gt;" -s user</pre>
                   <button onclick="copyPre('mcp-claude-cmd',this)" title="Kopieren" style="position:absolute;top:6px;right:6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;color:var(--text-dim)">⎘</button>
                 </div>
-                <span style="color:var(--text-dim)">Nach Token-Regenerierung: .env aktualisieren, Container neu starten, Claude-Code-Eintrag neu anlegen.</span>
+                <span style="color:var(--text-dim)">Nach Token-Regenerierung: Container neu starten, Claude-Code-Eintrag neu anlegen.</span>
+              </div>
+
+              <!-- Verfügbare Tools -->
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:16px 18px">
+                <div style="font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:12px">Verfügbare Tools</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px 20px;font-size:12px">
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">get_status</code><span style="color:var(--text-dim)">Raum, Alarm, fällige Wartung</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_machines</code><span style="color:var(--text-dim)">Maschinen und Betriebsstatus</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_machine_status</code><span style="color:var(--text-dim)">Maschine ein-/ausschalten</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_room</code><span style="color:var(--text-dim)">Raum öffnen / schliessen</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_pending_guests</code><span style="color:var(--text-dim)">Gäste auf Freischaltung</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">approve_guest</code><span style="color:var(--text-dim)">Gast freischalten</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_guests</code><span style="color:var(--text-dim)">Alle Gäste</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_guest_blocked</code><span style="color:var(--text-dim)">Gast sperren / entsperren</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_guest_permissions</code><span style="color:var(--text-dim)">Berechtigungen eines Gastes</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_permission</code><span style="color:var(--text-dim)">Berechtigung vergeben / entziehen</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_maintenance_due</code><span style="color:var(--text-dim)">Fällige Wartungsaufgaben</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">log_maintenance</code><span style="color:var(--text-dim)">Wartung erfassen</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">set_emergency</code><span style="color:var(--text-dim)">Notfall-Alarm ein-/ausschalten</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">list_notify_topics</code><span style="color:var(--text-dim)">ntfy Push-Topics</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">send_notification</code><span style="color:var(--text-dim)">Push-Nachricht senden</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">get_activity_log</code><span style="color:var(--text-dim)">Aktivitätslog (bis 100 Einträge)</span></div>
+                  <div style="display:flex;gap:8px;align-items:baseline"><code style="font-family:var(--mono);color:var(--accent);white-space:nowrap">trigger_update</code><span style="color:var(--text-dim)">System-Update auslösen</span></div>
+                </div>
               </div>
 
             </div>
