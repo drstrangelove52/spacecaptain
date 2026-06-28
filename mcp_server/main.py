@@ -22,6 +22,7 @@ mcp = FastMCP(
     "SpaceCaptain",
     host="0.0.0.0",
     transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+    stateless_http=True,
 )
 
 
