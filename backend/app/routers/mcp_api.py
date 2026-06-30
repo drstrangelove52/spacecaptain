@@ -722,6 +722,221 @@ async def mcp_get_stats(db: AsyncSession = Depends(get_db), _=Depends(require_mc
     }
 
 
+
+@router.get("/stats/sessions")
+async def mcp_get_session_stats(
+    from_date: str | None = Query(None, description="ISO-Datum, z.B. 2026-01-01"),
+    to_date: str | None   = Query(None, description="ISO-Datum, z.B. 2026-06-30"),
+    db: AsyncSession = Depends(get_db), _=Depends(require_mcp),
+):
+    """Zeitraum-Auswertung aller Sessions: Gesamtstunden, Durchschnittsdauer, Top-Maschinen, Top-Gäste."""
+    from sqlalchemy import desc, case
+    conditions = [MachineSession.ended_at.isnot(None)]
+    if from_date:
+        conditions.append(MachineSession.started_at >= datetime.fromisoformat(from_date))
+    if to_date:
+        to_dt = datetime.fromisoformat(to_date).replace(hour=23, minute=59, second=59)
+        conditions.append(MachineSession.started_at <= to_dt)
+
+    sessions = (await db.execute(
+        select(MachineSession).where(and_(*conditions)).order_by(MachineSession.started_at)
+    )).scalars().all()
+
+    machines_map = {m.id: m.name for m in (await db.execute(select(Machine))).scalars().all()}
+    guests_map   = {g.id: g.name for g in (await db.execute(select(Guest))).scalars().all()}
+
+    total_sessions = len(sessions)
+    total_minutes  = sum(s.duration_min or 0 for s in sessions)
+    total_hours    = round(total_minutes / 60, 1)
+    avg_duration_min = round(total_minutes / total_sessions, 1) if total_sessions else 0
+
+    # Tagesweise Gruppierung
+    from collections import defaultdict
+    daily: dict[str, int] = defaultdict(int)
+    for s in sessions:
+        day = s.started_at.strftime("%Y-%m-%d")
+        daily[day] += 1
+
+    # Top-Maschinen nach Anzahl Sessions
+    machine_counts: dict[int, dict] = defaultdict(lambda: {"sessions": 0, "minutes": 0.0})
+    for s in sessions:
+        machine_counts[s.machine_id]["sessions"] += 1
+        machine_counts[s.machine_id]["minutes"] += s.duration_min or 0
+    top_machines = sorted(machine_counts.items(), key=lambda x: x[1]["sessions"], reverse=True)[:5]
+
+    # Top-Gäste nach Anzahl Sessions
+    guest_counts: dict[int, dict] = defaultdict(lambda: {"sessions": 0, "minutes": 0.0})
+    for s in sessions:
+        if s.guest_id:
+            guest_counts[s.guest_id]["sessions"] += 1
+            guest_counts[s.guest_id]["minutes"] += s.duration_min or 0
+    top_guests = sorted(guest_counts.items(), key=lambda x: x[1]["sessions"], reverse=True)[:5]
+
+    return {
+        "period": {"from": from_date, "to": to_date},
+        "sessions": {
+            "total": total_sessions,
+            "total_hours": total_hours,
+            "avg_duration_min": avg_duration_min,
+        },
+        "by_day": [{"date": d, "sessions": c} for d, c in sorted(daily.items())],
+        "top_machines": [
+            {
+                "id": mid,
+                "name": machines_map.get(mid, "?"),
+                "sessions": v["sessions"],
+                "hours": round(v["minutes"] / 60, 1),
+            }
+            for mid, v in top_machines
+        ],
+        "top_guests": [
+            {
+                "id": gid,
+                "name": guests_map.get(gid, "?"),
+                "sessions": v["sessions"],
+                "hours": round(v["minutes"] / 60, 1),
+            }
+            for gid, v in top_guests
+        ],
+    }
+
+
+@router.get("/stats/machines/{machine_id}")
+async def mcp_get_machine_stats(
+    machine_id: int,
+    from_date: str | None = Query(None),
+    to_date: str | None   = Query(None),
+    db: AsyncSession = Depends(get_db), _=Depends(require_mcp),
+):
+    """Detaillierte Auslastungsauswertung einer Maschine: Wochentrend, Top-Gäste, Avg-Dauer."""
+    from collections import defaultdict
+    machine = await db.get(Machine, machine_id)
+    if not machine:
+        raise HTTPException(404, "Maschine nicht gefunden")
+
+    conditions = [MachineSession.machine_id == machine_id, MachineSession.ended_at.isnot(None)]
+    if from_date:
+        conditions.append(MachineSession.started_at >= datetime.fromisoformat(from_date))
+    if to_date:
+        to_dt = datetime.fromisoformat(to_date).replace(hour=23, minute=59, second=59)
+        conditions.append(MachineSession.started_at <= to_dt)
+
+    sessions = (await db.execute(
+        select(MachineSession).where(and_(*conditions)).order_by(MachineSession.started_at)
+    )).scalars().all()
+
+    guests_map = {g.id: g.name for g in (await db.execute(select(Guest))).scalars().all()}
+
+    total_sessions  = len(sessions)
+    total_minutes   = sum(s.duration_min or 0 for s in sessions)
+    avg_duration    = round(total_minutes / total_sessions, 1) if total_sessions else 0
+
+    # Wochenweise Gruppierung
+    weekly: dict[str, dict] = defaultdict(lambda: {"sessions": 0, "minutes": 0.0})
+    for s in sessions:
+        week = s.started_at.strftime("%Y-W%W")
+        weekly[week]["sessions"] += 1
+        weekly[week]["minutes"] += s.duration_min or 0
+
+    # Top-Gäste
+    guest_counts: dict[int, dict] = defaultdict(lambda: {"sessions": 0, "minutes": 0.0})
+    for s in sessions:
+        if s.guest_id:
+            guest_counts[s.guest_id]["sessions"] += 1
+            guest_counts[s.guest_id]["minutes"] += s.duration_min or 0
+    top_guests = sorted(guest_counts.items(), key=lambda x: x[1]["sessions"], reverse=True)[:10]
+
+    return {
+        "machine_id":        machine.id,
+        "machine_name":      machine.name,
+        "period":            {"from": from_date, "to": to_date},
+        "total_sessions":    total_sessions,
+        "total_hours":       round(total_minutes / 60, 1),
+        "avg_duration_min":  avg_duration,
+        "lifetime_hours":    round(machine.total_hours or 0, 1),
+        "by_week": [
+            {"week": w, "sessions": v["sessions"], "hours": round(v["minutes"] / 60, 1)}
+            for w, v in sorted(weekly.items())
+        ],
+        "top_guests": [
+            {
+                "id": gid,
+                "name": guests_map.get(gid, "?"),
+                "sessions": v["sessions"],
+                "hours": round(v["minutes"] / 60, 1),
+            }
+            for gid, v in top_guests
+        ],
+    }
+
+
+@router.get("/stats/guests/{guest_id}")
+async def mcp_get_guest_stats(
+    guest_id: int,
+    from_date: str | None = Query(None),
+    to_date: str | None   = Query(None),
+    db: AsyncSession = Depends(get_db), _=Depends(require_mcp),
+):
+    """Aktivitätsprofil eines Gastes: genutzte Maschinen, Stunden, erste/letzte Session."""
+    from collections import defaultdict
+    guest = (await db.execute(select(Guest).where(Guest.id == guest_id))).scalar_one_or_none()
+    if not guest:
+        raise HTTPException(404, "Gast nicht gefunden")
+
+    conditions = [MachineSession.guest_id == guest_id, MachineSession.ended_at.isnot(None)]
+    if from_date:
+        conditions.append(MachineSession.started_at >= datetime.fromisoformat(from_date))
+    if to_date:
+        to_dt = datetime.fromisoformat(to_date).replace(hour=23, minute=59, second=59)
+        conditions.append(MachineSession.started_at <= to_dt)
+
+    sessions = (await db.execute(
+        select(MachineSession).where(and_(*conditions)).order_by(MachineSession.started_at)
+    )).scalars().all()
+
+    machines_map = {m.id: m.name for m in (await db.execute(select(Machine))).scalars().all()}
+
+    total_sessions = len(sessions)
+    total_minutes  = sum(s.duration_min or 0 for s in sessions)
+
+    # Pro Maschine aggregieren
+    machine_data: dict[int, dict] = defaultdict(lambda: {"sessions": 0, "minutes": 0.0, "last_used": None})
+    for s in sessions:
+        machine_data[s.machine_id]["sessions"] += 1
+        machine_data[s.machine_id]["minutes"] += s.duration_min or 0
+        machine_data[s.machine_id]["last_used"] = s.started_at.isoformat()
+
+    # Monatliche Aktivität
+    monthly: dict[str, int] = defaultdict(int)
+    for s in sessions:
+        month = s.started_at.strftime("%Y-%m")
+        monthly[month] += 1
+
+    return {
+        "guest_id":     guest.id,
+        "guest_name":   guest.name,
+        "period":       {"from": from_date, "to": to_date},
+        "total_sessions": total_sessions,
+        "total_hours":  round(total_minutes / 60, 1),
+        "first_session": sessions[0].started_at.isoformat() if sessions else None,
+        "last_session":  sessions[-1].started_at.isoformat() if sessions else None,
+        "machines_used": [
+            {
+                "id":       mid,
+                "name":     machines_map.get(mid, "?"),
+                "sessions": v["sessions"],
+                "hours":    round(v["minutes"] / 60, 1),
+                "last_used": v["last_used"],
+            }
+            for mid, v in sorted(machine_data.items(), key=lambda x: x[1]["sessions"], reverse=True)
+        ],
+        "by_month": [
+            {"month": m, "sessions": c}
+            for m, c in sorted(monthly.items())
+        ],
+    }
+
+
 # ── Benutzer ───────────────────────────────────────────────────────────────────
 
 @router.get("/users")

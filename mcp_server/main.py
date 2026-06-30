@@ -80,6 +80,53 @@ async def get_stats() -> dict:
 
 
 @mcp.tool()
+async def get_session_stats(
+    from_date: str | None = None,
+    to_date: str | None = None,
+) -> dict:
+    """Zeitraum-Auswertung aller Sessions: Gesamtstunden, Durchschnittsdauer, Top-Maschinen, Top-Gäste.
+    from_date / to_date als ISO-Datum (z.B. '2026-01-01'). Ohne Angabe: alle Sessions."""
+    params = ""
+    if from_date:
+        params += f"?from_date={from_date}"
+    if to_date:
+        params += ("&" if params else "?") + f"to_date={to_date}"
+    return await _get(f"/stats/sessions{params}")
+
+
+@mcp.tool()
+async def get_machine_stats(
+    machine_id: int,
+    from_date: str | None = None,
+    to_date: str | None = None,
+) -> dict:
+    """Detaillierte Auslastungsauswertung einer Maschine: Wochentrend, Top-Gäste, Avg-Dauer.
+    from_date / to_date als ISO-Datum optional."""
+    params = ""
+    if from_date:
+        params += f"?from_date={from_date}"
+    if to_date:
+        params += ("&" if params else "?") + f"to_date={to_date}"
+    return await _get(f"/stats/machines/{machine_id}{params}")
+
+
+@mcp.tool()
+async def get_guest_stats(
+    guest_id: int,
+    from_date: str | None = None,
+    to_date: str | None = None,
+) -> dict:
+    """Aktivitätsprofil eines Gastes: genutzte Maschinen, Stunden pro Maschine, monatliche Aktivität.
+    from_date / to_date als ISO-Datum optional."""
+    params = ""
+    if from_date:
+        params += f"?from_date={from_date}"
+    if to_date:
+        params += ("&" if params else "?") + f"to_date={to_date}"
+    return await _get(f"/stats/guests/{guest_id}{params}")
+
+
+@mcp.tool()
 async def get_status() -> dict:
     """Aktueller SpaceCaptain-Status: Raum offen/zu, Notfall-Alarm, ausstehende Gast-Anmeldungen, Wartung fällig."""
     return await _get("/status")
