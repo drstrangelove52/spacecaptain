@@ -54,11 +54,26 @@ async def _patch(path: str, body: dict = {}):
 # ── get_ ───────────────────────────────────────────────────────────────────────
 
 @mcp.tool()
-async def get_activity_log(limit: int = 20) -> list:
-    """Letzte Aktivitätslog-Einträge (Standard: 20, max 100)."""
-    limit = min(max(1, limit), 100)
-    result = await _get(f"/log?limit={limit}")
-    return result.get("logs", result)
+async def get_activity_log(
+    limit: int | None = None,
+    offset: int = 0,
+    from_date: str | None = None,
+    to_date: str | None = None,
+    log_type: str | None = None,
+) -> dict:
+    """Aktivitätslog-Einträge. Kein Limit-Cap — voller Zugriff auf alle Einträge.
+    limit: Einträge pro Seite (ohne Angabe: alle). offset: für Pagination.
+    from_date / to_date: ISO-Datum (z.B. '2026-01-01'). log_type: Typ-Filter (z.B. 'session_start')."""
+    params = f"?offset={offset}"
+    if limit is not None:
+        params += f"&limit={limit}"
+    if from_date:
+        params += f"&from_date={from_date}"
+    if to_date:
+        params += f"&to_date={to_date}"
+    if log_type:
+        params += f"&log_type={log_type}"
+    return await _get(f"/log{params}")
 
 
 @mcp.tool()

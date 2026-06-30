@@ -155,17 +155,43 @@ async def mcp_approve_guest(guest_id: int, db: AsyncSession = Depends(get_db), _
 
 @router.get("/log")
 async def mcp_activity_log(
-    limit: int = Query(20, ge=1, le=100),
+    limit: int | None = Query(None, ge=1, description="Einträge pro Seite. Ohne Angabe: alle."),
+    offset: int       = Query(0, ge=0),
+    from_date: str | None = Query(None, description="ISO-Datum, z.B. 2026-01-01"),
+    to_date: str | None   = Query(None, description="ISO-Datum, z.B. 2026-06-30"),
+    log_type: str | None  = Query(None, description="Typ-Filter, z.B. session_start"),
     db: AsyncSession = Depends(get_db),
     _=Depends(require_mcp),
 ):
-    logs = (await db.execute(
-        select(ActivityLog).order_by(ActivityLog.created_at.desc()).limit(limit)
-    )).scalars().all()
+    conditions = []
+    if from_date:
+        conditions.append(ActivityLog.created_at >= datetime.fromisoformat(from_date))
+    if to_date:
+        to_dt = datetime.fromisoformat(to_date).replace(hour=23, minute=59, second=59)
+        conditions.append(ActivityLog.created_at <= to_dt)
+    if log_type:
+        conditions.append(ActivityLog.type == log_type)
+
+    q = select(ActivityLog).order_by(ActivityLog.created_at.desc()).offset(offset)
+    if conditions:
+        q = q.where(and_(*conditions))
+    if limit is not None:
+        q = q.limit(limit)
+
+    logs = (await db.execute(q)).scalars().all()
+
+    total = (await db.scalar(
+        select(func.count()).select_from(ActivityLog).where(and_(*conditions)) if conditions
+        else select(func.count()).select_from(ActivityLog)
+    )) or 0
+
     guests   = {g.id: g.name for g in (await db.execute(select(Guest))).scalars().all()}
     machines = {m.id: m.name for m in (await db.execute(select(Machine))).scalars().all()}
     users    = {u.id: u.name for u in (await db.execute(select(User))).scalars().all()}
     return {
+        "total":  total,
+        "offset": offset,
+        "limit":  limit,
         "logs": [
             {
                 "id":           l.id,
@@ -177,7 +203,7 @@ async def mcp_activity_log(
                 "user_name":    users.get(l.user_id)     if l.user_id    else None,
             }
             for l in logs
-        ]
+        ],
     }
 
 
