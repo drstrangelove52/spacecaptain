@@ -76,7 +76,7 @@
 <header>
   <img src="/SpaceCaptain.svg" class="logo" alt="SpaceCaptain">
   <div>
-    <div class="header-title">SPACECAPTAIN</div>
+    <div class="header-title">SpaceCaptain</div>
     <div class="header-sub" id="header-sub">NAVIGATING CREATIVITY</div>
   </div>
   <div style="margin-left:auto;display:flex;align-items:center;gap:28px">
@@ -112,6 +112,14 @@
   <div id="emergency-display-text" style="max-width:800px;font-size:22px;line-height:1.8;color:#fca5a5;margin-top:16px;white-space:pre-wrap"></div>
   <div style="font-family:'Share Tech Mono',monospace;font-size:14px;color:rgba(239,68,68,.5);margin-top:32px;letter-spacing:2px" id="emergency-display-time"></div>
 </div>
+<!-- GESCHLOSSEN-SCREEN -->
+<div id="closed-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9998;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center">
+  <img src="/SpaceCaptain.svg" style="height:64px;opacity:.5;margin-bottom:24px" alt="SpaceCaptain">
+  <div style="font-size:64px;opacity:.6">🔒</div>
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:56px;font-weight:900;color:var(--text-dim);letter-spacing:4px;margin:16px 0;text-transform:uppercase">Makerspace geschlossen</div>
+  <div style="max-width:700px;font-size:18px;line-height:1.6;color:var(--text-mid)">Komm doch zu den Öffnungszeiten wieder vorbei.</div>
+  <div id="closed-display-time" style="font-family:'Share Tech Mono',monospace;font-size:32px;color:var(--accent2);margin-top:32px;letter-spacing:2px"></div>
+</div>
 <style>
   @keyframes emergencyPulse{0%,100%{opacity:1}50%{opacity:.4}}
 </style>
@@ -133,8 +141,10 @@ function formatDur(min) {
 
 function updateClock() {
   const now = new Date();
-  document.getElementById('clock').textContent =
-    now.toLocaleTimeString('de-CH', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const timeStr = now.toLocaleTimeString('de-CH', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('clock').textContent = timeStr;
+  const closedTime = document.getElementById('closed-display-time');
+  if (closedTime) closedTime.textContent = timeStr;
 }
 setInterval(updateClock, 1000);
 updateClock();
@@ -340,7 +350,7 @@ async function loadData() {
       fetchWithTimeout(`${API}/queue`).then(r=>r.json()).catch(()=>[]),
     ]);
 
-    _allMachines = Array.isArray(machines) ? machines : [];
+    _allMachines = (Array.isArray(machines) ? machines : []).filter(m => m.status !== 'offline');
     _allQueues = {};
     for (const q of (Array.isArray(queues) ? queues : [])) {
       if (!_allQueues[q.machine_id]) _allQueues[q.machine_id] = [];
@@ -390,6 +400,8 @@ async function initDisplay() {
   setInterval(loadAnnouncements, 60000);
   checkEmergency();
   setInterval(checkEmergency, 10000);
+  checkRoomStatus();
+  setInterval(checkRoomStatus, 10000);
   document.querySelector('footer span:first-of-type').textContent =
     `Automatische Aktualisierung alle ${_displayRefreshMs/1000} Sekunden`;
 }
@@ -409,6 +421,13 @@ async function checkEmergency() {
     } else {
       screen.style.display = 'none';
     }
+  } catch {}
+}
+
+async function checkRoomStatus() {
+  try {
+    const s = await fetch('/api/settings/public').then(r => r.json());
+    document.getElementById('closed-screen').style.display = s.room_open === false ? 'flex' : 'none';
   } catch {}
 }
 

@@ -109,6 +109,7 @@ async def read_settings_public(db: AsyncSession = Depends(get_db)):
         "announcement_font_size": s.announcement_font_size,
         "agb_text": s.agb_text or "",
         "space_name": s.space_name or "",
+        "room_open": s.room_open,
     }
 
 
