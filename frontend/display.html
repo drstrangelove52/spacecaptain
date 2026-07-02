@@ -343,7 +343,19 @@ function fetchWithTimeout(url, timeoutMs = 8000) {
   return fetch(url, {signal: ctrl.signal}).finally(() => clearTimeout(id));
 }
 
+const _pageLoadedAt = document.lastModified ? new Date(document.lastModified).getTime() : Date.now();
+
+function checkForUpdate() {
+  fetch(window.location.pathname, {method: 'HEAD', cache: 'no-store'})
+    .then(res => {
+      const lm = res.headers.get('Last-Modified');
+      if (lm && new Date(lm).getTime() > _pageLoadedAt) location.reload();
+    })
+    .catch(() => {});
+}
+
 async function loadData() {
+  checkForUpdate();
   try {
     const [machines, queues] = await Promise.all([
       fetchWithTimeout(`${API}/guest/dashboard`).then(r=>r.json()).catch(()=>[]),
