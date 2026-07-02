@@ -116,7 +116,8 @@
 <div id="closed-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9998;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center">
   <img src="/SpaceCaptain.svg" style="height:clamp(64px, 14vh, 240px);opacity:.5;margin-bottom:24px" alt="SpaceCaptain">
   <div style="font-size:64px;opacity:.6">🔒</div>
-  <div style="font-family:'Barlow Condensed',sans-serif;font-size:56px;font-weight:900;color:var(--text-dim);letter-spacing:4px;margin:16px 0;text-transform:uppercase">Makerspace geschlossen</div>
+  <div id="closed-name" style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:700;color:var(--text-dim);letter-spacing:3px;margin-top:16px;text-transform:uppercase">Makerspace</div>
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:56px;font-weight:900;color:var(--text-dim);letter-spacing:4px;margin-bottom:16px;text-transform:uppercase">Geschlossen</div>
   <div style="max-width:700px;font-size:18px;line-height:1.6;color:var(--text-mid)">Komm doch zu den Öffnungszeiten wieder vorbei.</div>
   <div id="closed-display-time" style="font-family:'Share Tech Mono',monospace;font-size:32px;color:var(--accent2);margin-top:32px;letter-spacing:2px"></div>
 </div>
@@ -393,7 +394,10 @@ async function initDisplay() {
     window._tickerSpeed = s.ticker_speed || 80;
     window._tickerFontSize = s.ticker_font_size || 18;
     window._announcementFontSize = s.announcement_font_size || 20;
-    if (s.space_name) document.getElementById('header-sub').textContent = s.space_name.toUpperCase();
+    if (s.space_name) {
+      document.getElementById('header-sub').textContent = s.space_name.toUpperCase();
+      document.getElementById('closed-name').textContent = s.space_name.toUpperCase();
+    }
   } catch {}
   await loadAnnouncements();
   loadData();
@@ -406,6 +410,10 @@ async function initDisplay() {
       window._tickerSpeed = s.ticker_speed || 80;
       window._tickerFontSize = s.ticker_font_size || 18;
       window._announcementFontSize = s.announcement_font_size || 20;
+      if (s.space_name) {
+        document.getElementById('header-sub').textContent = s.space_name.toUpperCase();
+        document.getElementById('closed-name').textContent = s.space_name.toUpperCase();
+      }
       _rebuildTicker();
     } catch {}
   }, 300000);
