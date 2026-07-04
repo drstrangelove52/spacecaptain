@@ -95,6 +95,12 @@ async def get_stats() -> dict:
 
 
 @mcp.tool()
+async def get_inventory_value() -> dict:
+    """Gesamtwert des Maschinenparks (Summe Neuwert) für Buchhaltung/Versicherung, inkl. Währung."""
+    return await _get("/inventory/value")
+
+
+@mcp.tool()
 async def get_session_stats(
     from_date: str | None = None,
     to_date: str | None = None,

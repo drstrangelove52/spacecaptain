@@ -9,7 +9,7 @@ from app.models import (Machine, Guest, ActivityLog, MaintenanceInterval,
                          MaintenanceRecord, EmergencyState, MachineQueue, QueueStatus, User,
                          Permission, NtfyTopic, Plug, Announcement, MachineSession,
                          AutomationRule, RuleCondition, MachineCategory, MachineLocation,
-                         SessionEndedBy)
+                         MachineOwner, SessionEndedBy)
 from app.services.system_settings import get_system_settings
 from app.config import APP_TIMEZONE
 
@@ -103,6 +103,7 @@ async def mcp_get_status(db: AsyncSession = Depends(get_db), _=Depends(require_m
 async def mcp_list_machines(db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
     machines = (await db.execute(select(Machine))).scalars().all()
     guests   = {g.id: g.name for g in (await db.execute(select(Guest))).scalars().all()}
+    owners   = {o.id: o.name for o in (await db.execute(select(MachineOwner))).scalars().all()}
     return [
         {
             "id":           m.id,
@@ -114,6 +115,9 @@ async def mcp_list_machines(db: AsyncSession = Depends(get_db), _=Depends(requir
             "current_guest": guests.get(m.current_guest_id) if m.current_guest_id else None,
             "session_started_at": m.session_started_at.isoformat() if m.session_started_at else None,
             "total_hours":  round(m.total_hours or 0, 1),
+            "purchase_date": m.purchase_date.isoformat() if m.purchase_date else None,
+            "value_new":    m.value_new,
+            "owner":        owners.get(m.owner_id) if m.owner_id else None,
         }
         for m in machines
     ]
@@ -465,6 +469,7 @@ async def mcp_get_machine(
         g = await db.get(Guest, machine.current_guest_id)
         guest = g.name if g else None
     plug = await db.get(Plug, machine.plug_id) if machine.plug_id else None
+    owner = await db.get(MachineOwner, machine.owner_id) if machine.owner_id else None
     records = (await db.execute(
         select(MaintenanceRecord)
         .where(MaintenanceRecord.machine_id == machine_id)
@@ -482,6 +487,9 @@ async def mcp_get_machine(
         "in_use":        machine.current_guest_id is not None,
         "current_guest": guest,
         "session_started_at": machine.session_started_at.isoformat() if machine.session_started_at else None,
+        "purchase_date": machine.purchase_date.isoformat() if machine.purchase_date else None,
+        "value_new":     machine.value_new,
+        "owner":         owner.name if owner else None,
         "plug": {
             "id": plug.id, "ip": plug.ip, "type": plug.plug_type,
         } if plug else None,
@@ -747,6 +755,20 @@ async def mcp_get_stats(db: AsyncSession = Depends(get_db), _=Depends(require_mc
         ],
     }
 
+
+@router.get("/inventory/value")
+async def mcp_get_inventory_value(db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
+    """Gesamtwert des Maschinenparks (Summe Neuwert) für Buchhaltung/Versicherung."""
+    settings = await get_system_settings(db)
+    machines = (await db.execute(select(Machine))).scalars().all()
+    with_value = [m for m in machines if m.value_new is not None]
+    return {
+        "currency":              settings.currency or "CHF",
+        "total_machines":        len(machines),
+        "machines_with_value":   len(with_value),
+        "machines_without_value": len(machines) - len(with_value),
+        "total_value_new":       round(sum(m.value_new for m in with_value), 2),
+    }
 
 
 @router.get("/stats/sessions")
