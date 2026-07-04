@@ -3890,7 +3890,7 @@ function exportInventoryCsv(){
 }
 
 function exportInventoryPdf(){
-  const rows=[...cache.machines].sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  const rows=[...cache.machines].sort((a,b)=>(a.category||'').localeCompare(b.category||'','de')||a.name.localeCompare(b.name,'de'));
   const totalValue=rows.reduce((sum,m)=>sum+(m.value_new||0),0);
   const win=window.open('','_blank');
   if(!win){showToast('Popup wurde blockiert — bitte Popups für diese Seite erlauben','error');return;}
