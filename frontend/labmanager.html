@@ -3948,10 +3948,10 @@ async function handleCsvImport(ev){
 let _csvImportRows=[];
 
 function showCsvPreviewModal(preview){
-  const {total,to_import,skipped,errors,rows}=preview;
+  const {total,to_import,to_update,skipped,errors,rows}=preview;
   _csvImportRows=rows;
-  const actionColor=r=>r.action==='import'?'var(--success)':r.action==='error'?'var(--danger)':'var(--text-muted)';
-  const actionLabel=r=>r.action==='import'?'Import':r.action==='error'?'Fehler':'Überspringen';
+  const actionColor=r=>r.action==='import'?'var(--success)':r.action==='update'?'var(--accent)':r.action==='error'?'var(--danger)':'var(--text-muted)';
+  const actionLabel=r=>r.action==='import'?'Import':r.action==='update'?'Update':r.action==='error'?'Fehler':'Überspringen';
   const rowsHtml=rows.map(r=>`
     <tr style="color:${actionColor(r)}">
       <td style="padding:4px 8px">${r.row}</td>
@@ -3966,9 +3966,10 @@ function showCsvPreviewModal(preview){
   <div id="csv-preview-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center">
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;width:min(820px,95vw);max-height:85vh;display:flex;flex-direction:column;gap:16px">
       <h3 style="margin:0">CSV-Import Vorschau</h3>
-      <div style="display:flex;gap:24px;font-size:14px">
+      <div style="display:flex;gap:24px;font-size:14px;flex-wrap:wrap">
         <span>Gesamt: <strong>${total}</strong></span>
         <span style="color:var(--success)">Neu: <strong>${to_import}</strong></span>
+        <span style="color:var(--accent)">Update-Kandidaten: <strong>${to_update}</strong></span>
         <span style="color:var(--text-muted)">Übersprungen: <strong>${skipped}</strong></span>
         ${errors?`<span style="color:var(--danger)">Fehler: <strong>${errors}</strong></span>`:''}
       </div>
@@ -3985,10 +3986,15 @@ function showCsvPreviewModal(preview){
           <tbody>${rowsHtml}</tbody>
         </table>
       </div>
+      ${to_update>0?`
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="csv-update-existing" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent2)">
+        <label for="csv-update-existing" style="cursor:pointer;font-size:13px">Bestehende Maschinen aktualisieren (${to_update} erkannt anhand der ID-Spalte) — leere Zellen leeren das jeweilige Feld</label>
+      </div>`:''}
       <div style="display:flex;gap:12px;justify-content:flex-end">
         <button class="btn btn-ghost" onclick="document.getElementById('csv-preview-modal').remove()">Abbrechen</button>
-        ${to_import>0
-          ?`<button class="btn btn-primary" onclick="confirmCsvImport()">${to_import} Maschine${to_import===1?'':'n'} importieren</button>`
+        ${(to_import>0||to_update>0)
+          ?`<button class="btn btn-primary" onclick="confirmCsvImport()">Import bestätigen</button>`
           :'<span style="color:var(--text-muted);align-self:center">Nichts zu importieren</span>'}
       </div>
     </div>
@@ -3997,12 +4003,13 @@ function showCsvPreviewModal(preview){
 }
 
 async function confirmCsvImport(){
+  const updateExisting=document.getElementById('csv-update-existing')?.checked||false;
   document.getElementById('csv-preview-modal')?.remove();
-  const toImport=_csvImportRows.filter(r=>r.action==='import');
+  const rowsToSend=_csvImportRows.filter(r=>r.action==='import'||r.action==='update');
   try{
-    const data=await POST('/machines/import/confirm',{rows:toImport});
-    showToast(`${data.imported} Maschine(n) importiert, ${data.skipped} übersprungen`,'success');
-    await loadMachines();
+    const data=await POST('/machines/import/confirm',{rows:rowsToSend,update_existing:updateExisting});
+    showToast(`${data.imported} Maschine(n) importiert, ${data.updated} aktualisiert, ${data.skipped} übersprungen`,'success');
+    await loadAll();
   }catch(e){showToast('Import fehlgeschlagen: '+(e.message||e),'error');}
 }
 

@@ -448,11 +448,23 @@ _STATUS_MAP = {
     "maintenance": "maintenance", "wartung": "maintenance",
 }
 
-def _parse_csv_row(row: dict, existing_names: set[str], row_nr: int) -> dict:
-    """Validiert eine CSV-Zeile und gibt ein result-dict zurück."""
+def _parse_csv_row(row: dict, existing_names: set[str], existing_by_id: dict[int, str], row_nr: int) -> dict:
+    """Validiert eine CSV-Zeile und gibt ein result-dict zurück.
+
+    Action-Ermittlung: Passt die ID-Spalte zu einer vorhandenen Maschine, wird
+    die Zeile als "update"-Kandidat markiert (angewendet nur wenn der Import
+    mit aktivierter "Bestehende aktualisieren"-Option bestätigt wird). Ohne
+    ID-Match: neuer Name -> "import", vorhandener Name -> "skip" (wie bisher).
+    """
     name = (row.get("Name") or "").strip()
     if not name:
         return {"row": row_nr, "action": "error", "reason": "Name fehlt"}
+
+    machine_id = None
+    id_raw = (row.get("ID") or "").strip()
+    if id_raw.isdigit():
+        machine_id = int(id_raw)
+    existing_name_for_id = existing_by_id.get(machine_id) if machine_id is not None else None
 
     status_raw = (row.get("Status") or "online").strip().lower()
     status = _STATUS_MAP.get(status_raw, "online")
@@ -475,8 +487,19 @@ def _parse_csv_row(row: dict, existing_names: set[str], row_nr: int) -> dict:
         except ValueError:
             value_new = None
 
+    if machine_id is not None and existing_name_for_id is not None:
+        if name != existing_name_for_id and name in existing_names:
+            action, reason = "error", f"Name '{name}' bereits von anderer Maschine belegt"
+        else:
+            action, reason = "update", None
+    elif name in existing_names:
+        action, reason = "skip", "Bereits vorhanden"
+    else:
+        action, reason = "import", None
+
     return {
         "row": row_nr,
+        "id": machine_id,
         "name": name,
         "category": (row.get("Kategorie") or "Sonstiges").strip() or "Sonstiges",
         "manufacturer": (row.get("Hersteller") or "").strip() or None,
@@ -489,8 +512,8 @@ def _parse_csv_row(row: dict, existing_names: set[str], row_nr: int) -> dict:
         "purchase_date": purchase_date,
         "value_new": value_new,
         "owner": (row.get("Eigentümer") or "").strip() or None,
-        "action": "skip" if name in existing_names else "import",
-        "reason": "Bereits vorhanden" if name in existing_names else None,
+        "action": action,
+        "reason": reason,
     }
 
 
@@ -510,20 +533,24 @@ async def import_machines_preview(
     if not reader.fieldnames or "Name" not in reader.fieldnames:
         raise HTTPException(400, "Ungültiges CSV-Format — Spalte 'Name' nicht gefunden")
 
-    res = await db.execute(select(Machine.name))
-    existing_names = {r[0] for r in res.all()}
+    res = await db.execute(select(Machine.id, Machine.name))
+    rows_db = res.all()
+    existing_names = {r[1] for r in rows_db}
+    existing_by_id = {r[0]: r[1] for r in rows_db}
 
     rows = []
     for i, row in enumerate(reader, start=2):
-        rows.append(_parse_csv_row(row, existing_names, i))
+        rows.append(_parse_csv_row(row, existing_names, existing_by_id, i))
 
     to_import = sum(1 for r in rows if r["action"] == "import")
+    to_update = sum(1 for r in rows if r["action"] == "update")
     skipped   = sum(1 for r in rows if r["action"] == "skip")
     errors    = sum(1 for r in rows if r["action"] == "error")
 
     return {
         "total": len(rows),
         "to_import": to_import,
+        "to_update": to_update,
         "skipped": skipped,
         "errors": errors,
         "rows": rows,
@@ -539,15 +566,24 @@ async def import_machines_confirm(
     rows = payload.get("rows", [])
     if not rows:
         raise HTTPException(400, "Keine Zeilen übergeben")
+    update_existing = bool(payload.get("update_existing", False))
 
-    res = await db.execute(select(Machine.name))
-    existing_names = {r[0] for r in res.all()}
+    res = await db.execute(select(Machine.id, Machine.name))
+    rows_db = res.all()
+    existing_names = {r[1] for r in rows_db}
+    existing_by_id = {r[0]: r[1] for r in rows_db}
 
     # Fehlende Kategorien, Standorte und Eigentümer automatisch anlegen
+    # (Update-Zeilen nur wenn Update tatsächlich bestätigt wurde — sonst
+    # würden unnötig Lookup-Einträge für verworfene Zeilen entstehen)
+    relevant_rows = [
+        r for r in rows
+        if r.get("action") == "import" or (r.get("action") == "update" and update_existing)
+    ]
     existing_cats = {c.name for c in (await db.execute(select(MachineCategory.name))).scalars().all()}
     existing_locs = {l.name for l in (await db.execute(select(MachineLocation.name))).scalars().all()}
     existing_owner_names = {o.name for o in (await db.execute(select(MachineOwner.name))).scalars().all()}
-    for row in [r for r in rows if r.get("action") == "import"]:
+    for row in relevant_rows:
         cat = (row.get("category") or "Sonstiges").strip() or "Sonstiges"
         if cat not in existing_cats:
             db.add(MachineCategory(name=cat, icon="🔧", sort_order=len(existing_cats)))
@@ -564,50 +600,87 @@ async def import_machines_confirm(
     owner_id_map = {o.name: o.id for o in (await db.execute(select(MachineOwner))).scalars().all()}
 
     imported = 0
+    updated  = 0
     skipped  = 0
     from app.models import MachineStatus
 
     for row in rows:
-        if row.get("action") != "import":
-            skipped += 1
-            continue
+        action = row.get("action")
         name = (row.get("name") or "").strip()
-        if not name or name in existing_names:
-            skipped += 1
-            continue
         status_val = row.get("status", "online")
         try:
             status_enum = MachineStatus(status_val)
         except ValueError:
             status_enum = MachineStatus.online
-
         purchase_date = row.get("purchase_date")
-        machine = Machine(
-            name=name,
-            category=row.get("category") or "Sonstiges",
-            manufacturer=row.get("manufacturer"),
-            model=row.get("model"),
-            serial_number=row.get("serial_number"),
-            location=row.get("location"),
-            status=status_enum,
-            training_required=bool(row.get("training_required", True)),
-            comment=row.get("comment"),
-            qr_token=_gen_qr_token(),
-            purchase_date=date.fromisoformat(purchase_date) if purchase_date else None,
-            value_new=row.get("value_new"),
-            owner_id=owner_id_map.get(row.get("owner")) if row.get("owner") else None,
-        )
-        db.add(machine)
-        existing_names.add(name)
-        imported += 1
+
+        if action == "import":
+            if not name or name in existing_names:
+                skipped += 1
+                continue
+            machine = Machine(
+                name=name,
+                category=row.get("category") or "Sonstiges",
+                manufacturer=row.get("manufacturer"),
+                model=row.get("model"),
+                serial_number=row.get("serial_number"),
+                location=row.get("location"),
+                status=status_enum,
+                training_required=bool(row.get("training_required", True)),
+                comment=row.get("comment"),
+                qr_token=_gen_qr_token(),
+                purchase_date=date.fromisoformat(purchase_date) if purchase_date else None,
+                value_new=row.get("value_new"),
+                owner_id=owner_id_map.get(row.get("owner")) if row.get("owner") else None,
+            )
+            db.add(machine)
+            existing_names.add(name)
+            imported += 1
+
+        elif action == "update":
+            if not update_existing:
+                skipped += 1
+                continue
+            machine_id = row.get("id")
+            current_name = existing_by_id.get(machine_id)
+            if machine_id is None or current_name is None:
+                skipped += 1
+                continue
+            if name != current_name and name in existing_names:
+                skipped += 1
+                continue
+            machine = await db.get(Machine, machine_id)
+            if not machine:
+                skipped += 1
+                continue
+            if name != current_name:
+                existing_names.discard(current_name)
+                existing_names.add(name)
+                existing_by_id[machine_id] = name
+            machine.name = name
+            machine.category = row.get("category") or "Sonstiges"
+            machine.manufacturer = row.get("manufacturer")
+            machine.model = row.get("model")
+            machine.serial_number = row.get("serial_number")
+            machine.location = row.get("location")
+            machine.status = status_enum
+            machine.training_required = bool(row.get("training_required", True))
+            machine.comment = row.get("comment")
+            machine.purchase_date = date.fromisoformat(purchase_date) if purchase_date else None
+            machine.value_new = row.get("value_new")
+            machine.owner_id = owner_id_map.get(row.get("owner")) if row.get("owner") else None
+            updated += 1
+
+        else:
+            skipped += 1
 
     await db.commit()
 
-    if imported > 0:
+    if imported > 0 or updated > 0:
         await log_svc.log(
-            db, LogType.machine_created,
-            f"CSV-Import: {imported} Maschine(n) importiert, {skipped} übersprungen",
+            db, LogType.machine_created if imported else LogType.machine_updated,
+            f"CSV-Import: {imported} Maschine(n) importiert, {updated} aktualisiert, {skipped} übersprungen",
             user_id=current.id,
         )
 
-    return {"imported": imported, "skipped": skipped}
+    return {"imported": imported, "updated": updated, "skipped": skipped}
