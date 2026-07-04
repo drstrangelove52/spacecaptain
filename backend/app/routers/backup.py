@@ -117,12 +117,13 @@ async def _build_export_data(db: AsyncSession) -> dict:
         "users": [{
             "name": u.name, "email": u.email, "role": u.role,
             "phone": u.phone, "area": u.area, "is_active": u.is_active,
-            "password_hash": u.password_hash,
+            "password_hash": u.password_hash, "login_token": u.login_token,
         } for u in users],
         "guests": [{
             "name": g.name, "username": g.username, "email": g.email,
             "phone": g.phone, "note": g.note, "is_active": g.is_active,
             "password_hash": g.password_hash, "ntfy_topic": g.ntfy_topic,
+            "login_token": g.login_token, "pending_approval": g.pending_approval,
         } for g in guests],
         "plugs": [{
             "name":       p.name,
@@ -445,6 +446,7 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
                 row.phone = u.get("phone"); row.area = u.get("area")
                 row.is_active = u.get("is_active", row.is_active)
                 row.password_hash = u.get("password_hash", row.password_hash)
+                row.login_token = u.get("login_token", row.login_token)
                 stats["updated"] += 1
             else:
                 stats["skipped"] += 1
@@ -452,7 +454,7 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
         db.add(User(
             name=u["name"], email=u["email"], role=u.get("role", "manager"),
             phone=u.get("phone"), area=u.get("area"), is_active=u.get("is_active", True),
-            password_hash=u["password_hash"],
+            password_hash=u["password_hash"], login_token=u.get("login_token"),
         ))
         stats["users"] += 1
 
@@ -467,6 +469,8 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
                 row.is_active = g.get("is_active", row.is_active)
                 row.password_hash = g.get("password_hash", row.password_hash)
                 row.ntfy_topic = g.get("ntfy_topic", row.ntfy_topic)
+                row.login_token = g.get("login_token", row.login_token)
+                row.pending_approval = g.get("pending_approval", row.pending_approval)
                 stats["updated"] += 1
             else:
                 stats["skipped"] += 1
@@ -476,6 +480,8 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
             phone=g.get("phone"), note=g.get("note"), is_active=g.get("is_active", True),
             password_hash=g.get("password_hash"),
             ntfy_topic=g.get("ntfy_topic"),
+            login_token=g.get("login_token"),
+            pending_approval=g.get("pending_approval", False),
         ))
         stats["guests"] += 1
 

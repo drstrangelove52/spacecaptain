@@ -72,7 +72,9 @@ Migrationen laufen **bei jedem Backend-Start** in `backend/app/services/migrate.
 - Neue Top-Level-Sektionen mit `payload.get("sektion", [])` lesen
 - Nie `payload["key"]` ohne Existenzprüfung
 
-**Was ist im Backup enthalten:** Einstellungen (inkl. Währung), Benutzer, Gäste, Maschinen (inkl. Kaufdatum/Neuwert/Eigentümer), Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln, Kategorien, Standorte, Eigentümer, Akkus.
+**Was ist im Backup enthalten:** Einstellungen (inkl. Währung), Benutzer (inkl. `login_token`), Gäste (inkl. `login_token`/`pending_approval`), Maschinen (inkl. Kaufdatum/Neuwert/Eigentümer), Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln, Kategorien, Standorte, Eigentümer, Akkus.
+
+**`login_token`-Restore-Verhalten:** Bei Overwrite auf einen bestehenden User/Gast wird `login_token` wie `password_hash` behandelt — `u.get("login_token", row.login_token)` statt direktem Zuweisen. Fehlt das Feld im Backup (ältere Backups vor diesem Fix), bleibt der aktuell aktive Token unangetastet statt auf `None` zurückgesetzt zu werden — sonst würde ein Restore mit altem Backup-Format ein aktives Token-Login (Magic-Link ohne Passwort) stillschweigend invalidieren.
 
 **Nicht im Backup (bewusst, transienter Laufzeitzustand statt Konfiguration):** `emergency_state` (aktueller Alarm-Status), `machine_queue` (aktuelle Warteliste). Legacy-Tabellen `device_schedules` und `machine_automations` sind seit der Migration auf `automation_rules`/`rule_conditions` inaktiv (kein Router mehr registriert) und daher ebenfalls nicht enthalten.
 
