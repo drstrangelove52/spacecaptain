@@ -16,7 +16,7 @@ from typing import List
 from app.services.auth import require_admin, require_power_manager
 
 from app.database import get_db
-from app.models import User, Machine, MachinePlug, Permission, LogType, MachineCategory, MachineLocation
+from app.models import User, Machine, MachinePlug, Permission, LogType, MachineCategory, MachineLocation, MachineOwner
 from app.models import Plug as PlugModel
 from app.schemas import MachineCreate, MachineUpdate, MachineOut
 from app.services.auth import get_current_user
@@ -56,6 +56,9 @@ async def _machine_out(machine: Machine, db: AsyncSession) -> MachineOut:
         .order_by(MachinePlug.sort_order)
     )
     out.plugs = [{"id": r[0], "name": r[1], "plug_ip": r[2], "plug_type": r[3]} for r in mp_res.all()]
+    if machine.owner_id:
+        owner = await db.get(MachineOwner, machine.owner_id)
+        out.owner_name = owner.name if owner else None
     return out
 
 

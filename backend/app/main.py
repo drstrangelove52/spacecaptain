@@ -14,6 +14,8 @@ from app.routers import ntfy_topics as ntfy_topics_router
 from app.routers import emergency as emergency_router
 from app.routers import categories as categories_router
 from app.routers import locations as locations_router
+from app.routers import owners as owners_router
+from app.routers import batteries as batteries_router
 from app.routers import automations as automations_router
 from app.routers import update as update_router
 from app.routers import mcp_api as mcp_router
@@ -115,6 +117,8 @@ app.include_router(ntfy_topics_router.router,   prefix="/api")
 app.include_router(emergency_router.router,     prefix="/api")
 app.include_router(categories_router.router,    prefix="/api")
 app.include_router(locations_router.router,     prefix="/api")
+app.include_router(owners_router.router,        prefix="/api")
+app.include_router(batteries_router.router,     prefix="/api")
 app.include_router(plugs_router.router,         prefix="/api")
 app.include_router(automations_router.router,   prefix="/api")
 app.include_router(update_router.router,        prefix="/api")

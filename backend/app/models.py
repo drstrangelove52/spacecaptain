@@ -24,6 +24,11 @@ class PlugType(str, enum.Enum):
     shelly_gen2 = "shelly_gen2"
     none = "none"
 
+class BatteryStatus(str, enum.Enum):
+    aktiv = "aktiv"
+    defekt = "defekt"
+    ausgemustert = "ausgemustert"
+
 class LogType(str, enum.Enum):
     access_granted = "access_granted"
     access_denied = "access_denied"
@@ -152,6 +157,9 @@ class Machine(Base):
     safety_notes:       Mapped[Optional[str]]   = mapped_column(Text, default=None)
     force_off_on_close: Mapped[bool]            = mapped_column(Boolean, default=False)
     plug_id:            Mapped[Optional[int]]   = mapped_column(Integer, ForeignKey("plugs.id", ondelete="SET NULL"), default=None)
+    purchase_date:      Mapped[Optional[date]]  = mapped_column(Date, default=None)
+    value_new:          Mapped[Optional[float]] = mapped_column(Float, default=None)
+    owner_id:           Mapped[Optional[int]]   = mapped_column(Integer, ForeignKey("machine_owners.id", ondelete="SET NULL"), default=None)
     qr_token:           Mapped[str]             = mapped_column(String(64), unique=True, nullable=False)
     created_at:         Mapped[datetime]        = mapped_column(DateTime, default=datetime.utcnow)
     updated_at:         Mapped[datetime]        = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -350,6 +358,25 @@ class MachineLocation(Base):
     name:       Mapped[str]           = mapped_column(String(100), unique=True, nullable=False)
     sort_order: Mapped[int]           = mapped_column(Integer, default=0)
     created_at: Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class MachineOwner(Base):
+    __tablename__ = "machine_owners"
+    id:         Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name:       Mapped[str]           = mapped_column(String(100), unique=True, nullable=False)
+    sort_order: Mapped[int]           = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Battery(Base):
+    __tablename__ = "batteries"
+    id:            Mapped[int]                = mapped_column(Integer, primary_key=True, autoincrement=True)
+    manufacturer:  Mapped[Optional[str]]       = mapped_column(String(100))
+    model:         Mapped[Optional[str]]       = mapped_column(String(100))
+    purchase_date: Mapped[Optional[date]]      = mapped_column(Date, default=None)
+    price_new:     Mapped[Optional[float]]     = mapped_column(Float, default=None)
+    status:        Mapped[BatteryStatus]       = mapped_column(Enum(BatteryStatus), default=BatteryStatus.aktiv)
+    created_at:    Mapped[datetime]            = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class Plug(Base):

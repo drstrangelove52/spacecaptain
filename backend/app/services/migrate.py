@@ -529,6 +529,11 @@ async def run_migrations(engine: AsyncEngine) -> None:
             ), {"t": token})
             log.info("Migration: mcp_api_token generiert")
 
+        # ── v1.39: Inventar-Erweiterung (Kaufdatum, Neuwert, Eigentümer) + Akku-Management ──
+        await _add_column_if_missing(conn, "machines", "purchase_date", "DATE DEFAULT NULL")
+        await _add_column_if_missing(conn, "machines", "value_new", "FLOAT DEFAULT NULL")
+        await _add_column_if_missing(conn, "machines", "owner_id", "INT DEFAULT NULL")
+
     log.info("Migrationen abgeschlossen")
 
 

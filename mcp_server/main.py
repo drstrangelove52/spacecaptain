@@ -174,6 +174,18 @@ async def list_locations() -> list:
 
 
 @mcp.tool()
+async def list_owners() -> list:
+    """Alle Maschinen-Eigentümer."""
+    return await _get("/owners")
+
+
+@mcp.tool()
+async def list_batteries() -> list:
+    """Alle erfassten Akkus (Hersteller, Modell, Kaufdatum, Neupreis, Status)."""
+    return await _get("/batteries")
+
+
+@mcp.tool()
 async def list_guest_permissions(guest_id: int) -> dict:
     """Maschinenberechtigungen eines Gastes anzeigen."""
     return await _get(f"/guests/{guest_id}/permissions")

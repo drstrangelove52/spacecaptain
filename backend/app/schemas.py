@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime, date
 from pydantic import BaseModel, EmailStr, field_validator, Field, model_validator
 from typing import Optional
-from app.models import UserRole, MachineStatus, PlugType, LogType
+from app.models import UserRole, MachineStatus, PlugType, LogType, BatteryStatus
 
 
 # ── Auth ──────────────────────────────────────────────────
@@ -123,6 +123,9 @@ class MachineBase(BaseModel):
     comment: Optional[str] = None
     safety_notes: Optional[str] = None
     force_off_on_close: bool = False
+    purchase_date: Optional[date] = None
+    value_new: Optional[float] = None
+    owner_id: Optional[int] = None
 
 class MachineCreate(MachineBase):
     pass
@@ -146,6 +149,9 @@ class MachineUpdate(BaseModel):
     comment: Optional[str] = None
     safety_notes: Optional[str] = None
     force_off_on_close: Optional[bool] = None
+    purchase_date: Optional[date] = None
+    value_new: Optional[float] = None
+    owner_id: Optional[int] = None
 
 class MachineOut(MachineBase):
     id: int
@@ -157,6 +163,7 @@ class MachineOut(MachineBase):
     session_started_at: Optional[datetime] = None
     plug_id: Optional[int] = None
     plugs: list = []  # [{id, name, plug_ip, plug_type}, ...] — sortiert nach sort_order
+    owner_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -242,6 +249,50 @@ class MachineLocationCreate(BaseModel):
 class MachineLocationUpdate(BaseModel):
     name: Optional[str] = None
     sort_order: Optional[int] = None
+
+
+# ── Machine Owners ────────────────────────────────────────
+class MachineOwnerOut(BaseModel):
+    id: int
+    name: str
+    sort_order: int
+
+    class Config:
+        from_attributes = True
+
+class MachineOwnerCreate(BaseModel):
+    name: str
+    sort_order: int = 0
+
+class MachineOwnerUpdate(BaseModel):
+    name: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
+# ── Batteries ─────────────────────────────────────────────
+class BatteryBase(BaseModel):
+    manufacturer: Optional[str] = None
+    model: Optional[str] = None
+    purchase_date: Optional[date] = None
+    price_new: Optional[float] = None
+    status: BatteryStatus = BatteryStatus.aktiv
+
+class BatteryCreate(BatteryBase):
+    pass
+
+class BatteryUpdate(BaseModel):
+    manufacturer: Optional[str] = None
+    model: Optional[str] = None
+    purchase_date: Optional[date] = None
+    price_new: Optional[float] = None
+    status: Optional[BatteryStatus] = None
+
+class BatteryOut(BatteryBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 # ── Plug Pool ─────────────────────────────────────────────
