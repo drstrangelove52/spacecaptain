@@ -4008,6 +4008,7 @@ async function confirmCsvImport(){
   const rowsToSend=_csvImportRows.filter(r=>r.action==='import'||r.action==='update');
   try{
     const data=await POST('/machines/import/confirm',{rows:rowsToSend,update_existing:updateExisting});
+    if(!data) return; // api() hat bei Fehlern bereits einen Toast gezeigt
     showToast(`${data.imported} Maschine(n) importiert, ${data.updated} aktualisiert, ${data.skipped} übersprungen`,'success');
     await loadAll();
   }catch(e){showToast('Import fehlgeschlagen: '+(e.message||e),'error');}

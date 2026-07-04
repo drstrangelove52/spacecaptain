@@ -580,9 +580,11 @@ async def import_machines_confirm(
         r for r in rows
         if r.get("action") == "import" or (r.get("action") == "update" and update_existing)
     ]
-    existing_cats = {c.name for c in (await db.execute(select(MachineCategory.name))).scalars().all()}
-    existing_locs = {l.name for l in (await db.execute(select(MachineLocation.name))).scalars().all()}
-    existing_owner_names = {o.name for o in (await db.execute(select(MachineOwner.name))).scalars().all()}
+    # select(Model.column) + .scalars() liefert bereits die rohen Werte (Strings),
+    # nicht Model-Instanzen - .name waere hier ein AttributeError auf str.
+    existing_cats = set((await db.execute(select(MachineCategory.name))).scalars().all())
+    existing_locs = set((await db.execute(select(MachineLocation.name))).scalars().all())
+    existing_owner_names = set((await db.execute(select(MachineOwner.name))).scalars().all())
     for row in relevant_rows:
         cat = (row.get("category") or "Sonstiges").strip() or "Sonstiges"
         if cat not in existing_cats:
