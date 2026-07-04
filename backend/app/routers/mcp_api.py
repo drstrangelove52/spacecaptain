@@ -491,7 +491,7 @@ async def mcp_get_machine(
         "value_new":     machine.value_new,
         "owner":         owner.name if owner else None,
         "plug": {
-            "id": plug.id, "ip": plug.ip, "type": plug.plug_type,
+            "id": plug.id, "ip": plug.plug_ip, "type": plug.plug_type,
         } if plug else None,
         "recent_maintenance": [
             {
