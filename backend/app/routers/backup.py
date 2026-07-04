@@ -2,7 +2,7 @@
 Export / Import — Konfiguration + Logs
 Passwort-Hashes werden mitexportiert — Backup-Datei sicher aufbewahren!
 """
-from datetime import datetime
+from datetime import datetime, date
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
@@ -15,6 +15,7 @@ from app.models import (
     ActivityLog, MachineSession, LogType, SessionEndedBy,
     MaintenanceInterval, MaintenanceRecord, SystemSettings, Announcement, NtfyTopic,
     Plug, MachinePlug, AutomationRule, RuleCondition, MachineLocation,
+    MachineOwner, Battery,
 )
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
@@ -48,6 +49,8 @@ async def _build_export_data(db: AsyncSession) -> dict:
     announcements = (await db.execute(select(Announcement).order_by(Announcement.id))).scalars().all()
     ntfy_topics   = (await db.execute(select(NtfyTopic).order_by(NtfyTopic.id))).scalars().all()
     locations     = (await db.execute(select(MachineLocation).order_by(MachineLocation.sort_order, MachineLocation.name))).scalars().all()
+    owners        = (await db.execute(select(MachineOwner).order_by(MachineOwner.sort_order, MachineOwner.name))).scalars().all()
+    batteries     = (await db.execute(select(Battery).order_by(Battery.id))).scalars().all()
     plugs         = (await db.execute(select(Plug).order_by(Plug.id))).scalars().all()
     machine_plugs_rows = (await db.execute(
         select(MachinePlug).order_by(MachinePlug.machine_id, MachinePlug.sort_order)
@@ -66,6 +69,7 @@ async def _build_export_data(db: AsyncSession) -> dict:
     guest_by_id   = {g.id: g.username  for g in guests}
     machine_by_id = {m.id: m.qr_token  for m in machines}
     user_by_id    = {u.id: u.email     for u in users}
+    owner_by_id   = {o.id: o.name      for o in owners}
 
     plug_by_id = {p.id: p.plug_ip for p in plugs}
 
@@ -93,6 +97,17 @@ async def _build_export_data(db: AsyncSession) -> dict:
             "name":       l.name,
             "sort_order": l.sort_order,
         } for l in locations],
+        "machine_owners": [{
+            "name":       o.name,
+            "sort_order": o.sort_order,
+        } for o in owners],
+        "batteries": [{
+            "manufacturer":  b.manufacturer,
+            "model":         b.model,
+            "purchase_date": b.purchase_date.isoformat() if b.purchase_date else None,
+            "price_new":     b.price_new,
+            "status":        b.status,
+        } for b in batteries],
         "users": [{
             "name": u.name, "email": u.email, "role": u.role,
             "phone": u.phone, "area": u.area, "is_active": u.is_active,
@@ -127,6 +142,9 @@ async def _build_export_data(db: AsyncSession) -> dict:
             "training_required": m.training_required, "total_hours": m.total_hours,
             "comment": m.comment, "safety_notes": m.safety_notes, "qr_token": m.qr_token,
             "force_off_on_close": m.force_off_on_close,
+            "purchase_date": m.purchase_date.isoformat() if m.purchase_date else None,
+            "value_new": m.value_new,
+            "owner_name": owner_by_id.get(m.owner_id) if m.owner_id else None,
         } for m in machines],
         "permissions": [{
             "guest_username":    guest_by_id.get(p.guest_id),
@@ -355,6 +373,44 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
         stats["machine_locations"] += 1
     await db.flush()
 
+    # ── Eigentümer ────────────────────────────────────────
+    existing_owners = {o.name: o for o in (await db.execute(select(MachineOwner))).scalars().all()}
+    for o in payload.get("machine_owners", []):
+        if not o.get("name"):
+            continue
+        if o["name"] in existing_owners:
+            if overwrite:
+                existing_owners[o["name"]].sort_order = o.get("sort_order", 0)
+                stats["updated"] += 1
+            else:
+                stats["skipped"] += 1
+            continue
+        db.add(MachineOwner(name=o["name"], sort_order=o.get("sort_order", 0)))
+        stats.setdefault("machine_owners", 0)
+        stats["machine_owners"] += 1
+    await db.flush()
+    owner_map = {o.name: o.id for o in (await db.execute(select(MachineOwner))).scalars().all()}
+
+    # ── Akkus ─────────────────────────────────────────────
+    existing_battery_keys = {
+        (b.manufacturer, b.model, b.purchase_date.isoformat() if b.purchase_date else None, b.price_new)
+        for b in (await db.execute(select(Battery))).scalars().all()
+    }
+    for b in payload.get("batteries", []):
+        key = (b.get("manufacturer"), b.get("model"), b.get("purchase_date"), b.get("price_new"))
+        if key in existing_battery_keys:
+            stats["skipped"] += 1
+            continue
+        existing_battery_keys.add(key)
+        db.add(Battery(
+            manufacturer=b.get("manufacturer"), model=b.get("model"),
+            purchase_date=date.fromisoformat(b["purchase_date"]) if b.get("purchase_date") else None,
+            price_new=b.get("price_new"), status=b.get("status", "aktiv"),
+        ))
+        stats.setdefault("batteries", 0)
+        stats["batteries"] += 1
+    await db.flush()
+
     # ── Benutzer ──────────────────────────────────────────
     existing_users = {u.email: u for u in (await db.execute(select(User))).scalars().all()}
     for u in payload.get("users", []):
@@ -458,6 +514,9 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
                 row.training_required = m.get("training_required", row.training_required)
                 row.comment = m.get("comment"); row.safety_notes = m.get("safety_notes")
                 row.force_off_on_close = m.get("force_off_on_close", row.force_off_on_close)
+                row.purchase_date = date.fromisoformat(m["purchase_date"]) if m.get("purchase_date") else None
+                row.value_new = m.get("value_new")
+                row.owner_id = owner_map.get(m.get("owner_name")) if m.get("owner_name") else None
                 stats["updated"] += 1
             else:
                 stats["skipped"] += 1
@@ -474,6 +533,9 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
             comment=m.get("comment"), safety_notes=m.get("safety_notes"),
             force_off_on_close=m.get("force_off_on_close", False),
             qr_token=m["qr_token"],
+            purchase_date=date.fromisoformat(m["purchase_date"]) if m.get("purchase_date") else None,
+            value_new=m.get("value_new"),
+            owner_id=owner_map.get(m.get("owner_name")) if m.get("owner_name") else None,
         ))
         stats["machines"] += 1
 

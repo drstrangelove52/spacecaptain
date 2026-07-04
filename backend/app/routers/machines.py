@@ -4,7 +4,7 @@ import io
 import csv
 import base64
 import qrcode
-from datetime import datetime
+from datetime import datetime, date
 
 log = logging.getLogger(__name__)
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
@@ -444,6 +444,21 @@ def _parse_csv_row(row: dict, existing_names: set[str], row_nr: int) -> dict:
     schulung = (row.get("Schulung") or "Ja").strip().lower()
     training = schulung not in ("nein", "no", "false", "0")
 
+    purchase_date = (row.get("Kaufdatum") or "").strip() or None
+    if purchase_date:
+        try:
+            date.fromisoformat(purchase_date)
+        except ValueError:
+            purchase_date = None
+
+    value_new_raw = (row.get("Neuwert") or "").strip()
+    value_new = None
+    if value_new_raw:
+        try:
+            value_new = float(value_new_raw.replace(",", "."))
+        except ValueError:
+            value_new = None
+
     return {
         "row": row_nr,
         "name": name,
@@ -455,6 +470,9 @@ def _parse_csv_row(row: dict, existing_names: set[str], row_nr: int) -> dict:
         "status": status,
         "training_required": training,
         "comment": (row.get("Kommentar") or "").strip() or None,
+        "purchase_date": purchase_date,
+        "value_new": value_new,
+        "owner": (row.get("Eigentümer") or "").strip() or None,
         "action": "skip" if name in existing_names else "import",
         "reason": "Bereits vorhanden" if name in existing_names else None,
     }
@@ -509,9 +527,10 @@ async def import_machines_confirm(
     res = await db.execute(select(Machine.name))
     existing_names = {r[0] for r in res.all()}
 
-    # Fehlende Kategorien und Standorte automatisch anlegen
+    # Fehlende Kategorien, Standorte und Eigentümer automatisch anlegen
     existing_cats = {c.name for c in (await db.execute(select(MachineCategory.name))).scalars().all()}
     existing_locs = {l.name for l in (await db.execute(select(MachineLocation.name))).scalars().all()}
+    existing_owner_names = {o.name for o in (await db.execute(select(MachineOwner.name))).scalars().all()}
     for row in [r for r in rows if r.get("action") == "import"]:
         cat = (row.get("category") or "Sonstiges").strip() or "Sonstiges"
         if cat not in existing_cats:
@@ -521,7 +540,12 @@ async def import_machines_confirm(
         if loc and loc not in existing_locs:
             db.add(MachineLocation(name=loc, sort_order=len(existing_locs)))
             existing_locs.add(loc)
+        owner = (row.get("owner") or "").strip() or None
+        if owner and owner not in existing_owner_names:
+            db.add(MachineOwner(name=owner, sort_order=len(existing_owner_names)))
+            existing_owner_names.add(owner)
     await db.flush()
+    owner_id_map = {o.name: o.id for o in (await db.execute(select(MachineOwner))).scalars().all()}
 
     imported = 0
     skipped  = 0
@@ -541,6 +565,7 @@ async def import_machines_confirm(
         except ValueError:
             status_enum = MachineStatus.online
 
+        purchase_date = row.get("purchase_date")
         machine = Machine(
             name=name,
             category=row.get("category") or "Sonstiges",
@@ -552,6 +577,9 @@ async def import_machines_confirm(
             training_required=bool(row.get("training_required", True)),
             comment=row.get("comment"),
             qr_token=_gen_qr_token(),
+            purchase_date=date.fromisoformat(purchase_date) if purchase_date else None,
+            value_new=row.get("value_new"),
+            owner_id=owner_id_map.get(row.get("owner")) if row.get("owner") else None,
         )
         db.add(machine)
         existing_names.add(name)
