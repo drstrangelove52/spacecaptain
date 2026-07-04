@@ -287,6 +287,7 @@
     <div class="nav-section">AUSSTATTUNG</div>
     <div class="nav-item" data-page="machines" onclick="navigate(this)"><span class="nav-icon">🏭</span> Maschinen <span class="nav-badge" id="badge-machines">0</span></div>
     <div class="nav-item" data-page="plugs" onclick="navigate(this)"><span class="nav-icon">🔌</span> Plug-Pool <span class="nav-badge" id="badge-plugs">0</span></div>
+    <div class="nav-item" data-page="batteries" onclick="navigate(this)"><span class="nav-icon">🔋</span> Akkus <span class="nav-badge" id="badge-batteries">0</span></div>
     <div class="nav-item" data-page="automations" onclick="navigate(this)"><span class="nav-icon">⚡</span> Automationen <span class="nav-badge" id="badge-automations">0</span></div>
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
     <div class="nav-item" data-page="permissions" onclick="navigate(this)"><span class="nav-icon">🔑</span> Berechtigungen</div>
@@ -462,6 +463,29 @@
       </div>
       <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);margin-bottom:10px" id="plug-filter-count"></div>
       <div id="plug-list"><div class="loading"><div class="spinner"></div>Laden…</div></div>
+    </div>
+
+    <!-- AKKUS -->
+    <div class="page" id="page-batteries">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);display:flex;gap:8px;margin-bottom:6px;padding:0 2px">
+        <span style="flex:1">HERSTELLER</span>
+        <span style="flex:1">MODELL</span>
+        <span style="width:140px">KAUFDATUM</span>
+        <span style="width:90px">NEUPREIS</span>
+        <span style="width:120px">STATUS</span>
+        <span style="width:66px"></span>
+      </div>
+      <div id="battery-list"><div class="loading"><div class="spinner"></div>Laden…</div></div>
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px">NEUER AKKU</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input class="form-input form-input-sm" id="new-bat-mfr" placeholder="Hersteller" style="flex:1;min-width:90px">
+          <input class="form-input form-input-sm" id="new-bat-model" placeholder="Modell" style="flex:1;min-width:90px">
+          <input class="form-input form-input-sm" id="new-bat-date" type="date" style="width:140px;flex-shrink:0">
+          <input class="form-input form-input-sm" id="new-bat-price" type="number" step="0.01" placeholder="Neupreis" style="width:90px;flex-shrink:0">
+          <button class="btn btn-primary btn-sm" onclick="addBattery()" style="flex-shrink:0">+ Hinzufügen</button>
+        </div>
+      </div>
     </div>
 
     <!-- PERMISSIONS — neue Ansicht -->
@@ -2669,13 +2693,14 @@ function doLogout() {
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',plugs:'Plug-Pool',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Aushänge',notifications:'Push-Nachrichten',backup:'Backup & Restore',settings:'Einstellungen',automations:'Automationen',info:'Info',help:'Hilfe & Dokumentation'};
+const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',plugs:'Plug-Pool',batteries:'Akkus',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Aushänge',notifications:'Push-Nachrichten',backup:'Backup & Restore',settings:'Einstellungen',automations:'Automationen',info:'Info',help:'Hilfe & Dokumentation'};
 const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',machines:'machines',permissions:'permissions',maintenance:'maintenance',backup:'backup',settings:'settings'};
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>${_isAdmin()?` <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`:''}`,
-  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)"> <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ Standorte</button> <button class="btn btn-ghost btn-sm" onclick="showOwnersModal()">⚙ Eigentümer</button> <button class="btn btn-ghost btn-sm" onclick="showBatteriesModal()">🔋 Akkus</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`:''}`,
+  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)"> <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ Standorte</button> <button class="btn btn-ghost btn-sm" onclick="showOwnersModal()">⚙ Eigentümer</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`:''}`,
   plugs:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('plugs')" title="Hilfe zu Plug-Pool">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`:''}`,
+  batteries:()=>`<button class="btn btn-ghost btn-sm" onclick="loadBatteries().then(renderBatteriesPage)">↺ Aktualisieren</button>`,
   automations:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('automations')" title="Hilfe zu Automationen">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddRule()">+ Neue Regel</button>`:''}`,
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
   maintenance:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('maintenance')" title="Hilfe zu Maschinenpflege">? Hilfe</button> <button class="btn btn-ghost" onclick="showFreeRecord()">+ Freie Wartung</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddInterval()">+ Neues Intervall</button>`:''}`,
@@ -2712,6 +2737,7 @@ function navigate(el) {
   if (page==='settings') { loadSettings(); loadTopicsForSettings(); }
   if (page==='backup') loadBackupFiles();
   if (page==='plugs') loadPlugs();
+  if (page==='batteries') loadBatteries().then(renderBatteriesPage);
   if (page==='automations') loadAutomations();
   if (page==='dashboard') loadRoomStatus();
 
@@ -3018,7 +3044,11 @@ async function loadAll() {
   if (cats)      { cache.categories=cats; _refreshCatFilter(); }
   if (locs)      { cache.locations=locs; _refreshLocFilter(); }
   if (owners)    cache.owners    = owners;
-  if (batteries) cache.batteries = batteries;
+  if (batteries) {
+    cache.batteries = batteries;
+    const _bb = document.getElementById('badge-batteries');
+    if (_bb) { _bb.textContent = batteries.length; _bb.style.display = ''; }
+  }
   if (guests)    cache.guests   = guests;
   if (users)     cache.users    = users;
   if (machines)  cache.machines = machines;
@@ -3682,21 +3712,11 @@ function _renderBatteryList(){
     </div>`).join('');
 }
 
-async function showBatteriesModal(){
-  openModal('Akkus verwalten',`
-    <div id="battery-list">${_renderBatteryList()}</div>
-    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px">NEUER AKKU</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input class="form-input form-input-sm" id="new-bat-mfr" placeholder="Hersteller" style="flex:1;min-width:90px">
-        <input class="form-input form-input-sm" id="new-bat-model" placeholder="Modell" style="flex:1;min-width:90px">
-        <input class="form-input form-input-sm" id="new-bat-date" type="date" style="width:140px;flex-shrink:0">
-        <input class="form-input form-input-sm" id="new-bat-price" type="number" step="0.01" placeholder="Neupreis" style="width:90px;flex-shrink:0">
-        <button class="btn btn-primary btn-sm" onclick="addBattery()" style="flex-shrink:0">+ Hinzufügen</button>
-      </div>
-    </div>
-  `);
-  document.getElementById('modal-footer').innerHTML='<button class="btn btn-ghost" onclick="closeModal()">Schließen</button>';
+function renderBatteriesPage(){
+  const _bb=document.getElementById('badge-batteries');
+  if(_bb){_bb.textContent=cache.batteries.length;_bb.style.display='';}
+  const el=document.getElementById('battery-list');
+  if(el) el.innerHTML=_renderBatteryList();
 }
 
 async function saveBattery(id){
@@ -3708,7 +3728,7 @@ async function saveBattery(id){
     status:document.getElementById(`bat-status-${id}`)?.value,
   };
   const res=await PATCH(`/batteries/${id}`,payload);
-  if(res){await loadBatteries();showToast('Gespeichert!','success');document.getElementById('battery-list').innerHTML=_renderBatteryList();}
+  if(res){await loadBatteries();renderBatteriesPage();showToast('Gespeichert!','success');}
 }
 
 async function addBattery(){
@@ -3720,7 +3740,7 @@ async function addBattery(){
   };
   const res=await POST('/batteries',payload);
   if(res){
-    await loadBatteries();document.getElementById('battery-list').innerHTML=_renderBatteryList();
+    await loadBatteries();renderBatteriesPage();
     document.getElementById('new-bat-mfr').value='';document.getElementById('new-bat-model').value='';document.getElementById('new-bat-date').value='';document.getElementById('new-bat-price').value='';
     showToast('Akku hinzugefügt','success');
   }
@@ -3729,7 +3749,7 @@ async function addBattery(){
 async function deleteBattery(id){
   if(!confirm('Akku wirklich löschen?'))return;
   const res=await DELETE(`/batteries/${id}`);
-  if(res){await loadBatteries();document.getElementById('battery-list').innerHTML=_renderBatteryList();showToast('Akku gelöscht','warn');}
+  if(res){await loadBatteries();renderBatteriesPage();showToast('Akku gelöscht','warn');}
 }
 
 let _machineView=localStorage.getItem('machineView')||'grid';
