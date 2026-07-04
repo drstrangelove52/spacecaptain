@@ -534,6 +534,9 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "machines", "value_new", "FLOAT DEFAULT NULL")
         await _add_column_if_missing(conn, "machines", "owner_id", "INT DEFAULT NULL")
 
+        # ── v1.40: Konfigurierbare Währung ─────────────────────────────────
+        await _add_column_if_missing(conn, "system_settings", "currency", "VARCHAR(10) NOT NULL DEFAULT 'CHF'")
+
     log.info("Migrationen abgeschlossen")
 
 

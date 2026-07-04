@@ -40,6 +40,8 @@ backend/app/
   routers/automations.py     — Regelwerk CRUD (action_type: machine|room_open|room_close|notify)
   routers/categories.py      — Maschinenkategorien CRUD
   routers/locations.py       — Maschinenstandorte CRUD
+  routers/owners.py          — Maschinen-Eigentümer CRUD (Lookup-Tabelle wie locations.py)
+  routers/batteries.py       — Akku-Verwaltung CRUD (eigene Seite im Frontend, kein Machine-Bezug)
   routers/guest_auth.py      — Gast-Zugang inkl. Raum-Sperre
   routers/backup.py          — Backup REST-Endpoints
   routers/update.py          — In-App Update: GET /status + POST /trigger (schreibt update_trigger/trigger)
@@ -70,7 +72,9 @@ Migrationen laufen **bei jedem Backend-Start** in `backend/app/services/migrate.
 - Neue Top-Level-Sektionen mit `payload.get("sektion", [])` lesen
 - Nie `payload["key"]` ohne Existenzprüfung
 
-**Was ist im Backup enthalten:** Einstellungen, Benutzer, Gäste, Maschinen, Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln, Standorte.
+**Was ist im Backup enthalten:** Einstellungen (inkl. Währung), Benutzer, Gäste, Maschinen (inkl. Kaufdatum/Neuwert/Eigentümer), Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln, Kategorien, Standorte, Eigentümer, Akkus.
+
+**Nicht im Backup (bewusst, transienter Laufzeitzustand statt Konfiguration):** `emergency_state` (aktueller Alarm-Status), `machine_queue` (aktuelle Warteliste). Legacy-Tabellen `device_schedules` und `machine_automations` sind seit der Migration auf `automation_rules`/`rule_conditions` inaktiv (kein Router mehr registriert) und daher ebenfalls nicht enthalten.
 
 ## Hintergrund-Tasks
 
@@ -113,13 +117,20 @@ OR-Verknüpfung in Bedingungen ist bewusst nicht implementiert — zwei separate
 - Laufende Maschinen-Sessions werden beim Raumschluss **nicht** unterbrochen (by design). Der Gast kann die Maschine noch ausschalten, neue Sessions sind aber gesperrt.
 - Gast-App: HTTP 403 vom Backend enthält `detail: "Raum ist geschlossen"` und wird im UI als eigenes Panel angezeigt (kein stiller Logout).
 
-## Maschinenkategorien und Standorte
+## Maschinenkategorien, Standorte und Eigentümer
 
-- Kategorien (`machine_categories`) und Standorte (`machine_locations`) sind vordefinierte Listen, die in den Maschinen-Formularen als `<select>` erscheinen.
-- Verwaltung via Topbar-Buttons «⚙ Kategorien» und «⚙ Standorte» auf der Maschinen-Seite.
-- **CSV-Import** legt fehlende Kategorien und Standorte automatisch an (`import/confirm`-Endpoint in `routers/machines.py`).
-- Beide Tabellen sind vollständig im Backup enthalten.
-- Frontend: `cache.categories` / `cache.locations`, `_catOptions()` / `_locOptions()`, `_refreshCatFilter()` / `_refreshLocFilter()`.
+- Kategorien (`machine_categories`), Standorte (`machine_locations`) und Eigentümer (`machine_owners`) sind vordefinierte Listen, die in den Maschinen-Formularen als `<select>` erscheinen. Alle drei sind schlanke Lookup-Tabellen (`id`/`name`/`sort_order`, Kategorien zusätzlich `icon`) ohne Auth/Rechte-Bezug.
+- Verwaltung via Topbar-Buttons «⚙ Kategorien», «⚙ Standorte» und «⚙ Eigentümer» auf der Maschinen-Seite.
+- **CSV-Import** legt fehlende Kategorien, Standorte und Eigentümer automatisch an (`import/confirm`-Endpoint in `routers/machines.py`).
+- Alle drei Tabellen sind vollständig im Backup enthalten.
+- Frontend: `cache.categories` / `cache.locations` / `cache.owners`, `_catOptions()` / `_locOptions()` / `_ownerOptions()`, `_refreshCatFilter()` / `_refreshLocFilter()`.
+
+## Inventar (Kaufdatum, Neuwert, Eigentümer) und Akku-Verwaltung
+
+- `Machine` hat drei nullable Buchhaltungs-/Versicherungsfelder: `purchase_date`, `value_new`, `owner_id` (FK → `machine_owners`). Unüberwachte Maschinen (kein Plug) sind einfach `Machine`-Einträge ohne Plug-Zuordnung — bewusst kein separates "Inventory Item"-Modell.
+- **Akkus** (`batteries`, `routers/batteries.py`) sind ein eigenständiger Verbrauchsmaterial-Pool ohne Machine-Bezug: Hersteller, Modell, Kaufdatum, Neupreis, Status (`aktiv`/`defekt`/`ausgemustert`). Eigene Seite unter AUSSTATTUNG im Frontend (nicht in der Maschinen-Sektion), bedienungsmässig identisch zum Plug-Pool (sortierbare Tabelle, Suche/Status-Filter, Modal für Anlegen/Bearbeiten).
+- **Inventarliste für Buchhaltung**: Button «📋 Inventarliste» auf der Maschinen-Seite exportiert nur die buchhaltungsrelevanten Felder (Name, Kategorie, Hersteller, Modell, Seriennummer, Standort, Kaufdatum, Neuwert, Eigentümer + Summenzeile) als CSV oder Druckansicht (PDF via Browser-Druckdialog, kein PDF-Backend nötig) — bewusst getrennt von der operativen CSV (`exportMachinesCsv()`), die zusätzlich Status/Schulung/Smart-Plug/Kommentar enthält.
+- Migration v1.39.
 
 ## Zeitzone
 
@@ -138,6 +149,12 @@ Bei neuen Einstellungsfeldern müssen **drei Stellen** aktualisiert werden:
 3. `backend/app/services/migrate.py` — Migration + `db/init.sql`
 
 Die Einstellungs-Seite im Frontend ist als Hilfe-Layout organisiert (7 Kategorien: System, Display, Aushänge, AGB, Push-Nachrichten, Notfall-Alarm, Auto-Backup). Neue Felder in der passenden Kategorie ergänzen.
+
+**Beispiel `currency`** (Migration v1.40, Default `"CHF"`): zeigt alle nötigen Stellen für ein einfaches Textfeld.
+- `models.py` / `settings.py` (Out+Update+PATCH-Handler) / `migrate.py` wie oben beschrieben
+- Zusätzlich in `routers/settings.py` → `read_settings_public()` aufgenommen, weil das Feld auch für nicht-admin Rollen sichtbar sein muss (Maschinen-/Akku-Formulare, Inventarliste — alle nutzen `/settings/public`, nicht das admin-only `/settings`)
+- Frontend: globale Variable `_currency` (gesetzt aus dem `/api/settings/public`-Fetch beim Seitenaufruf und erneut in `loadSettings()`), Helper `_applyCurrencyLabels()` aktualisiert statische Modal-Labels (z.B. Akku-Formular) zur Laufzeit — dynamisch generierte Formulare (Maschine hinzufügen/bearbeiten) interpolieren `${_currency}` direkt beim Rendern
+- **Falle:** Pydantic-Schema (`SettingsOut`/`SettingsUpdate`) allein reicht nicht — der PATCH-Handler in `update_settings()` setzt jedes Feld einzeln (`if payload.x is not None: row.x = ...`), das leicht vergessen wird
 
 ## Notfall-Alarm
 
@@ -260,7 +277,7 @@ MCP-Server   →  X-MCP-Key: MCP_BACKEND_KEY             →  Backend (require_m
 
 - `--reload` ohne `--reload-dir /app/app` — WatchFiles überwacht sonst `/app/backups` und löst bei jedem neuen Backup-File einen Reload aus
 - Imports aus `backup.py` auf Modulebene in `backup_service.py` — zirkulärer Import
-- Neue Settings-Felder nur in `models.py` eintragen — `SettingsOut`/`SettingsUpdate` in `settings.py` und Migration vergessen
+- Neue Settings-Felder nur in `models.py` eintragen — `SettingsOut`/`SettingsUpdate`, den PATCH-Handler (`update_settings()`, setzt jedes Feld einzeln) und Migration vergessen. Schema allein reicht nicht, ohne die explizite `if payload.x is not None: row.x = ...`-Zeile persistiert PATCH das Feld nie.
 - Bei `automations.py` Log-Nachrichten `tm.name` verwenden ohne zu prüfen ob `tm` None ist — bei `room_open`/`room_close`/`notify`-Aktionen gibt es keine Ziel-Maschine
 - Neue Backup-Sektionen ohne `payload.get("sektion", [])` lesen — bricht ältere Backups
 - `emergency_plug_id`/`emergency_plug2_id` direkt in den Settings exportieren — sind DB-interne IDs, müssen als IP-Referenz exportiert und beim Import aufgelöst werden (siehe Notfall-Alarm-Sektion)

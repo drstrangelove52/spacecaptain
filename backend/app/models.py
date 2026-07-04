@@ -258,6 +258,7 @@ class SystemSettings(Base):
     auto_backup_minute:         Mapped[int]            = mapped_column(Integer, default=0)
     auto_backup_keep:           Mapped[int]            = mapped_column(Integer, default=30)
     space_name:                 Mapped[str]            = mapped_column(String(100), default="")
+    currency:                   Mapped[str]            = mapped_column(String(10), default="CHF")
     room_open:                  Mapped[bool]           = mapped_column(Boolean, default=False)
     room_open_since:            Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
     room_open_auto:             Mapped[bool]           = mapped_column(Boolean, default=True)

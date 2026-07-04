@@ -714,6 +714,11 @@
                   <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Wird auf allen Seiten unter dem SpaceCaptain-Logo angezeigt</div>
                 </div>
                 <div class="form-group" style="margin:0">
+                  <label class="form-label">Währung</label>
+                  <input class="form-input" id="cfg-currency" maxlength="10" placeholder="z.B. CHF">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Für Neuwert/Neupreis bei Maschinen und Akkus sowie die Inventarliste</div>
+                </div>
+                <div class="form-group" style="margin:0">
                   <label class="form-label">NFC-Schreibgerät</label>
                   <input class="form-input" id="cfg-nfc-url" placeholder="http://nfc-writer.local">
                   <div style="font-size:12px;color:var(--text-dim);margin-top:4px">ESP32-URL · leer = deaktiviert</div>
@@ -3771,6 +3776,7 @@ function renderBatteriesPage(){
 }
 
 function showAddBattery(){
+  _applyCurrencyLabels();
   document.getElementById('battery-modal-title').textContent='Akku hinzufügen';
   document.getElementById('battery-modal-id').value='';
   document.getElementById('battery-mfr').value='';
@@ -3784,6 +3790,7 @@ function showAddBattery(){
 
 function showEditBattery(id){
   const b=cache.batteries.find(x=>x.id===id); if(!b) return;
+  _applyCurrencyLabels();
   document.getElementById('battery-modal-title').textContent='Akku bearbeiten';
   document.getElementById('battery-modal-id').value=b.id;
   document.getElementById('battery-mfr').value=b.manufacturer||'';
@@ -3854,7 +3861,7 @@ function exportMachinesCsv(){
   a.click();
 }
 
-const _inventoryCols=['Name','Kategorie','Hersteller','Modell','Seriennummer','Standort','Kaufdatum','Neuwert (CHF)','Eigentümer'];
+function _inventoryCols(){return ['Name','Kategorie','Hersteller','Modell','Seriennummer','Standort','Kaufdatum',`Neuwert (${_currency})`,'Eigentümer'];}
 
 function showInventoryExportModal(){
   openModal('Inventarliste exportieren',`
@@ -3874,7 +3881,7 @@ function exportInventoryCsv(){
     esc(m.serial_number), esc(m.location), esc(m.purchase_date), m.value_new??'', esc(m.owner_name)
   ].join(';'));
   const bom='﻿';
-  const csv=bom+_inventoryCols.join(';')+'\n'+rows.join('\n');
+  const csv=bom+_inventoryCols().join(';')+'\n'+rows.join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   a.download=`spacecaptain-inventarliste-${new Date().toISOString().slice(0,10)}.csv`;
@@ -3901,7 +3908,7 @@ function exportInventoryPdf(){
     <h1>${escHtml(_spaceName)} — Inventarliste</h1>
     <div class="meta">Erstellt am ${new Date().toLocaleDateString('de-CH')} · ${rows.length} Maschinen</div>
     <table>
-      <thead><tr>${_inventoryCols.map((c,i)=>`<th${i===7?' class="num"':''}>${escHtml(c)}</th>`).join('')}</tr></thead>
+      <thead><tr>${_inventoryCols().map((c,i)=>`<th${i===7?' class="num"':''}>${escHtml(c)}</th>`).join('')}</tr></thead>
       <tbody>
         ${rows.map(m=>`<tr>
           <td>${escHtml(m.name)}</td><td>${escHtml(m.category||'')}</td><td>${escHtml(m.manufacturer||'')}</td>
@@ -4190,7 +4197,7 @@ function showAddMachine() {
     <hr style="border-color:var(--border);margin:16px 0">
     <div class="form-row">
       <div class="form-group"><label class="form-label">Kaufdatum</label><input class="form-input" id="mc-purchase-date" type="date"></div>
-      <div class="form-group"><label class="form-label">Neuwert (CHF)</label><input class="form-input" id="mc-value-new" type="number" step="0.01" placeholder="z.B. 2500.00"></div>
+      <div class="form-group"><label class="form-label">Neuwert (${_currency})</label><input class="form-input" id="mc-value-new" type="number" step="0.01" placeholder="z.B. 2500.00"></div>
     </div>
     <div class="form-group"><label class="form-label">Eigentümer</label><select class="form-input" id="mc-owner">${_ownerOptions()}</select></div>
     <hr style="border-color:var(--border);margin:16px 0">
@@ -4324,7 +4331,7 @@ function editMachine(id) {
     <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:12px">INVENTAR</div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Kaufdatum</label><input class="form-input" id="e-purchase-date" type="date" value="${m.purchase_date||''}"></div>
-      <div class="form-group"><label class="form-label">Neuwert (CHF)</label><input class="form-input" id="e-value-new" type="number" step="0.01" value="${m.value_new??''}" placeholder="z.B. 2500.00"></div>
+      <div class="form-group"><label class="form-label">Neuwert (${_currency})</label><input class="form-input" id="e-value-new" type="number" step="0.01" value="${m.value_new??''}" placeholder="z.B. 2500.00"></div>
     </div>
     <div class="form-group"><label class="form-label">Eigentümer</label><select class="form-input" id="e-owner">${_ownerOptions(m.owner_id||'')}</select></div>
     <hr style="border-color:var(--border);margin:16px 0">
@@ -5149,7 +5156,7 @@ if (_ltParam) {
   GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=_isAdmin()?'':'none';document.getElementById('nav-backup').style.display=_isAdmin()?'':'none';document.getElementById('nav-notifications').style.display=_isPowerPlus()?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
 }
 document.getElementById('login-pass').addEventListener('keydown',e=>{ if (e.key==='Enter') doLogin(); });
-fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){_spaceName=n;document.getElementById('login-space-sub').textContent=n;document.getElementById('sidebar-space-sub').textContent=n;}}).catch(()=>{});
+fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){_spaceName=n;document.getElementById('login-space-sub').textContent=n;document.getElementById('sidebar-space-sub').textContent=n;}_currency=s.currency||'CHF';_applyCurrencyLabels();}).catch(()=>{});
 setInterval(()=>{ if(document.querySelector('.nav-item.active')?.dataset.page==='log') loadLog(); },30000);
 // ═══════════════════════════════════════════════════════
 // EINSTELLUNGEN
@@ -5206,6 +5213,7 @@ async function loadSettings() {
   document.getElementById('cfg-auto-backup-keep').value = s.auto_backup_keep ?? 30;
   document.getElementById('cfg-guest-ttl-hours').value = s.guest_token_ttl_hours ?? 8;
   document.getElementById('cfg-space-name').value = s.space_name ?? '';
+  document.getElementById('cfg-currency').value = s.currency ?? 'CHF';
   document.getElementById('cfg-mcp-enabled').checked = !!s.mcp_enabled;
   document.getElementById('cfg-mcp-token').value = s.mcp_api_token || '';
   _updateMcpHints(s.mcp_api_token || '');
@@ -5220,6 +5228,8 @@ async function loadSettings() {
   tailscaleLoadStatus();
   const _sn = s.space_name || '';
   if (_sn) { _spaceName = _sn; document.getElementById('sidebar-space-sub').textContent = _sn; document.getElementById('login-space-sub').textContent = _sn; }
+  _currency = s.currency || 'CHF';
+  _applyCurrencyLabels();
   // Topic-Dropdown füllen und Auswahl setzen
   _emergencyNtfyTopicId = s.emergency_ntfy_topic_id;
   const h = s.jwt_expire_minutes >= 60
@@ -5256,6 +5266,7 @@ async function saveSettings() {
     auto_backup_minute:        parseInt(document.getElementById('cfg-auto-backup-time').value.split(':')[1]) || 0,
     auto_backup_keep:          parseInt(document.getElementById('cfg-auto-backup-keep').value) || 30,
     space_name:                document.getElementById('cfg-space-name').value.trim(),
+    currency:                  document.getElementById('cfg-currency').value.trim() || 'CHF',
     guest_token_ttl_hours:     parseInt(document.getElementById('cfg-guest-ttl-hours').value) || 8,
     mcp_enabled:               document.getElementById('cfg-mcp-enabled').checked,
     mcp_user_id:               parseInt(document.getElementById('cfg-mcp-user-id').value) || 0,
@@ -5868,6 +5879,11 @@ async function deleteBackupFile(filename) {
 
 let _roomStatus = {room_open: false, room_open_since: null, room_open_auto: true};
 let _spaceName = 'Raum';
+let _currency = 'CHF';
+function _applyCurrencyLabels(){
+  const el=document.getElementById('battery-price-label');
+  if(el) el.textContent=`Neupreis (${_currency})`;
+}
 
 async function loadRoomStatus() {
   const data = await apiSilent('GET', '/settings/room');
@@ -7362,7 +7378,7 @@ function togglePlugToken(id) {
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Kaufdatum</label><input class="form-input" id="battery-date" type="date"></div>
-        <div class="form-group"><label class="form-label">Neupreis (CHF)</label><input class="form-input" id="battery-price" type="number" step="0.01" placeholder="z.B. 89.00"></div>
+        <div class="form-group"><label class="form-label" id="battery-price-label">Neupreis (CHF)</label><input class="form-input" id="battery-price" type="number" step="0.01" placeholder="z.B. 89.00"></div>
       </div>
       <div class="form-group">
         <label class="form-label">Status</label>

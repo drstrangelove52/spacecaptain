@@ -15,7 +15,7 @@ from app.models import (
     ActivityLog, MachineSession, LogType, SessionEndedBy,
     MaintenanceInterval, MaintenanceRecord, SystemSettings, Announcement, NtfyTopic,
     Plug, MachinePlug, AutomationRule, RuleCondition, MachineLocation,
-    MachineOwner, Battery,
+    MachineOwner, Battery, MachineCategory,
 )
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
@@ -48,6 +48,7 @@ async def _build_export_data(db: AsyncSession) -> dict:
     maint_recs = (await db.execute(select(MaintenanceRecord).order_by(MaintenanceRecord.id))).scalars().all()
     announcements = (await db.execute(select(Announcement).order_by(Announcement.id))).scalars().all()
     ntfy_topics   = (await db.execute(select(NtfyTopic).order_by(NtfyTopic.id))).scalars().all()
+    categories    = (await db.execute(select(MachineCategory).order_by(MachineCategory.sort_order, MachineCategory.name))).scalars().all()
     locations     = (await db.execute(select(MachineLocation).order_by(MachineLocation.sort_order, MachineLocation.name))).scalars().all()
     owners        = (await db.execute(select(MachineOwner).order_by(MachineOwner.sort_order, MachineOwner.name))).scalars().all()
     batteries     = (await db.execute(select(Battery).order_by(Battery.id))).scalars().all()
@@ -93,6 +94,11 @@ async def _build_export_data(db: AsyncSession) -> dict:
             "title":       t.title,
             "description": t.description,
         } for t in ntfy_topics],
+        "machine_categories": [{
+            "name":       c.name,
+            "icon":       c.icon,
+            "sort_order": c.sort_order,
+        } for c in categories],
         "machine_locations": [{
             "name":       l.name,
             "sort_order": l.sort_order,
@@ -355,6 +361,24 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
             if field in valid_fields:
                 setattr(cfg, field, value)
         await db.flush()
+
+    # ── Kategorien ────────────────────────────────────────
+    existing_cats = {c.name: c for c in (await db.execute(select(MachineCategory))).scalars().all()}
+    for c in payload.get("machine_categories", []):
+        if not c.get("name"):
+            continue
+        if c["name"] in existing_cats:
+            if overwrite:
+                existing_cats[c["name"]].icon = c.get("icon", "🔧")
+                existing_cats[c["name"]].sort_order = c.get("sort_order", 0)
+                stats["updated"] += 1
+            else:
+                stats["skipped"] += 1
+            continue
+        db.add(MachineCategory(name=c["name"], icon=c.get("icon", "🔧"), sort_order=c.get("sort_order", 0)))
+        stats.setdefault("machine_categories", 0)
+        stats["machine_categories"] += 1
+    await db.flush()
 
     # ── Standorte ─────────────────────────────────────────
     existing_locs = {l.name: l for l in (await db.execute(select(MachineLocation))).scalars().all()}

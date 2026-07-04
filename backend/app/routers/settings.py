@@ -42,6 +42,7 @@ class SettingsOut(BaseModel):
     auto_backup_minute: int = 0
     auto_backup_keep: int = 30
     space_name: str = ""
+    currency: str = "CHF"
     room_open: bool = False
     room_open_since: Optional[datetime] = None
     room_open_auto: bool = True
@@ -86,6 +87,7 @@ class SettingsUpdate(BaseModel):
     auto_backup_minute: Optional[int] = None
     auto_backup_keep: Optional[int] = None
     space_name: Optional[str] = None
+    currency: Optional[str] = None
     room_open_auto: Optional[bool] = None
     guest_token_ttl_hours: Optional[int] = None
     ts_enabled: Optional[bool] = None
@@ -109,6 +111,7 @@ async def read_settings_public(db: AsyncSession = Depends(get_db)):
         "announcement_font_size": s.announcement_font_size,
         "agb_text": s.agb_text or "",
         "space_name": s.space_name or "",
+        "currency": s.currency or "CHF",
         "room_open": s.room_open,
     }
 
@@ -184,6 +187,8 @@ async def update_settings(
         row.auto_backup_keep = max(1, payload.auto_backup_keep)
     if payload.space_name is not None:
         row.space_name = payload.space_name.strip()
+    if payload.currency is not None:
+        row.currency = payload.currency.strip() or "CHF"
     if payload.room_open_auto is not None:
         row.room_open_auto = payload.room_open_auto
     if payload.guest_token_ttl_hours is not None:
