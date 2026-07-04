@@ -375,7 +375,7 @@ class Battery(Base):
     manufacturer:  Mapped[Optional[str]]       = mapped_column(String(100))
     model:         Mapped[Optional[str]]       = mapped_column(String(100))
     purchase_date: Mapped[Optional[date]]      = mapped_column(Date, default=None)
-    price_new:     Mapped[Optional[float]]     = mapped_column(Float, default=None)
+    value_new:     Mapped[Optional[float]]     = mapped_column(Float, default=None)
     status:        Mapped[BatteryStatus]       = mapped_column(Enum(BatteryStatus), default=BatteryStatus.aktiv)
     created_at:    Mapped[datetime]            = mapped_column(DateTime, default=datetime.utcnow)
 

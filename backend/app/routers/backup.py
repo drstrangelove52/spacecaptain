@@ -111,7 +111,7 @@ async def _build_export_data(db: AsyncSession) -> dict:
             "manufacturer":  b.manufacturer,
             "model":         b.model,
             "purchase_date": b.purchase_date.isoformat() if b.purchase_date else None,
-            "price_new":     b.price_new,
+            "value_new":     b.value_new,
             "status":        b.status,
         } for b in batteries],
         "users": [{
@@ -417,12 +417,15 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
     owner_map = {o.name: o.id for o in (await db.execute(select(MachineOwner))).scalars().all()}
 
     # ── Akkus ─────────────────────────────────────────────
+    # b.get("value_new", b.get("price_new")): Altbackups (vor der Umbenennung
+    # Neupreis -> Neuwert) haben noch den alten Schluessel "price_new".
     existing_battery_keys = {
-        (b.manufacturer, b.model, b.purchase_date.isoformat() if b.purchase_date else None, b.price_new)
+        (b.manufacturer, b.model, b.purchase_date.isoformat() if b.purchase_date else None, b.value_new)
         for b in (await db.execute(select(Battery))).scalars().all()
     }
     for b in payload.get("batteries", []):
-        key = (b.get("manufacturer"), b.get("model"), b.get("purchase_date"), b.get("price_new"))
+        battery_value = b.get("value_new", b.get("price_new"))
+        key = (b.get("manufacturer"), b.get("model"), b.get("purchase_date"), battery_value)
         if key in existing_battery_keys:
             stats["skipped"] += 1
             continue
@@ -430,7 +433,7 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
         db.add(Battery(
             manufacturer=b.get("manufacturer"), model=b.get("model"),
             purchase_date=date.fromisoformat(b["purchase_date"]) if b.get("purchase_date") else None,
-            price_new=b.get("price_new"), status=b.get("status", "aktiv"),
+            value_new=battery_value, status=b.get("status", "aktiv"),
         ))
         stats.setdefault("batteries", 0)
         stats["batteries"] += 1

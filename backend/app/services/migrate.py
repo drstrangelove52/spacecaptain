@@ -537,6 +537,9 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # ── v1.40: Konfigurierbare Währung ─────────────────────────────────
         await _add_column_if_missing(conn, "system_settings", "currency", "VARCHAR(10) NOT NULL DEFAULT 'CHF'")
 
+        # ── v1.41: Akku-Feld vereinheitlicht (Neuwert statt Neupreis) ──────
+        await _rename_column_if_needed(conn, "batteries", "price_new", "value_new", "FLOAT DEFAULT NULL")
+
     log.info("Migrationen abgeschlossen")
 
 
@@ -550,6 +553,21 @@ async def _add_column_if_missing(conn, table: str, column: str, definition: str)
     if result.scalar() == 0:
         await conn.execute(text(f"ALTER TABLE `{table}` ADD COLUMN `{column}` {definition}"))
         log.info(f"Migration: {table}.{column} hinzugefügt")
+
+
+async def _rename_column_if_needed(conn, table: str, old_column: str, new_column: str, definition: str) -> None:
+    """Benennt eine Spalte um — nur wenn die alte existiert und die neue noch nicht."""
+    result = await conn.execute(text(
+        "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table "
+        "AND COLUMN_NAME IN (:old_column, :new_column)"
+    ), {"table": table, "old_column": old_column, "new_column": new_column})
+    existing = {row[0] for row in result.fetchall()}
+    if old_column in existing and new_column not in existing:
+        await conn.execute(text(
+            f"ALTER TABLE `{table}` CHANGE COLUMN `{old_column}` `{new_column}` {definition}"
+        ))
+        log.info(f"Migration: {table}.{old_column} → {new_column} umbenannt")
 
 
 async def _extend_enum_if_needed(conn, table: str, column: str, new_values: list[str]) -> None:

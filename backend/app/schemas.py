@@ -274,7 +274,7 @@ class BatteryBase(BaseModel):
     manufacturer: Optional[str] = None
     model: Optional[str] = None
     purchase_date: Optional[date] = None
-    price_new: Optional[float] = None
+    value_new: Optional[float] = None
     status: BatteryStatus = BatteryStatus.aktiv
 
 class BatteryCreate(BatteryBase):
@@ -284,7 +284,7 @@ class BatteryUpdate(BaseModel):
     manufacturer: Optional[str] = None
     model: Optional[str] = None
     purchase_date: Optional[date] = None
-    price_new: Optional[float] = None
+    value_new: Optional[float] = None
     status: Optional[BatteryStatus] = None
 
 class BatteryOut(BatteryBase):

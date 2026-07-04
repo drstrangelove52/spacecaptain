@@ -59,7 +59,8 @@ Migrationen laufen **bei jedem Backend-Start** in `backend/app/services/migrate.
 **Regeln:**
 - Nur `ADD COLUMN IF NOT EXISTS` / `CREATE TABLE IF NOT EXISTS` — nie destruktiv
 - Neue Spalten mit `_add_column_if_missing(conn, tabelle, spalte, "TYP DEFAULT x")`
-- Neue Spalten gleichzeitig in `backend/app/models.py` (SQLAlchemy ORM) und `db/init.sql` (für Neuinstallationen) eintragen
+- Spalte umbenennen mit `_rename_column_if_needed(conn, tabelle, alt, neu, "TYP DEFAULT x")` (idempotent: nur wenn alt existiert und neu noch nicht) — **zusätzlich** den Backup-Restore mit Fallback auf den alten Schlüssel versehen (`payload.get("neu", payload.get("alt"))`), sonst verlieren ältere Backups den Wert (Beispiel: `batteries.price_new` → `value_new`, Migration v1.41, `routers/backup.py`)
+- Neue Spalten gleichzeitig in `backend/app/models.py` (SQLAlchemy ORM) und `db/init.sql` (für Neuinstallationen) eintragen — neue **Tabellen** (z.B. `machine_owners`, `batteries`) brauchen das nicht, die entstehen automatisch über `Base.metadata.create_all()` beim Start
 
 ## Backup-System
 
@@ -130,7 +131,7 @@ OR-Verknüpfung in Bedingungen ist bewusst nicht implementiert — zwei separate
 ## Inventar (Kaufdatum, Neuwert, Eigentümer) und Akku-Verwaltung
 
 - `Machine` hat drei nullable Buchhaltungs-/Versicherungsfelder: `purchase_date`, `value_new`, `owner_id` (FK → `machine_owners`). Unüberwachte Maschinen (kein Plug) sind einfach `Machine`-Einträge ohne Plug-Zuordnung — bewusst kein separates "Inventory Item"-Modell.
-- **Akkus** (`batteries`, `routers/batteries.py`) sind ein eigenständiger Verbrauchsmaterial-Pool ohne Machine-Bezug: Hersteller, Modell, Kaufdatum, Neupreis, Status (`aktiv`/`defekt`/`ausgemustert`). Eigene Seite unter AUSSTATTUNG im Frontend (nicht in der Maschinen-Sektion), bedienungsmässig identisch zum Plug-Pool (sortierbare Tabelle, Suche/Status-Filter, Modal für Anlegen/Bearbeiten).
+- **Akkus** (`batteries`, `routers/batteries.py`) sind ein eigenständiger Verbrauchsmaterial-Pool ohne Machine-Bezug: Hersteller, Modell, Kaufdatum, Neuwert (`value_new`, bis Migration v1.41 `price_new` — auf `Machine.value_new` vereinheitlicht, siehe Kompatibilitätshinweis unten), Status (`aktiv`/`defekt`/`ausgemustert`). Eigene Seite unter AUSSTATTUNG im Frontend (nicht in der Maschinen-Sektion), bedienungsmässig identisch zum Plug-Pool (sortierbare Tabelle, Suche/Status-Filter, Modal für Anlegen/Bearbeiten).
 - **Inventarliste für Buchhaltung**: Button «📋 Inventarliste» auf der Maschinen-Seite exportiert nur die buchhaltungsrelevanten Felder (Name, Kategorie, Hersteller, Modell, Seriennummer, Standort, Kaufdatum, Neuwert, Eigentümer + Summenzeile) als CSV oder Druckansicht (PDF via Browser-Druckdialog, kein PDF-Backend nötig) — bewusst getrennt von der operativen CSV (`exportMachinesCsv()`), die zusätzlich Status/Schulung/Smart-Plug/Kommentar enthält.
 - Migration v1.39.
 

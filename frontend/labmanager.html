@@ -716,7 +716,7 @@
                 <div class="form-group" style="margin:0">
                   <label class="form-label">Währung</label>
                   <input class="form-input" id="cfg-currency" maxlength="10" placeholder="z.B. CHF">
-                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Für Neuwert/Neupreis bei Maschinen und Akkus sowie die Inventarliste</div>
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Für den Neuwert bei Maschinen und Akkus sowie die Inventarliste</div>
                 </div>
                 <div class="form-group" style="margin:0">
                   <label class="form-label">NFC-Schreibgerät</label>
@@ -3751,14 +3751,14 @@ function renderBatteriesFiltered(batteries){
   }
   el.innerHTML=`<table class="data-table" style="width:100%">
     <thead><tr>
-      ${_batteryTh('Hersteller','manufacturer')}${_batteryTh('Modell','model')}${_batteryTh('Kaufdatum','purchase_date')}${_batteryTh('Neupreis','price_new')}${_batteryTh('Status','status')}<th></th>
+      ${_batteryTh('Hersteller','manufacturer')}${_batteryTh('Modell','model')}${_batteryTh('Kaufdatum','purchase_date')}${_batteryTh('Neuwert','value_new')}${_batteryTh('Status','status')}<th></th>
     </tr></thead>
     <tbody>
     ${batteries.map(b=>`<tr>
       <td>${escHtml(b.manufacturer||'—')}</td>
       <td>${escHtml(b.model||'—')}</td>
       <td>${b.purchase_date||'—'}</td>
-      <td>${b.price_new!=null?b.price_new.toFixed(2):'—'}</td>
+      <td>${b.value_new!=null?b.value_new.toFixed(2):'—'}</td>
       <td><span class="badge badge-gray">${_batteryStatusLabel(b.status)}</span></td>
       <td style="white-space:nowrap;text-align:right">
         ${_isPowerPlus()?`<button class="btn btn-ghost btn-sm" onclick="showEditBattery(${b.id})" title="Bearbeiten">✏️</button>`:''}
@@ -3796,7 +3796,7 @@ function showEditBattery(id){
   document.getElementById('battery-mfr').value=b.manufacturer||'';
   document.getElementById('battery-model').value=b.model||'';
   document.getElementById('battery-date').value=b.purchase_date||'';
-  document.getElementById('battery-price').value=b.price_new??'';
+  document.getElementById('battery-price').value=b.value_new??'';
   document.getElementById('battery-status').value=b.status;
   document.getElementById('battery-modal').style.display='flex';
 }
@@ -3812,7 +3812,7 @@ async function saveBattery(){
     manufacturer:document.getElementById('battery-mfr').value.trim()||null,
     model:document.getElementById('battery-model').value.trim()||null,
     purchase_date:document.getElementById('battery-date').value||null,
-    price_new:document.getElementById('battery-price').value?parseFloat(document.getElementById('battery-price').value):null,
+    value_new:document.getElementById('battery-price').value?parseFloat(document.getElementById('battery-price').value):null,
     status:document.getElementById('battery-status').value,
   };
   const res=id?await PATCH(`/batteries/${id}`,payload):await POST('/batteries',payload);
@@ -5882,7 +5882,7 @@ let _spaceName = 'Raum';
 let _currency = 'CHF';
 function _applyCurrencyLabels(){
   const el=document.getElementById('battery-price-label');
-  if(el) el.textContent=`Neupreis (${_currency})`;
+  if(el) el.textContent=`Neuwert (${_currency})`;
 }
 
 async function loadRoomStatus() {
@@ -7378,7 +7378,7 @@ function togglePlugToken(id) {
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Kaufdatum</label><input class="form-input" id="battery-date" type="date"></div>
-        <div class="form-group"><label class="form-label" id="battery-price-label">Neupreis (CHF)</label><input class="form-input" id="battery-price" type="number" step="0.01" placeholder="z.B. 89.00"></div>
+        <div class="form-group"><label class="form-label" id="battery-price-label">Neuwert (CHF)</label><input class="form-input" id="battery-price" type="number" step="0.01" placeholder="z.B. 89.00"></div>
       </div>
       <div class="form-group">
         <label class="form-label">Status</label>
