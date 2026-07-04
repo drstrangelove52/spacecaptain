@@ -2691,7 +2691,7 @@ const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',mach
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>${_isAdmin()?` <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`:''}`,
-  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)"> <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ Standorte</button> <button class="btn btn-ghost btn-sm" onclick="showOwnersModal()">⚙ Eigentümer</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`:''}`,
+  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button> <button class="btn btn-ghost btn-sm" onclick="showInventoryExportModal()">📋 Inventarliste</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)"> <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ Standorte</button> <button class="btn btn-ghost btn-sm" onclick="showOwnersModal()">⚙ Eigentümer</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`:''}`,
   plugs:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('plugs')" title="Hilfe zu Plug-Pool">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`:''}`,
   batteries:()=>`${_isPowerPlus()?`<button class="btn btn-primary" onclick="showAddBattery()">+ Akku hinzufügen</button>`:''}`,
   automations:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('automations')" title="Hilfe zu Automationen">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddRule()">+ Neue Regel</button>`:''}`,
@@ -3854,6 +3854,70 @@ function exportMachinesCsv(){
   a.click();
 }
 
+const _inventoryCols=['Name','Kategorie','Hersteller','Modell','Seriennummer','Standort','Kaufdatum','Neuwert (CHF)','Eigentümer'];
+
+function showInventoryExportModal(){
+  openModal('Inventarliste exportieren',`
+    <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px;line-height:1.5">Für Buchhaltung/Versicherung — enthält nur ${cache.machines.length} Maschinen mit Name, Kategorie, Hersteller, Modell, Seriennummer, Standort, Kaufdatum, Neuwert und Eigentümer. Keine Kommentare, Sicherheitshinweise oder Smart-Plug-Daten.</p>
+    <div style="display:flex;gap:12px">
+      <button class="btn btn-primary" style="flex:1" onclick="exportInventoryCsv()">📊 Als CSV</button>
+      <button class="btn btn-primary" style="flex:1" onclick="exportInventoryPdf()">🖨️ Als PDF drucken</button>
+    </div>
+  `);
+  document.getElementById('modal-footer').innerHTML='<button class="btn btn-ghost" onclick="closeModal()">Schließen</button>';
+}
+
+function exportInventoryCsv(){
+  const esc=v=>v==null?'':'"'+String(v).replace(/"/g,'""')+'"';
+  const rows=[...cache.machines].sort((a,b)=>a.name.localeCompare(b.name,'de')).map(m=>[
+    esc(m.name), esc(m.category), esc(m.manufacturer), esc(m.model),
+    esc(m.serial_number), esc(m.location), esc(m.purchase_date), m.value_new??'', esc(m.owner_name)
+  ].join(';'));
+  const bom='﻿';
+  const csv=bom+_inventoryCols.join(';')+'\n'+rows.join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`spacecaptain-inventarliste-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  closeModal();
+}
+
+function exportInventoryPdf(){
+  const rows=[...cache.machines].sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  const totalValue=rows.reduce((sum,m)=>sum+(m.value_new||0),0);
+  const win=window.open('','_blank');
+  if(!win){showToast('Popup wurde blockiert — bitte Popups für diese Seite erlauben','error');return;}
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Inventarliste</title>
+    <style>
+      body{font-family:Arial,Helvetica,sans-serif;padding:24px;color:#111}
+      h1{font-size:18px;margin:0 0 4px}
+      .meta{color:#666;font-size:12px;margin-bottom:16px}
+      table{width:100%;border-collapse:collapse;font-size:12px}
+      th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}
+      th{background:#eee}
+      tfoot td{font-weight:bold}
+      td.num,th.num{text-align:right}
+    </style></head><body>
+    <h1>${escHtml(_spaceName)} — Inventarliste</h1>
+    <div class="meta">Erstellt am ${new Date().toLocaleDateString('de-CH')} · ${rows.length} Maschinen</div>
+    <table>
+      <thead><tr>${_inventoryCols.map((c,i)=>`<th${i===7?' class="num"':''}>${escHtml(c)}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${rows.map(m=>`<tr>
+          <td>${escHtml(m.name)}</td><td>${escHtml(m.category||'')}</td><td>${escHtml(m.manufacturer||'')}</td>
+          <td>${escHtml(m.model||'')}</td><td>${escHtml(m.serial_number||'')}</td><td>${escHtml(m.location||'')}</td>
+          <td>${m.purchase_date||''}</td><td class="num">${m.value_new!=null?m.value_new.toFixed(2):''}</td><td>${escHtml(m.owner_name||'')}</td>
+        </tr>`).join('')}
+      </tbody>
+      <tfoot><tr><td colspan="7">Summe Neuwert</td><td class="num">${totalValue.toFixed(2)}</td><td></td></tr></tfoot>
+    </table>
+  </body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(()=>win.print(),300);
+  closeModal();
+}
+
 function triggerCsvImport(){
   document.getElementById('csv-import-input')?.click();
 }
@@ -4124,7 +4188,7 @@ function showAddMachine() {
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="mc-comment" rows="2" placeholder="z.B. Linse verschmutzt, bitte melden"></textarea></div>
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="mc-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden&#10;Wird vor dem Einschalten als Pflicht-Bestätigung angezeigt."></textarea></div>
     <hr style="border-color:var(--border);margin:16px 0">
-    <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px">INVENTAR</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:12px">INVENTAR</div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Kaufdatum</label><input class="form-input" id="mc-purchase-date" type="date"></div>
       <div class="form-group"><label class="form-label">Neuwert (CHF)</label><input class="form-input" id="mc-value-new" type="number" step="0.01" placeholder="z.B. 2500.00"></div>
@@ -4258,7 +4322,7 @@ function editMachine(id) {
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="e-comment" rows="2" placeholder="z.B. Linse verschmutzt">${m.comment||''}</textarea></div>
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="e-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden">${m.safety_notes||''}</textarea></div>
     <hr style="border-color:var(--border);margin:16px 0">
-    <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px">INVENTAR</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:12px">INVENTAR</div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Kaufdatum</label><input class="form-input" id="e-purchase-date" type="date" value="${m.purchase_date||''}"></div>
       <div class="form-group"><label class="form-label">Neuwert (CHF)</label><input class="form-input" id="e-value-new" type="number" step="0.01" value="${m.value_new??''}" placeholder="z.B. 2500.00"></div>
@@ -7294,8 +7358,8 @@ function togglePlugToken(id) {
     <div class="modal-body">
       <input type="hidden" id="battery-modal-id">
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Hersteller</label><input class="form-input" id="battery-mfr" placeholder="z.B. Makita"></div>
-        <div class="form-group"><label class="form-label">Modell</label><input class="form-input" id="battery-model" placeholder="z.B. BL1850B"></div>
+        <div class="form-group"><label class="form-label">Hersteller</label><input class="form-input" id="battery-mfr" placeholder="z.B. Hilti"></div>
+        <div class="form-group"><label class="form-label">Modell</label><input class="form-input" id="battery-model" placeholder="z.B. B 22-55"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Kaufdatum</label><input class="form-input" id="battery-date" type="date"></div>
