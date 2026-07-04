@@ -22,8 +22,13 @@ log() {
 }
 
 # Liefert alle Container die neu gestartet/gebaut werden sollen (backend + laufende optionale)
+# nginx wird immer mit neu gestartet: es cached die Docker-DNS-Aufloesung fuer
+# "backend"/"mcp_server" fuer die Laufzeit des Prozesses. Bekommt der Backend-
+# Container beim Rebuild eine neue IP, wuerde nginx sonst mit 502 "Connection
+# refused" auf jeden API-Call antworten (inkl. Login) bis es selbst neu startet.
+# proxy.conf hat zusaetzlich einen resolver mit kurzer TTL als zweite Absicherung.
 compose_services() {
-  local services="backend"
+  local services="backend nginx"
   if docker compose ps --services --status running 2>/dev/null | grep -q "^mcp_server$"; then
     services="$services mcp_server"
   fi
