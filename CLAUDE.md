@@ -237,6 +237,10 @@ sudo systemctl status spacecaptain-updater
 
 # Update-Log ansehen
 tail -f update_trigger/update.log
+
+# Nginx-Config nach Änderungen testen + unterbrechungsfrei neu laden
+docker compose exec nginx nginx -t
+docker compose exec nginx nginx -s reload
 ```
 
 ## In-App Update
@@ -273,9 +277,22 @@ MCP-Server   →  X-MCP-Key: MCP_BACKEND_KEY             →  Backend (require_m
 
 **FastMCP-Falle:** `host="0.0.0.0"` und `transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False)` im Konstruktor zwingend — sonst 403 bei LAN-Hostnamen.
 
+## Nginx-Proxy und Docker-DNS (Vorfall 2026-07-04)
+
+**Vorfall:** Nach einem Update-Rebuild von `backend`/`mcp_server` (neue Docker-interne Container-IP) antwortete `nginx` (Service `nginx`, Container `spacecaptain_proxy`) auf **allen** API-Calls inkl. Login mit 502 "Connection refused" — der Proxy-Container selbst lief seit Tagen unverändert weiter und hatte die alte Backend-IP für die Lebensdauer seines Worker-Prozesses gecached.
+
+**Ursache:** `proxy_pass http://backend:8000;` mit statischem Hostnamen wird von nginx nur **einmal** aufgelöst (beim Start/Reload des Worker-Prozesses), nicht bei jedem Request. Wird der Ziel-Container neu erzeugt (neue IP möglich, auch wenn Docker oft dieselbe IP wiederverwendet), merkt nginx das nicht von selbst.
+
+**Fix** (`nginx/proxy.conf`, `spacecaptain-updater.sh`):
+1. `resolver 127.0.0.11 valid=10s;` (Docker-eigener embedded DNS-Server) + `set $backend_upstream http://backend:8000;` statt Literal in `proxy_pass`. Variable statt Literal zwingt nginx, den Hostnamen über den Resolver periodisch neu aufzulösen (max. 10s veraltet) statt ihn dauerhaft zu cachen. Gilt analog für `$frontend_upstream` und `$mcp_upstream`.
+2. `spacecaptain-updater.sh`: `nginx` steht jetzt immer in `compose_services()` — wird bei jedem Update/Neustart mit neu gestartet (kein Rebuild nötig, reines Volume-Mount für die Config), damit die Korrektur sofort greift statt erst nach der 10s-TTL.
+
+**Nach Änderungen an `nginx/proxy.conf`:** Kein Rebuild nötig (Volume-Mount, siehe `docker-compose.yml`). Config-Syntax vorab prüfen mit `docker compose exec nginx nginx -t`, dann `docker compose exec nginx nginx -s reload` (unterbrechungsfrei) oder `docker compose restart nginx`.
+
 ## Was vermeiden
 
 - `--reload` ohne `--reload-dir /app/app` — WatchFiles überwacht sonst `/app/backups` und löst bei jedem neuen Backup-File einen Reload aus
+- Statischen Hostnamen in nginx `proxy_pass` ohne `resolver` + Variable — nginx cached die DNS-Auflösung sonst für die Lebensdauer des Worker-Prozesses, ein Container-Rebuild des Ziels führt zu 502 "Connection refused" bis nginx neu startet (siehe Abschnitt oben)
 - Imports aus `backup.py` auf Modulebene in `backup_service.py` — zirkulärer Import
 - Neue Settings-Felder nur in `models.py` eintragen — `SettingsOut`/`SettingsUpdate`, den PATCH-Handler (`update_settings()`, setzt jedes Feld einzeln) und Migration vergessen. Schema allein reicht nicht, ohne die explizite `if payload.x is not None: row.x = ...`-Zeile persistiert PATCH das Feld nie.
 - Bei `automations.py` Log-Nachrichten `tm.name` verwenden ohne zu prüfen ob `tm` None ist — bei `room_open`/`room_close`/`notify`-Aktionen gibt es keine Ziel-Maschine
