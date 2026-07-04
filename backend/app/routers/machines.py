@@ -86,6 +86,8 @@ async def list_machines_live(
     guest_map = {g.id: g.name for g in guests_res.scalars().all()}
     users_res = await db.execute(select(User))
     user_map = {u.id: u.name for u in users_res.scalars().all()}
+    owners_res = await db.execute(select(MachineOwner))
+    owner_map = {o.id: o.name for o in owners_res.scalars().all()}
 
     out = []
     for m in machines:
@@ -169,6 +171,13 @@ async def list_machines_live(
                 "idle_power_w": m.idle_power_w,
                 "idle_timeout_min": m.idle_timeout_min,
                 "training_required": m.training_required,
+                "force_off_on_close": m.force_off_on_close,
+                "total_hours": round(m.total_hours or 0, 1),
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+                "purchase_date": m.purchase_date.isoformat() if m.purchase_date else None,
+                "value_new": m.value_new,
+                "owner_id": m.owner_id,
+                "owner_name": owner_map.get(m.owner_id) if m.owner_id else None,
                 # Session
                 "in_use": m.session_started_at is not None,
                 "current_guest_id": m.current_guest_id,
@@ -199,6 +208,13 @@ async def list_machines_live(
                 "idle_power_w": m.idle_power_w,
                 "idle_timeout_min": m.idle_timeout_min,
                 "training_required": m.training_required,
+                "force_off_on_close": m.force_off_on_close,
+                "total_hours": round(m.total_hours or 0, 1),
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+                "purchase_date": m.purchase_date.isoformat() if m.purchase_date else None,
+                "value_new": m.value_new,
+                "owner_id": m.owner_id,
+                "owner_name": owner_map.get(m.owner_id) if m.owner_id else None,
                 "in_use": m.session_started_at is not None,
                 "current_guest_id": m.current_guest_id,
                 "current_guest_name": None,

@@ -3844,14 +3844,14 @@ function setMachineView(v){
 }
 
 function exportMachinesCsv(){
-  const cols=['ID','Name','Kategorie','Hersteller','Modell','Seriennummer','Standort','Status','Schulung','Smart Plug','Kommentar','Kaufdatum','Neuwert','Eigentümer'];
+  const cols=['ID','Name','Kategorie','Hersteller','Modell','Seriennummer','Standort','Status','Schulung','Smart Plug','Kaufdatum','Neuwert','Eigentümer','Kommentar'];
   const esc=v=>v==null?'':'"'+String(v).replace(/"/g,'""')+'"';
   const rows=cache.machines.map(m=>[
     m.id, esc(m.name), esc(m.category), esc(m.manufacturer), esc(m.model),
     esc(m.serial_number), esc(m.location), m.status,
     m.training_required===false?'Nein':'Ja',
     m.plug_type==='none'?'—':esc(m.plug_type+(m.plug_ip?' '+m.plug_ip:'')),
-    esc(m.comment), esc(m.purchase_date), m.value_new??'', esc(m.owner_name)
+    esc(m.purchase_date), m.value_new??'', esc(m.owner_name), esc(m.comment)
   ].join(';'));
   const bom='﻿';
   const csv=bom+cols.join(';')+'\n'+rows.join('\n');
