@@ -3817,6 +3817,7 @@ function showEditBattery(id){
 
 function closeBatteryModal(e){
   if(e && e.target.id!=='battery-modal') return;
+  if(e && !clientSettings.modal_backdrop_input) return;
   document.getElementById('battery-modal').style.display='none';
 }
 
@@ -7276,6 +7277,7 @@ function togglePlugTokenInput() {
 
 function closePlugModal(e) {
   if (e && e.target.id !== 'plug-modal') return;
+  if (e && !clientSettings.modal_backdrop_input) return;
   document.getElementById('plug-modal').style.display = 'none';
 }
 
