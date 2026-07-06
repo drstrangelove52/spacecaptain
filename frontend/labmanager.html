@@ -2577,7 +2577,7 @@ sudo ./install-service.sh</pre>
 
 <!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay">
-  <div class="modal">
+  <div class="modal" id="modal-box">
     <div class="modal-header"><div class="modal-title" id="modal-title">Modal</div><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body" id="modal-body"></div>
     <div class="modal-footer" id="modal-footer"></div>
@@ -4125,6 +4125,7 @@ function _machineTable(machines) {
       ?`<span style="color:var(--accent2)">● ${escHtml(m.current_guest_name)}${m.session_duration_min!=null?' ('+formatDuration(m.session_duration_min)+')':''}</span>`
       :m.status==='online'?`<span style="color:var(--text-dim)">—</span>`:'';
     const plug=m.plug_type==='none'?'<span style="color:var(--text-dim)">—</span>'
+      :m.plug_error?`<span style="color:var(--accent)" title="Plug konfiguriert, aber nicht erreichbar">⚠ n. erreichbar</span>`
       :`<span style="color:${m.plug_on?'var(--success)':'var(--text-dim)'}">${m.plug_on==null?'—':m.plug_on?'EIN':'AUS'}${m.power_w!=null?' · '+Math.round(m.power_w)+' W':''}</span>`;
     return `<tr>
       <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusDot}"></span></td>
@@ -4266,7 +4267,7 @@ function showAddMachine() {
       if (plugId) await POST(`/plugs/${plugId}/assign?machine_id=${res.id}`,{});
       closeModal(); await loadAll(); showToast(`${res.name} hinzugefügt!`,'success');
     }
-  });
+  }, undefined, undefined, 'input', 760);
 }
 
 let _editMachinePlugs = [];        // [{id, name, plug_ip, plug_type}] — aktueller Zustand im Dialog
@@ -4400,7 +4401,7 @@ function editMachine(id) {
     const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,manufacturer:document.getElementById('e-mfr').value.trim()||null,model:document.getElementById('e-model').value.trim()||null,serial_number:document.getElementById('e-serial').value.trim()||null,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,safety_notes:document.getElementById('e-safety').value.trim()||null,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required,force_off_on_close,purchase_date,value_new:value_new?parseFloat(value_new):null,owner_id:owner_id?parseInt(owner_id):null};
     const res=await PATCH(`/machines/${id}`,payload);
     if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
-  });
+  }, undefined, undefined, 'input', 760);
   // Nach Modal-Render: Liste und Dropdown initialisieren
   setTimeout(()=>{ _renderEditPlugList(); _refreshEditPlugDropdown(); }, 0);
 }
@@ -5103,7 +5104,7 @@ function resetLogFilters() {
 // ═══════════════════════════════════════════════════════
 // MODAL
 // ═══════════════════════════════════════════════════════
-function openModal(title,bodyHTML,onConfirm,confirmLabel,onCancel,modalType='input') {
+function openModal(title,bodyHTML,onConfirm,confirmLabel,onCancel,modalType='input',width=null) {
   document.getElementById('modal-title').textContent=title;
   document.getElementById('modal-body').innerHTML=bodyHTML;
   const lbl = confirmLabel || 'Speichern';
@@ -5111,6 +5112,8 @@ function openModal(title,bodyHTML,onConfirm,confirmLabel,onCancel,modalType='inp
   window._mc=onConfirm;
   window._mcc=onCancel||null;
   window._modalType=modalType;
+  const box=document.getElementById('modal-box');
+  if (box) box.style.width = width ? `${width}px` : '';
   document.getElementById('modal-overlay').classList.add('open');
 }
 function _modalCancel() { const fn=window._mcc; closeModal(); if(fn) fn(); }
