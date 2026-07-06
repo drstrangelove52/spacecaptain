@@ -3233,7 +3233,9 @@ function renderDashboard() {
     else if (m.status === 'online')  { dotColor = 'var(--success)'; borderColor = 'rgba(34,197,94,.35)'; }
 
     let idleTag = '';
-    if (adapterError) {
+    if (m.status === 'maintenance') {
+      idleTag = `<span style="font-family:var(--mono);font-size:9px;color:var(--accent);font-weight:700">🔧 IN WARTUNG</span>`;
+    } else if (adapterError) {
       idleTag = `<span style="font-family:var(--mono);font-size:9px;color:#ef4444;font-weight:700">⚠ ADAPTER OFFLINE</span>`;
     } else if (m.idle_state === 'idle_warning') {
       const rem = (m.idle_timeout_min != null && m.idle_since_min != null)
