@@ -4213,18 +4213,18 @@ function showAddMachine() {
     </div>
     <div class="form-group"><label class="form-label">Eigentümer</label><select class="form-input" id="mc-owner">${_ownerOptions()}</select></div>
     <hr style="border-color:var(--border);margin:16px 0">
-    <div class="form-group"><label class="form-label">Smart Plug</label>
-      <select class="form-input" id="mc-plug-pool" onchange="updateMcIdleRow()">
-        <option value="">— Kein Smart Plug —</option>
-        ${[...(_plugs||[])].sort((a,b)=>a.name.localeCompare(b.name,'de')).map(p=>`<option value="${p.id}">${escHtml(_plugOptionLabel(p,null))}</option>`).join('')}
-      </select>
-      ${!(_plugs&&_plugs.length)?`<div style="font-size:11px;color:var(--text-dim);margin-top:4px">Pool ist leer — <a href="#" onclick="navigateTo('plugs');closeModal();return false" style="color:var(--accent)">Plugs verwalten →</a></div>`:''}
-      <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Weitere Plugs können nach dem Erstellen in der Bearbeitungsansicht hinzugefügt werden.</div>
-    </div>
-    <div id="mc-idle-row" style="display:none">
-      <hr style="border-color:var(--border);margin:16px 0">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px">LEERLAUF-AUTOMATIK</div>
-      <div class="form-row">
+    <div style="display:flex;gap:20px;align-items:flex-start">
+      <div class="form-group" style="flex:1;min-width:0">
+        <label class="form-label">Smart Plug</label>
+        <select class="form-input" id="mc-plug-pool" onchange="updateMcIdleRow()">
+          <option value="">— Kein Smart Plug —</option>
+          ${[...(_plugs||[])].sort((a,b)=>a.name.localeCompare(b.name,'de')).map(p=>`<option value="${p.id}">${escHtml(_plugOptionLabel(p,null))}</option>`).join('')}
+        </select>
+        ${!(_plugs&&_plugs.length)?`<div style="font-size:11px;color:var(--text-dim);margin-top:4px">Pool ist leer — <a href="#" onclick="navigateTo('plugs');closeModal();return false" style="color:var(--accent)">Plugs verwalten →</a></div>`:''}
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Weitere Plugs können nach dem Erstellen in der Bearbeitungsansicht hinzugefügt werden.</div>
+      </div>
+      <div id="mc-idle-row" style="flex:1;min-width:0;display:none">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px">LEERLAUF-AUTOMATIK</div>
         <div class="form-group"><label class="form-label">Leerlaufleistung (W)</label><input class="form-input" id="mc-idlew" type="number" step="0.1" placeholder="z.B. 5.0"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Unter diesem Wert gilt die Maschine als im Leerlauf</div></div>
         <div class="form-group"><label class="form-label">Timeout (Minuten)</label><input class="form-input" id="mc-idlet" type="number" placeholder="z.B. 10"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Nach dieser Leerlaufdauer wird automatisch abgeschaltet</div></div>
         <div class="form-group"><label class="form-label">Poll-Intervall (Sekunden)</label><input class="form-input" id="mc-poll" type="number" min="10" value="60" placeholder="60"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Wie oft der Schaltzustand geprüft wird (min. 10s)</div></div>
@@ -4267,7 +4267,7 @@ function showAddMachine() {
       if (plugId) await POST(`/plugs/${plugId}/assign?machine_id=${res.id}`,{});
       closeModal(); await loadAll(); showToast(`${res.name} hinzugefügt!`,'success');
     }
-  }, undefined, undefined, 'input', 760);
+  }, undefined, undefined, 'input', 900);
 }
 
 let _editMachinePlugs = [];        // [{id, name, plug_ip, plug_type}] — aktueller Zustand im Dialog
@@ -4347,20 +4347,19 @@ function editMachine(id) {
     </div>
     <div class="form-group"><label class="form-label">Eigentümer</label><select class="form-input" id="e-owner">${_ownerOptions(m.owner_id||'')}</select></div>
     <hr style="border-color:var(--border);margin:16px 0">
-    <div class="form-group">
-      <label class="form-label">Smart Plugs <span style="font-size:11px;color:var(--text-dim);font-weight:400">★ = Primär (Monitoring)</span></label>
-      <div id="e-plug-list" style="margin-bottom:8px"></div>
-      ${(_plugs&&_plugs.length)?`
-      <div style="display:flex;gap:8px;align-items:center">
-        <select class="form-input" id="e-add-plug-sel" style="flex:1"></select>
-        <button type="button" class="btn btn-ghost btn-sm" onclick="_addEditPlug()" style="white-space:nowrap">+ Hinzufügen</button>
-      </div>`:`<div style="font-size:11px;color:var(--text-dim)">Pool ist leer — <a href="#" onclick="navigateTo('plugs');closeModal();return false" style="color:var(--accent)">Plugs verwalten →</a></div>`}
-      ${m.plug_ip&&!(m.plugs&&m.plugs.length)?`<div style="font-size:11px;color:var(--accent);margin-top:4px">⚠ Direkt konfigurierter Plug (${escHtml(m.plug_ip)}) — im Pool anlegen und hier zuweisen.</div>`:''}
-    </div>
-    <div id="e-idle-row" style="display:${(m.plugs&&m.plugs.length)?'block':'none'}">
-      <hr style="border-color:var(--border);margin:16px 0">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px">LEERLAUF-AUTOMATIK</div>
-      <div class="form-row">
+    <div style="display:flex;gap:20px;align-items:flex-start">
+      <div class="form-group" style="flex:1;min-width:0">
+        <label class="form-label">Smart Plugs <span style="font-size:11px;color:var(--text-dim);font-weight:400">★ = Primär (Monitoring)</span></label>
+        <div id="e-plug-list" style="margin-bottom:8px"></div>
+        ${(_plugs&&_plugs.length)?`
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="form-input" id="e-add-plug-sel" style="flex:1"></select>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="_addEditPlug()" style="white-space:nowrap">+ Hinzufügen</button>
+        </div>`:`<div style="font-size:11px;color:var(--text-dim)">Pool ist leer — <a href="#" onclick="navigateTo('plugs');closeModal();return false" style="color:var(--accent)">Plugs verwalten →</a></div>`}
+        ${m.plug_ip&&!(m.plugs&&m.plugs.length)?`<div style="font-size:11px;color:var(--accent);margin-top:4px">⚠ Direkt konfigurierter Plug (${escHtml(m.plug_ip)}) — im Pool anlegen und hier zuweisen.</div>`:''}
+      </div>
+      <div id="e-idle-row" style="flex:1;min-width:0;display:${(m.plugs&&m.plugs.length)?'block':'none'}">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px">LEERLAUF-AUTOMATIK</div>
         <div class="form-group"><label class="form-label">Leerlaufleistung (W)</label><input class="form-input" id="e-idlew" type="number" step="0.1" value="${m.idle_power_w||''}" placeholder="z.B. 5.0"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Unter diesem Wert = Leerlauf</div></div>
         <div class="form-group"><label class="form-label">Timeout (Minuten)</label><input class="form-input" id="e-idlet" type="number" value="${m.idle_timeout_min||''}" placeholder="z.B. 10"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Dann automatisch abschalten</div></div>
         <div class="form-group"><label class="form-label">Poll-Intervall (Sekunden)</label><input class="form-input" id="e-poll" type="number" min="10" value="${m.plug_poll_interval_sec??60}" placeholder="60"><div style="font-size:11px;color:var(--text-dim);margin-top:4px">Wie oft der Schaltzustand geprüft wird (min. 10s)</div></div>
@@ -4401,7 +4400,7 @@ function editMachine(id) {
     const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,manufacturer:document.getElementById('e-mfr').value.trim()||null,model:document.getElementById('e-model').value.trim()||null,serial_number:document.getElementById('e-serial').value.trim()||null,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,safety_notes:document.getElementById('e-safety').value.trim()||null,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required,force_off_on_close,purchase_date,value_new:value_new?parseFloat(value_new):null,owner_id:owner_id?parseInt(owner_id):null};
     const res=await PATCH(`/machines/${id}`,payload);
     if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
-  }, undefined, undefined, 'input', 760);
+  }, undefined, undefined, 'input', 900);
   // Nach Modal-Render: Liste und Dropdown initialisieren
   setTimeout(()=>{ _renderEditPlugList(); _refreshEditPlugDropdown(); }, 0);
 }
