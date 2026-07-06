@@ -550,6 +550,7 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
                 row.purchase_date = date.fromisoformat(m["purchase_date"]) if m.get("purchase_date") else None
                 row.value_new = m.get("value_new")
                 row.owner_id = owner_map.get(m.get("owner_name")) if m.get("owner_name") else None
+                row.total_hours = m.get("total_hours", row.total_hours)
                 stats["updated"] += 1
             else:
                 stats["skipped"] += 1
@@ -569,6 +570,7 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
             purchase_date=date.fromisoformat(m["purchase_date"]) if m.get("purchase_date") else None,
             value_new=m.get("value_new"),
             owner_id=owner_map.get(m.get("owner_name")) if m.get("owner_name") else None,
+            total_hours=m.get("total_hours", 0.0),
         ))
         stats["machines"] += 1
 

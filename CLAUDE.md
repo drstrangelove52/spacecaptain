@@ -60,7 +60,7 @@ Migrationen laufen **bei jedem Backend-Start** in `backend/app/services/migrate.
 - Nur `ADD COLUMN IF NOT EXISTS` / `CREATE TABLE IF NOT EXISTS` — nie destruktiv
 - Neue Spalten mit `_add_column_if_missing(conn, tabelle, spalte, "TYP DEFAULT x")`
 - Spalte umbenennen mit `_rename_column_if_needed(conn, tabelle, alt, neu, "TYP DEFAULT x")` (idempotent: nur wenn alt existiert und neu noch nicht) — **zusätzlich** den Backup-Restore mit Fallback auf den alten Schlüssel versehen (`payload.get("neu", payload.get("alt"))`), sonst verlieren ältere Backups den Wert (Beispiel: `batteries.price_new` → `value_new`, Migration v1.41, `routers/backup.py`)
-- Neue Spalten gleichzeitig in `backend/app/models.py` (SQLAlchemy ORM) und `db/init.sql` (für Neuinstallationen) eintragen — neue **Tabellen** (z.B. `machine_owners`, `batteries`) brauchen das nicht, die entstehen automatisch über `Base.metadata.create_all()` beim Start
+- Neue Spalten in `backend/app/models.py` (SQLAlchemy ORM) eintragen. `db/init.sql` **nicht** zwingend nachziehen — es ist in der Praxis schon länger nicht mehr aktuell (z.B. fehlt dort die `power_manager`-Rolle im `users.role`-ENUM) und trotzdem unkritisch: `migrate.py` läuft bei **jedem** Start und zieht fehlende Spalten/ENUM-Werte automatisch nach, auch direkt nach einer frischen `init.sql`-Installation. `init.sql` ist nur die MariaDB-`docker-entrypoint-initdb.d`-Basis für ein leeres Datenvolume, nicht die Quelle der Wahrheit fürs Schema. Neue **Tabellen** (z.B. `machine_owners`, `batteries`) brauchen dort ohnehin nichts, die entstehen automatisch über `Base.metadata.create_all()` beim Start.
 
 ## Backup-System
 
@@ -73,7 +73,9 @@ Migrationen laufen **bei jedem Backend-Start** in `backend/app/services/migrate.
 - Neue Top-Level-Sektionen mit `payload.get("sektion", [])` lesen
 - Nie `payload["key"]` ohne Existenzprüfung
 
-**Was ist im Backup enthalten:** Einstellungen (inkl. Währung), Benutzer (inkl. `login_token`), Gäste (inkl. `login_token`/`pending_approval`), Maschinen (inkl. Kaufdatum/Neuwert/Eigentümer), Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln, Kategorien, Standorte, Eigentümer, Akkus.
+**Was ist im Backup enthalten:** Einstellungen (inkl. Währung), Benutzer (inkl. `login_token`), Gäste (inkl. `login_token`/`pending_approval`), Maschinen (inkl. Kaufdatum/Neuwert/Eigentümer/`total_hours`), Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln, Kategorien, Standorte, Eigentümer, Akkus.
+
+**`total_hours`-Falle (behoben):** War zwar im Export enthalten, wurde beim Restore aber nie direkt zurückgeschrieben — nur indirekt aus `sessions` rekonstruiert (`hours_accumulator`, greift nur wenn `total_hours == 0.0`). Bei Overwrite auf eine bestehende Maschine blieb der alte Wert also stehen. Jetzt in beiden Machine-Restore-Zweigen direkt gesetzt (`m.get("total_hours", ...)`); die Session-Rekonstruktion bleibt als Fallback nur noch für sehr alte Backups (vor Einführung von `total_hours` im Export) relevant.
 
 **`login_token`-Restore-Verhalten:** Bei Overwrite auf einen bestehenden User/Gast wird `login_token` wie `password_hash` behandelt — `u.get("login_token", row.login_token)` statt direktem Zuweisen. Fehlt das Feld im Backup (ältere Backups vor diesem Fix), bleibt der aktuell aktive Token unangetastet statt auf `None` zurückgesetzt zu werden — sonst würde ein Restore mit altem Backup-Format ein aktives Token-Login (Magic-Link ohne Passwort) stillschweigend invalidieren.
 
@@ -125,6 +127,7 @@ OR-Verknüpfung in Bedingungen ist bewusst nicht implementiert — zwei separate
 - Kategorien (`machine_categories`), Standorte (`machine_locations`) und Eigentümer (`machine_owners`) sind vordefinierte Listen, die in den Maschinen-Formularen als `<select>` erscheinen. Alle drei sind schlanke Lookup-Tabellen (`id`/`name`/`sort_order`, Kategorien zusätzlich `icon`) ohne Auth/Rechte-Bezug.
 - Verwaltung via Topbar-Buttons «⚙ Kategorien», «⚙ Standorte» und «⚙ Eigentümer» auf der Maschinen-Seite.
 - **CSV-Import** legt fehlende Kategorien, Standorte und Eigentümer automatisch an (`import/confirm`-Endpoint in `routers/machines.py`).
+- **CSV-Import kann bestehende Maschinen aktualisieren**: Export enthält eine `ID`-Spalte, beim Re-Import wird darüber gematcht (`existing_by_id`-Lookup in `_parse_csv_row`). Zeilen mit passender ID werden als Action `"update"` markiert, aber nur angewendet wenn der Import mit der Checkbox "Bestehende aktualisieren" (`update_existing: bool` im `/import/confirm`-Payload) bestätigt wird — sonst wie bisher übersprungen. Leere Zellen leeren dabei das jeweilige Feld (CSV gilt als vollständiger Datensatz), nur die ID selbst dient rein dem Matching und wird nie geschrieben.
 - Alle drei Tabellen sind vollständig im Backup enthalten.
 - Frontend: `cache.categories` / `cache.locations` / `cache.owners`, `_catOptions()` / `_locOptions()` / `_ownerOptions()`, `_refreshCatFilter()` / `_refreshLocFilter()`.
 
@@ -134,6 +137,18 @@ OR-Verknüpfung in Bedingungen ist bewusst nicht implementiert — zwei separate
 - **Akkus** (`batteries`, `routers/batteries.py`) sind ein eigenständiger Verbrauchsmaterial-Pool ohne Machine-Bezug: Hersteller, Modell, Kaufdatum, Neuwert (`value_new`, bis Migration v1.41 `price_new` — auf `Machine.value_new` vereinheitlicht, siehe Kompatibilitätshinweis unten), Status (`aktiv`/`defekt`/`ausgemustert`). Eigene Seite unter AUSSTATTUNG im Frontend (nicht in der Maschinen-Sektion), bedienungsmässig identisch zum Plug-Pool (sortierbare Tabelle, Suche/Status-Filter, Modal für Anlegen/Bearbeiten).
 - **Inventarliste für Buchhaltung**: Button «📋 Inventarliste» auf der Maschinen-Seite exportiert nur die buchhaltungsrelevanten Felder (Name, Kategorie, Hersteller, Modell, Seriennummer, Standort, Kaufdatum, Neuwert, Eigentümer + Summenzeile) als CSV oder Druckansicht (PDF via Browser-Druckdialog, kein PDF-Backend nötig) — bewusst getrennt von der operativen CSV (`exportMachinesCsv()`), die zusätzlich Status/Schulung/Smart-Plug/Kommentar enthält.
 - Migration v1.39.
+
+## Display/Dashboard-Sichtbarkeit
+
+Seit die Maschinenliste auch reine Inventar-Einträge ohne Plug abdeckt (Buchhaltung/Versicherung), filtern die operativen Ansichten konsistent:
+
+- **Display/Kiosk** (`display.html`) und **Gast-App** (`index.html`, nutzen beide `GET /guest/dashboard`): Backend filtert serverseitig auf `Machine.plug_id.is_not(None)` (`routers/guest_auth.py`) — reine Inventar-Einträge ohne Plug tauchen dort nie auf. Zusätzlich filtert `display.html` clientseitig `status !== 'offline'` weg (kombiniert: kein Plug ODER gesperrt → unsichtbar).
+- **Dashboard** (`labmanager.html`, `renderDashboard()`): eigene Teilmengen, da die Stat-Kachel "Maschinen online" gesperrte Maschinen im Nenner braucht (sonst ergibt "X von Y" keinen Sinn), das Maschinen-Grid darunter aber 1:1 wie das Display gefiltert sein soll:
+  - `monitorable` = `plug_id != null` — Basis für die Stat-Kachel (Zähler + "von X gesamt")
+  - `displayLike` = `monitorable` zusätzlich ohne `status === 'offline'` — für das Maschinen-Grid, spiegelt exakt die Display-Logik
+  - "Aktive Sessions"/"Aktive Maschinen"-Tabelle bleibt bewusst auf Basis **aller** Maschinen (eine laufende Session ist immer real und soll sichtbar bleiben, unabhängig vom Plug-Status)
+- **Adapter-Offline** (Plug konfiguriert, aber gerade nicht erreichbar — `plug_supported && plug_error === 'unreachable'`, siehe `services/plug.py` `get_plug_status()`) ist ein eigenes Konzept, getrennt vom `status`-Feld. Wird identisch in `display.html` ("ADAPTER OFFLINE"), der Maschinen-Tabelle ("⚠ n. erreichbar") und dem Dashboard-Grid ("⚠ ADAPTER OFFLINE") angezeigt — wenn hier eine neue Ansicht für Maschinen entsteht, diese Unterscheidung mitziehen, sonst sieht ein Plug mit falscher/toter IP identisch aus wie "kein Plug" oder "normal online".
+- Dashboard-Grid zeigt "In Wartung" (`status === 'maintenance'`) zusätzlich als Text-Tag, nicht nur über die Punktfarbe — 1:1 wie Display, das den Status immer ausschreibt statt nur farblich zu codieren.
 
 ## Zeitzone
 
@@ -211,6 +226,7 @@ Beim Overwrite-Restore: falls `is_blocked` sich ändert, wird ein neuer `Activit
 
 - **Aushänge** (nicht "Mitteilungen"): zeitgesteuerte Ankündigungen für Gäste (`announcements`)
 - **Push-Nachrichten** (nicht "Benachrichtigungen"): ntfy-basierte Push-Nachrichten
+- **Maschinen-Status-Labels**: UI zeigt "Freigegeben"/"Gesperrt"/"In Wartung" statt "Online"/"Offline"/"Wartung" — die gespeicherten Enum-Werte (`online`/`offline`/`maintenance`, `MachineStatus` in `models.py`) sind **unverändert**, nur reine Anzeigetext-Änderung (Filter-Dropdown, Formulare, Hilfetexte in `labmanager.html`). Grund: "Online"/"Offline" implizierte einen Schaltzustand, der für ungeschaltete Inventar-Einträge (z.B. Akku-Schrauber ohne Plug) nicht passt; "Verfügbar"/"Einsatzbereit" wurden verworfen, weil sie mit dem separaten Echtzeit-Belegungsstatus ("In Benutzung") kollidieren können. `_STATUS_MAP` in `routers/machines.py` (CSV-Import) kennt die neuen Begriffe zusätzlich als Synonyme. MCP-Tool `set_machine_status` und der zugehörige `mcp_api.py`-Endpoint nutzen weiterhin die technischen Werte (`online`/`offline`/`maintenance`) als Parameter.
 
 ## Bekannte Einschränkungen / Offene Punkte
 
@@ -219,6 +235,12 @@ Beim Overwrite-Restore: falls `is_blocked` sich ändert, wird ein neuer `Activit
 | Raum-Session-Hinweis | Wenn Raum bei laufender Session geschlossen wird, läuft Session weiter (by design) — kein UI-Hinweis vorhanden |
 | Doppelter Log-Eintrag | `room_close`-Regel mit Zeitplan triggert täglich neu → kosmetisch doppelter Log |
 | API Raum-Steuerung | `open_room()` / `close_room()` in `services/room.py` bereit, kein öffentlicher API-Endpoint (z.B. für Home Assistant / Türöffner) |
+
+## Versionierung
+
+- `APP_VERSION` (`backend/app/config.py`) ist eine manuell gepflegte Konstante — wird **nicht** automatisch bei jedem Commit/Migration hochgezählt, sondern von Martin bei Bedarf auf eine neue Release-Nummer gesetzt. Kann daher hinter den Migrations-Versionskommentaren in `migrate.py` (z.B. "v1.41") zurückliegen, das ist normal — beide Nummernkreise sind unabhängig.
+- Verwendet in: FastAPI-App-Titel, `GET /api/version`, Backup-Metadaten (`app_version`-Feld), Update-Log-Bundle. Eine Zeile ändern reicht, propagiert überall automatisch.
+- `BUILD_NR` dagegen ist automatisch: `git rev-list --count HEAD`, wird beim Start als Env-Var gesetzt (siehe "Häufige Befehle") und im Sidebar-Footer angezeigt.
 
 ## Häufige Befehle
 
@@ -301,3 +323,4 @@ MCP-Server   →  X-MCP-Key: MCP_BACKEND_KEY             →  Backend (require_m
 - Bei `automations.py` Log-Nachrichten `tm.name` verwenden ohne zu prüfen ob `tm` None ist — bei `room_open`/`room_close`/`notify`-Aktionen gibt es keine Ziel-Maschine
 - Neue Backup-Sektionen ohne `payload.get("sektion", [])` lesen — bricht ältere Backups
 - `emergency_plug_id`/`emergency_plug2_id` direkt in den Settings exportieren — sind DB-interne IDs, müssen als IP-Referenz exportiert und beim Import aufgelöst werden (siehe Notfall-Alarm-Sektion)
+- Neue dedizierte Modals (eigenes `<div class="modal-overlay" id="...">`, z.B. `plug-modal`/`battery-modal`) ohne Prüfung von `clientSettings.modal_backdrop_input` schliessen lassen — das generische `openModal()`/`closeModal()` beachtet die Einstellung "Modal bei Klick auf Hintergrund schliessen" bereits, dedizierte Modals müssen das im eigenen `close*Modal(e)`-Handler nachbilden (`if (e && !clientSettings.modal_backdrop_input) return;`), sonst gehen ungespeicherte Formulareingaben bei einem Fehlklick verloren obwohl die Einstellung deaktiviert ist

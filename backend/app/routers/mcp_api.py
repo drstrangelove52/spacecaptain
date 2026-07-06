@@ -544,7 +544,8 @@ async def mcp_set_machine_status(
     machine_id: int, payload: dict,
     db: AsyncSession = Depends(get_db), _=Depends(require_mcp),
 ):
-    """Maschinenstatus setzen: online | offline | maintenance."""
+    """Maschinenstatus setzen: online | offline | maintenance.
+    Entspricht im UI "Freigegeben"/"Gesperrt"/"In Wartung"."""
     machine = await db.get(Machine, machine_id)
     if not machine:
         raise HTTPException(404, "Maschine nicht gefunden")

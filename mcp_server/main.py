@@ -354,7 +354,9 @@ async def set_guest_blocked(guest_id: int, blocked: bool) -> dict:
 
 @mcp.tool()
 async def set_machine_status(machine_id: int, status: str) -> dict:
-    """Maschinenstatus setzen: 'online', 'offline' oder 'maintenance'."""
+    """Maschinenstatus setzen: 'online', 'offline' oder 'maintenance'.
+    Entspricht im UI "Freigegeben"/"Gesperrt"/"In Wartung" (nur die Anzeige-Labels
+    wurden umbenannt, die technischen Werte für dieses Tool bleiben unverändert)."""
     return await _patch(f"/machines/{machine_id}/status", {"status": status})
 
 
