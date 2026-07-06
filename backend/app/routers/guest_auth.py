@@ -388,7 +388,9 @@ async def guest_switch(payload: SwitchRequest, db: AsyncSession = Depends(get_db
 # ── Gäste-Dashboard (öffentlich) ──────────────────────
 @router.get("/dashboard")
 async def guest_dashboard(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Machine).order_by(Machine.name))
+    # Maschinen ohne Plug sind reine Inventar-Eintraege ohne Betriebsstatus -
+    # fuer Gast-App/Display/Kiosk nicht relevant (keine Betriebsdaten zum Anzeigen).
+    result = await db.execute(select(Machine).where(Machine.plug_id.is_not(None)).order_by(Machine.name))
     machines = result.scalars().all()
 
     out = []

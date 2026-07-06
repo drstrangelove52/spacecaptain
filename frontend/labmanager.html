@@ -3135,13 +3135,16 @@ async function loadDashboardSummary() {
 // ═══════════════════════════════════════════════════════
 function renderDashboard() {
   const machines = cache.machines;
+  // Maschinen ohne Plug sind reine Inventar-Eintraege ohne Betriebsstatus -
+  // fuer die Betriebs-Widgets (Online-Zaehler, Maschinen-Grid) ausgeblendet.
+  const monitorable = machines.filter(m => m.plug_id != null);
   const active = machines.filter(m => m.session_started_at || m.in_use || m.current_guest_name);
-  const online = machines.filter(m => m.status === 'online' || m.status === 'inuse' || m.in_use || m.current_guest_name);
+  const online = monitorable.filter(m => m.status === 'online' || m.status === 'inuse' || m.in_use || m.current_guest_name);
 
   // Operative Metriken
   document.getElementById('stat-active-sessions').textContent = active.length;
   document.getElementById('stat-online').textContent = online.length;
-  document.getElementById('stat-online-sub').textContent = `von ${machines.length} gesamt`;
+  document.getElementById('stat-online-sub').textContent = `von ${monitorable.length} gesamt`;
 
   // Pending-Reg und Wartung werden von loadPendingGuests / refreshMaintenanceOverview gesetzt
   // Hier nur initialen Fallback wenn noch nicht geladen
@@ -3207,7 +3210,7 @@ function renderDashboard() {
 
   // Kompakte Maschinen-Grid
   const grid = document.getElementById('dash-machine-grid');
-  const sorted = [...machines].sort((a,b) => a.name.localeCompare(b.name,'de'));
+  const sorted = [...monitorable].sort((a,b) => a.name.localeCompare(b.name,'de'));
   document.getElementById('dash-machines-count').textContent = `(${sorted.length})`;
   if (!sorted.length) {
     grid.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px">Keine Maschinen</div>';
