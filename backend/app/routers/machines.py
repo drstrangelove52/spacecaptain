@@ -446,6 +446,8 @@ async def manager_switch(
 _STATUS_MAP = {
     "online": "online", "offline": "offline",
     "maintenance": "maintenance", "wartung": "maintenance",
+    # Neue Bezeichnungen im UI (Freigegeben/Gesperrt/In Wartung statt Online/Offline/Wartung)
+    "freigegeben": "online", "gesperrt": "offline", "in wartung": "maintenance",
 }
 
 def _parse_csv_row(row: dict, existing_names: set[str], existing_by_id: dict[int, str], row_nr: int) -> dict:

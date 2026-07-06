@@ -429,10 +429,10 @@
         </select>
         <select class="filter-input" id="machine-filter-status" onchange="filterMachines()" style="width:140px">
           <option value="">Alle Status</option>
-          <option value="online">Online</option>
+          <option value="online">Freigegeben</option>
           <option value="inuse">In Benutzung</option>
-          <option value="offline">Offline</option>
-          <option value="maintenance">Wartung</option>
+          <option value="offline">Gesperrt</option>
+          <option value="maintenance">In Wartung</option>
         </select>
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('machine-search').value='';document.getElementById('machine-filter-cat').value='';document.getElementById('machine-filter-loc').value='';document.getElementById('machine-filter-status').value='';filterMachines()">✕ Reset</button>
         <div class="view-toggle">
@@ -1603,8 +1603,8 @@ sudo ./install-service.sh</pre>
             <div class="help-article">
               <div class="help-article-title">Maschinenstatus manuell setzen</div>
               <div class="help-article-body">
-                Mögliche Zustände: <strong>Online</strong> (verfügbar), <strong>Offline</strong> (nicht verwendbar), <strong>Wartung</strong> (in Reparatur/Service).
-                Status ändern: Maschine bearbeiten → Feld «Status». Maschinen im Status «Offline» oder «Wartung» können von Gästen nicht gestartet werden.
+                Mögliche Zustände: <strong>Freigegeben</strong> (Teil des aktiven Bestands), <strong>Gesperrt</strong> (aktuell nicht nutzbar), <strong>In Wartung</strong> (in Reparatur/Service).
+                Status ändern: Maschine bearbeiten → Feld «Status». Maschinen im Status «Gesperrt» oder «In Wartung» können von Gästen nicht gestartet werden.
               </div>
             </div>
             <div class="help-article">
@@ -2525,7 +2525,7 @@ sudo ./install-service.sh</pre>
                   <li>Smart Plug erreichbar? Browser öffnen, Plug-IP direkt aufrufen (<code>http://192.168.1.x</code>)</li>
                   <li>Plug im gleichen Netzwerk wie Server?</li>
                   <li>IP-Adresse geändert? Im Plug-Pool (Ausstattung → Plug-Pool → ✏) aktualisieren — Änderung wird automatisch auf die zugewiesene Maschine übertragen</li>
-                  <li>Maschinen-Status auf «Online»?</li>
+                  <li>Maschinen-Status auf «Freigegeben»?</li>
                 </ol>
                 <div class="help-tip"><strong>Tipp:</strong> Im Aktivitätslog sieht man Fehler beim Schalten mit genauer Fehlermeldung.</div>
               </div>
@@ -4203,7 +4203,7 @@ function showAddMachine() {
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="mc-name" placeholder="Lasercutter XL-40"></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="mc-cat">${_catOptions()}</select></div>
-      <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="mc-status"><option value="online">online</option><option value="offline">offline</option><option value="maintenance">maintenance</option></select></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="mc-status"><option value="online">Freigegeben</option><option value="offline">Gesperrt</option><option value="maintenance">In Wartung</option></select></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Hersteller</label><input class="form-input" id="mc-mfr"></div>
@@ -4336,7 +4336,7 @@ function editMachine(id) {
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${escHtml(m.name)}"></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="e-cat">${_catOptions(m.category)}</select></div>
-      <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-status"><option value="online" ${m.status==='online'?'selected':''}>online</option><option value="offline" ${m.status==='offline'?'selected':''}>offline</option><option value="maintenance" ${m.status==='maintenance'?'selected':''}>maintenance</option></select></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-status"><option value="online" ${m.status==='online'?'selected':''}>Freigegeben</option><option value="offline" ${m.status==='offline'?'selected':''}>Gesperrt</option><option value="maintenance" ${m.status==='maintenance'?'selected':''}>In Wartung</option></select></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Hersteller</label><input class="form-input" id="e-mfr" value="${escHtml(m.manufacturer||'')}"></div>
