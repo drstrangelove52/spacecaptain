@@ -3138,6 +3138,9 @@ function renderDashboard() {
   // Maschinen ohne Plug sind reine Inventar-Eintraege ohne Betriebsstatus -
   // fuer die Betriebs-Widgets (Online-Zaehler, Maschinen-Grid) ausgeblendet.
   const monitorable = machines.filter(m => m.plug_id != null);
+  // Maschinen-Grid unten: gleiche Anzeigelogik wie das Display (guest/dashboard
+  // filtert serverseitig auf plug_id, display.html blendet zusaetzlich offline aus).
+  const displayLike = monitorable.filter(m => m.status !== 'offline');
   const active = machines.filter(m => m.session_started_at || m.in_use || m.current_guest_name);
   const online = monitorable.filter(m => m.status === 'online' || m.status === 'inuse' || m.in_use || m.current_guest_name);
 
@@ -3210,7 +3213,7 @@ function renderDashboard() {
 
   // Kompakte Maschinen-Grid
   const grid = document.getElementById('dash-machine-grid');
-  const sorted = [...monitorable].sort((a,b) => a.name.localeCompare(b.name,'de'));
+  const sorted = [...displayLike].sort((a,b) => a.name.localeCompare(b.name,'de'));
   document.getElementById('dash-machines-count').textContent = `(${sorted.length})`;
   if (!sorted.length) {
     grid.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px">Keine Maschinen</div>';
