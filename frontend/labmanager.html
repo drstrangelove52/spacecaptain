@@ -5389,8 +5389,8 @@ async function loadSettings() {
   document.getElementById('cfg-jwt-human').textContent = h;
 }
 
-async function saveSettings() {
-  const payload = {
+function buildSettingsPayload() {
+  return {
     nfc_writer_url:          document.getElementById('cfg-nfc-url').value.trim(),
     jwt_expire_minutes:      parseInt(document.getElementById('cfg-jwt-min').value) || 480,
     modal_backdrop_input:    document.getElementById('cfg-backdrop-input').checked,
@@ -5426,7 +5426,10 @@ async function saveSettings() {
     ts_authkey:                document.getElementById('cfg-ts-authkey').value.trim() || null,
     ...remoteBackupPayload(),
   };
-  const res = await PATCH('/settings', payload);
+}
+
+async function saveSettings() {
+  const res = await PATCH('/settings', buildSettingsPayload());
   if (res) { await loadSettings(); showToast('Einstellungen gespeichert', 'success'); }
 }
 
@@ -5465,7 +5468,9 @@ function _renderRemoteBackupStatus(status, message, at) {
 async function testRemoteBackup() {
   const btn = document.getElementById('rb-test-btn');
   btn.disabled = true;
-  const saved = await PATCH('/settings', remoteBackupPayload());
+  // Speichert alle Einstellungsfelder der Seite (nicht nur die SFTP-Felder) — sonst würden
+  // unsaved Änderungen in anderen Tabs beim Klick auf diesen Button stillschweigend verworfen.
+  const saved = await PATCH('/settings', buildSettingsPayload());
   if (!saved) { btn.disabled = false; return; }
   const res = await api('POST', '/backup/remote-test');
   btn.disabled = false;
