@@ -187,7 +187,7 @@ async def list_owners() -> list:
 
 @mcp.tool()
 async def list_batteries() -> list:
-    """Alle erfassten Akkus (Hersteller, Modell, Kaufdatum, Neuwert, Status)."""
+    """Alle erfassten Akkus (Name/Nummer, Hersteller, Modell, Seriennummer, Kaufdatum, Neuwert, Status, Bemerkung)."""
     return await _get("/batteries")
 
 

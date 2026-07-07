@@ -9,7 +9,7 @@ from app.models import (Machine, Guest, ActivityLog, MaintenanceInterval,
                          MaintenanceRecord, EmergencyState, MachineQueue, QueueStatus, User,
                          Permission, NtfyTopic, Plug, Announcement, MachineSession,
                          AutomationRule, RuleCondition, MachineCategory, MachineLocation,
-                         MachineOwner, SessionEndedBy)
+                         MachineOwner, SessionEndedBy, Battery)
 from app.services.system_settings import get_system_settings
 from app.config import APP_TIMEZONE
 
@@ -1135,6 +1135,30 @@ async def mcp_list_locations(db: AsyncSession = Depends(get_db), _=Depends(requi
     """Alle Maschinenstandorte."""
     locs = (await db.execute(select(MachineLocation).order_by(MachineLocation.sort_order, MachineLocation.name))).scalars().all()
     return [{"id": l.id, "name": l.name} for l in locs]
+
+
+@router.get("/owners")
+async def mcp_list_owners(db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
+    """Alle Maschinen-Eigentümer."""
+    owners = (await db.execute(select(MachineOwner).order_by(MachineOwner.sort_order, MachineOwner.name))).scalars().all()
+    return [{"id": o.id, "name": o.name} for o in owners]
+
+
+@router.get("/batteries")
+async def mcp_list_batteries(db: AsyncSession = Depends(get_db), _=Depends(require_mcp)):
+    """Alle erfassten Akkus."""
+    batteries = (await db.execute(select(Battery).order_by(Battery.created_at.desc()))).scalars().all()
+    return [{
+        "id": b.id,
+        "name": b.name,
+        "manufacturer": b.manufacturer,
+        "model": b.model,
+        "serial_number": b.serial_number,
+        "purchase_date": b.purchase_date.isoformat() if b.purchase_date else None,
+        "value_new": b.value_new,
+        "status": b.status,
+        "comment": b.comment,
+    } for b in batteries]
 
 
 # ── Gast-Details ───────────────────────────────────────────────────────────────
