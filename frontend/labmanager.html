@@ -2488,8 +2488,9 @@ sudo ./install-service.sh</pre>
                   <li><strong>Zielverzeichnis</strong> wird bei Bedarf automatisch angelegt</li>
                   <li>Passwort/Key werden nach dem Speichern nie wieder angezeigt — leer lassen heisst «unverändert übernehmen»</li>
                 </ul>
-                Der Upload läuft automatisch nach jedem geplanten und manuellen Backup. Status des letzten Uploads wird direkt im Einstellungen-Panel angezeigt.
-                <div class="help-warn"><strong>Sicherheit:</strong> Die SFTP-Zugangsdaten selbst sind bewusst nicht Teil des Backup-Exports (sonst wären sie in jeder Backup-Kopie enthalten, auch auf dem NAS-Ziel selbst).</div>
+                Der Upload läuft automatisch nach jedem geplanten und manuellen Backup. Status des letzten Uploads wird direkt im Einstellungen-Panel angezeigt. Die Aufbewahrungsfrist («Automatisch (lokal)» → Aufbewahrung) gilt für beide Orte gleichermassen — ältere Backups werden lokal <em>und</em> im SFTP-Zielverzeichnis automatisch gelöscht.
+                <div class="help-warn"><strong>Sicherheit:</strong> Passwort, SSH-Key und Passphrase sind bewusst nicht Teil des Backup-Exports (sonst wären sie in jeder Backup-Kopie enthalten, auch auf dem NAS-Ziel selbst). Host, Port, Benutzername, Zielverzeichnis und Auth-Typ werden dagegen ganz normal mitgesichert. Nach einem Restore ist die Verbindung also wieder eingerichtet, aber Passwort/Key müssen neu eingetragen werden — ein Restore löscht dabei nicht die auf der Zielinstanz bereits hinterlegten Zugangsdaten, falls schon welche vorhanden sind.</div>
+                <div class="help-tip"><strong>Restore im Ernstfall:</strong> Ist der Server selbst nicht mehr erreichbar, gibt es keinen «im NAS browsen»-Knopf in SpaceCaptain — Backup-Datei mit einem beliebigen SFTP-Client (WinSCP, Synology File Station, <code>scp</code>, …) vom NAS herunterladen und anschliessend wie unten unter «Restore aus externer Datei» beschrieben importieren.</div>
               </div>
             </div>
             <div class="help-article">
@@ -2528,7 +2529,7 @@ sudo ./install-service.sh</pre>
               <div class="help-article-title">Was ist im Backup enthalten?</div>
               <div class="help-article-body">
                 <strong>Enthalten:</strong> Einstellungen, Benutzer, Gäste, Maschinen, Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln.<br><br>
-                <strong>Nicht enthalten:</strong> Aktive Warteschlangen-Einträge und NFC-Gast-Tokens (temporäre Laufzeitdaten, die nach einem Restore automatisch neu erstellt werden).
+                <strong>Nicht enthalten:</strong> Aktive Warteschlangen-Einträge und NFC-Gast-Tokens (temporäre Laufzeitdaten, die nach einem Restore automatisch neu erstellt werden). Bei den SFTP-Einstellungen für das externe Backup: Host/Port/Benutzername/Zielverzeichnis/Auth-Typ sind enthalten, Passwort/SSH-Key/Passphrase bewusst nicht (siehe «Externes Backup (SFTP)» oben).
               </div>
             </div>
           </div>
