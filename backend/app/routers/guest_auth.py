@@ -399,6 +399,36 @@ async def guest_switch(payload: SwitchRequest, db: AsyncSession = Depends(get_db
     return {"ok": ok, "action": payload.action, "machine": machine.name, "message": guest_message}
 
 
+# ── Sicherheitshinweis-Bestätigung (Geräte ohne Plug) ──
+@router.post("/safety-ack")
+async def safety_ack(payload: CheckRequest, db: AsyncSession = Depends(get_db)):
+    """Protokolliert, dass ein Gast die Sicherheitshinweise eines Geräts ohne Fernsteuerung
+    bestätigt hat. Ersetzt bei plug-losen Geräten den frueheren Ein/Aus-Schalter als einzig
+    moegliche "Steuerung": erzwingt nichts physisch, aber Erlaubnis/Schulung bleiben ueber
+    has_permission durchgesetzt, und die Bestaetigung selbst wird protokolliert."""
+    guest = await get_current_guest(payload.access_token, db)
+    result = await db.execute(select(Machine).where(Machine.qr_token == payload.machine_token))
+    machine = result.scalar_one_or_none()
+    if not machine:
+        raise HTTPException(404, "Maschine nicht gefunden")
+
+    perm_res = await db.execute(
+        select(Permission).where(Permission.guest_id == guest.id, Permission.machine_id == machine.id)
+    )
+    perm = perm_res.scalar_one_or_none()
+    if machine.training_required:
+        has_permission = perm is not None and not perm.is_blocked
+    else:
+        has_permission = perm is None or not perm.is_blocked
+    if not has_permission:
+        raise HTTPException(403, "Keine Berechtigung für diese Maschine")
+
+    await log_svc.log(db, LogType.safety_acknowledged,
+        f"Sicherheitshinweise bestätigt: {guest.name} → {machine.name}",
+        guest_id=guest.id, machine_id=machine.id)
+    return {"ok": True}
+
+
 # ── Gäste-Dashboard (öffentlich) ──────────────────────
 @router.get("/dashboard")
 async def guest_dashboard(db: AsyncSession = Depends(get_db)):

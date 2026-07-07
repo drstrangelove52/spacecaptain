@@ -718,8 +718,12 @@ async function showControlScreen() {
         reasonEl.style.display = 'none';
       }
     } else if (noPlug) {
-      document.getElementById('ctrl-noplug').style.display = 'block';
       document.getElementById('ctrl-queue').style.display = 'none';
+      if (S.machine.safety_notes) {
+        showSafetyScreen('ack');
+      } else {
+        document.getElementById('ctrl-noplug').style.display = 'block';
+      }
     } else if (d.reserved_for_other) {
       document.getElementById('ctrl-reserved').style.display = 'block';
       await refreshQueueStatus();
@@ -855,21 +859,40 @@ function goBackToDashboard() {
   showScreen('scan');
 }
 
-// ── Sicherheitshinweis vor Einschalten ────────────────
+// ── Sicherheitshinweis vor Einschalten / Bestätigung (Geräte ohne Plug) ──
+let _safetyMode = 'switch'; // 'switch' (vor Einschalten) | 'ack' (nur bestätigen, kein Plug)
+
+function showSafetyScreen(mode) {
+  _safetyMode = mode;
+  document.getElementById('safety-machine-name').textContent = S.machine.name.toUpperCase();
+  document.getElementById('safety-notes-text').textContent = S.machine.safety_notes;
+  document.getElementById('safety-cb').checked = false;
+  document.getElementById('safety-btn').disabled = true;
+  document.getElementById('safety-btn').textContent = mode === 'ack' ? '✓ Bestätigen' : '⚡ EINSCHALTEN';
+  document.getElementById('screen-safety').style.display = 'flex';
+}
+
 function handleTurnOn() {
   if (S.machine && S.machine.safety_notes) {
-    document.getElementById('safety-machine-name').textContent = S.machine.name.toUpperCase();
-    document.getElementById('safety-notes-text').textContent = S.machine.safety_notes;
-    document.getElementById('safety-cb').checked = false;
-    document.getElementById('safety-btn').disabled = true;
-    document.getElementById('screen-safety').style.display = 'flex';
+    showSafetyScreen('switch');
   } else {
     switchMachine('on');
   }
 }
 
-function confirmSafety() {
+async function confirmSafety() {
   document.getElementById('screen-safety').style.display = 'none';
+  if (_safetyMode === 'ack') {
+    try {
+      await fetch(`${API}/guest/safety-ack`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({access_token: S.guestToken, machine_token: S.machineToken})
+      });
+    } catch {}
+    document.getElementById('ctrl-noplug').style.display = 'block';
+    return;
+  }
   switchMachine('on');
 }
 

@@ -562,6 +562,9 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # ── v1.44: Dokumentations-Link pro Maschine ────────────────────────
         await _add_column_if_missing(conn, "machines", "doc_url", "VARCHAR(500) DEFAULT NULL")
 
+        # ── v1.45: LogType.safety_acknowledged (Sicherheitshinweis-Bestätigung ohne Plug) ──
+        await _extend_enum_if_needed(conn, "activity_log", "type", ["safety_acknowledged"])
+
     log.info("Migrationen abgeschlossen")
 
 

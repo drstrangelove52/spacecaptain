@@ -84,6 +84,7 @@ class LogType(str, enum.Enum):
     rule_on      = "rule_on"
     rule_off     = "rule_off"
     system       = "system"
+    safety_acknowledged = "safety_acknowledged"
 
 class SessionEndedBy(str, enum.Enum):
     guest = "guest"
