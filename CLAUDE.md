@@ -94,6 +94,12 @@ Optionaler, additiver Upload jedes lokal erstellten Backups auf ein externes NAS
 - `POST /backup/remote-test` prüft Verbindung + Schreibrechte separat (Schreibtest mit `.spacecaptain_test`-Datei, wird sofort wieder gelöscht), ohne ein echtes Backup zu erzeugen
 - Frontend-Pattern für Passwort/Key: identisch zu `ts_authkey` — nach jedem Laden werden die Secret-Felder geleert (`loadSettings()`), leer lassen beim Speichern heisst "unverändert" (PATCH-Handler: `if payload.x is not None: row.x = payload.x or None` — explizites `null` im JSON ist nach Pydantic-Parsing nicht von "Feld weggelassen" unterscheidbar, siehe `ts_authkey`-Vorbild)
 
+**Restore aus einem SFTP-Backup — bewusst kein eigener UI-Weg:** Es gibt keinen "im NAS-Verzeichnis browsen und direkt restoren"-Endpoint/-Button. Grund: die SFTP-Zugangsdaten liegen selbst in `system_settings` — genau die DB, die im Katastrophenfall (Server komplett weg) nicht mehr da ist. Ein Restore-aus-SFTP-Feature müsste die Zugangsdaten also ohnehin manuell neu abfragen, was keinen echten Vorteil gegenüber dem bestehenden Weg bringt:
+1. Backup-Datei mit einem beliebigen SFTP-Client (WinSCP, Synology File Station, `scp`, …) vom NAS herunterladen
+2. Über den bereits vorhandenen, dateiquellen-unabhängigen Import (`POST /backup/import`, Backup-Seite → «⬆ JSON-Datei wählen & importieren») hochladen
+
+Funktioniert auch dann, wenn SpaceCaptain selbst noch gar nicht wieder läuft (z.B. frisch installierte Instanz nach Hardware-Totalausfall) — ohne zusätzlichen Code. Lokale und externe Aufbewahrung sind bewusst **kein** redundantes Duplikat, sondern zwei verschiedene Zwecke: lokal = schneller Alltags-Restore direkt per Button, extern = Schutz falls der Server selbst weg ist (3-2-1-Backup-Prinzip). Speicherplatz ist bei der Datenmenge dieser App vernachlässigbar.
+
 ## Hintergrund-Tasks
 
 In `backend/app/main.py` werden 5 Tasks im FastAPI-Lifespan gestartet:
