@@ -135,8 +135,10 @@ generate_env() {
     DB_ROOT_PASS=$(gen_pass)
     DB_PASS=$(gen_pass)
     JWT_SECRET=$(gen_secret)
-    BACKUP_PASS=$(gen_pass)
 
+    # Nur echte Bootstrap-Secrets/Infra-Werte landen in .env - alles was nach dem
+    # ersten Start ueber die UI konfigurierbar ist (NFC-Geraet, Fernzugriff,
+    # Session-Dauer etc.) bleibt bewusst aussen vor, siehe .env.example.
     cat > "$INSTALL_DIR/.env" <<EOF
 # ============================================================
 # SpaceCaptain — Umgebungsvariablen
@@ -151,7 +153,6 @@ DB_PASSWORD=$DB_PASS
 
 # JWT Auth
 JWT_SECRET=$JWT_SECRET
-JWT_EXPIRE_MINUTES=60
 
 # HTTP/HTTPS Ports
 HTTP_PORT=80
@@ -162,13 +163,6 @@ ALLOWED_ORIGINS=https://$SERVER_HOST
 
 # Zeitzone
 TIMEZONE=$TIMEZONE
-
-# Backup
-BACKUP_EMAIL=backup@spacecaptain.local
-BACKUP_PASSWORD=$BACKUP_PASS
-
-# NFC-Schreibgerät (optional, später im UI konfigurierbar)
-NFC_WRITER_URL=
 EOF
 
     chmod 600 "$INSTALL_DIR/.env"

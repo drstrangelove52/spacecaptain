@@ -236,6 +236,17 @@ Beim Overwrite-Restore: falls `is_blocked` sich ändert, wird ein neuer `Activit
 | Doppelter Log-Eintrag | `room_close`-Regel mit Zeitplan triggert täglich neu → kosmetisch doppelter Log |
 | API Raum-Steuerung | `open_room()` / `close_room()` in `services/room.py` bereit, kein öffentlicher API-Endpoint (z.B. für Home Assistant / Türöffner) |
 
+## `.env` — Umfang bewusst klein halten
+
+Ziel: so wenig wie möglich in `.env`, alles andere über die UI (Einstellungen). Drei Kategorien, siehe Kommentare in `.env.example`:
+1. **Bootstrap-Secrets** (`DB_*`, `JWT_SECRET`) — müssen zwingend vor dem ersten Start feststehen, da DB/Backend sonst gar nicht erst starten. Bleiben immer in `.env`.
+2. **Infrastruktur** (`HTTP_PORT`/`HTTPS_PORT`, `ALLOWED_ORIGINS`, `TIMEZONE`) — technisch an den Container-Start gebunden (Netzwerk/TZ), ändert sich selten, bleibt in `.env`.
+3. **Alles andere** (`NFC_WRITER_URL`, `TS_AUTHKEY`/`TS_HOSTNAME`, `jwt_expire_minutes` u.a.) — wird nur **einmalig** beim allerersten Start als Vorbelegung aus der Umgebung gelesen (siehe `services/system_settings.py` → `get_system_settings()`, `env.<feld>` als Default beim Anlegen der ersten `system_settings`-Zeile), landet danach in der DB und ist ausschliesslich über die UI änderbar. Muss nicht in `.env` stehen.
+
+**Gefundener Bug (2026-07-07):** `install.sh` generierte zusätzlich `BACKUP_EMAIL`/`BACKUP_PASSWORD` in die `.env` — beide Variablen werden nirgends im Code gelesen (kein Treffer in `docker-compose.yml` oder Backend), reiner Totcode aus einer früheren Iteration. Das war die Hauptursache dafür, dass echte Server-`.env`-Dateien von `.env.example` abwichen. Entfernt, `.env.example` gleichzeitig um die vorher fehlenden, aber tatsächlich genutzten Variablen (`ALLOWED_ORIGINS`, `MCP_PORT`) ergänzt und die Kategorie 3 oben als "optional, nicht nötig" kommentiert.
+
+**Wenn ein neues Feature eine neue Konfiguration braucht:** Erst prüfen ob es als Settings-Feld (Kategorie 3) reicht, bevor es in `.env`/`docker-compose.yml` landet — nur wenn der Wert vor dem allerersten Start feststehen muss (Bootstrap/Infra), gehört es wirklich in `.env`.
+
 ## Versionierung
 
 - `APP_VERSION` (`backend/app/config.py`) ist eine manuell gepflegte Konstante — wird **nicht** automatisch bei jedem Commit/Migration hochgezählt, sondern von Martin bei Bedarf auf eine neue Release-Nummer gesetzt. Kann daher hinter den Migrations-Versionskommentaren in `migrate.py` (z.B. "v1.41") zurückliegen, das ist normal — beide Nummernkreise sind unabhängig.
@@ -288,15 +299,15 @@ Optionaler Service (`mcp_server/`), aktiviert mit `--profile mcp`. Gibt Claude d
 - `mcp_server/main.py` — FastMCP-App mit Tools + `BearerAuthMiddleware`
 - `backend/app/routers/mcp_api.py` — interne Backend-Endpunkte (`/api/mcp/*`)
 
-**Auth-Kette (ein einziger Token):**
+**Auth-Kette (ein einziger Token, kein `.env`-Eintrag nötig):**
 ```
-Claude Code  →  Authorization: Bearer MCP_BACKEND_KEY  →  MCP-Server (BearerAuthMiddleware prüft)
-MCP-Server   →  X-MCP-Key: MCP_BACKEND_KEY             →  Backend (require_mcp prüft)
+Claude Code  →  Authorization: Bearer TOKEN  →  MCP-Server (BearerAuthMiddleware prüft)
+MCP-Server   →  X-MCP-Key: TOKEN             →  Backend (require_mcp prüft gegen DB)
 ```
 
-`MCP_BACKEND_KEY` muss in `.env` stehen und via `docker-compose.yml` an **beide** Container übergeben werden — Backend UND mcp_server. Fehlt er beim Backend → 403.
+Der Token lebt ausschliesslich in der DB (`system_settings.mcp_api_token`) und wird im UI verwaltet (Einstellungen → Claude MCP). `mcp_server` lädt ihn beim eigenen Start selbst über einen internen Bootstrap-Endpoint (`GET /api/mcp/bootstrap-token` in `mcp_api.py`, `_bootstrap()` in `mcp_server/main.py`) — dieser Endpoint ist von aussen über nginx blockiert (`return 403` in `proxy.conf`), nur containerintern erreichbar. **Keine `MCP_BACKEND_KEY`-Variable in `.env`** — falls das irgendwo referenziert wird (z.B. in älteren Notizen), ist das veraltet.
 
-**Settings-DB:** `mcp_enabled` (Schalter) und `mcp_api_token` (generierter Wert, wird im UI als Vorlage für `MCP_BACKEND_KEY` angezeigt). Migration v1.37 in `migrate.py`.
+**Settings-DB:** `mcp_enabled` (Schalter) und `mcp_api_token` (generierter Wert, im UI direkt als Token für die Claude-Code/Desktop-Konfiguration verwendbar). Migration v1.37 in `migrate.py`.
 
 **Neue Tools:** in `mcp_server/main.py` als `@mcp.tool()` + passenden Endpunkt in `mcp_api.py` mit `Depends(require_mcp)`.
 
