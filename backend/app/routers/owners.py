@@ -11,7 +11,7 @@ router = APIRouter(prefix="/owners", tags=["owners"])
 
 
 @router.get("", response_model=list[MachineOwnerOut])
-async def list_owners(db: AsyncSession = Depends(get_db)):
+async def list_owners(db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     result = await db.execute(
         select(MachineOwner).order_by(MachineOwner.sort_order, MachineOwner.name)
     )

@@ -5,15 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import MachineCategory
 from app.schemas import MachineCategoryCreate, MachineCategoryOut, MachineCategoryUpdate
-from app.routers.auth import get_current_user
-from app.services.auth import require_power_manager
+from app.services.auth import get_current_user, require_power_manager
 from app.models import User
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
 
 @router.get("", response_model=list[MachineCategoryOut])
-async def list_categories(db: AsyncSession = Depends(get_db)):
+async def list_categories(db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     result = await db.execute(
         select(MachineCategory).order_by(MachineCategory.sort_order, MachineCategory.name)
     )

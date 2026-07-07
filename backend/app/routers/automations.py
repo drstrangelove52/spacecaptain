@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import User, AutomationRule, RuleCondition, Machine, LogType
-from app.services.auth import require_power_manager as require_admin
+from app.services.auth import require_power_manager
 from app.services import logger as log_svc
 
 router = APIRouter(prefix="/automations", tags=["automations"])
@@ -144,7 +144,7 @@ async def _rule_out(rule: AutomationRule, db: AsyncSession) -> dict:
 @router.get("")
 async def list_rules(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_power_manager),
 ):
     res = await db.execute(select(AutomationRule).order_by(AutomationRule.id))
     rules = res.scalars().all()
@@ -163,7 +163,7 @@ async def list_rules(
 async def create_rule(
     payload: RuleIn,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(require_admin),
+    current: User = Depends(require_power_manager),
 ):
     if payload.action_type not in ("machine", "room_open", "room_close", "notify"):
         raise HTTPException(400, "Ungültiger action_type")
@@ -211,7 +211,7 @@ async def update_rule(
     rule_id: int,
     payload: RulePatch,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(require_admin),
+    current: User = Depends(require_power_manager),
 ):
     rule = (await db.execute(select(AutomationRule).where(AutomationRule.id == rule_id))).scalar_one_or_none()
     if not rule:
@@ -254,7 +254,7 @@ async def update_rule(
 async def delete_rule(
     rule_id: int,
     db: AsyncSession = Depends(get_db),
-    current: User = Depends(require_admin),
+    current: User = Depends(require_power_manager),
 ):
     rule = (await db.execute(select(AutomationRule).where(AutomationRule.id == rule_id))).scalar_one_or_none()
     if not rule:
@@ -271,6 +271,6 @@ async def delete_rule(
 
 
 @router.get("/states")
-async def rule_states(_: User = Depends(require_admin)):
+async def rule_states(_: User = Depends(require_power_manager)):
     from app.services.rule_watcher import get_rule_states
     return get_rule_states()

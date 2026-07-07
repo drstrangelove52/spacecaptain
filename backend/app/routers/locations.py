@@ -11,7 +11,7 @@ router = APIRouter(prefix="/locations", tags=["locations"])
 
 
 @router.get("", response_model=list[MachineLocationOut])
-async def list_locations(db: AsyncSession = Depends(get_db)):
+async def list_locations(db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     result = await db.execute(
         select(MachineLocation).order_by(MachineLocation.sort_order, MachineLocation.name)
     )

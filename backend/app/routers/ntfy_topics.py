@@ -8,7 +8,7 @@ from datetime import datetime
 from app.database import get_db
 from app.models import NtfyTopic, SystemSettings, LogType
 from app.routers.auth import get_current_user
-from app.services.auth import require_power_manager as require_admin
+from app.services.auth import require_power_manager
 from app.services.ntfy import send_notification
 from app.services.logger import log as activity_log
 
@@ -44,7 +44,7 @@ async def list_topics(
 async def create_topic(
     body: NtfyTopicIn,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_admin),
+    current_user=Depends(require_power_manager),
 ):
     t = NtfyTopic(**body.model_dump())
     db.add(t)
@@ -60,7 +60,7 @@ async def update_topic(
     topic_id: int,
     body: NtfyTopicIn,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_admin),
+    current_user=Depends(require_power_manager),
 ):
     result = await db.execute(select(NtfyTopic).where(NtfyTopic.id == topic_id))
     t = result.scalar_one_or_none()
@@ -105,7 +105,7 @@ async def test_topic(
 async def delete_topic(
     topic_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_admin),
+    current_user=Depends(require_power_manager),
 ):
     result = await db.execute(select(NtfyTopic).where(NtfyTopic.id == topic_id))
     t = result.scalar_one_or_none()
