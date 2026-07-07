@@ -122,6 +122,7 @@ class MachineBase(BaseModel):
     training_required: bool = True
     comment: Optional[str] = None
     safety_notes: Optional[str] = None
+    doc_url: Optional[str] = None
     force_off_on_close: bool = False
     purchase_date: Optional[date] = None
     value_new: Optional[float] = None
@@ -148,6 +149,7 @@ class MachineUpdate(BaseModel):
     training_required: Optional[bool] = None
     comment: Optional[str] = None
     safety_notes: Optional[str] = None
+    doc_url: Optional[str] = None
     force_off_on_close: Optional[bool] = None
     purchase_date: Optional[date] = None
     value_new: Optional[float] = None

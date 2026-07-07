@@ -160,7 +160,7 @@ async def _build_export_data(db: AsyncSession) -> dict:
             "idle_power_w": m.idle_power_w,
             "idle_timeout_min": m.idle_timeout_min, "plug_poll_interval_sec": m.plug_poll_interval_sec,
             "training_required": m.training_required, "total_hours": m.total_hours,
-            "comment": m.comment, "safety_notes": m.safety_notes, "qr_token": m.qr_token,
+            "comment": m.comment, "safety_notes": m.safety_notes, "doc_url": m.doc_url, "qr_token": m.qr_token,
             "force_off_on_close": m.force_off_on_close,
             "purchase_date": m.purchase_date.isoformat() if m.purchase_date else None,
             "value_new": m.value_new,
@@ -592,6 +592,7 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
                 row.idle_power_w = m.get("idle_power_w"); row.idle_timeout_min = m.get("idle_timeout_min")
                 row.training_required = m.get("training_required", row.training_required)
                 row.comment = m.get("comment"); row.safety_notes = m.get("safety_notes")
+                row.doc_url = m.get("doc_url")
                 row.force_off_on_close = m.get("force_off_on_close", row.force_off_on_close)
                 row.purchase_date = date.fromisoformat(m["purchase_date"]) if m.get("purchase_date") else None
                 row.value_new = m.get("value_new")
@@ -611,6 +612,7 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
             plug_id=plug_id,
             idle_power_w=m.get("idle_power_w"), idle_timeout_min=m.get("idle_timeout_min"),
             comment=m.get("comment"), safety_notes=m.get("safety_notes"),
+            doc_url=m.get("doc_url"),
             force_off_on_close=m.get("force_off_on_close", False),
             qr_token=m["qr_token"],
             purchase_date=date.fromisoformat(m["purchase_date"]) if m.get("purchase_date") else None,

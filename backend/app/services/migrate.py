@@ -559,6 +559,9 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "batteries", "serial_number", "VARCHAR(100) DEFAULT NULL")
         await _add_column_if_missing(conn, "batteries", "comment", "TEXT DEFAULT NULL")
 
+        # ── v1.44: Dokumentations-Link pro Maschine ────────────────────────
+        await _add_column_if_missing(conn, "machines", "doc_url", "VARCHAR(500) DEFAULT NULL")
+
     log.info("Migrationen abgeschlossen")
 
 

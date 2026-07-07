@@ -4343,6 +4343,7 @@ function showAddMachine() {
       <div class="form-group"><label class="form-label">Standort</label><select class="form-input" id="mc-loc">${_locOptions()}</select></div>
     </div>
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="mc-comment" rows="2" placeholder="z.B. Linse verschmutzt, bitte melden"></textarea></div>
+    <div class="form-group"><label class="form-label">Dokumentations-Link</label><input class="form-input" id="mc-doc-url" type="url" placeholder="https://..."></div>
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="mc-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden&#10;Wird vor dem Einschalten als Pflicht-Bestätigung angezeigt."></textarea></div>
     <hr style="border-color:var(--border);margin:16px 0">
     <div class="form-row">
@@ -4400,7 +4401,7 @@ function showAddMachine() {
     const purchase_date=document.getElementById('mc-purchase-date')?.value||null;
     const value_new=document.getElementById('mc-value-new')?.value;
     const owner_id=document.getElementById('mc-owner')?.value;
-    const res=await POST('/machines',{name,category:document.getElementById('mc-cat').value,status:document.getElementById('mc-status').value,manufacturer:document.getElementById('mc-mfr').value.trim()||null,model:document.getElementById('mc-model').value.trim()||null,serial_number:document.getElementById('mc-serial').value.trim()||null,location:document.getElementById('mc-loc').value.trim(),comment:document.getElementById('mc-comment').value.trim()||null,safety_notes:document.getElementById('mc-safety').value.trim()||null,plug_type:'none',idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required,force_off_on_close,purchase_date,value_new:value_new?parseFloat(value_new):null,owner_id:owner_id?parseInt(owner_id):null});
+    const res=await POST('/machines',{name,category:document.getElementById('mc-cat').value,status:document.getElementById('mc-status').value,manufacturer:document.getElementById('mc-mfr').value.trim()||null,model:document.getElementById('mc-model').value.trim()||null,serial_number:document.getElementById('mc-serial').value.trim()||null,location:document.getElementById('mc-loc').value.trim(),comment:document.getElementById('mc-comment').value.trim()||null,doc_url:document.getElementById('mc-doc-url').value.trim()||null,safety_notes:document.getElementById('mc-safety').value.trim()||null,plug_type:'none',idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required,force_off_on_close,purchase_date,value_new:value_new?parseFloat(value_new):null,owner_id:owner_id?parseInt(owner_id):null});
     if (res) {
       if (plugId) await POST(`/plugs/${plugId}/assign?machine_id=${res.id}`,{});
       closeModal(); await loadAll(); showToast(`${res.name} hinzugefügt!`,'success');
@@ -4476,6 +4477,7 @@ function editMachine(id) {
       <div class="form-group"><label class="form-label">Standort</label><select class="form-input" id="e-loc">${_locOptions(m.location||'')}</select></div>
     </div>
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="e-comment" rows="2" placeholder="z.B. Linse verschmutzt">${m.comment||''}</textarea></div>
+    <div class="form-group"><label class="form-label">Dokumentations-Link</label><input class="form-input" id="e-doc-url" type="url" placeholder="https://..." value="${escHtml(m.doc_url||'')}"></div>
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="e-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden">${m.safety_notes||''}</textarea></div>
     <hr style="border-color:var(--border);margin:16px 0">
     <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:12px">INVENTAR</div>
@@ -4535,7 +4537,7 @@ function editMachine(id) {
     const purchase_date=document.getElementById('e-purchase-date')?.value||null;
     const value_new=document.getElementById('e-value-new')?.value;
     const owner_id=document.getElementById('e-owner')?.value;
-    const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,manufacturer:document.getElementById('e-mfr').value.trim()||null,model:document.getElementById('e-model').value.trim()||null,serial_number:document.getElementById('e-serial').value.trim()||null,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,safety_notes:document.getElementById('e-safety').value.trim()||null,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required,force_off_on_close,purchase_date,value_new:value_new?parseFloat(value_new):null,owner_id:owner_id?parseInt(owner_id):null};
+    const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,manufacturer:document.getElementById('e-mfr').value.trim()||null,model:document.getElementById('e-model').value.trim()||null,serial_number:document.getElementById('e-serial').value.trim()||null,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,doc_url:document.getElementById('e-doc-url').value.trim()||null,safety_notes:document.getElementById('e-safety').value.trim()||null,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required,force_off_on_close,purchase_date,value_new:value_new?parseFloat(value_new):null,owner_id:owner_id?parseInt(owner_id):null};
     const res=await PATCH(`/machines/${id}`,payload);
     if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
   }, undefined, undefined, 'input', 900);

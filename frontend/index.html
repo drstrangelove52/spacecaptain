@@ -561,12 +561,15 @@ function renderMachineCard(containerId, m) {
         </table>
       </div>`;
   }
+  const adapterOffline = m.plug_supported && m.plug_error === 'unreachable';
   document.getElementById(containerId).innerHTML = `
     <div class="machine-icon">${icon}</div>
     <div class="machine-name">${m.name}</div>
     <div class="machine-meta">${m.category}${m.location && m.location !== '—' ? ' // ' + m.location : ''}</div>
     ${m.comment ? `<div class="machine-comment">⚠ ${escHtml(m.comment)}</div>` : ''}
+    ${adapterOffline ? `<div class="machine-comment">⚠ Adapter nicht erreichbar — bitte an den Lab Manager wenden</div>` : ''}
     <div class="machine-status-row"><span class="status-badge ${sc}">${sl}</span>${plug}</div>
+    ${m.doc_url ? `<div style="margin-top:12px"><a href="${escHtml(m.doc_url)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--accent2);text-decoration:none">📄 Dokumentation</a></div>` : ''}
     ${sessionInfo}`;
 }
 

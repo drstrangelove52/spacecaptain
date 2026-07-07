@@ -98,9 +98,11 @@ async def _machine_detail(machine: Machine) -> dict:
         "status":          machine.status,
         "comment":         machine.comment,
         "safety_notes":    machine.safety_notes,
+        "doc_url":         machine.doc_url,
         "plug_type":       machine.plug_type,
         "plug_on":         plug_state.get("on"),
         "plug_supported":  plug_state.get("supported", False),
+        "plug_error":      plug_state.get("error"),
         "power_w":         power_w,
         "current_guest_id":   machine.current_guest_id,
         "session_manager_id": machine.session_manager_id,
@@ -382,7 +384,13 @@ async def guest_switch(payload: SwitchRequest, db: AsyncSession = Depends(get_db
         f"{'EIN' if payload.action == 'on' else 'AUS'}: {guest.name} → {machine.name} — {msg}",
         guest_id=guest.id, machine_id=machine.id)
 
-    return {"ok": ok, "action": payload.action, "machine": machine.name, "message": msg}
+    # Guests sehen nie die rohe Plug-Fehlermeldung (z.B. "Fehler: All connection attempts
+    # failed") — die steht bereits fuers Lab-Manager-Team im Aktivitaetslog oben. Fuer den
+    # Gast zaehlt nur "geht nicht, wende dich an den Lab Manager", egal welche Fehlerart.
+    guest_message = msg if ok else (
+        f"'{machine.name}' ist gerade nicht erreichbar. Bitte an den Lab Manager wenden."
+    )
+    return {"ok": ok, "action": payload.action, "machine": machine.name, "message": guest_message}
 
 
 # ── Gäste-Dashboard (öffentlich) ──────────────────────

@@ -155,6 +155,7 @@ class Machine(Base):
     total_hours:        Mapped[float]            = mapped_column(Float, default=0.0)
     comment:            Mapped[Optional[str]]   = mapped_column(Text)
     safety_notes:       Mapped[Optional[str]]   = mapped_column(Text, default=None)
+    doc_url:            Mapped[Optional[str]]   = mapped_column(String(500), default=None)
     force_off_on_close: Mapped[bool]            = mapped_column(Boolean, default=False)
     plug_id:            Mapped[Optional[int]]   = mapped_column(Integer, ForeignKey("plugs.id", ondelete="SET NULL"), default=None)
     purchase_date:      Mapped[Optional[date]]  = mapped_column(Date, default=None)
