@@ -72,6 +72,24 @@ async def update_user(
         raise HTTPException(404, "Benutzer nicht gefunden")
 
     update_data = payload.model_dump(exclude_unset=True)
+
+    # Niemand darf sich selbst aussperren
+    if current.id == user_id and update_data.get("is_active") is False:
+        raise HTTPException(400, "Eigenen Account nicht deaktivieren")
+
+    # Letzten Admin nicht degradierbar (analog zu "letzten Admin nicht löschbar")
+    if (
+        user.role == UserRole.admin
+        and "role" in update_data
+        and update_data["role"] != UserRole.admin
+    ):
+        remaining = await db.scalar(
+            select(func.count()).select_from(User)
+            .where(User.role == UserRole.admin, User.id != user_id)
+        )
+        if remaining == 0:
+            raise HTTPException(400, "Letzten Administrator nicht degradierbar")
+
     if "name" in update_data:
         dup = await db.execute(select(User).where(User.name == update_data["name"], User.id != user_id))
         if dup.scalar_one_or_none():
