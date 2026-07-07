@@ -97,6 +97,29 @@ ask_questions() {
     read -rp "$(echo -e "  ${BOLD}Server-IP oder Hostname${NC} [$DETECTED_IP]: ")" IP_INPUT
     SERVER_HOST="${IP_INPUT:-$DETECTED_IP}"
 
+    # Datenbank — alles vorbelegt, Enter uebernimmt den jeweiligen Default
+    echo ""
+    echo -e "  ${BOLD}Datenbank${NC} (Enter = Vorschlag übernehmen):"
+    read -rp "    Datenbankname [spacecaptain]: " DB_NAME_INPUT
+    DB_NAME="${DB_NAME_INPUT:-spacecaptain}"
+
+    read -rp "    Datenbank-Benutzer [spacecaptain]: " DB_USER_INPUT
+    DB_USER="${DB_USER_INPUT:-spacecaptain}"
+
+    GENERATED_DB_ROOT_PASS=$(gen_pass)
+    read -rp "    Root-Passwort [generiert: ${GENERATED_DB_ROOT_PASS}]: " DB_ROOT_PASS_INPUT
+    DB_ROOT_PASSWORD="${DB_ROOT_PASS_INPUT:-$GENERATED_DB_ROOT_PASS}"
+
+    GENERATED_DB_PASS=$(gen_pass)
+    read -rp "    Datenbank-Passwort [generiert: ${GENERATED_DB_PASS}]: " DB_PASS_INPUT
+    DB_PASSWORD="${DB_PASS_INPUT:-$GENERATED_DB_PASS}"
+
+    # JWT Auth
+    echo ""
+    GENERATED_JWT=$(gen_secret)
+    read -rp "$(echo -e "  ${BOLD}JWT-Secret${NC} [Enter = automatisch generiert]: ")" JWT_SECRET_INPUT
+    JWT_SECRET="${JWT_SECRET_INPUT:-$GENERATED_JWT}"
+
     # Admin-Zugangsdaten
     echo ""
     echo -e "  ${BOLD}Erster Admin-Benutzer:${NC}"
@@ -120,6 +143,7 @@ ask_questions() {
     echo "    Verzeichnis: $INSTALL_DIR"
     echo "    Zeitzone:    $TIMEZONE"
     echo "    Server:      $SERVER_HOST"
+    echo "    Datenbank:   $DB_NAME (Benutzer: $DB_USER)"
     echo "    Admin:       $ADMIN_NAME ($ADMIN_EMAIL)"
     sep
     echo ""
@@ -162,11 +186,11 @@ set_timezone() {
 # 5. .env generieren
 # ============================================================
 generate_env() {
-    info "Generiere .env mit Zufallspasswörtern..."
+    info "Generiere .env..."
 
-    DB_ROOT_PASS=$(gen_pass)
-    DB_PASS=$(gen_pass)
-    JWT_SECRET=$(gen_secret)
+    # DB_NAME/DB_USER/DB_ROOT_PASSWORD/DB_PASSWORD/JWT_SECRET kommen aus
+    # ask_questions() (dort mit automatisch generiertem Default vorbelegt,
+    # per Enter uebernehmbar oder ueberschreibbar).
 
     # Nur echte Bootstrap-Secrets/Infra-Werte landen in .env - alles was nach dem
     # ersten Start ueber die UI konfigurierbar ist (NFC-Geraet, Fernzugriff,
@@ -178,10 +202,10 @@ generate_env() {
 # ============================================================
 
 # Datenbank
-DB_ROOT_PASSWORD=$DB_ROOT_PASS
-DB_NAME=spacecaptain
-DB_USER=spacecaptain
-DB_PASSWORD=$DB_PASS
+DB_ROOT_PASSWORD=$DB_ROOT_PASSWORD
+DB_NAME=$DB_NAME
+DB_USER=$DB_USER
+DB_PASSWORD=$DB_PASSWORD
 
 # JWT Auth
 JWT_SECRET=$JWT_SECRET
@@ -295,7 +319,7 @@ wait_for_backend() {
 # 10. Ersten Admin anlegen
 # ============================================================
 create_admin() {
-    info "Erstelle Admin-Benutzer '$ADMIN_NAME'..."
+    info "Erstelle Admin-Benutzer '$ADMIN_NAME' und entferne den vorinstallierten Standard-Admin..."
 
     cd "$INSTALL_DIR"
     docker compose exec -T \
@@ -304,6 +328,7 @@ create_admin() {
         -e SC_PASSWORD="$ADMIN_PASSWORD" \
         backend python3 -c "
 import os, bcrypt, asyncio
+from sqlalchemy import delete
 from app.database import AsyncSessionLocal, engine
 from app.models import User, UserRole
 
@@ -314,6 +339,12 @@ password = os.environ['SC_PASSWORD']
 async def create():
     pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt(12)).decode()
     async with AsyncSessionLocal() as db:
+        # db/init.sql seedet bei jeder frischen DB einen Standard-Admin
+        # (admin@spacecaptain.local, bekanntes Default-Passwort) - ueberfluessig
+        # und ein Sicherheitsrisiko sobald der echte Admin existiert. Zuerst
+        # entfernen, dann den echten Admin anlegen (deckt auch den Fall ab,
+        # dass der echte Admin zufaellig dieselbe E-Mail verwendet).
+        await db.execute(delete(User).where(User.email == 'admin@spacecaptain.local'))
         user = User(
             name=name,
             email=email,
@@ -327,7 +358,7 @@ async def create():
 
 asyncio.run(create())
 "
-    ok "Admin-Benutzer erstellt"
+    ok "Admin-Benutzer erstellt, Standard-Admin entfernt"
 }
 
 # ============================================================
