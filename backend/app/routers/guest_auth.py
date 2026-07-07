@@ -310,6 +310,12 @@ async def guest_switch(payload: SwitchRequest, db: AsyncSession = Depends(get_db
     if machine.status != "online":
         raise HTTPException(503, f"Maschine '{machine.name}' nicht verfügbar")
 
+    # Geraete ohne Smart Plug haben keine Gast-Fernsteuerung mehr (nur Infoansicht im
+    # Frontend) - ein unerzwingbarer Schalter ohne echte Wirkung bringt keinen Mehrwert
+    # und wuerde bei Kleingeraeten (Akkuschrauber etc.) nur irrefuehrende Sessions erzeugen.
+    if machine.plug_type == "none":
+        raise HTTPException(400, f"'{machine.name}' hat keine Fernsteuerung")
+
     # Raum-Sperre: nur beim Einschalten prüfen (Ausschalten immer erlauben)
     if payload.action == "on" and machine.current_guest_id != guest.id:
         s = await get_system_settings(db)

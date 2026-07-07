@@ -250,6 +250,13 @@
       <div class="denied-sub">Diese Maschine ist aktuell für einen anderen Gast reserviert.</div>
     </div>
 
+    <!-- Kein Plug: keine Fernsteuerung, nur Infos -->
+    <div class="denied-card" id="ctrl-noplug" style="display:none;background:rgba(100,116,139,.08);border-color:var(--border)">
+      <div class="denied-icon">ℹ️</div>
+      <div class="denied-title" style="color:var(--text)">Keine Fernsteuerung</div>
+      <div class="denied-sub">Dieses Gerät hat keinen Smart Plug — Infos dazu findest du oben.</div>
+    </div>
+
     <!-- Keine Berechtigung -->
     <div class="denied-card" id="ctrl-denied" style="display:none">
       <div class="denied-icon">🚫</div>
@@ -690,8 +697,10 @@ async function showControlScreen() {
     S.myMachineOn = d.machine.current_guest_id === d.guest_id;  // ich habe diese Maschine eingeschaltet
 
     renderMachineCard('control-machine-card', S.machine);
-    ['ctrl-granted','ctrl-denied','ctrl-reserved','ctrl-offline','ctrl-room-closed'].forEach(id =>
+    ['ctrl-granted','ctrl-denied','ctrl-reserved','ctrl-offline','ctrl-room-closed','ctrl-noplug'].forEach(id =>
       document.getElementById(id).style.display = 'none');
+
+    const noPlug = S.machine.plug_type === 'none' && !S.machine.plug_supported;
 
     if (S.machine.status !== 'online') {
       const reason = S.machine.status === 'maintenance' && S.machine.comment
@@ -708,6 +717,9 @@ async function showControlScreen() {
       } else {
         reasonEl.style.display = 'none';
       }
+    } else if (noPlug) {
+      document.getElementById('ctrl-noplug').style.display = 'block';
+      document.getElementById('ctrl-queue').style.display = 'none';
     } else if (d.reserved_for_other) {
       document.getElementById('ctrl-reserved').style.display = 'block';
       await refreshQueueStatus();
