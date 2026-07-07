@@ -235,6 +235,12 @@ Drei Stufen: `manager` < `power_manager` < `admin`.
 
 **Implementierung:** `require_power_manager` in `services/auth.py` prüft `role in ("admin", "power_manager")`. Frontend-Helpers `_isAdmin()` / `_isPowerPlus()` steuern Button-Sichtbarkeit. ENUM-Migration in `migrate.py` v1.34.
 
+**Vollständiger Audit (2026-07-07)** aller 192 Endpoints gegen dieses Rollenmodell — zwei Befunde behoben (Commit `1b47072`):
+- `GET /categories`, `/locations`, `/owners` hatten **gar keine** Auth-Prüfung — im Gegensatz zu jedem strukturell gleichen Listen-Endpoint (Maschinen, Akkus, Plugs, Push-Topics, Berechtigungen, Gäste), die alle `get_current_user` verlangen. Geprüft: wird ausschliesslich von `labmanager.html` genutzt, nie von einer öffentlichen Seite — reines Versehen, kein bewusstes Public-Design. `get_current_user` ergänzt.
+- `automations.py`/`ntfy_topics.py` importierten `require_power_manager as require_admin` und nutzten den Alias durchgehend — Code sah admin-only aus, war aber schon immer korrekt power_manager-or-admin (deckt sich mit der Rechtetabelle oben). Alias entfernt, kein Verhaltenswechsel.
+
+Alle übrigen Endpoints ohne `Depends()`-Auth sind bewusst so: Login-Flows (`/auth/login`, `/guest/login`, …), Gast-Trust-Tier mit eigenem Token-System (`guest_auth.py`, `queue.py`), MCP mit `require_mcp`, Display-/Kiosk-Endpoints (`/settings/public`, `/settings/room`, `/emergency/status`, `/guest/dashboard`, `/qr/url-png`), sowie `/mcp/bootstrap-token` (per `nginx/proxy.conf` `return 403` auf Netzwerkebene blockiert, verifiziert). `GET /machines/{id}/qr.png` prüft das JWT manuell im Funktionskörper statt per `Depends` (nötig wegen `?token=`-Query-Param-Fallback für `<img>`-Tags, die keinen Authorization-Header senden können) — funktional geschützt, aber strukturell inkonsistent; nicht verändert, da kein echter Bug.
+
 ## Berechtigungshistorie (UI)
 
 `GET /permissions/history?guest_id=X` gibt den neuesten `ActivityLog`-Eintrag pro Maschine zurück (Typ `permission_granted` / `permission_revoked`). Der `comment` kommt aus `entry.meta["comment"]`. Das UI zeigt diesen Kommentar in der Berechtigungsmatrix.
