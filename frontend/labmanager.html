@@ -918,7 +918,7 @@
                   <div class="form-group" style="margin:0">
                     <label class="form-label">Aufbewahrung</label>
                     <input type="number" class="form-input" id="cfg-auto-backup-keep" min="1" max="365" style="width:100px">
-                    <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Ältere Backups werden automatisch gelöscht. Speicherort: via BACKUP_DIR in .env</div>
+                    <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Gilt für lokal <em>und</em> extern (SFTP) — ältere Backups werden an beiden Orten automatisch gelöscht. Lokaler Speicherort: via BACKUP_DIR in .env</div>
                   </div>
                 </div>
               </div>
@@ -994,6 +994,7 @@
                       <li>Passwort und Key werden nach dem Speichern nie wieder im Formular angezeigt — leer lassen heisst "unverändert übernehmen"</li>
                       <li>Der Host-Key des NAS wird beim ersten Verbindungsaufbau automatisch akzeptiert (kein vorheriges Pinning)</li>
                       <li>Fehlgeschlagene Uploads werden protokolliert, lokale Backups bleiben davon unberührt</li>
+                      <li>Die Aufbewahrungsfrist oben (Automatisch/lokal) gilt auch für das Zielverzeichnis auf dem NAS — ältere Remote-Backups werden nach jedem erfolgreichen Upload automatisch gelöscht</li>
                     </ul>
                   </div>
 

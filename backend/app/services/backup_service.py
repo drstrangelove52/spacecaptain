@@ -91,8 +91,9 @@ def _cleanup_old_backups(keep: int) -> None:
 
 
 async def _upload_remote(db, path: Path) -> None:
-    """Lädt ein Backup per SFTP aufs konfigurierte NAS hoch, falls aktiviert.
-    Rein additiv zur lokalen Aufbewahrung — lokale Backups werden dadurch nicht angetastet.
+    """Lädt ein Backup per SFTP aufs konfigurierte NAS hoch, falls aktiviert, und wendet
+    danach dieselbe Aufbewahrungsfrist (auto_backup_keep) auf das Remote-Verzeichnis an
+    wie lokal — sonst würden Remote-Backups unbegrenzt weiterwachsen.
     Schreibt Ergebnis/Fehler in system_settings, damit der Status ohne Server-Logs im UI sichtbar ist."""
     cfg = await get_system_settings(db)
     if not cfg.backup_remote_enabled:
@@ -103,6 +104,10 @@ async def _upload_remote(db, path: Path) -> None:
         cfg.backup_remote_last_status = "ok"
         cfg.backup_remote_last_message = f"{path.name} erfolgreich hochgeladen"
         log.info(f"SFTP-Upload erfolgreich: {path.name} → {cfg.backup_remote_host}")
+        try:
+            await asyncio.to_thread(remote_backup.cleanup_remote_sync, cfg, cfg.auto_backup_keep)
+        except Exception as e:
+            log.warning(f"Remote-Aufräumen fehlgeschlagen (Upload war erfolgreich): {e}")
     except Exception as e:
         cfg.backup_remote_last_status = "error"
         cfg.backup_remote_last_message = str(e)[:1000]

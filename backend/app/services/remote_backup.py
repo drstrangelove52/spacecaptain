@@ -89,6 +89,27 @@ def upload_file_sync(cfg, local_path: Path) -> None:
         client.close()
 
 
+def cleanup_remote_sync(cfg, keep: int) -> None:
+    """Löscht älteste Backups im SFTP-Zielverzeichnis, bis nur noch `keep` Stück übrig bleiben
+    — spiegelt _cleanup_old_backups() für die lokale Aufbewahrung."""
+    client = _connect(cfg)
+    try:
+        sftp = client.open_sftp()
+        try:
+            remote_dir = cfg.backup_remote_path or "/"
+            names = sorted(
+                n for n in sftp.listdir(remote_dir)
+                if n.startswith("spacecaptain_backup_") and n.endswith(".json")
+            )
+            for name in names[:-keep] if len(names) > keep else []:
+                sftp.remove(remote_dir.rstrip("/") + "/" + name)
+                log.info(f"Altes Remote-Backup gelöscht: {name}")
+        finally:
+            sftp.close()
+    finally:
+        client.close()
+
+
 def test_connection_sync(cfg) -> None:
     """Prüft Verbindung + Schreibrechte im Zielverzeichnis (Schreibtest, keine Backup-Datei)."""
     client = _connect(cfg)
