@@ -161,11 +161,25 @@ ask_questions() {
 clone_repo() {
     if [ -d "$INSTALL_DIR/.git" ]; then
         warn "Verzeichnis $INSTALL_DIR existiert bereits — überspringe Clone"
-    else
-        info "Klone Repository nach $INSTALL_DIR..."
-        git clone "$REPO_URL" "$INSTALL_DIR"
-        ok "Repository geklont"
+        return
     fi
+
+    # Zielverzeichnis evtl. nicht vom aktuellen Benutzer beschreibbar (z.B. /opt) —
+    # dann gezielt mit sudo anlegen/übernehmen, statt das ganze Script als root laufen zu lassen
+    if [ -d "$INSTALL_DIR" ]; then
+        if [ ! -w "$INSTALL_DIR" ]; then
+            info "Kein Schreibzugriff auf $INSTALL_DIR — übernehme Verzeichnis mit sudo..."
+            sudo chown "$(id -u):$(id -g)" "$INSTALL_DIR"
+        fi
+    elif ! mkdir -p "$INSTALL_DIR" 2>/dev/null; then
+        info "Kein Schreibzugriff auf $(dirname "$INSTALL_DIR") — lege $INSTALL_DIR mit sudo an..."
+        sudo mkdir -p "$INSTALL_DIR"
+        sudo chown "$(id -u):$(id -g)" "$INSTALL_DIR"
+    fi
+
+    info "Klone Repository nach $INSTALL_DIR..."
+    git clone "$REPO_URL" "$INSTALL_DIR"
+    ok "Repository geklont"
 }
 
 # ============================================================

@@ -54,11 +54,9 @@ curl -fsSL https://raw.githubusercontent.com/drstrangelove52/spacecaptain/main/i
 bash install.sh
 ```
 
-Das Script stellt drei Fragen, erledigt alles andere automatisch:
+Kein `sudo` vor dem Aufruf nötig — das Script läuft bewusst als normaler Benutzer und fragt selbst per `sudo` nach, wenn es root-Rechte braucht (Docker-Gruppe, Zeitzone, systemd-Service). Das gilt auch, wenn du z.B. `/opt/spacecaptain` als Installationsverzeichnis angibst: Das Script legt es bei Bedarf selbst mit `sudo` an und übergibt es dir.
 
-1. **Zeitzone** (Standard: aktuelle Server-Zeitzone)
-2. **Server-IP oder Hostname** (Standard: automatisch erkannt)
-3. **Erster Admin-Benutzer** (Name, E-Mail, Passwort — oder Passwort wird generiert)
+Das Script fragt Installationsverzeichnis, Zeitzone, Server-IP, Datenbank-Zugangsdaten, JWT-Secret und den ersten Admin-Benutzer ab — für alles ausser dem Admin-Benutzer ist bereits ein sinnvoller Standard vorbelegt, Enter übernimmt ihn einfach.
 
 Danach sind Repository, `.env`, TLS-Zertifikat, Container und Update-Watcher fertig eingerichtet. Am Ende zeigt das Script die URL und die Zugangsdaten an.
 
