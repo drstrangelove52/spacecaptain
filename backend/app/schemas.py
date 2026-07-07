@@ -271,21 +271,27 @@ class MachineOwnerUpdate(BaseModel):
 
 # ── Batteries ─────────────────────────────────────────────
 class BatteryBase(BaseModel):
+    name: Optional[str] = None
     manufacturer: Optional[str] = None
     model: Optional[str] = None
+    serial_number: Optional[str] = None
     purchase_date: Optional[date] = None
     value_new: Optional[float] = None
     status: BatteryStatus = BatteryStatus.aktiv
+    comment: Optional[str] = None
 
 class BatteryCreate(BatteryBase):
     pass
 
 class BatteryUpdate(BaseModel):
+    name: Optional[str] = None
     manufacturer: Optional[str] = None
     model: Optional[str] = None
+    serial_number: Optional[str] = None
     purchase_date: Optional[date] = None
     value_new: Optional[float] = None
     status: Optional[BatteryStatus] = None
+    comment: Optional[str] = None
 
 class BatteryOut(BatteryBase):
     id: int

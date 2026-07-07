@@ -118,11 +118,14 @@ async def _build_export_data(db: AsyncSession) -> dict:
             "sort_order": o.sort_order,
         } for o in owners],
         "batteries": [{
+            "name":          b.name,
             "manufacturer":  b.manufacturer,
             "model":         b.model,
+            "serial_number": b.serial_number,
             "purchase_date": b.purchase_date.isoformat() if b.purchase_date else None,
             "value_new":     b.value_new,
             "status":        b.status,
+            "comment":       b.comment,
         } for b in batteries],
         "users": [{
             "name": u.name, "email": u.email, "role": u.role,
@@ -455,21 +458,28 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
     # ── Akkus ─────────────────────────────────────────────
     # b.get("value_new", b.get("price_new")): Altbackups (vor der Umbenennung
     # Neupreis -> Neuwert) haben noch den alten Schluessel "price_new".
+    # name/serial_number im Schluessel: ohne sie wuerden mehrere baugleiche Akkus
+    # (gleicher Hersteller/Modell/Kaufdatum/Preis) faelschlich als ein Duplikat gelten.
     existing_battery_keys = {
-        (b.manufacturer, b.model, b.purchase_date.isoformat() if b.purchase_date else None, b.value_new)
+        (b.manufacturer, b.model, b.purchase_date.isoformat() if b.purchase_date else None, b.value_new,
+         b.name, b.serial_number)
         for b in (await db.execute(select(Battery))).scalars().all()
     }
     for b in payload.get("batteries", []):
         battery_value = b.get("value_new", b.get("price_new"))
-        key = (b.get("manufacturer"), b.get("model"), b.get("purchase_date"), battery_value)
+        key = (b.get("manufacturer"), b.get("model"), b.get("purchase_date"), battery_value,
+               b.get("name"), b.get("serial_number"))
         if key in existing_battery_keys:
             stats["skipped"] += 1
             continue
         existing_battery_keys.add(key)
         db.add(Battery(
+            name=b.get("name"),
             manufacturer=b.get("manufacturer"), model=b.get("model"),
+            serial_number=b.get("serial_number"),
             purchase_date=date.fromisoformat(b["purchase_date"]) if b.get("purchase_date") else None,
             value_new=battery_value, status=b.get("status", "aktiv"),
+            comment=b.get("comment"),
         ))
         stats.setdefault("batteries", 0)
         stats["batteries"] += 1

@@ -3841,7 +3841,7 @@ function filterBatteries(){
   const statusF=document.getElementById('battery-filter-status')?.value||'';
 
   let filtered=cache.batteries.filter(b=>{
-    if(q && !(b.manufacturer||'').toLowerCase().includes(q) && !(b.model||'').toLowerCase().includes(q)) return false;
+    if(q && ![b.name,b.manufacturer,b.model,b.serial_number].some(v=>(v||'').toLowerCase().includes(q))) return false;
     if(statusF && b.status!==statusF) return false;
     return true;
   });
@@ -3880,12 +3880,14 @@ function renderBatteriesFiltered(batteries){
   }
   el.innerHTML=`<table class="data-table" style="width:100%">
     <thead><tr>
-      ${_batteryTh('Hersteller','manufacturer')}${_batteryTh('Modell','model')}${_batteryTh('Kaufdatum','purchase_date')}${_batteryTh('Neuwert','value_new')}${_batteryTh('Status','status')}<th></th>
+      ${_batteryTh('Name/Nr.','name')}${_batteryTh('Hersteller','manufacturer')}${_batteryTh('Modell','model')}${_batteryTh('Seriennummer','serial_number')}${_batteryTh('Kaufdatum','purchase_date')}${_batteryTh('Neuwert','value_new')}${_batteryTh('Status','status')}<th></th>
     </tr></thead>
     <tbody>
     ${batteries.map(b=>`<tr>
+      <td>${escHtml(b.name||'—')}</td>
       <td>${escHtml(b.manufacturer||'—')}</td>
       <td>${escHtml(b.model||'—')}</td>
+      <td>${escHtml(b.serial_number||'—')}</td>
       <td>${b.purchase_date||'—'}</td>
       <td>${b.value_new!=null?b.value_new.toFixed(2):'—'}</td>
       <td><span class="badge badge-gray">${_batteryStatusLabel(b.status)}</span></td>
@@ -3908,13 +3910,16 @@ function showAddBattery(){
   _applyCurrencyLabels();
   document.getElementById('battery-modal-title').textContent='Akku hinzufügen';
   document.getElementById('battery-modal-id').value='';
+  document.getElementById('battery-name').value='';
   document.getElementById('battery-mfr').value='';
   document.getElementById('battery-model').value='';
+  document.getElementById('battery-serial').value='';
   document.getElementById('battery-date').value='';
   document.getElementById('battery-price').value='';
   document.getElementById('battery-status').value='aktiv';
+  document.getElementById('battery-comment').value='';
   document.getElementById('battery-modal').style.display='flex';
-  setTimeout(()=>document.getElementById('battery-mfr').focus(),50);
+  setTimeout(()=>document.getElementById('battery-name').focus(),50);
 }
 
 function showEditBattery(id){
@@ -3922,11 +3927,14 @@ function showEditBattery(id){
   _applyCurrencyLabels();
   document.getElementById('battery-modal-title').textContent='Akku bearbeiten';
   document.getElementById('battery-modal-id').value=b.id;
+  document.getElementById('battery-name').value=b.name||'';
   document.getElementById('battery-mfr').value=b.manufacturer||'';
   document.getElementById('battery-model').value=b.model||'';
+  document.getElementById('battery-serial').value=b.serial_number||'';
   document.getElementById('battery-date').value=b.purchase_date||'';
   document.getElementById('battery-price').value=b.value_new??'';
   document.getElementById('battery-status').value=b.status;
+  document.getElementById('battery-comment').value=b.comment||'';
   document.getElementById('battery-modal').style.display='flex';
 }
 
@@ -3939,11 +3947,14 @@ function closeBatteryModal(e){
 async function saveBattery(){
   const id=document.getElementById('battery-modal-id').value;
   const payload={
+    name:document.getElementById('battery-name').value.trim()||null,
     manufacturer:document.getElementById('battery-mfr').value.trim()||null,
     model:document.getElementById('battery-model').value.trim()||null,
+    serial_number:document.getElementById('battery-serial').value.trim()||null,
     purchase_date:document.getElementById('battery-date').value||null,
     value_new:document.getElementById('battery-price').value?parseFloat(document.getElementById('battery-price').value):null,
     status:document.getElementById('battery-status').value,
+    comment:document.getElementById('battery-comment').value.trim()||null,
   };
   const res=id?await PATCH(`/batteries/${id}`,payload):await POST('/batteries',payload);
   if(!res) return;
@@ -7572,6 +7583,10 @@ function togglePlugToken(id) {
     <div class="modal-body">
       <input type="hidden" id="battery-modal-id">
       <div class="form-row">
+        <div class="form-group"><label class="form-label">Name / Nummer</label><input class="form-input" id="battery-name" placeholder="z.B. Akku 1 oder A-042"></div>
+        <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="battery-serial" placeholder="SN-123456"></div>
+      </div>
+      <div class="form-row">
         <div class="form-group"><label class="form-label">Hersteller</label><input class="form-input" id="battery-mfr" placeholder="z.B. Hilti"></div>
         <div class="form-group"><label class="form-label">Modell</label><input class="form-input" id="battery-model" placeholder="z.B. B 22-55"></div>
       </div>
@@ -7586,6 +7601,10 @@ function togglePlugToken(id) {
           <option value="defekt">Defekt</option>
           <option value="ausgemustert">Ausgemustert</option>
         </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bemerkung</label>
+        <textarea class="form-input" id="battery-comment" rows="2" placeholder="z.B. quietscht beim Laden"></textarea>
       </div>
     </div>
     <div class="modal-footer">

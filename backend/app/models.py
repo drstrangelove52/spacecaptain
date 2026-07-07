@@ -384,11 +384,14 @@ class MachineOwner(Base):
 class Battery(Base):
     __tablename__ = "batteries"
     id:            Mapped[int]                = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name:          Mapped[Optional[str]]       = mapped_column(String(100))
     manufacturer:  Mapped[Optional[str]]       = mapped_column(String(100))
     model:         Mapped[Optional[str]]       = mapped_column(String(100))
+    serial_number: Mapped[Optional[str]]       = mapped_column(String(100))
     purchase_date: Mapped[Optional[date]]      = mapped_column(Date, default=None)
     value_new:     Mapped[Optional[float]]     = mapped_column(Float, default=None)
     status:        Mapped[BatteryStatus]       = mapped_column(Enum(BatteryStatus), default=BatteryStatus.aktiv)
+    comment:       Mapped[Optional[str]]       = mapped_column(Text)
     created_at:    Mapped[datetime]            = mapped_column(DateTime, default=datetime.utcnow)
 
 

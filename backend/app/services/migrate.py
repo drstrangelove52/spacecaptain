@@ -554,6 +554,11 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "system_settings", "backup_remote_last_message", "TEXT DEFAULT NULL")
         await _add_column_if_missing(conn, "system_settings", "backup_remote_last_at", "DATETIME DEFAULT NULL")
 
+        # ── v1.43: Akku-Identifikation (Name/Nummer, Seriennummer, Bemerkung) ──
+        await _add_column_if_missing(conn, "batteries", "name", "VARCHAR(100) DEFAULT NULL")
+        await _add_column_if_missing(conn, "batteries", "serial_number", "VARCHAR(100) DEFAULT NULL")
+        await _add_column_if_missing(conn, "batteries", "comment", "TEXT DEFAULT NULL")
+
     log.info("Migrationen abgeschlossen")
 
 
