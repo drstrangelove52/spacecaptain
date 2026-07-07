@@ -692,8 +692,7 @@
           <div class="help-nav-item" onclick="selectSettingsCat('agb')"><span class="help-nav-icon">📋</span><span class="help-nav-label">AGB</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('push')"><span class="help-nav-icon">🔔</span><span class="help-nav-label">Push-Nachrichten</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('notfall')"><span class="help-nav-icon">🚨</span><span class="help-nav-label">Notfall-Alarm</span></div>
-          <div class="help-nav-item" onclick="selectSettingsCat('backup')"><span class="help-nav-icon">💾</span><span class="help-nav-label">Auto-Backup</span></div>
-          <div class="help-nav-item" onclick="selectSettingsCat('remote-backup')"><span class="help-nav-icon">🌐</span><span class="help-nav-label">Externes Backup</span></div>
+          <div class="help-nav-item" onclick="selectSettingsCat('backup')"><span class="help-nav-icon">💾</span><span class="help-nav-label">Backup</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('tailscale')"><span class="help-nav-icon">🔒</span><span class="help-nav-label">Fernzugriff</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('mcp')"><span class="help-nav-icon">🤖</span><span class="help-nav-label">Claude MCP</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('update')" id="nav-settings-update"><span class="help-nav-icon">🔄</span><span class="help-nav-label">Update</span></div>
@@ -896,110 +895,109 @@
             </div>
           </div>
 
-          <!-- AUTO-BACKUP -->
+          <!-- BACKUP (lokal + extern) -->
           <div class="help-panel" id="settings-panel-backup">
-            <div class="help-panel-header"><span class="help-panel-icon">💾</span><span class="help-panel-title">Auto-Backup</span></div>
-            <div style="padding:20px">
-              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
-                <div class="form-group" style="margin:0">
-                  <label class="form-label">Automatisches Backup aktivieren</label>
-                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
-                    <input type="checkbox" id="cfg-auto-backup-enabled" style="width:16px;height:16px;cursor:pointer">
-                    <span style="font-size:13px;color:var(--text-dim)">Täglich um die konfigurierte Stunde sichern</span>
-                  </label>
-                </div>
-                <div class="form-group" style="margin:0">
-                  <label class="form-label">Backup-Uhrzeit</label>
-                  <input type="time" class="form-input" id="cfg-auto-backup-time" style="width:120px">
-                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Lokale Serverzeit (TZ in .env)</div>
-                </div>
-                <div class="form-group" style="margin:0">
-                  <label class="form-label">Aufbewahrung</label>
-                  <input type="number" class="form-input" id="cfg-auto-backup-keep" min="1" max="365" style="width:100px">
-                  <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Ältere Backups werden automatisch gelöscht. Speicherort: via BACKUP_DIR in .env</div>
+            <div class="help-panel-header"><span class="help-panel-icon">💾</span><span class="help-panel-title">Backup</span></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:24px">
+
+              <div>
+                <div style="font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">Automatisch (lokal)</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;align-items:start">
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Automatisches Backup aktivieren</label>
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+                      <input type="checkbox" id="cfg-auto-backup-enabled" style="width:16px;height:16px;cursor:pointer">
+                      <span style="font-size:13px;color:var(--text-dim)">Täglich um die konfigurierte Stunde sichern</span>
+                    </label>
+                  </div>
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Backup-Uhrzeit</label>
+                    <input type="time" class="form-input" id="cfg-auto-backup-time" style="width:120px">
+                    <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Lokale Serverzeit (TZ in .env)</div>
+                  </div>
+                  <div class="form-group" style="margin:0">
+                    <label class="form-label">Aufbewahrung</label>
+                    <input type="number" class="form-input" id="cfg-auto-backup-keep" min="1" max="365" style="width:100px">
+                    <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Ältere Backups werden automatisch gelöscht. Speicherort: via BACKUP_DIR in .env</div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <!-- EXTERNES BACKUP (SFTP) -->
-          <div class="help-panel" id="settings-panel-remote-backup">
-            <div class="help-panel-header"><span class="help-panel-icon">🌐</span><span class="help-panel-title">Externes Backup (SFTP)</span></div>
-            <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
+              <div style="border-top:1px solid var(--border);padding-top:24px">
+                <div style="font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">Extern (SFTP)</div>
 
-              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 18px;font-size:13px;color:var(--text-mid);line-height:1.7">
-                Lädt jedes erstellte Backup zusätzlich per SFTP auf ein externes NAS hoch — als Kopie neben der lokalen Aufbewahrung, nicht anstelle davon. Läuft automatisch nach jedem geplanten und manuellen Backup.
-              </div>
+                <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 18px;font-size:13px;color:var(--text-mid);line-height:1.7;margin-bottom:18px">
+                  Lädt jedes erstellte Backup zusätzlich per SFTP auf ein externes NAS hoch — als Kopie neben der lokalen Aufbewahrung, nicht anstelle davon.
+                </div>
 
-              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+                <div style="display:flex;flex-direction:column;gap:16px">
 
-                <div class="form-group" style="margin:0">
-                  <label class="form-label">Externes Backup aktivieren</label>
-                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
                     <input type="checkbox" id="cfg-rb-enabled" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">
                     <span style="font-size:13px;color:var(--text-dim)">Nach jedem Backup automatisch hochladen</span>
                   </label>
+
+                  <div style="display:grid;grid-template-columns:2fr 90px 1.3fr;gap:16px;align-items:start">
+                    <div class="form-group" style="margin:0">
+                      <label class="form-label">Host</label>
+                      <input class="form-input" id="cfg-rb-host" placeholder="nas.local oder 192.168.1.50">
+                    </div>
+                    <div class="form-group" style="margin:0">
+                      <label class="form-label">Port</label>
+                      <input type="number" class="form-input" id="cfg-rb-port" min="1" max="65535" placeholder="22">
+                    </div>
+                    <div class="form-group" style="margin:0">
+                      <label class="form-label">Benutzername</label>
+                      <input class="form-input" id="cfg-rb-username" autocomplete="off">
+                    </div>
+                  </div>
+
+                  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start">
+                    <div class="form-group" style="margin:0">
+                      <label class="form-label">Zielverzeichnis</label>
+                      <input class="form-input" id="cfg-rb-path" placeholder="/backups/spacecaptain">
+                      <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Wird bei Bedarf automatisch angelegt</div>
+                    </div>
+                    <div class="form-group" style="margin:0">
+                      <label class="form-label">Authentifizierung</label>
+                      <select class="form-input" id="cfg-rb-auth-type" onchange="_updateRemoteBackupAuthFields()">
+                        <option value="password">Passwort</option>
+                        <option value="key">SSH-Key</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div id="cfg-rb-password-group" class="form-group" style="margin:0;max-width:400px">
+                    <label class="form-label">Passwort</label>
+                    <input class="form-input" id="cfg-rb-password" type="password" placeholder="Leer = nicht ändern" autocomplete="off">
+                  </div>
+
+                  <div id="cfg-rb-key-group" style="display:none;flex-direction:column;gap:16px">
+                    <div class="form-group" style="margin:0">
+                      <label class="form-label">Privater SSH-Key (PEM)</label>
+                      <textarea class="form-input" id="cfg-rb-private-key" rows="6" style="font-family:var(--mono);font-size:12px" placeholder="Leer = nicht ändern&#10;-----BEGIN OPENSSH PRIVATE KEY-----&#10;…&#10;-----END OPENSSH PRIVATE KEY-----" autocomplete="off"></textarea>
+                    </div>
+                    <div class="form-group" style="margin:0;max-width:400px">
+                      <label class="form-label">Passphrase <span style="font-weight:400;color:var(--text-dim)">(falls Key verschlüsselt)</span></label>
+                      <input class="form-input" id="cfg-rb-key-passphrase" type="password" placeholder="Leer = nicht ändern" autocomplete="off">
+                    </div>
+                  </div>
+
+                  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                    <button class="btn btn-primary" id="rb-test-btn" onclick="testRemoteBackup()">Speichern &amp; Verbindung testen</button>
+                    <div id="rb-status-box" style="font-size:13px;font-family:var(--mono);padding:6px 12px;border-radius:6px;display:none"></div>
+                  </div>
+
+                  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 18px;font-size:12px;line-height:1.8;color:var(--text-mid)">
+                    <div style="font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:8px">Hinweise</div>
+                    <ul style="padding-left:18px;display:flex;flex-direction:column;gap:4px">
+                      <li>Passwort und Key werden nach dem Speichern nie wieder im Formular angezeigt — leer lassen heisst "unverändert übernehmen"</li>
+                      <li>Der Host-Key des NAS wird beim ersten Verbindungsaufbau automatisch akzeptiert (kein vorheriges Pinning)</li>
+                      <li>Fehlgeschlagene Uploads werden protokolliert, lokale Backups bleiben davon unberührt</li>
+                    </ul>
+                  </div>
+
                 </div>
-
-                <div class="form-group" style="margin:0">
-                  <label class="form-label">Host</label>
-                  <input class="form-input" id="cfg-rb-host" placeholder="nas.local oder 192.168.1.50">
-                </div>
-
-                <div class="form-group" style="margin:0">
-                  <label class="form-label">Port</label>
-                  <input type="number" class="form-input" id="cfg-rb-port" min="1" max="65535" placeholder="22" style="width:100px">
-                </div>
-
-                <div class="form-group" style="margin:0">
-                  <label class="form-label">Benutzername</label>
-                  <input class="form-input" id="cfg-rb-username" autocomplete="off">
-                </div>
-
-                <div class="form-group" style="margin:0">
-                  <label class="form-label">Zielverzeichnis</label>
-                  <input class="form-input" id="cfg-rb-path" placeholder="/backups/spacecaptain">
-                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Wird bei Bedarf automatisch angelegt</div>
-                </div>
-
-                <div class="form-group" style="margin:0">
-                  <label class="form-label">Authentifizierung</label>
-                  <select class="form-input" id="cfg-rb-auth-type" onchange="_updateRemoteBackupAuthFields()">
-                    <option value="password">Passwort</option>
-                    <option value="key">SSH-Key</option>
-                  </select>
-                </div>
-
-              </div>
-
-              <div id="cfg-rb-password-group" class="form-group" style="margin:0;max-width:400px">
-                <label class="form-label">Passwort</label>
-                <input class="form-input" id="cfg-rb-password" type="password" placeholder="Leer = nicht ändern" autocomplete="off">
-              </div>
-
-              <div id="cfg-rb-key-group" style="display:none;flex-direction:column;gap:16px">
-                <div class="form-group" style="margin:0">
-                  <label class="form-label">Privater SSH-Key (PEM)</label>
-                  <textarea class="form-input" id="cfg-rb-private-key" rows="6" style="font-family:var(--mono);font-size:12px" placeholder="Leer = nicht ändern&#10;-----BEGIN OPENSSH PRIVATE KEY-----&#10;…&#10;-----END OPENSSH PRIVATE KEY-----" autocomplete="off"></textarea>
-                </div>
-                <div class="form-group" style="margin:0;max-width:400px">
-                  <label class="form-label">Passphrase <span style="font-weight:400;color:var(--text-dim)">(falls Key verschlüsselt)</span></label>
-                  <input class="form-input" id="cfg-rb-key-passphrase" type="password" placeholder="Leer = nicht ändern" autocomplete="off">
-                </div>
-              </div>
-
-              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-                <button class="btn btn-primary" id="rb-test-btn" onclick="testRemoteBackup()">Speichern &amp; Verbindung testen</button>
-                <div id="rb-status-box" style="font-size:13px;font-family:var(--mono);padding:6px 12px;border-radius:6px;display:none"></div>
-              </div>
-
-              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 18px;font-size:12px;line-height:1.8;color:var(--text-mid)">
-                <div style="font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:8px">Hinweise</div>
-                <ul style="padding-left:18px;display:flex;flex-direction:column;gap:4px">
-                  <li>Passwort und Key werden nach dem Speichern nie wieder im Formular angezeigt — leer lassen heisst "unverändert übernehmen"</li>
-                  <li>Der Host-Key des NAS wird beim ersten Verbindungsaufbau automatisch akzeptiert (kein vorheriges Pinning)</li>
-                  <li>Fehlgeschlagene Uploads werden protokolliert, lokale Backups bleiben davon unberührt</li>
-                </ul>
               </div>
 
             </div>
@@ -2851,7 +2849,7 @@ function initHelp() {
 }
 
 function selectSettingsCat(id) {
-  const ids = ['system','display','aushaenge','agb','push','notfall','backup','remote-backup','tailscale','mcp','update','datenverwaltung'];
+  const ids = ['system','display','aushaenge','agb','push','notfall','backup','tailscale','mcp','update','datenverwaltung'];
   const nav = document.querySelectorAll('#page-settings .help-nav-item');
   nav.forEach((item, i) => item.classList.toggle('active', ids[i] === id));
   document.querySelectorAll('#page-settings .help-panel').forEach(p =>
