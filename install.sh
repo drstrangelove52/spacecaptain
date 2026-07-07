@@ -28,16 +28,48 @@ gen_secret() { openssl rand -hex 32; }
 # ============================================================
 # 1. Voraussetzungen prüfen
 # ============================================================
+DOCKER_INSTALL_URL="https://docs.docker.com/engine/install/"
+
+offer_docker_install() {
+    warn "Docker ist nicht installiert."
+    if ! command -v apt &>/dev/null; then
+        err "Automatische Installation nur auf Debian/Ubuntu (apt) unterstützt. Bitte manuell installieren: $DOCKER_INSTALL_URL"
+    fi
+    echo ""
+    read -rp "  Docker jetzt automatisch installieren (offizielles Docker-Installationsscript)? [J/n]: " INSTALL_DOCKER
+    case "${INSTALL_DOCKER:-j}" in
+        [jJyY]*)
+            info "Installiere Docker (curl -fsSL https://get.docker.com | sh)..."
+            curl -fsSL https://get.docker.com | sh
+            sudo usermod -aG docker "$USER"
+            ok "Docker installiert."
+            warn "Deine Gruppenmitgliedschaft (docker-Gruppe) greift erst nach erneutem Login."
+            echo "  Bitte ausloggen/wieder einloggen (oder 'newgrp docker' ausführen) und install.sh erneut starten."
+            exit 0
+            ;;
+        *)
+            err "Docker wird benötigt. Installationsanleitung: $DOCKER_INSTALL_URL"
+            ;;
+    esac
+}
+
 check_deps() {
     info "Prüfe Voraussetzungen..."
+
     local missing=()
-    for cmd in docker git openssl python3; do
+    for cmd in git openssl python3; do
         command -v "$cmd" &>/dev/null || missing+=("$cmd")
     done
-    docker compose version &>/dev/null || missing+=("docker-compose-plugin")
     if [ ${#missing[@]} -gt 0 ]; then
-        err "Folgende Programme fehlen: ${missing[*]}"
+        err "Folgende Programme fehlen: ${missing[*]} — z.B. mit 'sudo apt install ${missing[*]}' installieren und Script erneut starten."
     fi
+
+    if ! command -v docker &>/dev/null; then
+        offer_docker_install
+    elif ! docker compose version &>/dev/null; then
+        err "Docker ist installiert, aber das Compose-Plugin fehlt. Installiere es mit 'sudo apt install docker-compose-plugin' (oder Docker über $DOCKER_INSTALL_URL aktualisieren) und starte das Script erneut."
+    fi
+
     ok "Alle Voraussetzungen erfüllt"
 }
 
