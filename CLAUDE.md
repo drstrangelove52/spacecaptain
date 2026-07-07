@@ -37,6 +37,7 @@ backend/app/
   services/room.py           — open_room() / close_room() mit force_off-Logik
   services/session.py        — Idle-Watcher, Plug-Watcher
   services/backup_service.py — Backup-Logik, BACKUP_DIR, backup_watcher()
+  services/remote_backup.py  — SFTP-Upload aufs externe NAS (Passwort/Key-Auth, paramiko)
   routers/automations.py     — Regelwerk CRUD (action_type: machine|room_open|room_close|notify)
   routers/categories.py      — Maschinenkategorien CRUD
   routers/locations.py       — Maschinenstandorte CRUD
@@ -79,7 +80,19 @@ Migrationen laufen **bei jedem Backend-Start** in `backend/app/services/migrate.
 
 **`login_token`-Restore-Verhalten:** Bei Overwrite auf einen bestehenden User/Gast wird `login_token` wie `password_hash` behandelt — `u.get("login_token", row.login_token)` statt direktem Zuweisen. Fehlt das Feld im Backup (ältere Backups vor diesem Fix), bleibt der aktuell aktive Token unangetastet statt auf `None` zurückgesetzt zu werden — sonst würde ein Restore mit altem Backup-Format ein aktives Token-Login (Magic-Link ohne Passwort) stillschweigend invalidieren.
 
-**Nicht im Backup (bewusst, transienter Laufzeitzustand statt Konfiguration):** `emergency_state` (aktueller Alarm-Status), `machine_queue` (aktuelle Warteliste). Legacy-Tabellen `device_schedules` und `machine_automations` sind seit der Migration auf `automation_rules`/`rule_conditions` inaktiv (kein Router mehr registriert) und daher ebenfalls nicht enthalten.
+**Nicht im Backup (bewusst, transienter Laufzeitzustand statt Konfiguration):** `emergency_state` (aktueller Alarm-Status), `machine_queue` (aktuelle Warteliste). Legacy-Tabellen `device_schedules` und `machine_automations` sind seit der Migration auf `automation_rules`/`rule_conditions` inaktiv (kein Router mehr registriert) und daher ebenfalls nicht enthalten. Ebenfalls ausgeschlossen: `backup_remote_password`/`-private_key`/`-key_passphrase` sowie `backup_remote_last_status`/`-message`/`-at` (siehe unten) — erste Gruppe sind Secrets, deren Export ein zusätzliches Leak-Risiko wäre (Zugangsdaten zum eigenen Backup-Ziel), zweite Gruppe ist reiner Laufzeitstatus.
+
+### Externes SFTP-Backup (`services/remote_backup.py`, Migration v1.42)
+
+Optionaler, additiver Upload jedes lokal erstellten Backups auf ein externes NAS. Komplett UI-konfigurierbar (Einstellungen → Externes Backup) — löst den früher offenen Architektur-Konflikt "NFS-Host-Mount vs. UI-Config" zugunsten von App-Level-SFTP: keine `.env`/Host-Berührung nötig, Zugangsdaten leben wie `ts_authkey`/`ntfy_token` in `system_settings`.
+
+- **`services/remote_backup.py`**: `_connect()` (Passwort oder Key-Auth per `paramiko`), `upload_file_sync()`, `test_connection_sync()` — alles synchron/blockierend, aus async Code immer per `asyncio.to_thread()` aufrufen
+- Key-Auth schreibt den PEM-Key temporär in eine Datei (`tempfile.mkstemp`, `chmod 600`, danach `os.unlink()` im `finally`) — `paramiko` erkennt den Schlüsseltyp (RSA/Ed25519/ECDSA/DSS) nur über `key_filename`, nicht aus einem In-Memory-String
+- Host-Key-Policy ist `AutoAddPolicy` (TOFU, kein Pinning) — bewusste Vereinfachung, kein `known_hosts`-Speicher im Container vorgesehen
+- **Rein additiv**: verändert die bestehende lokale Aufbewahrung (`auto_backup_keep`) nicht. Läuft nach `_create_backup()` in `backup_watcher()` (Auto-Backup) und in `POST /backup/files/create` (manuell), nicht beim Restore
+- Ergebnis (Erfolg/Fehler) wird in `backup_remote_last_status`/`-last_message`/`-last_at` geschrieben und im Settings-Panel angezeigt — ohne das würde ein kaputtes NAS-Ziel nur in den Docker-Logs auffallen
+- `POST /backup/remote-test` prüft Verbindung + Schreibrechte separat (Schreibtest mit `.spacecaptain_test`-Datei, wird sofort wieder gelöscht), ohne ein echtes Backup zu erzeugen
+- Frontend-Pattern für Passwort/Key: identisch zu `ts_authkey` — nach jedem Laden werden die Secret-Felder geleert (`loadSettings()`), leer lassen beim Speichern heisst "unverändert" (PATCH-Handler: `if payload.x is not None: row.x = payload.x or None` — explizites `null` im JSON ist nach Pydantic-Parsing nicht von "Feld weggelassen" unterscheidbar, siehe `ts_authkey`-Vorbild)
 
 ## Hintergrund-Tasks
 

@@ -22,7 +22,7 @@ Fragen oder Ideen? → [GitHub Issue erstellen](https://github.com/drstrangelove
 - **Push-Benachrichtigungen** — ntfy-Integration mit persönlichem Topic pro Gast und konfigurierbaren System-Topics für Lab Manager
 - **Notfall-Alarm** — Auslösung per physischem Knopf, schaltet Sirene und Blinklicht ein, benachrichtigt Lab Manager per Push
 - **Aktivitätslog** — vollständiges Audit-Trail inkl. IP-Adressen
-- **Backup / Restore** — automatisches tägliches oder manuelles JSON-Backup aller Daten, Import mit Overwrite- oder Merge-Modus
+- **Backup / Restore** — automatisches tägliches oder manuelles JSON-Backup aller Daten, Import mit Overwrite- oder Merge-Modus, optionaler SFTP-Sync auf ein externes NAS (Passwort- oder SSH-Key-Auth, komplett über die UI konfigurierbar)
 - **In-App Update** — `git pull` + Docker-Rebuild direkt aus dem Browser auslösen (optional, erfordert einmaligen Host-Setup)
 - **Smart Plug Support** — myStrom, Shelly Gen1, Shelly Gen2/Gen3/Gen4
 

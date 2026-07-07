@@ -53,10 +53,11 @@ async def backup_watcher(app) -> None:
                     continue
 
                 try:
-                    await _create_backup(db)
+                    path = await _create_backup(db)
                     last_backup_date = today
                     log.info(f"Auto-Backup erstellt für {today} (konfiguriert: {cfg.auto_backup_hour:02d}:{cfg.auto_backup_minute:02d} Lokalzeit)")
                     _cleanup_old_backups(cfg.auto_backup_keep)
+                    await _upload_remote(db, path)
                 except Exception as e:
                     log.error(f"Auto-Backup fehlgeschlagen: {e}", exc_info=True)
 
@@ -87,3 +88,24 @@ def _cleanup_old_backups(keep: int) -> None:
             log.info(f"Altes Backup gelöscht: {f.name}")
         except Exception as e:
             log.warning(f"Backup löschen fehlgeschlagen ({f.name}): {e}")
+
+
+async def _upload_remote(db, path: Path) -> None:
+    """Lädt ein Backup per SFTP aufs konfigurierte NAS hoch, falls aktiviert.
+    Rein additiv zur lokalen Aufbewahrung — lokale Backups werden dadurch nicht angetastet.
+    Schreibt Ergebnis/Fehler in system_settings, damit der Status ohne Server-Logs im UI sichtbar ist."""
+    cfg = await get_system_settings(db)
+    if not cfg.backup_remote_enabled:
+        return
+    from app.services import remote_backup
+    try:
+        await asyncio.to_thread(remote_backup.upload_file_sync, cfg, path)
+        cfg.backup_remote_last_status = "ok"
+        cfg.backup_remote_last_message = f"{path.name} erfolgreich hochgeladen"
+        log.info(f"SFTP-Upload erfolgreich: {path.name} → {cfg.backup_remote_host}")
+    except Exception as e:
+        cfg.backup_remote_last_status = "error"
+        cfg.backup_remote_last_message = str(e)[:1000]
+        log.error(f"SFTP-Upload fehlgeschlagen für {path.name}: {e}", exc_info=True)
+    cfg.backup_remote_last_at = datetime.utcnow()
+    await db.commit()

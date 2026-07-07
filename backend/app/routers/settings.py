@@ -53,6 +53,18 @@ class SettingsOut(BaseModel):
     mcp_enabled: bool = False
     mcp_api_token: Optional[str] = None
     mcp_user_id: Optional[int] = None
+    backup_remote_enabled: bool = False
+    backup_remote_host: Optional[str] = None
+    backup_remote_port: int = 22
+    backup_remote_username: Optional[str] = None
+    backup_remote_path: str = "/"
+    backup_remote_auth_type: str = "password"
+    backup_remote_password: Optional[str] = None
+    backup_remote_private_key: Optional[str] = None
+    backup_remote_key_passphrase: Optional[str] = None
+    backup_remote_last_status: Optional[str] = None
+    backup_remote_last_message: Optional[str] = None
+    backup_remote_last_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -95,6 +107,15 @@ class SettingsUpdate(BaseModel):
     ts_hostname: Optional[str] = None
     mcp_enabled: Optional[bool] = None
     mcp_user_id: Optional[int] = None
+    backup_remote_enabled: Optional[bool] = None
+    backup_remote_host: Optional[str] = None
+    backup_remote_port: Optional[int] = None
+    backup_remote_username: Optional[str] = None
+    backup_remote_path: Optional[str] = None
+    backup_remote_auth_type: Optional[str] = None
+    backup_remote_password: Optional[str] = None
+    backup_remote_private_key: Optional[str] = None
+    backup_remote_key_passphrase: Optional[str] = None
 
 
 @router.get("/public")
@@ -203,6 +224,24 @@ async def update_settings(
         row.mcp_enabled = payload.mcp_enabled
     if payload.mcp_user_id is not None:
         row.mcp_user_id = payload.mcp_user_id if payload.mcp_user_id > 0 else None
+    if payload.backup_remote_enabled is not None:
+        row.backup_remote_enabled = payload.backup_remote_enabled
+    if payload.backup_remote_host is not None:
+        row.backup_remote_host = payload.backup_remote_host.strip() or None
+    if payload.backup_remote_port is not None:
+        row.backup_remote_port = max(1, min(65535, payload.backup_remote_port))
+    if payload.backup_remote_username is not None:
+        row.backup_remote_username = payload.backup_remote_username.strip() or None
+    if payload.backup_remote_path is not None:
+        row.backup_remote_path = payload.backup_remote_path.strip() or "/"
+    if payload.backup_remote_auth_type is not None:
+        row.backup_remote_auth_type = "key" if payload.backup_remote_auth_type == "key" else "password"
+    if payload.backup_remote_password is not None:
+        row.backup_remote_password = payload.backup_remote_password or None
+    if payload.backup_remote_private_key is not None:
+        row.backup_remote_private_key = payload.backup_remote_private_key or None
+    if payload.backup_remote_key_passphrase is not None:
+        row.backup_remote_key_passphrase = payload.backup_remote_key_passphrase or None
     await db.commit()
     await db.refresh(row)
     await activity_log(db, LogType.settings_changed,

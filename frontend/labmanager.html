@@ -693,6 +693,7 @@
           <div class="help-nav-item" onclick="selectSettingsCat('push')"><span class="help-nav-icon">🔔</span><span class="help-nav-label">Push-Nachrichten</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('notfall')"><span class="help-nav-icon">🚨</span><span class="help-nav-label">Notfall-Alarm</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('backup')"><span class="help-nav-icon">💾</span><span class="help-nav-label">Auto-Backup</span></div>
+          <div class="help-nav-item" onclick="selectSettingsCat('remote-backup')"><span class="help-nav-icon">🌐</span><span class="help-nav-label">Externes Backup</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('tailscale')"><span class="help-nav-icon">🔒</span><span class="help-nav-label">Fernzugriff</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('mcp')"><span class="help-nav-icon">🤖</span><span class="help-nav-label">Claude MCP</span></div>
           <div class="help-nav-item" onclick="selectSettingsCat('update')" id="nav-settings-update"><span class="help-nav-icon">🔄</span><span class="help-nav-label">Update</span></div>
@@ -918,6 +919,89 @@
                   <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Ältere Backups werden automatisch gelöscht. Speicherort: via BACKUP_DIR in .env</div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- EXTERNES BACKUP (SFTP) -->
+          <div class="help-panel" id="settings-panel-remote-backup">
+            <div class="help-panel-header"><span class="help-panel-icon">🌐</span><span class="help-panel-title">Externes Backup (SFTP)</span></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
+
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 18px;font-size:13px;color:var(--text-mid);line-height:1.7">
+                Lädt jedes erstellte Backup zusätzlich per SFTP auf ein externes NAS hoch — als Kopie neben der lokalen Aufbewahrung, nicht anstelle davon. Läuft automatisch nach jedem geplanten und manuellen Backup.
+              </div>
+
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Externes Backup aktivieren</label>
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+                    <input type="checkbox" id="cfg-rb-enabled" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">
+                    <span style="font-size:13px;color:var(--text-dim)">Nach jedem Backup automatisch hochladen</span>
+                  </label>
+                </div>
+
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Host</label>
+                  <input class="form-input" id="cfg-rb-host" placeholder="nas.local oder 192.168.1.50">
+                </div>
+
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Port</label>
+                  <input type="number" class="form-input" id="cfg-rb-port" min="1" max="65535" placeholder="22" style="width:100px">
+                </div>
+
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Benutzername</label>
+                  <input class="form-input" id="cfg-rb-username" autocomplete="off">
+                </div>
+
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Zielverzeichnis</label>
+                  <input class="form-input" id="cfg-rb-path" placeholder="/backups/spacecaptain">
+                  <div style="font-size:12px;color:var(--text-dim);margin-top:4px">Wird bei Bedarf automatisch angelegt</div>
+                </div>
+
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Authentifizierung</label>
+                  <select class="form-input" id="cfg-rb-auth-type" onchange="_updateRemoteBackupAuthFields()">
+                    <option value="password">Passwort</option>
+                    <option value="key">SSH-Key</option>
+                  </select>
+                </div>
+
+              </div>
+
+              <div id="cfg-rb-password-group" class="form-group" style="margin:0;max-width:400px">
+                <label class="form-label">Passwort</label>
+                <input class="form-input" id="cfg-rb-password" type="password" placeholder="Leer = nicht ändern" autocomplete="off">
+              </div>
+
+              <div id="cfg-rb-key-group" style="display:none;flex-direction:column;gap:16px">
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Privater SSH-Key (PEM)</label>
+                  <textarea class="form-input" id="cfg-rb-private-key" rows="6" style="font-family:var(--mono);font-size:12px" placeholder="Leer = nicht ändern&#10;-----BEGIN OPENSSH PRIVATE KEY-----&#10;…&#10;-----END OPENSSH PRIVATE KEY-----" autocomplete="off"></textarea>
+                </div>
+                <div class="form-group" style="margin:0;max-width:400px">
+                  <label class="form-label">Passphrase <span style="font-weight:400;color:var(--text-dim)">(falls Key verschlüsselt)</span></label>
+                  <input class="form-input" id="cfg-rb-key-passphrase" type="password" placeholder="Leer = nicht ändern" autocomplete="off">
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <button class="btn btn-primary" id="rb-test-btn" onclick="testRemoteBackup()">Speichern &amp; Verbindung testen</button>
+                <div id="rb-status-box" style="font-size:13px;font-family:var(--mono);padding:6px 12px;border-radius:6px;display:none"></div>
+              </div>
+
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 18px;font-size:12px;line-height:1.8;color:var(--text-mid)">
+                <div style="font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:8px">Hinweise</div>
+                <ul style="padding-left:18px;display:flex;flex-direction:column;gap:4px">
+                  <li>Passwort und Key werden nach dem Speichern nie wieder im Formular angezeigt — leer lassen heisst "unverändert übernehmen"</li>
+                  <li>Der Host-Key des NAS wird beim ersten Verbindungsaufbau automatisch akzeptiert (kein vorheriges Pinning)</li>
+                  <li>Fehlgeschlagene Uploads werden protokolliert, lokale Backups bleiben davon unberührt</li>
+                </ul>
+              </div>
+
             </div>
           </div>
 
@@ -2397,6 +2481,19 @@ sudo ./install-service.sh</pre>
               </div>
             </div>
             <div class="help-article">
+              <div class="help-article-title">Externes Backup (SFTP)</div>
+              <div class="help-article-body">
+                Unter <strong>Einstellungen → Externes Backup</strong> lässt sich jedes Backup zusätzlich per SFTP auf ein externes NAS hochladen — als zweite Kopie neben der lokalen Aufbewahrung, komplett über die UI konfigurierbar (kein <code>.env</code>-Eintrag nötig).
+                <ul>
+                  <li><strong>Authentifizierung:</strong> Passwort oder SSH-Key (mit optionaler Passphrase)</li>
+                  <li><strong>Zielverzeichnis</strong> wird bei Bedarf automatisch angelegt</li>
+                  <li>Passwort/Key werden nach dem Speichern nie wieder angezeigt — leer lassen heisst «unverändert übernehmen»</li>
+                </ul>
+                Der Upload läuft automatisch nach jedem geplanten und manuellen Backup. Status des letzten Uploads wird direkt im Einstellungen-Panel angezeigt.
+                <div class="help-warn"><strong>Sicherheit:</strong> Die SFTP-Zugangsdaten selbst sind bewusst nicht Teil des Backup-Exports (sonst wären sie in jeder Backup-Kopie enthalten, auch auf dem NAS-Ziel selbst).</div>
+              </div>
+            </div>
+            <div class="help-article">
               <div class="help-article-title">Backup herunterladen</div>
               <div class="help-article-body">
                 Sidebar → <strong>Backup</strong> → in der Dateiliste auf <strong>⬇ Download</strong> klicken. Die Datei wird als JSON heruntergeladen.
@@ -2754,7 +2851,7 @@ function initHelp() {
 }
 
 function selectSettingsCat(id) {
-  const ids = ['system','display','aushaenge','agb','push','notfall','backup','tailscale','mcp','update','datenverwaltung'];
+  const ids = ['system','display','aushaenge','agb','push','notfall','backup','remote-backup','tailscale','mcp','update','datenverwaltung'];
   const nav = document.querySelectorAll('#page-settings .help-nav-item');
   nav.forEach((item, i) => item.classList.toggle('active', ids[i] === id));
   document.querySelectorAll('#page-settings .help-panel').forEach(p =>
@@ -5269,6 +5366,18 @@ async function loadSettings() {
   document.getElementById('cfg-ts-authkey').value = '';  // Key nie zurück in die UI
   _updateTsHostnamePreview();
   tailscaleLoadStatus();
+
+  document.getElementById('cfg-rb-enabled').checked = !!s.backup_remote_enabled;
+  document.getElementById('cfg-rb-host').value = s.backup_remote_host || '';
+  document.getElementById('cfg-rb-port').value = s.backup_remote_port || 22;
+  document.getElementById('cfg-rb-username').value = s.backup_remote_username || '';
+  document.getElementById('cfg-rb-path').value = s.backup_remote_path || '/';
+  document.getElementById('cfg-rb-auth-type').value = s.backup_remote_auth_type || 'password';
+  document.getElementById('cfg-rb-password').value = '';        // Secrets nie zurück in die UI
+  document.getElementById('cfg-rb-private-key').value = '';
+  document.getElementById('cfg-rb-key-passphrase').value = '';
+  _updateRemoteBackupAuthFields();
+  _renderRemoteBackupStatus(s.backup_remote_last_status, s.backup_remote_last_message, s.backup_remote_last_at);
   const _sn = s.space_name || '';
   if (_sn) { _spaceName = _sn; document.getElementById('sidebar-space-sub').textContent = _sn; document.getElementById('login-space-sub').textContent = _sn; }
   _currency = s.currency || 'CHF';
@@ -5316,9 +5425,53 @@ async function saveSettings() {
     ts_enabled:                document.getElementById('cfg-ts-enabled').checked,
     ts_hostname:               document.getElementById('cfg-ts-hostname').value.trim() || 'spacecaptain',
     ts_authkey:                document.getElementById('cfg-ts-authkey').value.trim() || null,
+    ...remoteBackupPayload(),
   };
   const res = await PATCH('/settings', payload);
   if (res) { await loadSettings(); showToast('Einstellungen gespeichert', 'success'); }
+}
+
+function remoteBackupPayload() {
+  return {
+    backup_remote_enabled:       document.getElementById('cfg-rb-enabled').checked,
+    backup_remote_host:          document.getElementById('cfg-rb-host').value.trim() || null,
+    backup_remote_port:          parseInt(document.getElementById('cfg-rb-port').value) || 22,
+    backup_remote_username:      document.getElementById('cfg-rb-username').value.trim() || null,
+    backup_remote_path:          document.getElementById('cfg-rb-path').value.trim() || '/',
+    backup_remote_auth_type:     document.getElementById('cfg-rb-auth-type').value,
+    backup_remote_password:      document.getElementById('cfg-rb-password').value || null,
+    backup_remote_private_key:   document.getElementById('cfg-rb-private-key').value || null,
+    backup_remote_key_passphrase: document.getElementById('cfg-rb-key-passphrase').value || null,
+  };
+}
+
+function _updateRemoteBackupAuthFields() {
+  const isKey = document.getElementById('cfg-rb-auth-type').value === 'key';
+  document.getElementById('cfg-rb-password-group').style.display = isKey ? 'none' : '';
+  document.getElementById('cfg-rb-key-group').style.display = isKey ? 'flex' : 'none';
+}
+
+function _renderRemoteBackupStatus(status, message, at) {
+  const box = document.getElementById('rb-status-box');
+  if (!box) return;
+  if (!status) { box.style.display = 'none'; return; }
+  const ok = status === 'ok';
+  box.style.cssText = `display:inline-block;${ok
+    ? 'background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.4);color:var(--success)'
+    : 'background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:var(--danger)'}`;
+  const when = at ? new Date(at.endsWith('Z') ? at : at + 'Z').toLocaleString('de-CH') : '';
+  box.textContent = `${ok ? '✓' : '✕'} ${message || (ok ? 'OK' : 'Fehler')}${when ? ' · ' + when : ''}`;
+}
+
+async function testRemoteBackup() {
+  const btn = document.getElementById('rb-test-btn');
+  btn.disabled = true;
+  const saved = await PATCH('/settings', remoteBackupPayload());
+  if (!saved) { btn.disabled = false; return; }
+  const res = await api('POST', '/backup/remote-test');
+  btn.disabled = false;
+  await loadSettings();
+  if (res) showToast('Verbindung erfolgreich', 'success');
 }
 
 function copyMcpToken() {

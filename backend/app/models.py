@@ -269,6 +269,18 @@ class SystemSettings(Base):
     mcp_enabled:                Mapped[bool]           = mapped_column(Boolean, default=False)
     mcp_api_token:              Mapped[Optional[str]]  = mapped_column(String(64), default=None)
     mcp_user_id:                Mapped[Optional[int]]  = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), default=None)
+    backup_remote_enabled:      Mapped[bool]           = mapped_column(Boolean, default=False)
+    backup_remote_host:         Mapped[Optional[str]]  = mapped_column(String(255), default=None)
+    backup_remote_port:         Mapped[int]            = mapped_column(Integer, default=22)
+    backup_remote_username:     Mapped[Optional[str]]  = mapped_column(String(100), default=None)
+    backup_remote_path:         Mapped[str]            = mapped_column(String(500), default="/")
+    backup_remote_auth_type:    Mapped[str]            = mapped_column(String(20), default="password")
+    backup_remote_password:     Mapped[Optional[str]]  = mapped_column(String(255), default=None)
+    backup_remote_private_key:  Mapped[Optional[str]]  = mapped_column(Text, default=None)
+    backup_remote_key_passphrase: Mapped[Optional[str]] = mapped_column(String(255), default=None)
+    backup_remote_last_status:  Mapped[Optional[str]]  = mapped_column(String(20), default=None)
+    backup_remote_last_message: Mapped[Optional[str]]  = mapped_column(Text, default=None)
+    backup_remote_last_at:      Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
 
 
 class DeviceSchedule(Base):

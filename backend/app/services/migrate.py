@@ -540,6 +540,20 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # ── v1.41: Akku-Feld vereinheitlicht (Neuwert statt Neupreis) ──────
         await _rename_column_if_needed(conn, "batteries", "price_new", "value_new", "FLOAT DEFAULT NULL")
 
+        # ── v1.42: Externes SFTP-Backup (Passwort- oder Key-Auth) ──────────
+        await _add_column_if_missing(conn, "system_settings", "backup_remote_enabled", "TINYINT(1) NOT NULL DEFAULT 0")
+        await _add_column_if_missing(conn, "system_settings", "backup_remote_host", "VARCHAR(255) DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "backup_remote_port", "INT NOT NULL DEFAULT 22")
+        await _add_column_if_missing(conn, "system_settings", "backup_remote_username", "VARCHAR(100) DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "backup_remote_path", "VARCHAR(500) NOT NULL DEFAULT '/'")
+        await _add_column_if_missing(conn, "system_settings", "backup_remote_auth_type", "VARCHAR(20) NOT NULL DEFAULT 'password'")
+        await _add_column_if_missing(conn, "system_settings", "backup_remote_password", "VARCHAR(255) DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "backup_remote_private_key", "TEXT DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "backup_remote_key_passphrase", "VARCHAR(255) DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "backup_remote_last_status", "VARCHAR(20) DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "backup_remote_last_message", "TEXT DEFAULT NULL")
+        await _add_column_if_missing(conn, "system_settings", "backup_remote_last_at", "DATETIME DEFAULT NULL")
+
     log.info("Migrationen abgeschlossen")
 
 

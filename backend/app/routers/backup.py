@@ -2,6 +2,7 @@
 Export / Import — Konfiguration + Logs
 Passwort-Hashes werden mitexportiert — Backup-Datei sicher aufbewahren!
 """
+import asyncio
 from datetime import datetime, date
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -74,11 +75,20 @@ async def _build_export_data(db: AsyncSession) -> dict:
 
     plug_by_id = {p.id: p.plug_ip for p in plugs}
 
-    # Settings: emergency_plug_id/-2_id als IP-Referenz exportieren (DB-IDs sind instanzspezifisch)
+    # Settings: emergency_plug_id/-2_id als IP-Referenz exportieren (DB-IDs sind instanzspezifisch).
+    # backup_remote_password/-private_key/-key_passphrase bewusst NICHT exportiert: anders als die
+    # übrigen Secrets (ntfy_token, ts_authkey, mcp_api_token) wären das die Zugangsdaten zu genau dem
+    # Zielsystem, auf dem diese Backup-Datei landet — ein Leak würde alle bisherigen und künftigen
+    # Backups auf dem NAS kompromittieren. Die last_status/-message/-at-Felder sind reiner
+    # Laufzeitzustand (wie emergency_state), keine Konfiguration.
     _settings_dict = {
         col.key: getattr(cfg, col.key)
         for col in inspect(SystemSettings).mapper.column_attrs
-        if col.key not in ("id", "emergency_plug_id", "emergency_plug2_id")
+        if col.key not in (
+            "id", "emergency_plug_id", "emergency_plug2_id",
+            "backup_remote_password", "backup_remote_private_key", "backup_remote_key_passphrase",
+            "backup_remote_last_status", "backup_remote_last_message", "backup_remote_last_at",
+        )
     }
     _settings_dict["emergency_plug_ip_ref"]  = plug_by_id.get(cfg.emergency_plug_id)  if cfg.emergency_plug_id  else None
     _settings_dict["emergency_plug2_ip_ref"] = plug_by_id.get(cfg.emergency_plug2_id) if cfg.emergency_plug2_id else None
@@ -310,13 +320,39 @@ async def create_backup_now(
     current_user: User = Depends(require_admin),
 ):
     """Erstellt sofort ein Backup (manuell ausgelöst)."""
-    from app.services.backup_service import _create_backup, _cleanup_old_backups
+    from app.services.backup_service import _create_backup, _cleanup_old_backups, _upload_remote
     cfg = await get_system_settings(db)
     path = await _create_backup(db)
     _cleanup_old_backups(cfg.auto_backup_keep)
+    await _upload_remote(db, path)
     await activity_log(db, LogType.backup_exported,
                        f"Backup manuell erstellt: {path.name}", user_id=current_user.id)
     return {"ok": True, "filename": path.name}
+
+
+@router.post("/remote-test")
+async def test_remote_backup(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Prüft die gespeicherte SFTP-Konfiguration mit einem Verbindungs- und Schreibtest."""
+    cfg = await get_system_settings(db)
+    if not cfg.backup_remote_enabled:
+        raise HTTPException(400, "Externes Backup ist nicht aktiviert")
+    from app.services import remote_backup
+    try:
+        await asyncio.to_thread(remote_backup.test_connection_sync, cfg)
+    except Exception as e:
+        cfg.backup_remote_last_status = "error"
+        cfg.backup_remote_last_message = str(e)[:1000]
+        cfg.backup_remote_last_at = datetime.utcnow()
+        await db.commit()
+        raise HTTPException(400, f"Verbindung fehlgeschlagen: {e}")
+    cfg.backup_remote_last_status = "ok"
+    cfg.backup_remote_last_message = "Verbindungstest erfolgreich"
+    cfg.backup_remote_last_at = datetime.utcnow()
+    await db.commit()
+    return {"ok": True}
 
 
 @router.post("/files/{filename}/restore")
