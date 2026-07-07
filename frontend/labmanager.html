@@ -5535,13 +5535,10 @@ async function tailscaleLoadStatus() {
 async function tailscaleApply() {
   const btn = document.getElementById('ts-apply-btn');
   btn.disabled = true;
-  // Zuerst Einstellungen speichern, dann Trigger auslösen
-  const payload = {
-    ts_enabled:  document.getElementById('cfg-ts-enabled').checked,
-    ts_hostname: document.getElementById('cfg-ts-hostname').value.trim() || 'spacecaptain',
-    ts_authkey:  document.getElementById('cfg-ts-authkey').value.trim() || null,
-  };
-  const saved = await PATCH('/settings', payload);
+  // Zuerst Einstellungen speichern (komplette Seite, nicht nur Tailscale-Felder — sonst
+  // würden unsaved Änderungen in anderen Tabs beim Anwenden stillschweigend nicht gesichert),
+  // dann Trigger auslösen
+  const saved = await PATCH('/settings', buildSettingsPayload());
   if (!saved) { btn.disabled = false; return; }
   const res = await api('POST', '/tailscale/apply');
   btn.disabled = false;
