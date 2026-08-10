@@ -5,10 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.database import get_db
-from app.models import Plug, Machine, MachinePlug, SystemSettings, User, PlugType
+from app.models import Plug, Machine, MachinePlug, SystemSettings, User, PlugType, LogType
 from app.schemas import PlugCreate, PlugUpdate, PlugOut
 from app.services.auth import get_current_user, require_power_manager
 from app.services.plug import switch_plug
+from app.services import logger as log_svc
 
 router = APIRouter(prefix="/plugs", tags=["plugs"])
 
@@ -59,7 +60,7 @@ async def list_plugs(
 async def create_plug(
     payload: PlugCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_power_manager),
+    current: User = Depends(require_power_manager),
 ):
     if payload.plug_type not in VALID_TYPES:
         raise HTTPException(400, f"plug_type muss einer von {sorted(VALID_TYPES)} sein")
@@ -70,6 +71,7 @@ async def create_plug(
     db.add(plug)
     await db.commit()
     await db.refresh(plug)
+    await log_svc.log(db, LogType.plug_created, f"Plug {plug.name} hinzugefügt", user_id=current.id)
     return await _plug_out(plug, db)
 
 
@@ -78,7 +80,7 @@ async def update_plug(
     plug_id: int,
     payload: PlugUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_power_manager),
+    current: User = Depends(require_power_manager),
 ):
     result = await db.execute(select(Plug).where(Plug.id == plug_id))
     plug = result.scalar_one_or_none()
@@ -106,6 +108,8 @@ async def update_plug(
             if "plug_type"  in changes: m.plug_type  = PlugType(plug.plug_type)
     await db.commit()
     await db.refresh(plug)
+    await log_svc.log(db, LogType.plug_updated, f"Plug {plug.name} bearbeitet",
+                      user_id=current.id, meta={"changed": list(changes.keys())})
     return await _plug_out(plug, db)
 
 
@@ -113,7 +117,7 @@ async def update_plug(
 async def delete_plug(
     plug_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_power_manager),
+    current: User = Depends(require_power_manager),
 ):
     result = await db.execute(select(Plug).where(Plug.id == plug_id))
     plug = result.scalars().first()
@@ -122,6 +126,7 @@ async def delete_plug(
     assigned = await db.execute(select(MachinePlug.id).where(MachinePlug.plug_id == plug_id))
     if assigned.scalars().first():
         raise HTTPException(400, "Plug ist noch Maschinen zugewiesen — zuerst alle Zuweisungen aufheben")
+    await log_svc.log(db, LogType.plug_deleted, f"Plug {plug.name} gelöscht", user_id=current.id)
     await db.delete(plug)
     await db.commit()
     return {"ok": True}
@@ -132,7 +137,7 @@ async def assign_plug(
     plug_id: int,
     machine_id: int = Query(...),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_power_manager),
+    current: User = Depends(require_power_manager),
 ):
     result = await db.execute(select(Plug).where(Plug.id == plug_id))
     plug = result.scalar_one_or_none()
@@ -168,6 +173,8 @@ async def assign_plug(
         machine.plug_token = plug.plug_token
 
     await db.commit()
+    await log_svc.log(db, LogType.plug_assigned, f"Plug {plug.name} → {machine.name} zugewiesen",
+                      machine_id=machine.id, user_id=current.id)
     return {"ok": True}
 
 
@@ -176,12 +183,17 @@ async def unassign_plug(
     plug_id: int,
     machine_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_power_manager),
+    current: User = Depends(require_power_manager),
 ):
     result = await db.execute(select(Plug).where(Plug.id == plug_id))
     plug = result.scalar_one_or_none()
     if not plug:
         raise HTTPException(404, "Plug nicht gefunden")
+
+    target_machine_name = None
+    if machine_id:
+        tres = await db.execute(select(Machine.name).where(Machine.id == machine_id))
+        target_machine_name = tres.scalar_one_or_none()
 
     if machine_id:
         mp_res = await db.execute(
@@ -241,6 +253,9 @@ async def unassign_plug(
             await db.delete(mp)
 
     await db.commit()
+    msg = f"Plug {plug.name} entfernt von {target_machine_name}" if target_machine_name \
+        else f"Plug {plug.name} von allen Maschinen entfernt"
+    await log_svc.log(db, LogType.plug_unassigned, msg, user_id=current.id)
     return {"ok": True}
 
 
@@ -249,7 +264,7 @@ async def test_switch_plug(
     plug_id: int,
     action: str = Query(...),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_power_manager),
+    current: User = Depends(require_power_manager),
 ):
     """Schaltet einen freien Plug zum Test — nur wenn noch keiner Maschine zugewiesen."""
     result = await db.execute(select(Plug).where(Plug.id == plug_id))
@@ -270,4 +285,7 @@ async def test_switch_plug(
         plug_token=plug.plug_token,
     )
     ok, msg = await switch_plug(proxy, action)
+    log_type = (LogType.plug_on if action == "on" else LogType.plug_off) if ok else LogType.error
+    await log_svc.log(db, log_type,
+        f"Plug-Test {'EIN' if action == 'on' else 'AUS'}: {plug.name} — {msg}", user_id=current.id)
     return {"ok": ok, "message": msg}

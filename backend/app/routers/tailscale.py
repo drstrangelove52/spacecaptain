@@ -11,9 +11,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import User
+from app.models import User, LogType
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
+from app.services import logger as log_svc
 
 router = APIRouter(prefix="/tailscale", tags=["tailscale"])
 
@@ -26,7 +27,7 @@ _STATE_FILE   = Path("/app/tailscale-state/tailscaled.state")
 @router.post("/apply")
 async def tailscale_apply(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    current: User = Depends(require_admin),
 ):
     """Löst Tailscale-Aktion aus (enable/disable) basierend auf aktuellen Settings."""
     if not _TRIGGER_DIR.exists():
@@ -35,6 +36,7 @@ async def tailscale_apply(
             "Trigger-Verzeichnis nicht erreichbar — Update-Watcher muss eingerichtet sein",
         )
     s = await get_system_settings(db)
+    action = "enable" if s.ts_enabled else "disable"
     if s.ts_enabled:
         authkey  = (s.ts_authkey or "").strip()
         hostname = (s.ts_hostname or "spacecaptain").strip() or "spacecaptain"
@@ -44,7 +46,10 @@ async def tailscale_apply(
         await db.commit()
     else:
         _ACTION_FILE.write_text("disable")
-    return {"triggered": True, "action": "enable" if s.ts_enabled else "disable"}
+    await log_svc.log(db, LogType.tailscale_updated,
+        f"Tailscale {'aktiviert' if action == 'enable' else 'deaktiviert'} von {current.name}",
+        user_id=current.id)
+    return {"triggered": True, "action": action}
 
 
 @router.get("/status")

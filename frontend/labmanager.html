@@ -2210,6 +2210,12 @@ sudo ./install-service.sh</pre>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">emergency_triggered</td><td style="padding:4px 8px">Notfall-Alarm ausgelöst (mit IP-Adresse)</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">emergency_cancelled</td><td style="padding:4px 8px">Notfall-Alarm quittiert (mit Kommentar und Name)</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">error</td><td style="padding:4px 8px">Fehler (z.B. Plug nicht erreichbar)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">update_triggered / restart_triggered / restart_all_triggered</td><td style="padding:4px 8px">System-Update bzw. Neustart ausgelöst (mit Name des Admins)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">plug_created / plug_updated / plug_deleted / plug_assigned / plug_unassigned</td><td style="padding:4px 8px">Plug-Pool-Verwaltung (Anlegen, Bearbeiten, Löschen, Zuweisen zu/Entfernen von einer Maschine)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">battery_created / battery_updated / battery_deleted</td><td style="padding:4px 8px">Akku-Verwaltung</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">category_* / location_* / owner_*</td><td style="padding:4px 8px">Kategorien/Standorte/Eigentümer angelegt, bearbeitet oder gelöscht</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">tailscale_updated</td><td style="padding:4px 8px">Tailscale-Fernzugriff aktiviert/deaktiviert</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">machine_qr_regenerated</td><td style="padding:4px 8px">QR-Code einer Maschine neu generiert (alter Code wird ungültig)</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -5126,6 +5132,28 @@ const logColors={
   error:               'var(--danger)',
   emergency_triggered: 'var(--danger)',
   emergency_cancelled: 'var(--success)',
+  update_triggered:      'var(--accent)',
+  restart_triggered:     'var(--accent)',
+  restart_all_triggered: 'var(--accent)',
+  plug_created:    'var(--success)',
+  plug_updated:    'var(--accent2)',
+  plug_deleted:    'var(--accent)',
+  plug_assigned:   'var(--accent2)',
+  plug_unassigned: 'var(--text-dim)',
+  battery_created: 'var(--success)',
+  battery_updated: 'var(--accent2)',
+  battery_deleted: 'var(--accent)',
+  category_created: 'var(--success)',
+  category_updated: 'var(--accent2)',
+  category_deleted: 'var(--accent)',
+  location_created: 'var(--success)',
+  location_updated: 'var(--accent2)',
+  location_deleted: 'var(--accent)',
+  owner_created: 'var(--success)',
+  owner_updated: 'var(--accent2)',
+  owner_deleted: 'var(--accent)',
+  tailscale_updated: 'var(--accent2)',
+  machine_qr_regenerated: 'var(--accent2)',
 };
 const logTypeLabels={
   access_granted:        'Zugang gewährt',
@@ -5182,6 +5210,28 @@ const logTypeLabels={
   error:                 'Fehler',
   emergency_triggered:   'Notfall ausgelöst',
   emergency_cancelled:   'Notfall quittiert',
+  update_triggered:      'Update ausgelöst',
+  restart_triggered:     'Neustart ausgelöst',
+  restart_all_triggered: 'Neustart aller Container',
+  plug_created:    'Plug erstellt',
+  plug_updated:    'Plug aktualisiert',
+  plug_deleted:    'Plug gelöscht',
+  plug_assigned:   'Plug zugewiesen',
+  plug_unassigned: 'Plug-Zuweisung entfernt',
+  battery_created: 'Akku erstellt',
+  battery_updated: 'Akku aktualisiert',
+  battery_deleted: 'Akku gelöscht',
+  category_created: 'Kategorie erstellt',
+  category_updated: 'Kategorie aktualisiert',
+  category_deleted: 'Kategorie gelöscht',
+  location_created: 'Standort erstellt',
+  location_updated: 'Standort aktualisiert',
+  location_deleted: 'Standort gelöscht',
+  owner_created: 'Eigentümer erstellt',
+  owner_updated: 'Eigentümer aktualisiert',
+  owner_deleted: 'Eigentümer gelöscht',
+  tailscale_updated: 'Tailscale geändert',
+  machine_qr_regenerated: 'QR-Code neu generiert',
 };
 
 async function loadLogFilterOptions() {

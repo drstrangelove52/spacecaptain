@@ -3,9 +3,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MachineOwner, User
+from app.models import MachineOwner, User, LogType
 from app.schemas import MachineOwnerCreate, MachineOwnerOut, MachineOwnerUpdate
 from app.services.auth import get_current_user, require_power_manager
+from app.services import logger as log_svc
 
 router = APIRouter(prefix="/owners", tags=["owners"])
 
@@ -31,6 +32,7 @@ async def create_owner(
     db.add(owner)
     await db.commit()
     await db.refresh(owner)
+    await log_svc.log(db, LogType.owner_created, f"Eigentümer {owner.name} hinzugefügt", user_id=current.id)
     return owner
 
 
@@ -44,10 +46,13 @@ async def update_owner(
     owner = await db.get(MachineOwner, owner_id)
     if not owner:
         raise HTTPException(status_code=404, detail="Nicht gefunden")
-    for k, v in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    for k, v in changes.items():
         setattr(owner, k, v)
     await db.commit()
     await db.refresh(owner)
+    await log_svc.log(db, LogType.owner_updated, f"Eigentümer {owner.name} bearbeitet",
+                      user_id=current.id, meta={"changed": list(changes.keys())})
     return owner
 
 
@@ -60,6 +65,7 @@ async def delete_owner(
     owner = await db.get(MachineOwner, owner_id)
     if not owner:
         raise HTTPException(status_code=404, detail="Nicht gefunden")
+    await log_svc.log(db, LogType.owner_deleted, f"Eigentümer {owner.name} gelöscht", user_id=current.id)
     await db.delete(owner)
     await db.commit()
     return {"ok": True}

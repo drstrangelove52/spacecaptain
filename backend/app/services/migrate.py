@@ -568,6 +568,18 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # ── v1.46: LogType.login_failed / guest_login_failed (fehlgeschlagene Login-Versuche inkl. IP) ──
         await _extend_enum_if_needed(conn, "activity_log", "type", ["login_failed", "guest_login_failed"])
 
+        # ── v1.47: LogType-Erweiterung — bisher ungeloggte Aktionen (Update/Restart, Plugs,
+        # Akkus, Kategorien/Standorte/Eigentümer, Tailscale, QR-Regenerierung) ──
+        await _extend_enum_if_needed(conn, "activity_log", "type", [
+            "update_triggered", "restart_triggered", "restart_all_triggered",
+            "plug_created", "plug_updated", "plug_deleted", "plug_assigned", "plug_unassigned",
+            "battery_created", "battery_updated", "battery_deleted",
+            "category_created", "category_updated", "category_deleted",
+            "location_created", "location_updated", "location_deleted",
+            "owner_created", "owner_updated", "owner_deleted",
+            "tailscale_updated", "machine_qr_regenerated",
+        ])
+
     log.info("Migrationen abgeschlossen")
 
 

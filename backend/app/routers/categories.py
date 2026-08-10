@@ -3,9 +3,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MachineCategory
+from app.models import MachineCategory, LogType
 from app.schemas import MachineCategoryCreate, MachineCategoryOut, MachineCategoryUpdate
 from app.services.auth import get_current_user, require_power_manager
+from app.services import logger as log_svc
 from app.models import User
 
 router = APIRouter(prefix="/categories", tags=["categories"])
@@ -32,6 +33,7 @@ async def create_category(
     db.add(cat)
     await db.commit()
     await db.refresh(cat)
+    await log_svc.log(db, LogType.category_created, f"Kategorie {cat.name} hinzugefügt", user_id=current.id)
     return cat
 
 
@@ -45,10 +47,13 @@ async def update_category(
     cat = await db.get(MachineCategory, cat_id)
     if not cat:
         raise HTTPException(status_code=404, detail="Nicht gefunden")
-    for k, v in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    for k, v in changes.items():
         setattr(cat, k, v)
     await db.commit()
     await db.refresh(cat)
+    await log_svc.log(db, LogType.category_updated, f"Kategorie {cat.name} bearbeitet",
+                      user_id=current.id, meta={"changed": list(changes.keys())})
     return cat
 
 
@@ -61,6 +66,7 @@ async def delete_category(
     cat = await db.get(MachineCategory, cat_id)
     if not cat:
         raise HTTPException(status_code=404, detail="Nicht gefunden")
+    await log_svc.log(db, LogType.category_deleted, f"Kategorie {cat.name} gelöscht", user_id=current.id)
     await db.delete(cat)
     await db.commit()
     return {"ok": True}

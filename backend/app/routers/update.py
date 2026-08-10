@@ -13,9 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import APP_VERSION, BUILD_NR
 from app.database import get_db
 from app.models import (
-    ActivityLog, Guest, Machine, MachineSession,
+    ActivityLog, Guest, LogType, Machine, MachineSession,
     Permission, SystemSettings, User,
 )
+from app.services import logger as log_svc
 from app.services.auth import require_admin
 
 router = APIRouter(prefix="/update", tags=["update"])
@@ -61,23 +62,29 @@ def _check_watcher_ready():
 
 
 @router.post("/trigger")
-async def trigger_update(_: User = Depends(require_admin)):
+async def trigger_update(db: AsyncSession = Depends(get_db), current: User = Depends(require_admin)):
     _check_watcher_ready()
     TRIGGER_FILE.write_text(datetime.now().isoformat())
+    await log_svc.log(db, LogType.update_triggered,
+        f"Update ausgelöst von {current.name} (aktuell Build {BUILD_NR or '—'})", user_id=current.id)
     return {"status": "triggered"}
 
 
 @router.post("/restart")
-async def trigger_restart(_: User = Depends(require_admin)):
+async def trigger_restart(db: AsyncSession = Depends(get_db), current: User = Depends(require_admin)):
     _check_watcher_ready()
     RESTART_FILE.write_text(datetime.now().isoformat())
+    await log_svc.log(db, LogType.restart_triggered,
+        f"Neustart ausgelöst von {current.name}", user_id=current.id)
     return {"status": "restart_triggered"}
 
 
 @router.post("/restart-all")
-async def trigger_restart_all(_: User = Depends(require_admin)):
+async def trigger_restart_all(db: AsyncSession = Depends(get_db), current: User = Depends(require_admin)):
     _check_watcher_ready()
     RESTART_ALL_FILE.write_text(datetime.now().isoformat())
+    await log_svc.log(db, LogType.restart_all_triggered,
+        f"Neustart aller Container ausgelöst von {current.name}", user_id=current.id)
     return {"status": "restart_all_triggered"}
 
 

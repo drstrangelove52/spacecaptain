@@ -320,6 +320,9 @@ async def regenerate_qr(
     machine.qr_token = _gen_qr_token()
     await db.commit()
     await db.refresh(machine)
+    await log_svc.log(db, LogType.machine_qr_regenerated,
+        f"QR-Code neu generiert für {machine.name} (alter Code ungültig)",
+        machine_id=machine.id, user_id=current.id)
     return await _machine_out(machine, db)
 
 

@@ -9,7 +9,9 @@ from datetime import datetime
 from pathlib import Path
 
 from app.database import AsyncSessionLocal
+from app.models import LogType
 from app.services.system_settings import get_system_settings
+from app.services import logger as log_svc
 
 log = logging.getLogger(__name__)
 
@@ -71,6 +73,7 @@ async def backup_watcher(app) -> None:
                     path = await _create_backup(db)
                     last_backup_date = today
                     log.info(f"Auto-Backup erstellt für {today} (konfiguriert: {cfg.auto_backup_hour:02d}:{cfg.auto_backup_minute:02d} Lokalzeit)")
+                    await log_svc.log(db, LogType.backup_exported, f"Automatisches Backup erstellt: {path.name}")
                     _cleanup_old_backups(cfg.auto_backup_keep)
                     await _upload_remote(db, path)
                 except Exception as e:

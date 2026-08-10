@@ -255,6 +255,17 @@ Alle vier Login-Endpoints (`auth.py`: `/login`, `/token`, `/login-by-token`; `gu
 
 `get_client_ip(request)` (`services/auth.py`) liest `X-Forwarded-For` (von nginx gesetzt, siehe `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for` in `nginx/proxy.conf`) mit Fallback auf `request.client.host` — gleiches Muster wie `emergency.py`s `client_ip`-Ermittlung beim Notfall-Trigger, hier aber als wiederverwendbarer Helper statt Inline-Code. Erfolgreiche Logins (`login`/`guest_login`) bekommen aus Konsistenzgründen ebenfalls `meta["ip"]` und die IP in der Nachricht.
 
+## Aktivitätslog-Abdeckung erweitert (Migration v1.47)
+
+Audit ergab: mehrere Router hatten überhaupt keine `log_svc.log()`-Aufrufe, obwohl sie schreibende Aktionen anbieten. Ergänzt, jeweils mit `user_id`:
+
+- **`update.py`**: `trigger_update`/`trigger_restart`/`trigger_restart_all` brauchten dafür neu eine `db`-Session (hatten vorher keine) — neue LogTypes `update_triggered`/`restart_triggered`/`restart_all_triggered`.
+- **`plugs.py`**: `create_plug`/`update_plug`/`delete_plug`/`assign_plug`/`unassign_plug` (neue LogTypes `plug_created`/`plug_updated`/`plug_deleted`/`plug_assigned`/`plug_unassigned`); `test_switch_plug` (freier Test-Schaltvorgang ohne zugewiesene Maschine) nutzt bewusst die **bestehenden** `plug_on`/`plug_off`-Typen statt neuer — es ist derselbe physische Vorgang wie ein regulärer Plug-Schaltvorgang, nur ohne `machine_id`.
+- **`batteries.py`, `categories.py`, `locations.py`, `owners.py`**: CRUD auf den vier Stammdaten-/Lookup-Tabellen (neue LogTypes je `<entity>_created`/`_updated`/`_deleted`).
+- **`tailscale.py`**: `tailscale_apply` (neuer LogType `tailscale_updated`).
+- **`machines.py`**: `regenerate_qr` war bisher unlogged, obwohl es den alten QR-Aufkleber ungültig macht (neuer LogType `machine_qr_regenerated`).
+- **`backup_service.py`**: das automatische Tages-Backup aus `backup_watcher()` landete bisher nur in einem Python-`log.info()` (das mangels konfiguriertem Handler nirgends sichtbar ankommt, siehe App-Logging) — jetzt zusätzlich ein `ActivityLog`-Eintrag mit dem bestehenden Typ `backup_exported` (kein `user_id`, da systemgetriggert), analog zum manuellen Export/„Jetzt sichern".
+
 **Bewusst nicht geloggt:** Beim Token-Link-Login (`login-by-token`) wird der versuchte Token selbst nie protokolliert (auch nicht bei Erfolg) — ein Leak des Login-Tokens ins Aktivitätslog wäre ein Credential-Leak, das Log ist für alle Lab-Manager-Rollen einsehbar.
 
 ## Terminologie
