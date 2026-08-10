@@ -26,6 +26,12 @@ def _list_backup_files() -> list[Path]:
     )
 
 
+def _backup_exists_for_date(date_str: str) -> bool:
+    """Prüft anhand der Dateinamen, ob für dieses Datum bereits ein Backup existiert (automatisch oder manuell)."""
+    prefix = f"spacecaptain_backup_{date_str}"
+    return any(f.name.startswith(prefix) for f in _list_backup_files())
+
+
 async def backup_watcher(app) -> None:
     """Prüft alle 30 Sekunden ob ein tägliches Backup fällig ist."""
     last_backup_date: str | None = None
@@ -50,6 +56,15 @@ async def backup_watcher(app) -> None:
                     second=0, microsecond=0,
                 )
                 if now < scheduled:
+                    continue
+
+                # last_backup_date lebt nur im Prozessspeicher — nach einem Backend-Neustart
+                # (Deploy, Update) ist er wieder None, obwohl das heutige Backup evtl. schon
+                # existiert (regulär oder manuell per "Jetzt sichern"). Dateisystem-Check statt
+                # blind neu zu erstellen, sonst gibt's nach jedem Neustart nach der Backup-Zeit
+                # ein überzähliges Backup.
+                if _backup_exists_for_date(today):
+                    last_backup_date = today
                     continue
 
                 try:

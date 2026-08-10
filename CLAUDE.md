@@ -69,6 +69,8 @@ Migrationen laufen **bei jedem Backend-Start** in `backend/app/services/migrate.
 - **`backend/app/routers/backup.py`**: REST-Endpoints, importiert `BACKUP_DIR` und `_list_backup_files` aus `backup_service`
 - Zirkulärer Import: `backup_service` importiert `_build_export_data` aus `backup.py` — deshalb **innerhalb** von `_create_backup()`, nicht auf Modulebene
 
+**Auto-Backup nach Neustart (behoben):** `backup_watcher()` merkt sich das "heute schon gesichert"-Datum in `last_backup_date`, einer reinen Prozessspeicher-Variable. Ein Backend-Neustart (Deploy, Update, manueller Restart) nach der konfigurierten Backup-Uhrzeit setzte sie auf `None` zurück, wodurch der Watcher ~30s nach jedem Neustart ein überzähliges "Nachhol-Backup" erstellte — auch wenn für den Tag schon eins existierte. Fix: `_backup_exists_for_date()` prüft zusätzlich anhand der Dateinamen im `BACKUP_DIR`, ob für heute schon ein Backup existiert (automatisch oder manuell per "Jetzt sichern"), bevor ein neues erstellt wird.
+
 **Backup-Kompatibilitätsregeln** (in `_do_import` dokumentiert):
 - Neue Felder in Datensätzen immer mit `.get("feld", default)` lesen
 - Neue Top-Level-Sektionen mit `payload.get("sektion", [])` lesen
