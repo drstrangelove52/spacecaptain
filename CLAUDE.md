@@ -247,6 +247,14 @@ Alle übrigen Endpoints ohne `Depends()`-Auth sind bewusst so: Login-Flows (`/au
 
 Beim Overwrite-Restore: falls `is_blocked` sich ändert, wird ein neuer `ActivityLog`-Eintrag geschrieben, damit die Historie den wiederhergestellten Zustand zeigt.
 
+## Fehlgeschlagene Login-Versuche im Log (Migration v1.46)
+
+Alle vier Login-Endpoints (`auth.py`: `/login`, `/token`, `/login-by-token`; `guest_auth.py`: `/login`, `/login-by-token`) protokollieren jetzt auch fehlgeschlagene Versuche — neue `LogType`-Werte `login_failed` / `guest_login_failed`. Nachricht + `meta["ip"]` enthalten die Client-IP, bei Passwort-Logins zusätzlich den versuchten Email/Benutzernamen (`meta["email"]`/`meta["username"]`) — nie das Passwort selbst.
+
+`get_client_ip(request)` (`services/auth.py`) liest `X-Forwarded-For` (von nginx gesetzt, siehe `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for` in `nginx/proxy.conf`) mit Fallback auf `request.client.host` — gleiches Muster wie `emergency.py`s `client_ip`-Ermittlung beim Notfall-Trigger, hier aber als wiederverwendbarer Helper statt Inline-Code. Erfolgreiche Logins (`login`/`guest_login`) bekommen aus Konsistenzgründen ebenfalls `meta["ip"]` und die IP in der Nachricht.
+
+**Bewusst nicht geloggt:** Beim Token-Link-Login (`login-by-token`) wird der versuchte Token selbst nie protokolliert (auch nicht bei Erfolg) — ein Leak des Login-Tokens ins Aktivitätslog wäre ein Credential-Leak, das Log ist für alle Lab-Manager-Rollen einsehbar.
+
 ## Terminologie
 
 - **Aushänge** (nicht "Mitteilungen"): zeitgesteuerte Ankündigungen für Gäste (`announcements`)

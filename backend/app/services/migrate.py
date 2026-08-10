@@ -565,6 +565,9 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # ── v1.45: LogType.safety_acknowledged (Sicherheitshinweis-Bestätigung ohne Plug) ──
         await _extend_enum_if_needed(conn, "activity_log", "type", ["safety_acknowledged"])
 
+        # ── v1.46: LogType.login_failed / guest_login_failed (fehlgeschlagene Login-Versuche inkl. IP) ──
+        await _extend_enum_if_needed(conn, "activity_log", "type", ["login_failed", "guest_login_failed"])
+
     log.info("Migrationen abgeschlossen")
 
 

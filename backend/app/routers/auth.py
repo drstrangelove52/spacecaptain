@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form
+from fastapi import APIRouter, Depends, HTTPException, status, Form, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +7,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.models import User
 from app.schemas import LoginRequest, Token, UserOut
-from app.services.auth import verify_password, create_access_token, get_current_user
+from app.services.auth import verify_password, create_access_token, get_current_user, get_client_ip
 from app.services import logger as log_svc
 from app.services.system_settings import get_system_settings
 from app.models import LogType
@@ -16,13 +16,17 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/login", response_model=Token)
-async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(payload: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    ip = get_client_ip(request)
     result = await db.execute(
         select(User).where(User.email == payload.email, User.is_active == True)
     )
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(payload.password, user.password_hash):
+        await log_svc.log(db, LogType.login_failed,
+            f"Fehlgeschlagener Login-Versuch: {payload.email} von {ip}",
+            meta={"ip": ip, "email": payload.email})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Ungültige Email oder Passwort",
@@ -30,21 +34,26 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
 
     s = await get_system_settings(db)
     token = create_access_token(user.id, user.role, expire_minutes=s.jwt_expire_minutes)
-    await log_svc.log(db, LogType.login, f"Login: {user.name} ({user.email})", user_id=user.id)
+    await log_svc.log(db, LogType.login, f"Login: {user.name} ({user.email}) von {ip}", user_id=user.id, meta={"ip": ip})
     return Token(access_token=token)
 
 
 @router.post("/token", response_model=Token, include_in_schema=False)
 async def token_form(
+    request: Request,
     form: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
 ):
     """OAuth2-kompatibler Endpoint für Swagger UI — username = E-Mail."""
+    ip = get_client_ip(request)
     result = await db.execute(
         select(User).where(User.email == form.username, User.is_active == True)
     )
     user = result.scalar_one_or_none()
     if not user or not verify_password(form.password, user.password_hash):
+        await log_svc.log(db, LogType.login_failed,
+            f"Fehlgeschlagener Login-Versuch (Swagger): {form.username} von {ip}",
+            meta={"ip": ip, "email": form.username})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Ungültige Email oder Passwort",
@@ -52,7 +61,7 @@ async def token_form(
         )
     s = await get_system_settings(db)
     token = create_access_token(user.id, user.role, expire_minutes=s.jwt_expire_minutes)
-    await log_svc.log(db, LogType.login, f"Login (Swagger): {user.name} ({user.email})", user_id=user.id)
+    await log_svc.log(db, LogType.login, f"Login (Swagger): {user.name} ({user.email}) von {ip}", user_id=user.id, meta={"ip": ip})
     return Token(access_token=token)
 
 
@@ -65,15 +74,19 @@ class LoginByTokenRequest(BaseModel):
     login_token: str
 
 @router.post("/login-by-token", response_model=Token)
-async def login_by_token(payload: LoginByTokenRequest, db: AsyncSession = Depends(get_db)):
+async def login_by_token(payload: LoginByTokenRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Lab-Manager-Login per persönlichem Token-Link — kein Passwort nötig."""
+    ip = get_client_ip(request)
     result = await db.execute(
         select(User).where(User.login_token == payload.login_token, User.is_active == True)
     )
     user = result.scalar_one_or_none()
     if not user:
+        await log_svc.log(db, LogType.login_failed,
+            f"Fehlgeschlagener Login-Versuch (Token-Link) von {ip}",
+            meta={"ip": ip})
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Ungültiger oder abgelaufener Token-Link")
     s = await get_system_settings(db)
     token = create_access_token(user.id, user.role, expire_minutes=s.jwt_expire_minutes)
-    await log_svc.log(db, LogType.login, f"Login per Token-Link: {user.name} ({user.email})", user_id=user.id)
+    await log_svc.log(db, LogType.login, f"Login per Token-Link: {user.name} ({user.email}) von {ip}", user_id=user.id, meta={"ip": ip})
     return Token(access_token=token)

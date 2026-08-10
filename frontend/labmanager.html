@@ -2201,7 +2201,9 @@ sudo ./install-service.sh</pre>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">plug_on / plug_off</td><td style="padding:4px 8px">Smart Plug ein-/ausgeschaltet</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">guest_created</td><td style="padding:4px 8px">Gast durch Lab Manager angelegt</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">guest_registered</td><td style="padding:4px 8px">Gast hat sich selbst registriert</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">guest_login</td><td style="padding:4px 8px">Gast-Login (Passwort oder Token-Link)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">guest_login</td><td style="padding:4px 8px">Gast-Login (Passwort oder Token-Link, mit IP-Adresse)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">guest_login_failed</td><td style="padding:4px 8px">Fehlgeschlagener Gast-Login-Versuch (mit IP-Adresse)</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">login / login_failed</td><td style="padding:4px 8px">Manager-Login erfolgreich/fehlgeschlagen (mit IP-Adresse)</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">session_started (LM)</td><td style="padding:4px 8px">Session durch Lab Manager gestartet</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">maintenance_due</td><td style="padding:4px 8px">Wartungsintervall fällig</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:11px">maintenance_done</td><td style="padding:4px 8px">Wartung als durchgeführt markiert</td></tr>
@@ -5112,7 +5114,9 @@ const logColors={
   guest_registered:    'var(--accent2)',
   guest_approved:      'var(--success)',
   guest_login:         'var(--accent2)',
+  guest_login_failed:  'var(--danger)',
   login:               'var(--accent)',
+  login_failed:        'var(--danger)',
   machine_created:     'var(--accent2)',
   machine_deleted:     'var(--accent)',
   permission_granted:  'var(--success)',
@@ -5137,7 +5141,9 @@ const logTypeLabels={
   guest_registered:      'Selbstregistrierung',
   guest_approved:        'Gast freigeschaltet',
   guest_login:           'Gast-Login',
+  guest_login_failed:    'Gast-Login fehlgeschlagen',
   login:                 'Manager-Login',
+  login_failed:          'Manager-Login fehlgeschlagen',
   user_created:          'Benutzer erstellt',
   user_updated:          'Benutzer aktualisiert',
   machine_created:       'Maschine erstellt',
