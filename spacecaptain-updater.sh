@@ -21,15 +21,20 @@ log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
 }
 
-# Liefert alle Container die neu gestartet/gebaut werden sollen (backend + laufende optionale)
+# Liefert alle Container die neu gestartet/gebaut werden sollen (backend + optionale,
+# sofern das Profil ueberhaupt auf diesem Host verwendet wird).
 # nginx wird immer mit neu gestartet: es cached die Docker-DNS-Aufloesung fuer
 # "backend"/"mcp_server" fuer die Laufzeit des Prozesses. Bekommt der Backend-
 # Container beim Rebuild eine neue IP, wuerde nginx sonst mit 502 "Connection
 # refused" auf jeden API-Call antworten (inkl. Login) bis es selbst neu startet.
 # proxy.conf hat zusaetzlich einen resolver mit kurzer TTL als zweite Absicherung.
+# Wichtig: "--all" statt "--status running" — sonst wird mcp_server bei einem
+# kaputten Update (Container haengt in einer Restart-Schleife, Status
+# "restarting" statt "running") aus der Rebuild-Liste ausgeschlossen und bleibt
+# dauerhaft auf dem alten, kaputten Image stehen, auch nach korrektem git pull.
 compose_services() {
   local services="backend nginx"
-  if docker compose ps --services --status running 2>/dev/null | grep -q "^mcp_server$"; then
+  if docker compose ps --services --all 2>/dev/null | grep -q "^mcp_server$"; then
     services="$services mcp_server"
   fi
   echo "$services"
