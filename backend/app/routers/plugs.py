@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,10 +10,12 @@ from app.database import get_db
 from app.models import Plug, Machine, MachinePlug, SystemSettings, User, PlugType, LogType, PlugScanExclusion
 from app.schemas import PlugCreate, PlugUpdate, PlugOut
 from app.services.auth import get_current_user, require_power_manager
-from app.services.plug import switch_plug, discover_devices, set_plug_auth, generate_password, clear_plug_auth
+from app.services.plug import switch_plug, discover_devices, set_plug_auth, generate_password, clear_plug_auth, get_plug_status
 from app.services import logger as log_svc
 
 router = APIRouter(prefix="/plugs", tags=["plugs"])
+
+LIVE_STATUS_CONCURRENCY = 20
 
 VALID_TYPES = {"mystrom", "shelly", "shelly_gen2"}
 
@@ -56,6 +59,29 @@ async def list_plugs(
     result = await db.execute(select(Plug).order_by(Plug.created_at.desc()))
     plugs = result.scalars().all()
     return [await _plug_out(p, db) for p in plugs]
+
+
+@router.get("/live-status")
+async def get_plugs_live_status(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Fragt den tatsaechlichen Ein/Aus-Zustand aller Plugs live ab — bewusst
+    kein Hintergrund-Polling, sondern eine einmalige Momentaufnahme, ausgeloest
+    durch den Seitenaufruf/Klick auf Aktualisieren im Plug-Pool. Erkennt auch
+    Plugs, die ausserhalb von SpaceCaptain geschaltet wurden."""
+    result = await db.execute(select(Plug))
+    plugs = result.scalars().all()
+    sem = asyncio.Semaphore(LIVE_STATUS_CONCURRENCY)
+
+    async def _one(plug: Plug):
+        async with sem:
+            proxy = SimpleNamespace(plug_type=plug.plug_type, plug_ip=plug.plug_ip, plug_token=plug.plug_token)
+            status = await get_plug_status(proxy)
+            return plug.id, status
+
+    results = await asyncio.gather(*(_one(p) for p in plugs))
+    return {str(pid): status for pid, status in results}
 
 
 @router.post("", response_model=PlugOut)

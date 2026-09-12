@@ -1796,6 +1796,7 @@ sudo ./install-service.sh</pre>
                   <li>Ein Plug kann <strong>mehreren Maschinen</strong> zugewiesen sein (alle schalten dann gleichzeitig)</li>
                   <li>Eine Maschine kann <strong>mehrere Plugs</strong> haben (alle schalten gleichzeitig)</li>
                   <li>Freie Plugs (ohne Zuweisung) können direkt aus dem Pool testweise geschaltet werden</li>
+                  <li>Die Tabelle zeigt zusätzlich <strong>MAC-Adresse</strong> und <strong>Live-Status</strong> (Ein/Aus) jedes Plugs</li>
                 </ul>
               </div>
             </div>
@@ -1807,21 +1808,53 @@ sudo ./install-service.sh</pre>
                   <li>Name eingeben (z.B. «Shelly Laser» oder «myStrom CNC»)</li>
                   <li>Typ wählen: myStrom, Shelly Gen1 oder Shelly Gen2+</li>
                   <li>IP-Adresse des Plugs eingeben</li>
+                  <li>Optional: MAC-Adresse (Format <code>00:00:00:00:00:00</code>)</li>
                   <li>Optional: Auth-Token (myStrom: API-Token; Shelly: <code>admin:passwort</code>)</li>
                   <li>Optional: Notiz für interne Zwecke</li>
                 </ol>
-                <div class="help-tip"><strong>Tipp:</strong> Feste IP-Adressen im Router reservieren (DHCP-Reservierung), damit die Adressen nach einem Neustart gleich bleiben.</div>
+                <div class="help-tip"><strong>Tipp:</strong> Statt Typ, IP und MAC von Hand einzutragen, lassen sich neue Geräte per «🔍 Geräte suchen» automatisch im Netzwerk finden — siehe eigener Artikel unten. Ausserdem: Feste IP-Adressen im Router reservieren (DHCP-Reservierung), damit die Adressen nach einem Neustart gleich bleiben.</div>
               </div>
             </div>
             <div class="help-article">
-              <div class="help-article-title">Auth-Token konfigurieren</div>
+              <div class="help-article-title">Geräte im Netzwerk suchen</div>
               <div class="help-article-body">
-                <ul>
-                  <li><strong>myStrom:</strong> In der myStrom-App unter Einstellungen → API-Token einsehen. Token ins Feld «Auth-Token» eintragen.</li>
-                  <li><strong>Shelly Gen1:</strong> Wenn ein HTTP-Passwort in der Shelly-Web-UI gesetzt ist, Token im Format <code>admin:passwort</code> eintragen.</li>
-                  <li><strong>Shelly Gen2/Gen3/Gen4:</strong> Wenn ein Passwort gesetzt ist, Token im Format <code>admin:passwort</code> eintragen. Ohne Passwortschutz kann das Feld leer bleiben.</li>
+                Statt IP-Adressen einzeln herauszufinden, kann der Plug-Pool das lokale Netzwerk selbst nach erreichbaren myStrom-/Shelly-Geräten durchsuchen.
+                <ol>
+                  <li>Sidebar → <strong>Ausstattung → Plug-Pool</strong> → «🔍 Geräte suchen»</li>
+                  <li>IP-Bereich als CIDR eingeben (z.B. <code>10.10.1.0/24</code> für ein ganzes /24-Netz) → «Scannen»</li>
+                  <li>Gefundene Geräte erscheinen mit IP, Typ und MAC-Adresse</li>
+                  <li>Pro Gerät: Name eingeben und «+ Hinzufügen» — mehrere Geräte lassen sich so nacheinander übernehmen, <strong>ohne erneut zu scannen</strong></li>
+                </ol>
+                Bereits im Pool erfasste Geräte werden als «bereits erfasst» markiert und können nicht doppelt hinzugefügt werden.
+                <div class="help-tip"><strong>Geräte dauerhaft ausblenden:</strong> Über «Ausschliessen» bei einem Treffer landet das Gerät auf einer Ausschlussliste und taucht bei künftigen Scans nicht mehr auf — z.B. für Smart Plugs, die anderweitig im Netz genutzt werden (nicht Teil von SpaceCaptain). Verwaltbar über «Ausschlussliste verwalten…» im selben Dialog, inkl. Wieder-Aufnehmen einzelner Einträge.</div>
+                <div class="help-warn"><strong>Technische Grenzen:</strong> Die Suche funktioniert per direkter Geräte-Abfrage, nicht per mDNS/Bonjour — sie findet daher nur Geräte, die tatsächlich im angegebenen IP-Bereich liegen. Max. 1024 Adressen pro Scan (z.B. /22), nur private Netzbereiche erlaubt. Ein /24-Bereich dauert wenige Sekunden.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Passwort/Token verwalten</div>
+              <div class="help-article-body">
+                SpaceCaptain kann das Passwort direkt auf dem Gerät setzen, ändern oder entfernen — ein manuelles Konfigurieren über die Hersteller-App ist nicht mehr nötig.
+                <ol style="margin-top:8px">
+                  <li>Sidebar → <strong>Ausstattung → Plug-Pool</strong> → gewünschte Plugs per Checkbox auswählen (auch nur einer möglich)</li>
+                  <li>In der erscheinenden Auswahl-Leiste: «🔑 Passwort setzen»</li>
+                  <li><strong>Automatisch generieren</strong> (empfohlen) oder <strong>eigenes Passwort eingeben</strong> wählen → «Anwenden»</li>
+                  <li>Das verwendete Passwort wird angezeigt (mit Kopieren-Button) und ist danach jederzeit über 👁 beim jeweiligen Plug im Token-Feld wieder einsehbar</li>
+                </ol>
+                Ein ausgewähltes Passwort wird auf <strong>alle</strong> ausgewählten Plugs gleichzeitig angewendet — praktisch für eine einheitliche Rotation über mehrere Geräte hinweg.
+                <div class="help-tip"><strong>Passwort wieder entfernen:</strong> Gleicher Weg, aber «🔓 Passwort entfernen» statt «Passwort setzen» — das Gerät ist danach wieder ohne Anmeldung im LAN erreichbar. Fragt vorher explizit nach, da sicherheitsreduzierend.</div>
+                <div class="help-warn"><strong>Voraussetzung fürs Ändern/Entfernen:</strong> Ist ein Plug bereits gesichert, authentifiziert SpaceCaptain die Änderung automatisch mit dem aktuell hinterlegten Token. Stimmt dieser nicht mehr mit dem tatsächlich am Gerät gesetzten Passwort überein (z.B. weil es extern geändert wurde), schlägt die Aktion für dieses Gerät fehl — das Ergebnis zeigt das pro Gerät an. In diesem Fall hilft nur ein Zurücksetzen direkt am Gerät.</div>
+                <div class="help-warn"><strong>Shelly Gen1:</strong> Basiert auf dokumentiertem Geräteverhalten, aber nicht an echter Hardware getestet — bei Problemen das Passwort im Zweifel über die Shelly-Web-UI selbst setzen und hier nur eintragen.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Live-Status ansehen</div>
+              <div class="help-article-body">
+                Die Spalte «Status» zeigt den tatsächlichen Ein/Aus-Zustand jedes Plugs — inklusive Leistungsaufnahme in Watt, sofern das Gerät das liefert.
+                <ul style="margin-top:8px">
+                  <li>🟢 Ein · ⚪ Aus · ⚠ nicht erreichbar</li>
+                  <li>Wird beim Öffnen der Plug-Pool-Seite einmalig live abgefragt, danach über «🔄 Status aktualisieren» jederzeit erneut</li>
                 </ul>
-                <div class="help-warn"><strong>Hinweis:</strong> Der Token wird in der Plug-Pool-Übersicht nie im Klartext angezeigt — nur ob einer hinterlegt ist (••••••) oder nicht (—).</div>
+                <div class="help-tip"><strong>Bewusst kein Dauer-Polling:</strong> Der Status wird gezielt bei Bedarf abgefragt statt fortlaufend im Hintergrund — das belastet weder Netzwerk noch Server unnötig. Da es sich um eine echte Live-Abfrage handelt (keine gespeicherte Momentaufnahme), werden auch Plugs korrekt erkannt, die ausserhalb von SpaceCaptain geschaltet wurden — z.B. per Taster direkt am Gerät oder über die Hersteller-App.</div>
               </div>
             </div>
             <div class="help-article">
@@ -2855,7 +2888,7 @@ const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>${_isAdmin()?` <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`:''}`,
   machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)">`:''} <button class="btn btn-ghost btn-sm" onclick="showInventoryExportModal()">📋 Inventarliste</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ Standorte</button> <button class="btn btn-ghost btn-sm" onclick="showOwnersModal()">⚙ Eigentümer</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`:''}`,
-  plugs:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('plugs')" title="Hilfe zu Plug-Pool">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-ghost" onclick="showDiscoverModal()">🔍 Geräte suchen</button> <button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`:''}`,
+  plugs:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('plugs')" title="Hilfe zu Plug-Pool">? Hilfe</button> <button class="btn btn-ghost" id="plug-status-refresh-btn" onclick="loadPlugLiveStatus()">🔄 Status aktualisieren</button>${_isPowerPlus()?` <button class="btn btn-ghost" onclick="showDiscoverModal()">🔍 Geräte suchen</button> <button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`:''}`,
   batteries:()=>`${_isPowerPlus()?`<button class="btn btn-primary" onclick="showAddBattery()">+ Akku hinzufügen</button>`:''}`,
   automations:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('automations')" title="Hilfe zu Automationen">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddRule()">+ Neue Regel</button>`:''}`,
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
@@ -7408,6 +7441,17 @@ function _plugTypeLabel(t) {
   return {mystrom:'myStrom',shelly:'Shelly Gen1',shelly_gen2:'Shelly Gen2+'}[t] || t;
 }
 
+function _renderPlugStatusCell(p) {
+  const s = _plugLiveStatus[p.id];
+  if (!s) return '<span style="color:var(--text-dim)">…</span>';
+  if (s.on === true) {
+    const watt = (s.power_w != null) ? ` <span style="color:var(--text-dim);font-size:13px">(${s.power_w.toFixed(1)} W)</span>` : '';
+    return `<span style="color:var(--success)">🟢 Ein</span>${watt}`;
+  }
+  if (s.on === false) return '<span style="color:var(--text-dim)">⚪ Aus</span>';
+  return '<span style="color:var(--danger)" title="Gerät antwortet nicht">⚠ nicht erreichbar</span>';
+}
+
 function formatMac(mac) {
   if (!mac) return null;
   const hex = String(mac).replace(/[^0-9a-fA-F]/g, '').toUpperCase();
@@ -7439,6 +7483,25 @@ async function loadPlugs() {
   _plugs = data;
   renderPlugs();
   _fillEmergencyPlugDropdowns();
+  loadPlugLiveStatus();
+}
+
+let _plugLiveStatus = {};
+let _plugLiveStatusLoading = false;
+
+async function loadPlugLiveStatus() {
+  if (_plugLiveStatusLoading) return;
+  _plugLiveStatusLoading = true;
+  const btn = document.getElementById('plug-status-refresh-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Aktualisiere…'; }
+
+  const res = await GET('/plugs/live-status');
+
+  _plugLiveStatusLoading = false;
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 Status aktualisieren'; }
+  if (!res) return;
+  _plugLiveStatus = res;
+  renderPlugs();
 }
 
 function sortPlugTable(col) {
@@ -7517,7 +7580,7 @@ function renderPlugsFiltered(plugs) {
     `<table class="data-table" style="width:100%">
     <thead><tr>
       ${_isPowerPlus()?`<th style="width:28px"><input type="checkbox" id="plug-select-all" ${plugs.length&&plugs.every(p=>_selectedPlugIds.has(p.id))?'checked':''} onchange="_togglePlugSelectAll(this)"></th>`:''}
-      ${_plugTh('Name','name')}${_plugTh('Typ','plug_type')}${_plugTh('IP-Adresse','plug_ip')}<th>MAC-Adresse</th><th>Token</th>${_plugTh('Zugewiesen an','machine_name')}<th></th>
+      ${_plugTh('Name','name')}${_plugTh('Typ','plug_type')}${_plugTh('IP-Adresse','plug_ip')}<th>Status</th><th>MAC-Adresse</th><th>Token</th>${_plugTh('Zugewiesen an','machine_name')}<th></th>
     </tr></thead>
     <tbody>
     ${plugs.map(p => `<tr>
@@ -7525,6 +7588,7 @@ function renderPlugsFiltered(plugs) {
       <td><strong>${escHtml(p.name)}</strong>${p.notes?`<div style="font-size:13px;color:var(--text-dim);margin-top:2px">${escHtml(p.notes)}</div>`:''}</td>
       <td><span class="badge badge-gray">${_plugTypeLabel(p.plug_type)}</span></td>
       <td><code style="font-size:14px;background:var(--surface2);padding:2px 6px;border-radius:4px">${escHtml(p.plug_ip)}</code></td>
+      <td>${_renderPlugStatusCell(p)}</td>
       <td>${p.mac ? `<code style="font-size:14px;background:var(--surface2);padding:2px 6px;border-radius:4px">${escHtml(formatMac(p.mac))}</code>` : '<span style="color:var(--text-dim)">—</span>'}</td>
       <td id="plug-token-cell-${p.id}">${p.plug_token
         ? `<span style="color:var(--text-dim);font-family:monospace">••••••</span><button class="btn btn-ghost btn-sm" onclick="togglePlugToken(${p.id})" title="Token anzeigen" style="padding:0 4px;font-size:14px;vertical-align:middle">👁</button>`
