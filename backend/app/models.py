@@ -435,6 +435,19 @@ class Plug(Base):
     created_at:             Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class PlugScanExclusion(Base):
+    """Geraete, die bei der Netzwerk-Discovery (routers/plugs.py: /discover) ignoriert
+    werden sollen — z.B. Smart Plugs, die anderweitig im Netz genutzt werden."""
+    __tablename__ = "plug_scan_exclusions"
+    id:         Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ip:         Mapped[str]           = mapped_column(String(50), unique=True, nullable=False)
+    mac:        Mapped[Optional[str]] = mapped_column(String(20), default=None)
+    plug_type:  Mapped[Optional[str]] = mapped_column(String(20), default=None)
+    name:       Mapped[Optional[str]] = mapped_column(String(100), default=None)
+    note:       Mapped[Optional[str]] = mapped_column(String(255), default=None)
+    created_at: Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class MachinePlug(Base):
     """Junction-Tabelle: Maschine ↔ Plug (many-to-many).
     sort_order=0 = Primär-Plug (wird für Monitoring/machine-Felder genutzt)."""

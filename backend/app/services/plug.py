@@ -5,14 +5,19 @@ Shelly Gen1: /relay/0, Digest-Auth via plug_token="admin:passwort"
 Shelly Gen2+: RPC-API /rpc/Switch.Set, Digest-Auth via plug_token="admin:passwort"
               Gilt für Gen2, Gen3, Gen4 — alle nutzen dieselbe RPC-API.
 """
+import asyncio
+import ipaddress
 import httpx
 import logging
 from types import SimpleNamespace
-from typing import Tuple
+from typing import Optional, Tuple
 
 log = logging.getLogger(__name__)
 
 TIMEOUT = 5.0
+DISCOVERY_TIMEOUT = 1.5
+DISCOVERY_MAX_ADDRESSES = 1024
+DISCOVERY_CONCURRENCY = 40
 
 
 def _mystrom_headers(machine) -> dict:
@@ -169,3 +174,80 @@ async def switch_all_machine_plugs(machine, action: str, db) -> Tuple[bool, str]
         msgs.append(f"Sekundär-Plug Fehler: {e}")
 
     return all_ok, "; ".join(msgs)
+
+
+# ── Netzwerk-Discovery ──────────────────────────────────────────────────────
+# Identifiziert unkonfigurierte/erreichbare Plugs per HTTP-Probe — kein mDNS
+# (Multicast erreicht den Backend-Container im Docker-Bridge-Netz nicht ohne
+# host-Networking). Nutzt bewusst dieselben Endpunkte wie get_plug_status(),
+# aber ohne bekannten plug_type: probiert alle drei durch, nur Requests mit
+# einer zum jeweiligen Typ passenden Antwortform zaehlen als Treffer.
+
+async def probe_device(ip: str) -> Optional[dict]:
+    """Prüft eine einzelne IP auf myStrom/Shelly/Shelly-Gen2 — None wenn kein Treffer."""
+    async with httpx.AsyncClient(timeout=DISCOVERY_TIMEOUT) as client:
+        # Shelly Gen2+ (RPC-API)
+        try:
+            r = await client.get(f"http://{ip}/rpc/Shelly.GetDeviceInfo")
+            if r.status_code == 200:
+                data = r.json()
+                if "mac" in data and ("model" in data or "app" in data):
+                    return {
+                        "ip": ip, "plug_type": "shelly_gen2",
+                        "name": data.get("name") or data.get("model") or data.get("id"),
+                        "mac": data.get("mac"),
+                    }
+        except Exception:
+            pass
+
+        # Shelly Gen1
+        try:
+            r = await client.get(f"http://{ip}/shelly")
+            if r.status_code == 200:
+                data = r.json()
+                if "mac" in data and "type" in data:
+                    return {"ip": ip, "plug_type": "shelly", "name": data.get("type"), "mac": data.get("mac")}
+        except Exception:
+            pass
+
+        # myStrom
+        try:
+            r = await client.get(f"http://{ip}/report")
+            if r.status_code == 200:
+                data = r.json()
+                if "relay" in data or "power" in data:
+                    mac = None
+                    try:
+                        r_info = await client.get(f"http://{ip}/info")
+                        if r_info.status_code == 200:
+                            mac = r_info.json().get("mac")
+                    except Exception:
+                        pass
+                    return {"ip": ip, "plug_type": "mystrom", "name": None, "mac": mac}
+        except Exception:
+            pass
+
+    return None
+
+
+async def discover_devices(cidr: str) -> list[dict]:
+    """Scannt ein Subnetz nach unkonfigurierten Smart Plugs. Wirft ValueError bei ungültigem/zu grossem/öffentlichem CIDR."""
+    try:
+        network = ipaddress.ip_network(cidr, strict=False)
+    except ValueError:
+        raise ValueError(f"Ungültiges CIDR: {cidr}")
+
+    if network.num_addresses > DISCOVERY_MAX_ADDRESSES:
+        raise ValueError(f"Bereich zu gross (max. {DISCOVERY_MAX_ADDRESSES} Adressen, z.B. /22)")
+    if not network.is_private:
+        raise ValueError("Nur private Netzbereiche (RFC1918) erlaubt")
+
+    hosts = list(network.hosts())
+    sem = asyncio.Semaphore(DISCOVERY_CONCURRENCY)
+
+    async def _bounded(ip: str):
+        async with sem:
+            return await probe_device(str(ip))
+
+    results = await asyncio.gather(*(_bounded(ip) for ip in hosts))
+    return [r for r in results if r]

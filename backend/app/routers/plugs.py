@@ -1,14 +1,15 @@
 from types import SimpleNamespace
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.database import get_db
-from app.models import Plug, Machine, MachinePlug, SystemSettings, User, PlugType, LogType
+from app.models import Plug, Machine, MachinePlug, SystemSettings, User, PlugType, LogType, PlugScanExclusion
 from app.schemas import PlugCreate, PlugUpdate, PlugOut
 from app.services.auth import get_current_user, require_power_manager
-from app.services.plug import switch_plug
+from app.services.plug import switch_plug, discover_devices
 from app.services import logger as log_svc
 
 router = APIRouter(prefix="/plugs", tags=["plugs"])
@@ -289,3 +290,84 @@ async def test_switch_plug(
     await log_svc.log(db, log_type,
         f"Plug-Test {'EIN' if action == 'on' else 'AUS'}: {plug.name} — {msg}", user_id=current.id)
     return {"ok": ok, "message": msg}
+
+
+class DiscoverRequest(BaseModel):
+    cidr: str
+
+@router.post("/discover")
+async def discover_plugs(
+    payload: DiscoverRequest,
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(require_power_manager),
+):
+    """Scannt einen IP-Bereich nach myStrom/Shelly-Geraeten (aktiver HTTP-Probe, kein mDNS)."""
+    try:
+        found = await discover_devices(payload.cidr)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    existing = await db.execute(select(Plug.plug_ip))
+    existing_ips = {ip for (ip,) in existing.all() if ip}
+
+    excl = await db.execute(select(PlugScanExclusion.ip))
+    excluded_ips = {ip for (ip,) in excl.all()}
+
+    found = [d for d in found if d["ip"] not in excluded_ips]
+    for device in found:
+        device["already_registered"] = device["ip"] in existing_ips
+
+    return {"cidr": payload.cidr, "found": found, "excluded_count": len(excluded_ips)}
+
+
+class ExcludeRequest(BaseModel):
+    ip: str
+    mac: Optional[str] = None
+    plug_type: Optional[str] = None
+    name: Optional[str] = None
+
+@router.post("/discover/exclude")
+async def exclude_discovered_device(
+    payload: ExcludeRequest,
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(require_power_manager),
+):
+    """Blendet ein bei der Discovery gefundenes Geraet in kuenftigen Scans aus
+    (z.B. Smart Plugs, die anderweitig im Netz genutzt werden)."""
+    existing = await db.execute(select(PlugScanExclusion).where(PlugScanExclusion.ip == payload.ip))
+    row = existing.scalar_one_or_none()
+    if row:
+        return {"ok": True, "id": row.id}
+    row = PlugScanExclusion(ip=payload.ip, mac=payload.mac, plug_type=payload.plug_type, name=payload.name)
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return {"ok": True, "id": row.id}
+
+
+@router.get("/discover/exclusions")
+async def list_scan_exclusions(
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(require_power_manager),
+):
+    result = await db.execute(select(PlugScanExclusion).order_by(PlugScanExclusion.created_at.desc()))
+    rows = result.scalars().all()
+    return [
+        {"id": r.id, "ip": r.ip, "mac": r.mac, "plug_type": r.plug_type, "name": r.name, "note": r.note}
+        for r in rows
+    ]
+
+
+@router.delete("/discover/exclusions/{exclusion_id}")
+async def remove_scan_exclusion(
+    exclusion_id: int,
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(require_power_manager),
+):
+    result = await db.execute(select(PlugScanExclusion).where(PlugScanExclusion.id == exclusion_id))
+    row = result.scalar_one_or_none()
+    if not row:
+        raise HTTPException(404, "Nicht gefunden")
+    await db.delete(row)
+    await db.commit()
+    return {"ok": True}

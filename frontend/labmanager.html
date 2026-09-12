@@ -2855,7 +2855,7 @@ const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>${_isAdmin()?` <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`:''}`,
   machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)">`:''} <button class="btn btn-ghost btn-sm" onclick="showInventoryExportModal()">📋 Inventarliste</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ Standorte</button> <button class="btn btn-ghost btn-sm" onclick="showOwnersModal()">⚙ Eigentümer</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`:''}`,
-  plugs:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('plugs')" title="Hilfe zu Plug-Pool">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`:''}`,
+  plugs:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('plugs')" title="Hilfe zu Plug-Pool">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-ghost" onclick="showDiscoverModal()">🔍 Geräte suchen</button> <button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`:''}`,
   batteries:()=>`${_isPowerPlus()?`<button class="btn btn-primary" onclick="showAddBattery()">+ Akku hinzufügen</button>`:''}`,
   automations:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('automations')" title="Hilfe zu Automationen">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddRule()">+ Neue Regel</button>`:''}`,
   permissions:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('permissions')" title="Hilfe zu Berechtigungen">? Hilfe</button>`,
@@ -7599,6 +7599,130 @@ async function savePlug() {
   showToast(id ? 'Plug aktualisiert' : 'Plug hinzugefügt', 'success');
 }
 
+// ── Geräte-Discovery ──────────────────────────────────
+function _escDiscover(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+const _plugTypeLabels = {shelly_gen2:'Shelly Gen2/3/4', shelly:'Shelly Gen1', mystrom:'myStrom'};
+
+function showDiscoverModal() {
+  document.getElementById('discover-cidr').value = '';
+  _discoverResults = [];
+  document.getElementById('discover-results').innerHTML = '';
+  _setDiscoverView('results');
+  document.getElementById('discover-modal').style.display = 'flex';
+  setTimeout(()=>document.getElementById('discover-cidr').focus(), 50);
+}
+function _setDiscoverView(view) {
+  _discoverView = view;
+  const btn = document.getElementById('discover-exclusions-toggle-btn');
+  if (btn) btn.textContent = view === 'exclusions' ? '← Zurück zur Suche' : 'Ausschlussliste verwalten…';
+}
+function _toggleDiscoverExclusionsView() {
+  if (_discoverView === 'exclusions') _renderDiscoverResults();
+  else showDiscoverExclusions();
+}
+function closeDiscoverModal(e) {
+  if (e && e.target.id !== 'discover-modal') return;
+  if (e && !clientSettings.modal_backdrop_input) return;
+  document.getElementById('discover-modal').style.display = 'none';
+}
+
+let _discoverResults = [];
+let _discoverView = 'results';
+
+async function runDiscoverScan() {
+  const cidr = document.getElementById('discover-cidr').value.trim();
+  if (!cidr) return showToast('Bitte einen IP-Bereich angeben', 'error');
+  const btn = document.getElementById('discover-scan-btn');
+  const resultsEl = document.getElementById('discover-results');
+  btn.disabled = true;
+  btn.textContent = 'Scanne…';
+  resultsEl.innerHTML = `<div class="loading" style="justify-content:flex-start;padding:16px 0">⏳ Scanne ${_escDiscover(cidr)}…</div>`;
+
+  const res = await POST('/plugs/discover', {cidr});
+  btn.disabled = false;
+  btn.textContent = 'Scannen';
+  if (!res) { resultsEl.innerHTML = ''; return; }
+
+  _discoverResults = res.found;
+  _renderDiscoverResults();
+}
+
+function _renderDiscoverResults() {
+  _setDiscoverView('results');
+  const resultsEl = document.getElementById('discover-results');
+  if (!_discoverResults.length) {
+    resultsEl.innerHTML = `<div style="color:var(--text-dim);font-size:14px;padding:12px 0">Keine Geräte gefunden.</div>`;
+    return;
+  }
+  resultsEl.innerHTML =
+    `<div style="font-size:13px;color:var(--text-dim);margin:12px 0 8px">${_discoverResults.length} Gerät(e) gefunden</div>` +
+    _discoverResults.map((d, i) => d._removed ? '' : `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px" id="discover-row-${i}">
+        <div style="flex:1;min-width:0">
+          <div style="font-family:var(--mono);font-size:14px">${_escDiscover(d.ip)}</div>
+          <div style="font-size:13px;color:var(--text-dim)">${_escDiscover(_plugTypeLabels[d.plug_type] || d.plug_type)}${d.mac ? ' · ' + _escDiscover(d.mac) : ''}</div>
+        </div>
+        ${d.already_registered ? `<span class="badge badge-gray">bereits erfasst</span>` : `
+          <input class="form-input form-input-sm" id="discover-name-${i}" value="${_escDiscover(d.name || '')}" placeholder="Name" style="width:160px;flex-shrink:0">
+          <button class="btn btn-primary btn-sm" onclick="_addDiscovered(${i})" style="flex-shrink:0">+ Hinzufügen</button>
+          <button class="btn btn-ghost btn-sm" onclick="_excludeDiscovered(${i})" title="Dieses Gerät künftig bei Scans ignorieren" style="flex-shrink:0">Ausschliessen</button>
+        `}
+      </div>
+    `).join('');
+}
+
+async function _addDiscovered(i) {
+  const d = _discoverResults[i];
+  const name = document.getElementById(`discover-name-${i}`).value.trim();
+  if (!name) return showToast('Bitte einen Namen angeben', 'error');
+  const res = await POST('/plugs', {name, plug_type: d.plug_type, plug_ip: d.ip});
+  if (!res) return;
+  d.already_registered = true;
+  await loadPlugs();
+  _renderDiscoverResults();
+  showToast(`Plug "${name}" hinzugefügt`, 'success');
+}
+
+async function _excludeDiscovered(i) {
+  const d = _discoverResults[i];
+  if (!confirm(`"${d.ip}" künftig bei der Geräte-Suche ignorieren?`)) return;
+  const res = await POST('/plugs/discover/exclude', {ip: d.ip, mac: d.mac, plug_type: d.plug_type, name: d.name});
+  if (!res) return;
+  d._removed = true;
+  _renderDiscoverResults();
+  showToast('Gerät ausgeschlossen', 'success');
+}
+
+async function showDiscoverExclusions() {
+  const list = await GET('/plugs/discover/exclusions');
+  if (!list) return;
+  _setDiscoverView('exclusions');
+  const resultsEl = document.getElementById('discover-results');
+  if (!list.length) {
+    resultsEl.innerHTML = `<div style="color:var(--text-dim);font-size:14px;padding:12px 0">Keine ausgeschlossenen Geräte.</div>`;
+    return;
+  }
+  resultsEl.innerHTML =
+    `<div style="font-size:13px;color:var(--text-dim);margin:12px 0 8px">${list.length} ausgeschlossene(s) Gerät(e)</div>` +
+    list.map(x => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px">
+        <div style="flex:1;min-width:0">
+          <div style="font-family:var(--mono);font-size:14px">${_escDiscover(x.ip)}</div>
+          <div style="font-size:13px;color:var(--text-dim)">${_escDiscover(_plugTypeLabels[x.plug_type] || x.plug_type || '—')}${x.mac ? ' · ' + _escDiscover(x.mac) : ''}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="_unexcludeDiscovered(${x.id})" style="flex-shrink:0">Wieder aufnehmen</button>
+      </div>
+    `).join('');
+}
+
+async function _unexcludeDiscovered(id) {
+  const res = await DELETE(`/plugs/discover/exclusions/${id}`);
+  if (!res) return;
+  showDiscoverExclusions();
+}
+
 async function deletePlug(id) {
   const p = _plugs.find(x=>x.id===id);
   if (!confirm(`Plug "${p?.name}" wirklich löschen?`)) return;
@@ -7683,6 +7807,34 @@ function togglePlugToken(id) {
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="document.getElementById('plug-modal').style.display='none'">Abbrechen</button>
       <button class="btn btn-primary" onclick="savePlug()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Discover-Modal -->
+<div class="modal-overlay" id="discover-modal" onclick="closeDiscoverModal(event)" style="display:none">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <div class="modal-title">Geräte suchen</div>
+      <button class="modal-close" onclick="document.getElementById('discover-modal').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">IP-Bereich (CIDR)</label>
+        <div style="display:flex;gap:8px">
+          <input class="form-input" id="discover-cidr" placeholder="z.B. 10.10.1.0/24" style="flex:1" onkeydown="if(event.key==='Enter')runDiscoverScan()">
+          <button class="btn btn-primary" id="discover-scan-btn" onclick="runDiscoverScan()" style="flex-shrink:0">Scannen</button>
+        </div>
+        <div style="font-size:13px;color:var(--text-dim);margin-top:6px;line-height:1.5">
+          Sucht per HTTP-Abfrage (kein mDNS) nach erreichbaren myStrom-/Shelly-Geräten im angegebenen Bereich —
+          max. 1024 Adressen (z.B. /22), nur private Netzbereiche. Dauert für ein /24 wenige Sekunden.
+        </div>
+      </div>
+      <div id="discover-results"></div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-ghost" id="discover-exclusions-toggle-btn" onclick="_toggleDiscoverExclusionsView()">Ausschlussliste verwalten…</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('discover-modal').style.display='none'">Schliessen</button>
     </div>
   </div>
 </div>
