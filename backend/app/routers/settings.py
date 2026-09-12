@@ -195,12 +195,16 @@ async def update_settings(
         row.emergency_ntfy_message = payload.emergency_ntfy_message or None
     if payload.emergency_duration_sec is not None:
         row.emergency_duration_sec = max(0, payload.emergency_duration_sec)
-    if payload.emergency_ntfy_topic_id is not None:
-        row.emergency_ntfy_topic_id = payload.emergency_ntfy_topic_id or None
-    if payload.emergency_plug_id is not None:
-        row.emergency_plug_id = payload.emergency_plug_id or None
-    if payload.emergency_plug2_id is not None:
-        row.emergency_plug2_id = payload.emergency_plug2_id or None
+    # Kein "is not None"-Guard: Diese drei Felder sind Dropdowns, deren
+    # Auswahl "kein Topic/Plug" bewusst als null gesendet wird (im Unterschied
+    # zu Secret-Feldern wie ts_authkey, wo leer = unveraendert bedeutet).
+    # buildSettingsPayload() im Frontend sendet immer eine vollstaendige
+    # Momentaufnahme aller Felder, nie ein partielles Update — direktes
+    # Zuweisen ist hier also sicher und noetig, sonst "springt" die Auswahl
+    # nach dem Speichern auf den vorherigen Wert zurueck.
+    row.emergency_ntfy_topic_id = payload.emergency_ntfy_topic_id
+    row.emergency_plug_id = payload.emergency_plug_id
+    row.emergency_plug2_id = payload.emergency_plug2_id
     if payload.auto_backup_enabled is not None:
         row.auto_backup_enabled = payload.auto_backup_enabled
     if payload.auto_backup_hour is not None:
