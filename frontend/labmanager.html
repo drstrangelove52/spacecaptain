@@ -7401,6 +7401,7 @@ async function deleteTopic(id) {
 // PLUG-POOL
 // ═══════════════════════════════════════════════════════
 let _plugs = [];
+let _selectedPlugIds = new Set();
 let _plugSort = {col: null, dir: 1};
 
 function _plugTypeLabel(t) {
@@ -7504,12 +7505,23 @@ function renderPlugsFiltered(plugs) {
     el.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-dim)">Keine Plugs gefunden.</div>`;
     return;
   }
-  el.innerHTML = `<table class="data-table" style="width:100%">
+  el.innerHTML =
+    (_isPowerPlus() && _selectedPlugIds.size > 0 ? `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;margin-bottom:10px">
+        <span style="font-size:14px">${_selectedPlugIds.size} Plug(s) ausgewählt</span>
+        <button class="btn btn-primary btn-sm" onclick="showBulkAuthModal()">🔑 Passwort setzen</button>
+        <button class="btn btn-ghost btn-sm" onclick="showBulkClearAuthModal()">🔓 Passwort entfernen</button>
+        <button class="btn btn-ghost btn-sm" onclick="_clearPlugSelection()">Auswahl aufheben</button>
+      </div>
+    ` : '') +
+    `<table class="data-table" style="width:100%">
     <thead><tr>
+      ${_isPowerPlus()?`<th style="width:28px"><input type="checkbox" id="plug-select-all" ${plugs.length&&plugs.every(p=>_selectedPlugIds.has(p.id))?'checked':''} onchange="_togglePlugSelectAll(this)"></th>`:''}
       ${_plugTh('Name','name')}${_plugTh('Typ','plug_type')}${_plugTh('IP-Adresse','plug_ip')}<th>MAC-Adresse</th><th>Token</th>${_plugTh('Zugewiesen an','machine_name')}<th></th>
     </tr></thead>
     <tbody>
     ${plugs.map(p => `<tr>
+      ${_isPowerPlus()?`<td><input type="checkbox" class="plug-select-checkbox" data-plug-id="${p.id}" ${_selectedPlugIds.has(p.id)?'checked':''} onchange="_updateBulkAuthBtn()"></td>`:''}
       <td><strong>${escHtml(p.name)}</strong>${p.notes?`<div style="font-size:13px;color:var(--text-dim);margin-top:2px">${escHtml(p.notes)}</div>`:''}</td>
       <td><span class="badge badge-gray">${_plugTypeLabel(p.plug_type)}</span></td>
       <td><code style="font-size:14px;background:var(--surface2);padding:2px 6px;border-radius:4px">${escHtml(p.plug_ip)}</code></td>
@@ -7530,6 +7542,124 @@ function renderPlugsFiltered(plugs) {
     </tr>`).join('')}
     </tbody>
   </table>`;
+}
+
+function _togglePlugSelectAll(cb) {
+  document.querySelectorAll('.plug-select-checkbox').forEach(el => { el.checked = cb.checked; });
+  _updateBulkAuthBtn();
+}
+function _updateBulkAuthBtn() {
+  _selectedPlugIds = new Set(
+    Array.from(document.querySelectorAll('.plug-select-checkbox:checked')).map(el => parseInt(el.dataset.plugId))
+  );
+  filterPlugs();
+}
+function _clearPlugSelection() {
+  _selectedPlugIds = new Set();
+  filterPlugs();
+}
+
+function showBulkAuthModal() {
+  if (!_selectedPlugIds.size) return showToast('Bitte zuerst Plugs auswählen', 'error');
+  const names = _plugs.filter(p => _selectedPlugIds.has(p.id)).map(p => p.name);
+  document.getElementById('bulk-auth-list').textContent = names.join(', ');
+  document.getElementById('bulk-auth-mode-auto').checked = true;
+  document.getElementById('bulk-auth-password').value = '';
+  document.getElementById('bulk-auth-password-group').style.display = 'none';
+  document.getElementById('bulk-auth-results').innerHTML = '';
+  document.getElementById('bulk-auth-modal').style.display = 'flex';
+}
+function closeBulkAuthModal(e) {
+  if (e && e.target.id !== 'bulk-auth-modal') return;
+  if (e && !clientSettings.modal_backdrop_input) return;
+  document.getElementById('bulk-auth-modal').style.display = 'none';
+}
+function _toggleBulkAuthMode() {
+  const manual = document.getElementById('bulk-auth-mode-manual').checked;
+  document.getElementById('bulk-auth-password-group').style.display = manual ? '' : 'none';
+}
+
+async function applyBulkAuth() {
+  const manual = document.getElementById('bulk-auth-mode-manual').checked;
+  const pw = document.getElementById('bulk-auth-password').value.trim();
+  if (manual && pw.length < 6) return showToast('Passwort muss mindestens 6 Zeichen haben', 'error');
+
+  const btn = document.getElementById('bulk-auth-apply-btn');
+  btn.disabled = true;
+  btn.textContent = 'Wird angewendet…';
+
+  const res = await POST('/plugs/bulk-set-auth', {
+    plug_ids: Array.from(_selectedPlugIds),
+    password: manual ? pw : null,
+  });
+
+  btn.disabled = false;
+  btn.textContent = 'Anwenden';
+  if (!res) return;
+
+  const resultsEl = document.getElementById('bulk-auth-results');
+  const okCount = res.results.filter(r => r.ok).length;
+  resultsEl.innerHTML = `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-top:12px">
+      <div class="form-label" style="margin-bottom:6px">Verwendetes Passwort</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <code style="flex:1;font-size:15px;background:var(--bg);padding:6px 10px;border-radius:4px;user-select:all">${escHtml(res.password)}</code>
+        <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${res.password.replace(/'/g,"\\'")}');showToast('Kopiert','success')">📋</button>
+      </div>
+      <div style="font-size:13px;color:var(--text-dim);margin-top:6px">Auch später jederzeit über 👁 beim jeweiligen Plug im Token-Feld einsehbar.</div>
+    </div>
+    <div style="margin-top:10px;font-size:13px;color:var(--text-dim)">${okCount} von ${res.results.length} erfolgreich:</div>
+    ${res.results.map(r => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px">
+        <span style="color:${r.ok?'var(--success)':'var(--danger)'}">${r.ok?'✓':'✗'}</span>
+        <span>${escHtml(r.name || `#${r.id}`)}</span>
+        <span style="color:var(--text-dim);font-size:13px">${escHtml(r.message)}</span>
+      </div>
+    `).join('')}
+  `;
+  await loadPlugs();
+  _clearPlugSelection();
+}
+
+function showBulkClearAuthModal() {
+  if (!_selectedPlugIds.size) return showToast('Bitte zuerst Plugs auswählen', 'error');
+  const names = _plugs.filter(p => _selectedPlugIds.has(p.id)).map(p => p.name);
+  document.getElementById('bulk-clear-auth-list').textContent = names.join(', ');
+  document.getElementById('bulk-clear-auth-results').innerHTML = '';
+  document.getElementById('bulk-clear-auth-modal').style.display = 'flex';
+}
+function closeBulkClearAuthModal(e) {
+  if (e && e.target.id !== 'bulk-clear-auth-modal') return;
+  if (e && !clientSettings.modal_backdrop_input) return;
+  document.getElementById('bulk-clear-auth-modal').style.display = 'none';
+}
+
+async function applyBulkClearAuth() {
+  if (!confirm(`Passwort auf ${_selectedPlugIds.size} Plug(s) entfernen? Die Geräte sind danach ohne Anmeldung erreichbar.`)) return;
+
+  const btn = document.getElementById('bulk-clear-auth-apply-btn');
+  btn.disabled = true;
+  btn.textContent = 'Wird entfernt…';
+
+  const res = await POST('/plugs/bulk-clear-auth', {plug_ids: Array.from(_selectedPlugIds)});
+
+  btn.disabled = false;
+  btn.textContent = 'Entfernen';
+  if (!res) return;
+
+  const resultsEl = document.getElementById('bulk-clear-auth-results');
+  const okCount = res.results.filter(r => r.ok).length;
+  resultsEl.innerHTML =
+    `<div style="margin-top:10px;font-size:13px;color:var(--text-dim)">${okCount} von ${res.results.length} erfolgreich:</div>` +
+    res.results.map(r => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px">
+        <span style="color:${r.ok?'var(--success)':'var(--danger)'}">${r.ok?'✓':'✗'}</span>
+        <span>${escHtml(r.name || `#${r.id}`)}</span>
+        <span style="color:var(--text-dim);font-size:13px">${escHtml(r.message)}</span>
+      </div>
+    `).join('');
+  await loadPlugs();
+  _clearPlugSelection();
 }
 
 function _resetPlugTokenToggle() {
@@ -7854,6 +7984,66 @@ function togglePlugToken(id) {
     <div class="modal-footer" style="justify-content:space-between">
       <button class="btn btn-ghost" id="discover-exclusions-toggle-btn" onclick="_toggleDiscoverExclusionsView()">Ausschlussliste verwalten…</button>
       <button class="btn btn-ghost" onclick="document.getElementById('discover-modal').style.display='none'">Schliessen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk-Auth-Modal -->
+<div class="modal-overlay" id="bulk-auth-modal" onclick="closeBulkAuthModal(event)" style="display:none">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title">Passwort setzen</div>
+      <button class="modal-close" onclick="document.getElementById('bulk-auth-modal').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:14px" id="bulk-auth-list"></div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px">
+          <input type="radio" name="bulk-auth-mode" id="bulk-auth-mode-auto" checked onchange="_toggleBulkAuthMode()">
+          <span>Automatisch generieren <span style="color:var(--text-dim)">(empfohlen)</span></span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="radio" name="bulk-auth-mode" id="bulk-auth-mode-manual" onchange="_toggleBulkAuthMode()">
+          <span>Eigenes Passwort eingeben</span>
+        </label>
+      </div>
+      <div class="form-group" id="bulk-auth-password-group" style="display:none">
+        <label class="form-label">Passwort</label>
+        <input class="form-input" id="bulk-auth-password" type="text" placeholder="Mindestens 6 Zeichen">
+        <div style="font-size:13px;color:var(--text-dim);margin-top:4px">Nur Buchstaben/Zahlen empfohlen — myStrom-Geräte akzeptieren keine Sonderzeichen als Token.</div>
+      </div>
+      <div style="font-size:13px;color:var(--text-dim);line-height:1.5">
+        Wird auf alle ausgewählten Plugs angewendet. Bereits gesicherte Plugs werden mit dem aktuell hinterlegten
+        Token authentifiziert — stimmt der nicht mehr mit dem Gerät überein, schlägt die Änderung für dieses Gerät fehl.
+      </div>
+      <div id="bulk-auth-results"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('bulk-auth-modal').style.display='none'">Schliessen</button>
+      <button class="btn btn-primary" id="bulk-auth-apply-btn" onclick="applyBulkAuth()">Anwenden</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk-Clear-Auth-Modal -->
+<div class="modal-overlay" id="bulk-clear-auth-modal" onclick="closeBulkClearAuthModal(event)" style="display:none">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title">Passwort entfernen</div>
+      <button class="modal-close" onclick="document.getElementById('bulk-clear-auth-modal').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:14px" id="bulk-clear-auth-list"></div>
+      <div style="font-size:13px;color:var(--text-dim);line-height:1.5">
+        Entfernt Passwort/Token auf allen ausgewählten Plugs — die Geräte sind danach wieder ohne Anmeldung im LAN
+        erreichbar. Authentifiziert die Änderung mit dem aktuell hinterlegten Token; stimmt der nicht mehr mit dem
+        Gerät überein, schlägt das Entfernen für dieses Gerät fehl.
+      </div>
+      <div id="bulk-clear-auth-results"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('bulk-clear-auth-modal').style.display='none'">Schliessen</button>
+      <button class="btn btn-danger" id="bulk-clear-auth-apply-btn" onclick="applyBulkClearAuth()">Entfernen</button>
     </div>
   </div>
 </div>

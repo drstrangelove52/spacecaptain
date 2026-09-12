@@ -6,7 +6,10 @@ Shelly Gen2+: RPC-API /rpc/Switch.Set, Digest-Auth via plug_token="admin:passwor
               Gilt für Gen2, Gen3, Gen4 — alle nutzen dieselbe RPC-API.
 """
 import asyncio
+import hashlib
 import ipaddress
+import secrets
+import string
 import httpx
 import logging
 from types import SimpleNamespace
@@ -174,6 +177,152 @@ async def switch_all_machine_plugs(machine, action: str, db) -> Tuple[bool, str]
         msgs.append(f"Sekundär-Plug Fehler: {e}")
 
     return all_ok, "; ".join(msgs)
+
+
+# ── Auth setzen/aendern ──────────────────────────────────────────────────────
+# Alle drei Geraete-APIs live gegen echte Geraete verifiziert (2026-09), ausser
+# Shelly Gen1 — dafuer stand kein Testgeraet zur Verfuegung, basiert nur auf
+# dokumentiertem Verhalten.
+#
+# Passwort-Alphabet bewusst rein alphanumerisch: myStrom akzeptiert am Geraet
+# selbst nur [a-zA-Z0-9] als Token (eigene Validierung im Geraete-JS gefunden),
+# ein Bulk-Vorgang ueber gemischte Plug-Typen braucht also ein Passwort, das
+# fuer alle Typen gleichzeitig gueltig ist.
+
+def generate_password(length: int = 20) -> str:
+    alphabet = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+async def set_plug_auth(machine, new_password: str) -> Tuple[bool, str, Optional[str]]:
+    """Setzt/aendert die Auth auf einem Plug. Nutzt den aktuell in machine.plug_token
+    hinterlegten Wert zur Authentifizierung, falls das Geraet schon gesichert ist
+    (sonst wird die Aenderung selbst verweigert).
+    Rueckgabe: (ok, message, neuer plug_token-Wert oder None bei Fehler)."""
+    if machine.plug_type == "none" or not machine.plug_ip:
+        return False, "Kein Smart Plug konfiguriert", None
+
+    ip = machine.plug_ip
+
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+
+            if machine.plug_type == "mystrom":
+                r = await client.post(
+                    f"http://{ip}/api/v1/settings",
+                    json={"token": new_password},
+                    headers=_mystrom_headers(machine),
+                )
+                r.raise_for_status()
+                return True, "myStrom-Token gesetzt", new_password
+
+            elif machine.plug_type == "shelly":
+                # Gen1 — dokumentiertes Verhalten, nicht live verifiziert
+                r = await client.post(
+                    f"http://{ip}/settings/login",
+                    params={"enabled": "1", "username": "admin", "password": new_password},
+                    auth=_shelly_auth(machine),
+                )
+                r.raise_for_status()
+                return True, "Shelly-Login gesetzt", f"admin:{new_password}"
+
+            elif machine.plug_type == "shelly_gen2":
+                info = await client.get(f"http://{ip}/shelly")
+                info.raise_for_status()
+                realm = info.json().get("id")
+                if not realm:
+                    return False, "Geraete-ID nicht ermittelbar", None
+                ha1 = hashlib.sha256(f"admin:{realm}:{new_password}".encode()).hexdigest()
+                r = await client.post(
+                    f"http://{ip}/rpc",
+                    json={"id": 1, "method": "Shelly.SetAuth",
+                          "params": {"user": "admin", "realm": realm, "ha1": ha1}},
+                    auth=_shelly_auth(machine),
+                )
+                r.raise_for_status()
+                data = r.json()
+                if "error" in data:
+                    return False, data["error"].get("message", "Fehler vom Geraet"), None
+                return True, "Shelly-Auth gesetzt", f"admin:{new_password}"
+
+    except httpx.TimeoutException:
+        return False, f"Timeout — Plug nicht erreichbar ({ip})", None
+    except httpx.HTTPStatusError as e:
+        detail = ""
+        try:
+            detail = f" — {e.response.json().get('message', '')}"
+        except Exception:
+            pass
+        return False, f"HTTP Fehler: {e.response.status_code}{detail}", None
+    except Exception as e:
+        return False, f"Fehler: {str(e)}", None
+
+    return False, "Unbekannter Plug-Typ", None
+
+
+async def clear_plug_auth(machine) -> Tuple[bool, str]:
+    """Entfernt die Auth wieder (Geraet danach frei ohne Anmeldung erreichbar).
+    Authentifiziert die Aenderung selbst mit dem aktuell hinterlegten Token —
+    ist der bereits falsch/veraltet, schlaegt das Entfernen fehl (Geraet muesste
+    dann manuell zurueckgesetzt werden)."""
+    if machine.plug_type == "none" or not machine.plug_ip:
+        return False, "Kein Smart Plug konfiguriert"
+
+    ip = machine.plug_ip
+
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+
+            if machine.plug_type == "mystrom":
+                r = await client.post(
+                    f"http://{ip}/api/v1/settings",
+                    json={"token": ""},
+                    headers=_mystrom_headers(machine),
+                )
+                r.raise_for_status()
+                return True, "myStrom-Token entfernt"
+
+            elif machine.plug_type == "shelly":
+                # Gen1 — dokumentiertes Verhalten, nicht live verifiziert
+                r = await client.post(
+                    f"http://{ip}/settings/login",
+                    params={"enabled": "0"},
+                    auth=_shelly_auth(machine),
+                )
+                r.raise_for_status()
+                return True, "Shelly-Login deaktiviert"
+
+            elif machine.plug_type == "shelly_gen2":
+                info = await client.get(f"http://{ip}/shelly")
+                info.raise_for_status()
+                realm = info.json().get("id")
+                if not realm:
+                    return False, "Geraete-ID nicht ermittelbar"
+                r = await client.post(
+                    f"http://{ip}/rpc",
+                    json={"id": 1, "method": "Shelly.SetAuth",
+                          "params": {"user": "admin", "realm": realm, "ha1": None}},
+                    auth=_shelly_auth(machine),
+                )
+                r.raise_for_status()
+                data = r.json()
+                if "error" in data:
+                    return False, data["error"].get("message", "Fehler vom Geraet")
+                return True, "Shelly-Auth entfernt"
+
+    except httpx.TimeoutException:
+        return False, f"Timeout — Plug nicht erreichbar ({ip})"
+    except httpx.HTTPStatusError as e:
+        detail = ""
+        try:
+            detail = f" — {e.response.json().get('message', '')}"
+        except Exception:
+            pass
+        return False, f"HTTP Fehler: {e.response.status_code}{detail}"
+    except Exception as e:
+        return False, f"Fehler: {str(e)}"
+
+    return False, "Unbekannter Plug-Typ"
 
 
 # ── Netzwerk-Discovery ──────────────────────────────────────────────────────

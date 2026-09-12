@@ -9,7 +9,7 @@ from app.database import get_db
 from app.models import Plug, Machine, MachinePlug, SystemSettings, User, PlugType, LogType, PlugScanExclusion
 from app.schemas import PlugCreate, PlugUpdate, PlugOut
 from app.services.auth import get_current_user, require_power_manager
-from app.services.plug import switch_plug, discover_devices
+from app.services.plug import switch_plug, discover_devices, set_plug_auth, generate_password, clear_plug_auth
 from app.services import logger as log_svc
 
 router = APIRouter(prefix="/plugs", tags=["plugs"])
@@ -372,3 +372,105 @@ async def remove_scan_exclusion(
     await db.delete(row)
     await db.commit()
     return {"ok": True}
+
+
+class BulkAuthRequest(BaseModel):
+    plug_ids: List[int]
+    password: Optional[str] = None
+
+@router.post("/bulk-set-auth")
+async def bulk_set_plug_auth(
+    payload: BulkAuthRequest,
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(require_power_manager),
+):
+    """Setzt/aendert das Passwort auf mehreren Plugs gleichzeitig — ohne Angabe
+    wird eines automatisch generiert und fuer den gesamten Batch verwendet."""
+    if not payload.plug_ids:
+        raise HTTPException(400, "Keine Plugs ausgewählt")
+
+    if payload.password:
+        password = payload.password.strip()
+        if len(password) < 6:
+            raise HTTPException(400, "Passwort muss mindestens 6 Zeichen haben")
+    else:
+        password = generate_password()
+
+    results = []
+    for plug_id in payload.plug_ids:
+        res = await db.execute(select(Plug).where(Plug.id == plug_id))
+        plug = res.scalar_one_or_none()
+        if not plug:
+            results.append({"id": plug_id, "name": None, "ok": False, "message": "Nicht gefunden"})
+            continue
+
+        proxy = SimpleNamespace(plug_type=plug.plug_type, plug_ip=plug.plug_ip, plug_token=plug.plug_token)
+        ok, msg, new_token = await set_plug_auth(proxy, password)
+
+        if ok:
+            plug.plug_token = new_token
+            # Sync auf alle Maschinen, wo dieser Plug PRIMÄR ist (sort_order=0) —
+            # gleiches Muster wie beim regulaeren PATCH /plugs/{id}
+            mres = await db.execute(
+                select(Machine)
+                .join(MachinePlug, MachinePlug.machine_id == Machine.id)
+                .where(MachinePlug.plug_id == plug.id, MachinePlug.sort_order == 0)
+            )
+            for m in mres.scalars().all():
+                m.plug_token = new_token
+
+        results.append({"id": plug_id, "name": plug.name, "ok": ok, "message": msg})
+
+    await db.commit()
+    ok_count = sum(1 for r in results if r["ok"])
+    await log_svc.log(db, LogType.plug_updated,
+        f"Bulk-Passwortänderung: {ok_count}/{len(results)} Plugs erfolgreich",
+        user_id=current.id, meta={"plug_ids": payload.plug_ids})
+
+    return {"password": password, "results": results}
+
+
+class BulkIdsRequest(BaseModel):
+    plug_ids: List[int]
+
+@router.post("/bulk-clear-auth")
+async def bulk_clear_plug_auth(
+    payload: BulkIdsRequest,
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(require_power_manager),
+):
+    """Entfernt das Passwort/Token auf mehreren Plugs gleichzeitig — Geraete
+    sind danach wieder ohne Anmeldung erreichbar."""
+    if not payload.plug_ids:
+        raise HTTPException(400, "Keine Plugs ausgewählt")
+
+    results = []
+    for plug_id in payload.plug_ids:
+        res = await db.execute(select(Plug).where(Plug.id == plug_id))
+        plug = res.scalar_one_or_none()
+        if not plug:
+            results.append({"id": plug_id, "name": None, "ok": False, "message": "Nicht gefunden"})
+            continue
+
+        proxy = SimpleNamespace(plug_type=plug.plug_type, plug_ip=plug.plug_ip, plug_token=plug.plug_token)
+        ok, msg = await clear_plug_auth(proxy)
+
+        if ok:
+            plug.plug_token = None
+            mres = await db.execute(
+                select(Machine)
+                .join(MachinePlug, MachinePlug.machine_id == Machine.id)
+                .where(MachinePlug.plug_id == plug.id, MachinePlug.sort_order == 0)
+            )
+            for m in mres.scalars().all():
+                m.plug_token = None
+
+        results.append({"id": plug_id, "name": plug.name, "ok": ok, "message": msg})
+
+    await db.commit()
+    ok_count = sum(1 for r in results if r["ok"])
+    await log_svc.log(db, LogType.plug_updated,
+        f"Bulk-Passwort entfernt: {ok_count}/{len(results)} Plugs erfolgreich",
+        user_id=current.id, meta={"plug_ids": payload.plug_ids})
+
+    return {"results": results}
