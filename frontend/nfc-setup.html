@@ -4,6 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SpaceCaptain — NFC Writer Setup</title>
+  <script>
+    // Zentral in den Einstellungen konfigurierter Hell-/Dunkelmodus fuer Seiten
+    // ohne Login. Bewusst synchron, damit kein Flackern beim Laden entsteht.
+    try {
+      var _thXhr = new XMLHttpRequest();
+      _thXhr.open('GET', '/api/settings/public', false);
+      _thXhr.send(null);
+      if (_thXhr.status === 200) {
+        var _thSettings = JSON.parse(_thXhr.responseText);
+        document.documentElement.setAttribute('data-theme', _thSettings.public_pages_theme === 'light' ? 'light' : 'dark');
+      }
+    } catch (e) {}
+  </script>
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js"></script>
   <style>
@@ -12,7 +25,12 @@
       --accent: #f4a622; --accent2: #22d3ee; --success: #22c55e; --danger: #ef4444;
       --text: #e2e8f0; --text-dim: #a8bece; --text-mid: #c8d8e5;
       --mono: 'Share Tech Mono', monospace; --body: 'Barlow', sans-serif;
-      --display: 'Barlow Condensed', sans-serif;
+      --display: 'Barlow Condensed', sans-serif; --on-accent:#000;
+    }
+    :root[data-theme="light"] {
+      --bg: #f4f6f8; --surface: #ffffff; --surface2: #eef1f5; --border: #d8dee6;
+      --accent: #b45309; --accent2: #0e7490; --success: #16a34a; --danger: #dc2626;
+      --text: #0f172a; --text-dim: #475569; --text-mid: #334155; --on-accent:#fff;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -96,7 +114,7 @@
     /* Hardware-Tabellen */
     .hw-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px; }
     .hw-table th { text-align: left; padding: 6px 12px 8px 0; font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--text-dim); font-weight: 400; border-bottom: 1px solid var(--border); }
-    .hw-table td { padding: 8px 12px 8px 0; color: var(--text-mid); border-bottom: 1px solid rgba(42,47,62,.5); vertical-align: top; line-height: 1.5; }
+    .hw-table td { padding: 8px 12px 8px 0; color: var(--text-mid); border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); vertical-align: top; line-height: 1.5; }
     .hw-table td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; }
     .hw-table tr:last-child td { border-bottom: none; }
 

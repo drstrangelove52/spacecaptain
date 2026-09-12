@@ -155,6 +155,7 @@ async def guest_login(payload: GuestLoginRequest, request: Request, db: AsyncSes
         "guest_id": guest.id, "guest_name": guest.name, "username": guest.username,
         "ntfy_topic": guest.ntfy_topic,
         "has_login_token": guest.login_token is not None,
+        "theme_preference": guest.theme_preference,
     }
 
 
@@ -189,6 +190,7 @@ async def guest_login_by_token(
         "guest_id": guest.id, "guest_name": guest.name, "username": guest.username,
         "ntfy_topic": guest.ntfy_topic,
         "has_login_token": guest.login_token is not None,
+        "theme_preference": guest.theme_preference,
     }
 
 
@@ -521,7 +523,20 @@ async def guest_get_own_profile(access_token: str, db: AsyncSession = Depends(ge
         "username": guest.username,
         "ntfy_topic": guest.ntfy_topic,
         "has_login_token": guest.login_token is not None,
+        "theme_preference": guest.theme_preference,
     }
+
+class GuestThemeRequest(BaseModel):
+    access_token: str
+    theme_preference: str
+
+@router.patch("/my/theme")
+async def guest_set_own_theme(payload: GuestThemeRequest, db: AsyncSession = Depends(get_db)):
+    """Gast speichert seine eigene Hell-/Dunkelmodus-Praeferenz."""
+    guest = await get_current_guest(payload.access_token, db)
+    guest.theme_preference = "light" if payload.theme_preference == "light" else "dark"
+    await db.commit()
+    return {"ok": True, "theme_preference": guest.theme_preference}
 
 @router.post("/my/login-token")
 async def guest_generate_own_login_token(payload: GuestTokenRequest, db: AsyncSession = Depends(get_db)):

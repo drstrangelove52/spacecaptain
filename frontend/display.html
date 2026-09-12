@@ -4,6 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SpaceCaptain — Display</title>
+<script>
+  // Zentral in den Einstellungen konfigurierter Hell-/Dunkelmodus fuer Seiten
+  // ohne Login. Bewusst synchron, damit kein Flackern beim Laden entsteht.
+  try {
+    var _thXhr = new XMLHttpRequest();
+    _thXhr.open('GET', '/api/settings/public', false);
+    _thXhr.send(null);
+    if (_thXhr.status === 200) {
+      var _thSettings = JSON.parse(_thXhr.responseText);
+      document.documentElement.setAttribute('data-theme', _thSettings.public_pages_theme === 'light' ? 'light' : 'dark');
+    }
+  } catch (e) {}
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -11,6 +24,13 @@
     --accent:#f4a622;--accent2:#22d3ee;--danger:#ef4444;--success:#22c55e;
     --text:#e2e8f0;--text-dim:#a8bece;--text-mid:#c8d8e5;
     --mono:'Share Tech Mono',monospace;--body:'Barlow',sans-serif;--display:'Barlow Condensed',sans-serif;
+    --on-accent:#000;
+  }
+  :root[data-theme="light"] {
+    --bg:#f4f6f8;--surface:#ffffff;--surface2:#eef1f5;--border:#d8dee6;
+    --accent:#b45309;--accent2:#0e7490;--danger:#dc2626;--success:#16a34a;
+    --text:#0f172a;--text-dim:#475569;--text-mid:#334155;
+    --on-accent:#fff;
   }
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;display:flex;flex-direction:column}
@@ -24,9 +44,9 @@
   main{flex:1;padding:16px 20px;display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));align-content:start}
 
   .machine-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .3s,background .3s,box-shadow .3s}
-  .machine-card.in-use{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.6);box-shadow:0 0 0 1px rgba(34,211,238,.2),0 0 28px rgba(34,211,238,.15)}
-  .machine-card.available{background:rgba(34,197,94,.05);border-color:rgba(34,197,94,.45)}
-  .machine-card.maintenance{background:rgba(244,166,34,.05);border-color:rgba(244,166,34,.4)}
+  .machine-card.in-use{background:color-mix(in srgb,var(--accent2) 8%,transparent);border-color:color-mix(in srgb,var(--accent2) 60%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent2) 20%,transparent),0 0 28px color-mix(in srgb,var(--accent2) 15%,transparent)}
+  .machine-card.available{background:color-mix(in srgb,var(--success) 5%,transparent);border-color:color-mix(in srgb,var(--success) 45%,transparent)}
+  .machine-card.maintenance{background:color-mix(in srgb,var(--accent) 5%,transparent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
   .machine-card.offline{opacity:.45}
   .card-top{padding:12px 16px 10px;display:flex;gap:10px;align-items:flex-start}
   .card-icon{font-size:28px;flex-shrink:0;margin-top:2px}
@@ -50,21 +70,21 @@
 
   .queue-section{padding:10px 20px 14px;border-top:1px solid var(--border)}
   .queue-title{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px}
-  .queue-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+  .queue-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 40%,transparent)}
   .queue-item:last-child{border-bottom:none}
   .queue-pos{font-family:var(--mono);font-size:11px;color:var(--accent);width:18px;flex-shrink:0}
   .queue-name{font-family:var(--mono);font-size:13px;color:var(--text)}
-  .queue-badge{font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3);letter-spacing:1px;margin-left:auto}
+  .queue-badge{font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:3px;background:color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--accent2);border:1px solid color-mix(in srgb,var(--accent2) 30%,transparent);letter-spacing:1px;margin-left:auto}
 
   footer{padding:12px 32px;border-top:1px solid var(--border);display:flex;align-items:center;gap:16px;font-family:var(--mono);font-size:11px;color:var(--text-dim)}
   .refresh-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
 
   /* TICKER */
-  .ticker-bar{width:100%;background:var(--accent);color:#000;font-family:var(--mono);font-weight:700;letter-spacing:1px;overflow:hidden;white-space:nowrap;flex-shrink:0;padding:10px 0}
+  .ticker-bar{width:100%;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-weight:700;letter-spacing:1px;overflow:hidden;white-space:nowrap;flex-shrink:0;padding:10px 0}
   .ticker-track{display:inline-block;will-change:transform}
 
   /* ANKÜNDIGUNG */
-  .announcement-card{background:linear-gradient(135deg,rgba(244,166,34,.12),rgba(244,166,34,.06));border:1px solid rgba(244,166,34,.5);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;grid-column:1/-1}
+  .announcement-card{background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 12%,transparent),color-mix(in srgb,var(--accent) 6%,transparent));border:1px solid color-mix(in srgb,var(--accent) 50%,transparent);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;grid-column:1/-1}
   .announcement-inner{padding:20px 24px;display:flex;gap:16px;align-items:flex-start}
   .announcement-icon{font-size:32px;flex-shrink:0}
   .announcement-label{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:3px;margin-bottom:6px}
@@ -110,7 +130,7 @@
   <div style="font-size:80px;animation:emergencyPulse 1s infinite">🚨</div>
   <div style="font-family:'Barlow Condensed',sans-serif;font-size:72px;font-weight:900;color:#ef4444;letter-spacing:4px;margin:16px 0;text-transform:uppercase;animation:emergencyPulse 1s infinite">NOTFALL</div>
   <div id="emergency-display-text" style="max-width:800px;font-size:22px;line-height:1.8;color:#fca5a5;margin-top:16px;white-space:pre-wrap"></div>
-  <div style="font-family:'Share Tech Mono',monospace;font-size:14px;color:rgba(239,68,68,.5);margin-top:32px;letter-spacing:2px" id="emergency-display-time"></div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:14px;color:color-mix(in srgb,var(--danger) 50%,transparent);margin-top:32px;letter-spacing:2px" id="emergency-display-time"></div>
 </div>
 <!-- GESCHLOSSEN-SCREEN -->
 <div id="closed-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9998;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center">

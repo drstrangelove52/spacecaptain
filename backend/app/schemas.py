@@ -25,6 +25,7 @@ class UserBase(BaseModel):
     role: UserRole = UserRole.manager
     phone: Optional[str] = None
     area: Optional[str] = None
+    theme_preference: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
@@ -37,6 +38,7 @@ class UserUpdate(BaseModel):
     role: Optional[UserRole] = None
     password: Optional[str] = None
     is_active: Optional[bool] = None
+    theme_preference: Optional[str] = None
 
 class UserOut(UserBase):
     id: int

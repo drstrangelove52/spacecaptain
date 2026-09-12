@@ -580,6 +580,16 @@ async def run_migrations(engine: AsyncEngine) -> None:
             "tailscale_updated", "machine_qr_regenerated",
         ])
 
+        # ── v1.48: Zentral konfigurierbarer Hell-/Dunkelmodus für Seiten ohne
+        # Login (Gäste-App, Display, Registrierung, NFC-Writer) ──
+        await _add_column_if_missing(conn, "system_settings", "public_pages_theme", "VARCHAR(10) NOT NULL DEFAULT 'dark'")
+
+        # ── v1.49: Hell-/Dunkelmodus pro Lab-Manager und pro Gast speicherbar —
+        # NULL = kein eigener Wert gesetzt, Frontend faellt dann auf den bisherigen
+        # lokalen Standard (localStorage bzw. Dunkel) zurueck ──
+        await _add_column_if_missing(conn, "users", "theme_preference", "VARCHAR(10) DEFAULT NULL")
+        await _add_column_if_missing(conn, "guests", "theme_preference", "VARCHAR(10) DEFAULT NULL")
+
     log.info("Migrationen abgeschlossen")
 
 

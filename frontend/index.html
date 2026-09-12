@@ -6,6 +6,25 @@
 <meta name="theme-color" content="#0d0f12">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>SpaceCaptain — Gast</title>
+<script>
+  // Zentral in den Einstellungen konfigurierter Hell-/Dunkelmodus fuer Seiten
+  // ohne Login (kein persoenlicher Toggle wie im LabManager). Bewusst
+  // synchron, damit kein Flackern zwischen Dunkel/Hell beim Laden entsteht.
+  try {
+    var _thXhr = new XMLHttpRequest();
+    _thXhr.open('GET', '/api/settings/public', false);
+    _thXhr.send(null);
+    if (_thXhr.status === 200) {
+      var _thSettings = JSON.parse(_thXhr.responseText);
+      var _thTheme = _thSettings.public_pages_theme === 'light' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', _thTheme);
+      document.addEventListener('DOMContentLoaded', function() {
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', _thTheme === 'light' ? '#f4f6f8' : '#0d0f12');
+      });
+    }
+  } catch (e) {}
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -13,6 +32,13 @@
     --accent:#f4a622;--accent2:#22d3ee;--danger:#ef4444;--success:#22c55e;
     --text:#e2e8f0;--text-dim:#a8bece;--text-mid:#c8d8e5;
     --mono:'Share Tech Mono',monospace;--body:'Barlow',sans-serif;--display:'Barlow Condensed',sans-serif;
+    --on-accent:#000;
+  }
+  :root[data-theme="light"] {
+    --bg:#f4f6f8;--surface:#ffffff;--surface2:#eef1f5;--border:#d8dee6;
+    --accent:#b45309;--accent2:#0e7490;--danger:#dc2626;--success:#16a34a;
+    --text:#0f172a;--text-dim:#475569;--text-mid:#334155;
+    --on-accent:#fff;
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100dvh;display:flex;flex-direction:column;align-items:center}
@@ -28,13 +54,13 @@
   .machine-icon{font-size:32px;margin-bottom:12px}
   .machine-name{font-family:var(--display);font-size:26px;font-weight:900;letter-spacing:1px;margin-bottom:4px}
   .machine-meta{font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px;margin-bottom:12px}
-  .machine-comment{background:rgba(244,166,34,.1);border:1px solid rgba(244,166,34,.3);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--accent);margin-bottom:12px}
+  .machine-comment{background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--accent);margin-bottom:12px}
   .machine-status-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .status-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:1px}
-  .s-online{background:rgba(34,197,94,.15);color:var(--success);border:1px solid rgba(34,197,94,.3)}
+  .s-online{background:color-mix(in srgb,var(--success) 15%,transparent);color:var(--success);border:1px solid color-mix(in srgb,var(--success) 30%,transparent)}
   .s-offline{background:rgba(100,116,139,.15);color:var(--text-dim);border:1px solid var(--border)}
-  .s-maintenance{background:rgba(244,166,34,.15);color:var(--accent);border:1px solid rgba(244,166,34,.3)}
-  .s-plugon{background:rgba(34,197,94,.15);color:var(--success);border:1px solid rgba(34,197,94,.3)}
+  .s-maintenance{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
+  .s-plugon{background:color-mix(in srgb,var(--success) 15%,transparent);color:var(--success);border:1px solid color-mix(in srgb,var(--success) 30%,transparent)}
   .s-plugoff{background:rgba(100,116,139,.1);color:var(--text-dim);border:1px solid var(--border)}
   .power-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
   .power-on{background:var(--success);animation:pulse 2s infinite}
@@ -50,23 +76,23 @@
   .form-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;color:var(--text);font-family:var(--body);font-size:16px;outline:none;transition:border-color .15s}
   .form-input:focus{border-color:var(--accent)}
   input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 1000px var(--bg) inset!important;-webkit-text-fill-color:var(--text)!important;transition:background-color 5000s ease-in-out 0s}
-  .error-box{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--danger);margin-bottom:14px;display:none}
+  .error-box{background:color-mix(in srgb,var(--danger) 10%,transparent);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--danger);margin-bottom:14px;display:none}
 
   /* BUTTONS */
   .btn-big{width:100%;padding:18px;border:none;border-radius:12px;cursor:pointer;font-family:var(--display);font-size:20px;font-weight:900;letter-spacing:2px;text-transform:uppercase;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:10px}
   .btn-login{background:var(--accent);color:var(--bg)}.btn-login:active{transform:scale(.98)}
-  .btn-on{background:var(--success);color:var(--bg);box-shadow:0 0 30px rgba(34,197,94,.3);border:2px solid transparent}.btn-on:active{transform:scale(.97)}
+  .btn-on{background:var(--success);color:var(--bg);box-shadow:0 0 30px color-mix(in srgb,var(--success) 30%,transparent);border:2px solid transparent}.btn-on:active{transform:scale(.97)}
   .btn-on:disabled{background:transparent;color:var(--success);border:2px solid var(--success);box-shadow:none;opacity:.5}
-  .btn-off{background:var(--danger);color:#fff;box-shadow:0 0 30px rgba(239,68,68,.3);border:2px solid transparent}.btn-off:active{transform:scale(.97)}
+  .btn-off{background:var(--danger);color:#fff;box-shadow:0 0 30px color-mix(in srgb,var(--danger) 30%,transparent);border:2px solid transparent}.btn-off:active{transform:scale(.97)}
   .btn-off:disabled{background:transparent;color:var(--danger);border:2px solid var(--danger);box-shadow:none;opacity:.5}
   .btn-secondary{background:transparent;color:var(--text-dim);border:1px solid var(--border);font-size:14px;font-family:var(--body);font-weight:600;letter-spacing:0;padding:14px;border-radius:10px;width:100%;cursor:pointer;margin-top:4px}
   .btn-big:disabled{cursor:not-allowed;transform:none!important}
 
   /* QUEUE */
-  .queue-box{background:var(--surface2);border:1px solid rgba(34,211,238,.25);border-radius:10px;padding:14px 16px}
-  .btn-queue{width:100%;padding:14px;border:1px solid var(--accent2);border-radius:10px;cursor:pointer;font-family:var(--body);font-size:15px;font-weight:600;background:rgba(34,211,238,.08);color:var(--accent2);transition:all .15s}
-  .btn-queue:active{background:rgba(34,211,238,.18)}
-  .btn-queue.in-queue{border-color:var(--danger);color:var(--danger);background:rgba(239,68,68,.08)}
+  .queue-box{background:var(--surface2);border:1px solid color-mix(in srgb,var(--accent2) 25%,transparent);border-radius:10px;padding:14px 16px}
+  .btn-queue{width:100%;padding:14px;border:1px solid var(--accent2);border-radius:10px;cursor:pointer;font-family:var(--body);font-size:15px;font-weight:600;background:color-mix(in srgb,var(--accent2) 8%,transparent);color:var(--accent2);transition:all .15s}
+  .btn-queue:active{background:color-mix(in srgb,var(--accent2) 18%,transparent)}
+  .btn-queue.in-queue{border-color:var(--danger);color:var(--danger);background:color-mix(in srgb,var(--danger) 8%,transparent)}
   .btn-queue:disabled{opacity:.4;cursor:not-allowed}
 
   /* SCAN BOX */
@@ -76,12 +102,12 @@
   .scan-desc{font-size:15px;color:var(--text-dim);line-height:1.6}
 
   /* DENIED */
-  .denied-card{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:12px;padding:24px;text-align:center}
+  .denied-card{background:color-mix(in srgb,var(--danger) 8%,transparent);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:12px;padding:24px;text-align:center}
   .denied-icon{font-size:40px;margin-bottom:12px}
   .denied-title{font-family:var(--display);font-size:22px;font-weight:900;color:var(--danger);margin-bottom:8px;letter-spacing:1px}
   .denied-sub{font-size:14px;color:var(--text-mid);line-height:1.5}
 
-  .warn-card{background:rgba(244,166,34,.06);border:1px solid rgba(244,166,34,.3);border-radius:12px;padding:24px;text-align:center}
+  .warn-card{background:color-mix(in srgb,var(--accent) 6%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:12px;padding:24px;text-align:center}
 
 
   /* LOADING */
@@ -90,8 +116,8 @@
 
   .screen{display:none}.screen.active{display:flex;flex-direction:column;gap:16px}
   .idle-warn-box{border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;animation:guest-idle-pulse 1.5s ease-in-out infinite}
-  .idle-warn-box.warning{background:rgba(239,68,68,.12);border:2px solid rgba(239,68,68,.5)}
-  .idle-warn-box.caution{background:rgba(244,166,34,.08);border:1px solid rgba(244,166,34,.4)}
+  .idle-warn-box.warning{background:color-mix(in srgb,var(--danger) 12%,transparent);border:2px solid color-mix(in srgb,var(--danger) 50%,transparent)}
+  .idle-warn-box.caution{background:color-mix(in srgb,var(--accent) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent)}
   @keyframes guest-idle-pulse{0%,100%{opacity:1}50%{opacity:.6}}
   .toast-container{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
   .toast{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:13px;animation:slideIn .2s ease;border-left:3px solid var(--success);max-width:280px;pointer-events:auto}
@@ -104,14 +130,14 @@
   .user-strip-timer{font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:right}
 
   /* SCAN HERO */
-  @keyframes dashBreathe{0%,100%{border-color:var(--border)}50%{border-color:rgba(244,166,34,.45)}}
+  @keyframes dashBreathe{0%,100%{border-color:var(--border)}50%{border-color:color-mix(in srgb,var(--accent) 45%,transparent)}}
   @keyframes floatIcon{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
   .scan-hero{background:var(--surface2);border:2px dashed var(--border);border-radius:16px;padding:44px 24px;text-align:center;animation:dashBreathe 3.5s ease-in-out infinite}
-  .scan-hero-icon{font-size:72px;line-height:1;margin-bottom:16px;display:block;animation:floatIcon 3.5s ease-in-out infinite;filter:drop-shadow(0 0 18px rgba(244,166,34,.25))}
+  .scan-hero-icon{font-size:72px;line-height:1;margin-bottom:16px;display:block;animation:floatIcon 3.5s ease-in-out infinite;filter:drop-shadow(0 0 18px color-mix(in srgb,var(--accent) 25%,transparent))}
   .scan-hero-title{font-family:var(--display);font-size:28px;font-weight:900;letter-spacing:2px;color:var(--text);margin-bottom:8px}
   .scan-hero-desc{font-size:15px;color:var(--text-dim);line-height:1.6}
-  .btn-status{background:transparent!important;color:var(--accent2)!important;border:1px solid rgba(34,211,238,.4)!important;box-shadow:none!important}
-  .btn-status:active{background:rgba(34,211,238,.08)!important}
+  .btn-status{background:transparent!important;color:var(--accent2)!important;border:1px solid color-mix(in srgb,var(--accent2) 40%,transparent)!important;box-shadow:none!important}
+  .btn-status:active{background:color-mix(in srgb,var(--accent2) 8%,transparent)!important}
 
   /* SETTINGS ACCORDION */
   .settings-section{border:1px solid var(--border);border-radius:12px;overflow:hidden}
@@ -122,7 +148,7 @@
   .settings-inner{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
   .settings-label{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
   .settings-btn{flex:1;padding:12px 16px;background:transparent;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--text-mid);font-family:var(--body);font-weight:600}
-  .settings-btn-danger{border-color:rgba(239,68,68,.4)!important;color:#f87171!important}
+  .settings-btn-danger{border-color:color-mix(in srgb,var(--danger) 40%,transparent)!important;color:#f87171!important}
 </style>
 </head>
 <body>
@@ -221,6 +247,11 @@
           <div id="login-link-status" style="font-size:13px;color:var(--text-dim);margin-bottom:10px;line-height:1.5">Lade…</div>
           <div id="login-link-actions"></div>
         </div>
+        <!-- Hell-/Dunkelmodus -->
+        <div class="settings-inner">
+          <div class="settings-label">Darstellung</div>
+          <button id="guest-theme-toggle-btn" onclick="toggleGuestTheme()" style="padding:8px 14px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;color:var(--text-mid)">🌙 Dunkel</button>
+        </div>
         <!-- Aktionen -->
         <div style="display:flex;gap:8px">
           <button class="settings-btn" onclick="showChangePassword()">🔑 Passwort ändern</button>
@@ -244,7 +275,7 @@
 
 
     <!-- Reserviert für anderen Gast -->
-    <div class="denied-card" id="ctrl-reserved" style="display:none;background:rgba(244,166,34,.08);border-color:rgba(244,166,34,.3)">
+    <div class="denied-card" id="ctrl-reserved" style="display:none;background:color-mix(in srgb,var(--accent) 8%,transparent);border-color:color-mix(in srgb,var(--accent) 30%,transparent)">
       <div class="denied-icon">🔒</div>
       <div class="denied-title" style="color:var(--accent)">Reserviert</div>
       <div class="denied-sub">Diese Maschine ist aktuell für einen anderen Gast reserviert.</div>
@@ -262,11 +293,11 @@
       <div class="denied-icon">🚫</div>
       <div class="denied-title">Kein Zugang</div>
       <div class="denied-sub">Du hast keine Berechtigung für diese Maschine.<br>Bitte wende dich an einen Lab Manager.</div>
-      <div id="ctrl-denied-reason" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;font-family:var(--mono);font-size:12px;color:var(--text-mid);text-align:left"></div>
+      <div id="ctrl-denied-reason" style="display:none;margin-top:12px;padding:10px 14px;background:color-mix(in srgb,var(--danger) 8%,transparent);border:1px solid color-mix(in srgb,var(--danger) 20%,transparent);border-radius:8px;font-family:var(--mono);font-size:12px;color:var(--text-mid);text-align:left"></div>
     </div>
 
     <!-- Raum geschlossen -->
-    <div class="denied-card" id="ctrl-room-closed" style="display:none;background:rgba(244,166,34,.08);border-color:rgba(244,166,34,.3)">
+    <div class="denied-card" id="ctrl-room-closed" style="display:none;background:color-mix(in srgb,var(--accent) 8%,transparent);border-color:color-mix(in srgb,var(--accent) 30%,transparent)">
       <div class="denied-icon">🔒</div>
       <div class="denied-title" style="color:var(--accent)">Raum geschlossen</div>
       <div class="denied-sub">Das Lab ist derzeit geschlossen.<br>Bitte versuche es später erneut.</div>
@@ -301,7 +332,7 @@
       <div style="font-family:var(--display);font-size:22px;font-weight:900;color:var(--accent);letter-spacing:2px">SICHERHEIT</div>
       <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-top:4px" id="safety-machine-name"></div>
     </div>
-    <div id="safety-notes-text" style="background:rgba(244,166,34,.06);border:1px solid rgba(244,166,34,.3);border-left:3px solid var(--accent);border-radius:8px;padding:16px 18px;font-size:14px;color:var(--text-mid);line-height:1.9;white-space:pre-wrap"></div>
+    <div id="safety-notes-text" style="background:color-mix(in srgb,var(--accent) 6%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-left:3px solid var(--accent);border-radius:8px;padding:16px 18px;font-size:14px;color:var(--text-mid);line-height:1.9;white-space:pre-wrap"></div>
     <label style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:14px 16px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
       <input type="checkbox" id="safety-cb" onchange="document.getElementById('safety-btn').disabled=!this.checked" style="width:20px;height:20px;accent-color:var(--accent);cursor:pointer;flex-shrink:0">
       <span style="font-size:13px;color:var(--text);line-height:1.4">Ich habe die Sicherheitshinweise gelesen und befolge sie</span>
@@ -329,7 +360,7 @@
         <label style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;display:block;margin-bottom:6px">NEUES PASSWORT BESTÄTIGEN</label>
         <input type="password" id="pw-confirm" class="form-input" placeholder="Wiederholen">
       </div>
-      <div id="pw-error" style="display:none;color:#ef4444;font-family:var(--mono);font-size:11px;padding:8px;background:rgba(239,68,68,.1);border-radius:6px"></div>
+      <div id="pw-error" style="display:none;color:#ef4444;font-family:var(--mono);font-size:11px;padding:8px;background:color-mix(in srgb,var(--danger) 10%,transparent);border-radius:6px"></div>
       <button class="btn-big btn-login" id="pw-btn" onclick="doChangePassword()">🔑 Passwort speichern</button>
     </div>
     <button class="btn-secondary" onclick="document.getElementById('screen-pw').style.display='none'">← Zurück</button>
@@ -486,7 +517,7 @@ function _renderLoginLinkBox(hasToken) {
     actionsEl.innerHTML = `
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="selfRegenLoginToken()" style="padding:8px 14px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;color:var(--text-mid)">↺ Neu generieren</button>
-        <button onclick="selfRevokeLoginToken()" style="padding:8px 14px;background:transparent;border:1px solid rgba(239,68,68,.4);border-radius:6px;cursor:pointer;font-size:13px;color:#f87171">✕ Widerrufen</button>
+        <button onclick="selfRevokeLoginToken()" style="padding:8px 14px;background:transparent;border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);border-radius:6px;cursor:pointer;font-size:13px;color:#f87171">✕ Widerrufen</button>
       </div>`;
   } else {
     statusEl.textContent = 'Kein Login-Link aktiv. Du kannst dir einen erstellen, um dich ohne Passwort anzumelden.';
@@ -516,13 +547,33 @@ function _selfShowLoginLink(loginToken) {
         <input id="self-lt-url" value="${url}" readonly style="flex:1;font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text)">
         <button onclick="copyLoginUrl(this)" title="Link kopieren" style="padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:16px">📋</button>
       </div>
-      <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:10px;background:var(--accent);border:none;border-radius:8px;cursor:pointer;font-weight:700;color:#000;font-size:14px">Verstanden</button>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:10px;background:var(--accent);border:none;border-radius:8px;cursor:pointer;font-weight:700;color:var(--on-accent);font-size:14px">Verstanden</button>
     </div>`;
   document.body.appendChild(overlay);
 }
 
 function setHeaderUser(name) {
   document.getElementById('header-user').textContent = name ? `@${name}` : '';
+}
+
+// ── Hell-/Dunkelmodus (pro Gastkonto, ueberschreibt die zentrale Seiten-Einstellung) ──
+function _applyGuestTheme(pref) {
+  if (pref !== 'light' && pref !== 'dark') return;
+  document.documentElement.setAttribute('data-theme', pref);
+  localStorage.setItem('guest_theme_preference', pref);
+  const btn = document.getElementById('guest-theme-toggle-btn');
+  if (btn) btn.textContent = pref === 'light' ? '☀️ Hell' : '🌙 Dunkel';
+}
+async function toggleGuestTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  _applyGuestTheme(next);
+  if (!S.guestToken) return;
+  try {
+    await fetch(`${API}/guest/my/theme`, {
+      method: 'PATCH', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({access_token: S.guestToken, theme_preference: next})
+    });
+  } catch {}
 }
 
 // ── Machine card render ───────────────────────────────
@@ -645,6 +696,7 @@ async function doLogin() {
     S.guestId       = data.guest_id;
     S.ntfyTopic     = data.ntfy_topic || null;
     S.hasLoginToken = data.has_login_token ?? null;
+    _applyGuestTheme(data.theme_preference);
     localStorage.setItem('guest_token',    S.guestToken);
     localStorage.setItem('guest_name',     S.guestName);
     localStorage.setItem('guest_username', S.username);
@@ -1044,6 +1096,8 @@ function toggleSettings(btn) {
   const isOpen = panel.style.display !== 'none';
   panel.style.display = isOpen ? 'none' : 'flex';
   chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
+  const themeBtn = document.getElementById('guest-theme-toggle-btn');
+  if (themeBtn && !isOpen) themeBtn.textContent = document.documentElement.getAttribute('data-theme') === 'light' ? '☀️ Hell' : '🌙 Dunkel';
 }
 
 function _updateActiveMachineBanner() {
@@ -1054,7 +1108,7 @@ function _updateActiveMachineBanner() {
   banner.style.display = 'block';
   banner.innerHTML = list.map((entry, i) => {
     const icon = machineIcons[entry.category] || '🔧';
-    return `<button onclick="resumeControlScreen('${escHtml(entry.token)}')" style="width:100%;background:rgba(34,197,94,.1);border:2px solid rgba(34,197,94,.45);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;text-align:left${i>0?';margin-top:8px':''}">
+    return `<button onclick="resumeControlScreen('${escHtml(entry.token)}')" style="width:100%;background:color-mix(in srgb,var(--success) 10%,transparent);border:2px solid color-mix(in srgb,var(--success) 45%,transparent);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;text-align:left${i>0?';margin-top:8px':''}">
       <div style="font-size:28px">${icon}</div>
       <div style="flex:1">
         <div style="font-family:var(--mono);font-size:10px;color:var(--success);letter-spacing:2px;margin-bottom:3px">⚡ LÄUFT</div>
@@ -1120,7 +1174,7 @@ async function showGuestDashboard() {
         ⏳ In Warteliste eintragen</button>`;
     }
 
-    return `<div style="background:var(--surface);border:1px solid ${inUse?'rgba(34,211,238,.3)':available?'rgba(34,197,94,.2)':'var(--border)'};border-radius:10px;padding:16px">
+    return `<div style="background:var(--surface);border:1px solid ${inUse?'color-mix(in srgb,var(--accent2) 30%,transparent)':available?'color-mix(in srgb,var(--success) 20%,transparent)':'var(--border)'};border-radius:10px;padding:16px">
       <div style="display:flex;align-items:center;gap:14px">
         <div style="font-size:24px;flex-shrink:0">${icon}</div>
         <div style="flex:1">
@@ -1232,6 +1286,7 @@ async function init() {
         S.guestId       = d.guest_id;
         S.ntfyTopic     = d.ntfy_topic || null;
         S.hasLoginToken = d.has_login_token ?? null;
+        _applyGuestTheme(d.theme_preference);
         localStorage.setItem('guest_token',    S.guestToken);
         localStorage.setItem('guest_name',     S.guestName);
         localStorage.setItem('guest_username', S.username);
@@ -1281,6 +1336,7 @@ async function init() {
       S.username   = savedUsername;
       S.guestId    = parseInt(localStorage.getItem('guest_id')) || null;
       S.ntfyTopic  = localStorage.getItem('guest_ntfy_topic') || null;
+      _applyGuestTheme(localStorage.getItem('guest_theme_preference'));
       setHeaderUser(savedUsername);
       startSessionTimer(S.guestToken);
 

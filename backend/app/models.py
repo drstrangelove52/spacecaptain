@@ -134,6 +134,7 @@ class User(Base):
     area:          Mapped[Optional[str]] = mapped_column(String(200))
     is_active:     Mapped[bool]          = mapped_column(Boolean, default=True)
     login_token:   Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True)
+    theme_preference: Mapped[Optional[str]] = mapped_column(String(10), default=None)
     created_at:    Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
     updated_at:    Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -153,6 +154,7 @@ class Guest(Base):
     updated_at:    Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     login_token:   Mapped[Optional[str]]       = mapped_column(String(64), unique=True, nullable=True)
     ntfy_topic:    Mapped[Optional[str]]       = mapped_column(String(80), unique=True, nullable=True)
+    theme_preference: Mapped[Optional[str]]    = mapped_column(String(10), default=None)
     permissions:   Mapped[list["Permission"]] = relationship("Permission", back_populates="guest", cascade="all, delete-orphan")
 
 
@@ -285,6 +287,7 @@ class SystemSettings(Base):
     auto_backup_keep:           Mapped[int]            = mapped_column(Integer, default=30)
     space_name:                 Mapped[str]            = mapped_column(String(100), default="")
     currency:                   Mapped[str]            = mapped_column(String(10), default="CHF")
+    public_pages_theme:         Mapped[str]            = mapped_column(String(10), default="dark")
     room_open:                  Mapped[bool]           = mapped_column(Boolean, default=False)
     room_open_since:            Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
     room_open_auto:             Mapped[bool]           = mapped_column(Boolean, default=True)

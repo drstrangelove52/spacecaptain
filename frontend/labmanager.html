@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SpaceCaptain — LabManager</title>
+<script>
+  // Frueh anwenden (vor dem ersten Paint), verhindert Flackern beim Laden
+  document.documentElement.setAttribute('data-theme', localStorage.getItem('ms_theme') || 'dark');
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -11,11 +15,24 @@
     --accent:#f4a622;--accent2:#22d3ee;--danger:#ef4444;--success:#22c55e;
     --text:#e2e8f0;--text-dim:#a8bece;--text-mid:#c8d8e5;
     --mono:'Share Tech Mono',monospace;--body:'Barlow',sans-serif;--display:'Barlow Condensed',sans-serif;
+    /* Theme-abhaengige Overlays (Trenner/Hover) — dunkel: Weiss-Tint, hell: Schwarz-Tint */
+    --border-soft:rgba(255,255,255,.04);--border-strong:rgba(255,255,255,.15);
+    --hover-subtle:rgba(255,255,255,.02);--hover-medium:rgba(255,255,255,.04);--hover-strong:rgba(255,255,255,.08);
+    --err-soft:#f88;--warm-soft:#da7;
+  }
+  :root[data-theme="light"] {
+    --bg:#f4f6f8;--surface:#ffffff;--surface2:#eef1f5;--border:#d8dee6;
+    --accent:#b45309;--accent2:#0e7490;--danger:#dc2626;--success:#16a34a;
+    --text:#0f172a;--text-dim:#475569;--text-mid:#334155;
+    --border-soft:rgba(15,23,32,.08);--border-strong:rgba(15,23,32,.14);
+    --hover-subtle:rgba(15,23,32,.035);--hover-medium:rgba(15,23,32,.06);--hover-strong:rgba(15,23,32,.1);
+    --err-soft:#b91c1c;--warm-soft:#92400e;
   }
   *{margin:0;padding:0;box-sizing:border-box}
+  *{transition:background-color .15s ease,color .15s ease,border-color .15s ease}
   a,a:visited{color:var(--accent2);text-decoration:none}
   a:hover{text-decoration:underline}
-  body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;display:flex;overflow-x:hidden;line-height:1.5}
+  body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;display:flex;overflow-x:hidden;line-height:1.5;transition:background-color .2s,color .2s}
   body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
   .sidebar{width:240px;height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;align-self:flex-start}
   .sidebar::after{content:'';position:absolute;top:0;right:0;bottom:0;width:1px;background:linear-gradient(to bottom,transparent,var(--accent) 40%,var(--accent2) 60%,transparent);opacity:.4}
@@ -27,11 +44,11 @@
   .nav-section{padding:6px 20px 3px;font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:3px;text-transform:uppercase;margin-top:4px}
   .nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;font-size:16px;font-weight:500;color:var(--text-mid);transition:all .15s;border-left:2px solid transparent}
   .nav-item:hover{color:var(--text);background:var(--surface2)}
-  .nav-item.active{color:var(--accent);background:rgba(244,166,34,.08);border-left-color:var(--accent)}
+  .nav-item.active{color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);border-left-color:var(--accent)}
   .nav-badge-danger{background:var(--danger)!important;color:#fff!important}
   .nav-icon{width:16px;text-align:center;font-size:16px}
   .nav-badge{margin-left:auto;background:var(--accent);color:var(--bg);font-size:12px;font-weight:700;padding:1px 5px;border-radius:3px;font-family:var(--mono)}
-  .sidebar-footer{padding:16px 20px;border-top:2px solid rgba(255,255,255,0.15);font-family:var(--mono);font-size:13px;color:var(--text-dim)}
+  .sidebar-footer{padding:16px 20px;border-top:2px solid var(--border-strong);font-family:var(--mono);font-size:13px;color:var(--text-dim)}
   .status-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success);margin-right:6px;animation:pulse 2s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
   .main{flex:1;display:flex;flex-direction:column;overflow-x:hidden;min-width:0}
@@ -55,7 +72,7 @@
   .login-logo{height:80px;width:auto;flex-shrink:0}
   .login-logo-name{font-family:var(--display);font-size:26px;font-weight:900;color:var(--accent);letter-spacing:2px}
   .login-sub{font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:3px;margin-top:4px}
-  .login-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:10px 12px;font-size:16px;color:var(--danger);margin-bottom:16px;display:none}
+  .login-error{background:color-mix(in srgb,var(--danger) 10%,transparent);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:4px;padding:10px 12px;font-size:16px;color:var(--danger);margin-bottom:16px;display:none}
   /* STATS */
   .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
   .stat-card{background:var(--surface);border:1px solid var(--border);padding:20px;border-radius:6px;position:relative;overflow:hidden}
@@ -76,16 +93,16 @@
   table{width:100%;border-collapse:collapse}
   thead tr{background:var(--surface2);border-bottom:1px solid var(--border)}
   th{padding:12px 16px;text-align:left;font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;font-weight:400}
-  td{padding:14px 16px;font-size:16px;color:var(--text);border-bottom:1px solid rgba(42,47,62,.5)}
+  td{padding:14px 16px;font-size:16px;color:var(--text);border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent)}
   tr:last-child td{border-bottom:none}
-  tbody tr:hover{background:rgba(255,255,255,.02)}
+  tbody tr:hover{background:var(--hover-subtle)}
   td strong{color:var(--text);font-weight:600}
   /* BADGES */
   .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:3px;font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
-  .badge-green{background:rgba(34,197,94,.15);color:var(--success);border:1px solid rgba(34,197,94,.3)}
-  .badge-orange{background:rgba(244,166,34,.15);color:var(--accent);border:1px solid rgba(244,166,34,.3)}
-  .badge-red{background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
-  .badge-cyan{background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3)}
+  .badge-green{background:color-mix(in srgb,var(--success) 15%,transparent);color:var(--success);border:1px solid color-mix(in srgb,var(--success) 30%,transparent)}
+  .badge-orange{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
+  .badge-red{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent)}
+  .badge-cyan{background:color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--accent2);border:1px solid color-mix(in srgb,var(--accent2) 30%,transparent)}
   .badge-gray{background:rgba(100,116,139,.15);color:var(--text-dim);border:1px solid rgba(100,116,139,.3)}
   .badge-purple{background:rgba(168,85,247,.15);color:#c084fc;border:1px solid rgba(168,85,247,.3)}
   /* GRID */
@@ -95,17 +112,17 @@
   .machine-table{width:100%;border-collapse:collapse;font-size:15px;margin-bottom:24px}
   .machine-table th{font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:1px;padding:10px 14px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap;user-select:none}
   .machine-table th[onclick]:hover{color:var(--text-mid)}
-  .machine-table td{padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
-  .machine-table tr:hover td{background:rgba(255,255,255,.02)}
+  .machine-table td{padding:11px 14px;border-bottom:1px solid var(--border-soft);vertical-align:middle}
+  .machine-table tr:hover td{background:var(--hover-subtle)}
   .view-toggle{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px}
   .view-toggle button{background:none;border:none;padding:4px 10px;cursor:pointer;border-radius:3px;color:var(--text-dim);font-size:15px;line-height:1}
-  .view-toggle button.active{background:rgba(255,255,255,.08);color:var(--text)}
+  .view-toggle button.active{background:var(--hover-strong);color:var(--text)}
   .machine-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px;cursor:pointer;position:relative;overflow:hidden;transition:border-color .2s,background .2s,box-shadow .2s}
   .machine-card:hover{border-color:var(--accent)}
   .machine-card.online::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 24px 24px 0;border-color:transparent var(--success) transparent transparent}
   .machine-card.offline::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 24px 24px 0;border-color:transparent var(--border) transparent transparent}
   .machine-card.maintenance::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 24px 24px 0;border-color:transparent var(--accent) transparent transparent}
-  .machine-card.in-use{background:rgba(34,211,238,.07);border-color:rgba(34,211,238,.5);box-shadow:0 0 0 1px rgba(34,211,238,.15)}
+  .machine-card.in-use{background:color-mix(in srgb,var(--accent2) 7%,transparent);border-color:color-mix(in srgb,var(--accent2) 50%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent2) 15%,transparent)}
   .machine-card.in-use::before{content:'';position:absolute;top:0;left:0;bottom:0;width:3px;background:var(--accent2);border-radius:6px 0 0 6px}
   /* ── Hilfe-Seite ──────────────────────────────────────────────── */
   .help-search-wrap{position:relative;margin-bottom:16px}
@@ -118,7 +135,7 @@
   .help-nav{width:190px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:8px 0}
   .help-nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:15px;font-weight:500;color:var(--text-mid);transition:all .15s;border-left:2px solid transparent;user-select:none}
   .help-nav-item:hover{color:var(--text);background:var(--surface2)}
-  .help-nav-item.active{color:var(--accent);background:rgba(244,166,34,.08);border-left-color:var(--accent)}
+  .help-nav-item.active{color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);border-left-color:var(--accent)}
   .help-nav-icon{font-size:15px;flex-shrink:0;width:18px;text-align:center}
   .help-nav-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .help-content{flex:1;overflow-y:auto;min-width:0}
@@ -137,9 +154,9 @@
   .help-article-body strong{color:var(--text)}
   .help-article-body code{background:var(--surface2);padding:1px 5px;border-radius:3px;font-family:var(--mono);font-size:14px;color:var(--accent2)}
   .help-search-result-cat{padding:10px 24px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;display:flex;align-items:center;gap:8px}
-  .help-tip{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.25);border-left:3px solid #22c55e;border-radius:6px;padding:10px 14px;margin-top:10px;font-size:15px;color:var(--text-mid);line-height:1.6}
+  .help-tip{background:color-mix(in srgb,var(--success) 6%,transparent);border:1px solid color-mix(in srgb,var(--success) 25%,transparent);border-left:3px solid #22c55e;border-radius:6px;padding:10px 14px;margin-top:10px;font-size:15px;color:var(--text-mid);line-height:1.6}
   .help-tip strong{color:#22c55e}
-  .help-warn{background:rgba(244,166,34,.06);border:1px solid rgba(244,166,34,.25);border-left:3px solid var(--accent);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:15px;color:var(--text-mid);line-height:1.6}
+  .help-warn{background:color-mix(in srgb,var(--accent) 6%,transparent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-left:3px solid var(--accent);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:15px;color:var(--text-mid);line-height:1.6}
   .help-warn strong{color:var(--accent)}
   .help-no-result{text-align:center;padding:40px;color:var(--text-dim);font-size:16px}
   .help-ctx-btn{background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:13px;font-family:var(--mono);padding:3px 8px;cursor:pointer;transition:all .15s;letter-spacing:1px}
@@ -148,7 +165,7 @@
   .machine-icon{font-size:28px;margin-bottom:12px}
   .machine-name{font-family:var(--display);font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px}
   .machine-cat{font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px}
-  .machine-comment{font-size:14px;color:var(--accent);background:rgba(244,166,34,.08);border:1px solid rgba(244,166,34,.2);border-radius:4px;padding:6px 8px;margin-bottom:10px;display:none}
+  .machine-comment{font-size:14px;color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);border-radius:4px;padding:6px 8px;margin-bottom:10px;display:none}
   .machine-stats{display:flex;gap:12px;margin-bottom:12px}
   .machine-stat{font-family:var(--mono);font-size:13px;color:var(--text-dim)}
   .machine-stat strong{display:block;font-size:16px;color:var(--accent2);font-family:var(--display);font-weight:700}
@@ -156,17 +173,17 @@
   .perm-panel{display:grid;grid-template-columns:280px 1fr;gap:16px;margin-bottom:24px;min-height:500px}
   .perm-guest-list{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
   .perm-guest-list-header{padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px}
-  .perm-guest-item{padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(42,47,62,.4);display:flex;align-items:center;gap:10px;font-size:16px;color:var(--text);transition:all .15s}
-  .perm-guest-item:hover{background:rgba(255,255,255,.02);color:var(--text)}
-  .perm-guest-item.active{background:rgba(244,166,34,.08);color:var(--accent);border-left:2px solid var(--accent)}
+  .perm-guest-item{padding:12px 16px;cursor:pointer;border-bottom:1px solid color-mix(in srgb,var(--border) 40%,transparent);display:flex;align-items:center;gap:10px;font-size:16px;color:var(--text);transition:all .15s}
+  .perm-guest-item:hover{background:var(--hover-subtle);color:var(--text)}
+  .perm-guest-item.active{background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--accent);border-left:2px solid var(--accent)}
   .perm-guest-item .perm-count{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--text-dim)}
   .perm-detail{background:var(--surface);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column}
   .perm-detail-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
   .perm-detail-title{font-family:var(--display);font-size:18px;font-weight:700;letter-spacing:1px}
   .perm-detail-body{padding:16px 20px;flex:1;overflow-y:auto}
-  .perm-machine-item{display:grid;grid-template-columns:40px 28px minmax(120px,180px) 1fr minmax(100px,140px) 110px 90px;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(42,47,62,.4);cursor:pointer;transition:all .15s}
+  .perm-machine-item{display:grid;grid-template-columns:40px 28px minmax(120px,180px) 1fr minmax(100px,140px) 110px 90px;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 40%,transparent);cursor:pointer;transition:all .15s}
   .perm-machine-item:last-child{border-bottom:none}
-  .perm-machine-item:hover{background:rgba(255,255,255,.01)}
+  .perm-machine-item:hover{background:var(--hover-subtle)}
   .perm-toggle{width:40px;height:22px;border-radius:11px;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;position:relative}
   .perm-toggle.on{background:var(--success)}
   .perm-toggle.off{background:var(--border)}
@@ -176,12 +193,12 @@
   .perm-machine-name{font-size:16px;font-weight:600;color:var(--text)}
   .perm-machine-sub{font-family:var(--mono);font-size:13px;color:var(--text-dim);margin-top:2px}
   .perm-tab{background:transparent;border:1px solid var(--border);border-radius:4px;padding:5px 14px;font-family:var(--mono);font-size:13px;color:var(--text-dim);cursor:pointer;transition:all .15s}
-  .perm-tab.active{background:rgba(244,166,34,.1);border-color:var(--accent);color:var(--accent)}
-  .perm-tab:hover:not(.active){background:rgba(255,255,255,.03);color:var(--text)}
-  .perm-bulk-footer{position:sticky;bottom:0;background:var(--surface);border-top:2px solid rgba(255,255,255,0.15);padding:12px 0 4px;display:flex;gap:10px;align-items:flex-start;margin-top:16px}
-  .perm-bulk-item{display:grid;grid-template-columns:20px 28px 1fr auto;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid rgba(42,47,62,.4);cursor:pointer;transition:background .1s}
+  .perm-tab.active{background:color-mix(in srgb,var(--accent) 10%,transparent);border-color:var(--accent);color:var(--accent)}
+  .perm-tab:hover:not(.active){background:var(--hover-medium);color:var(--text)}
+  .perm-bulk-footer{position:sticky;bottom:0;background:var(--surface);border-top:2px solid var(--border-strong);padding:12px 0 4px;display:flex;gap:10px;align-items:flex-start;margin-top:16px}
+  .perm-bulk-item{display:grid;grid-template-columns:20px 28px 1fr auto;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 40%,transparent);cursor:pointer;transition:background .1s}
   .perm-bulk-item:last-of-type{border-bottom:none}
-  .perm-bulk-item:hover{background:rgba(255,255,255,.01)}
+  .perm-bulk-item:hover{background:var(--hover-subtle)}
   /* LOG FILTERS */
   .log-filters{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr) auto;gap:12px;align-items:end}
   .log-filter-row2{grid-template-columns:repeat(3,1fr) 1fr auto}
@@ -220,7 +237,7 @@
   .form-input-sm{padding:5px 8px;font-size:15px}
   input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 1000px var(--bg) inset!important;-webkit-text-fill-color:var(--text)!important;transition:background-color 5000s ease-in-out 0s}
   .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .modal-footer{padding:16px 24px;border-top:2px solid rgba(255,255,255,0.15);display:flex;justify-content:flex-end;gap:10px}
+  .modal-footer{padding:16px 24px;border-top:2px solid var(--border-strong);display:flex;justify-content:flex-end;gap:10px}
   .plug-hint{font-family:var(--mono);font-size:13px;color:var(--text-dim);margin-top:6px;line-height:1.6;padding:8px;background:var(--bg);border-radius:4px;border:1px solid var(--border)}
   /* SEARCH */
   .search-wrap{position:relative;margin-bottom:16px}
@@ -238,7 +255,7 @@
   .ac-wrap{position:relative}
   .ac-list{position:absolute;top:calc(100% + 2px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:4px;max-height:220px;overflow-y:auto;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.4)}
   .ac-item{padding:9px 12px;cursor:pointer;font-size:16px;color:var(--text)}
-  .ac-item:hover,.ac-item.ac-focused{background:rgba(255,255,255,.07)}
+  .ac-item:hover,.ac-item.ac-focused{background:var(--hover-strong)}
   /* TOAST */
   .toast-container{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px}
   .toast{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:15px;animation:slideIn .2s ease;border-left:3px solid var(--success);max-width:300px}
@@ -311,7 +328,10 @@
   <div class="sidebar-footer">
     <div><span class="status-dot"></span>System online</div>
     <div style="margin-top:4px;color:var(--text-dim)" id="current-user-label">—</div>
-    <div style="margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="doLogout()" style="padding:3px 8px;font-size:12px">⎋ Logout</button></div>
+    <div style="margin-top:6px;display:flex;gap:6px;align-items:center">
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()" style="padding:3px 8px;font-size:12px">⎋ Logout</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleTheme()" id="theme-toggle-btn" title="Hell-/Dunkelmodus umschalten" style="padding:3px 8px;font-size:12px">🌙 Dunkel</button>
+    </div>
   </div>
 </aside>
 
@@ -774,6 +794,14 @@
                   <input class="form-input" id="cfg-display-page-size" type="number" min="1" max="50" placeholder="8">
                   <div style="font-size:14px;color:var(--text-dim);margin-top:4px">TV-Display</div>
                 </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Hell-/Dunkelmodus</label>
+                  <select class="form-input" id="cfg-public-pages-theme">
+                    <option value="dark">Dunkel</option>
+                    <option value="light">Hell</option>
+                  </select>
+                  <div style="font-size:14px;color:var(--text-dim);margin-top:4px">Gäste-App, TV-Display, Registrierung, NFC-Writer — Seiten ohne Login übernehmen keine persönliche Einstellung, sondern diese hier</div>
+                </div>
               </div>
             </div>
           </div>
@@ -1099,7 +1127,7 @@
               </div>
 
               <!-- Watcher nicht aktiv: Warnung -->
-              <div id="update-setup-warning" style="display:none;background:rgba(200,100,100,.1);border:1px solid rgba(200,100,100,.3);border-left:3px solid #f88;border-radius:6px;padding:12px 16px;font-size:14px;color:var(--text-mid)">
+              <div id="update-setup-warning" style="display:none;background:rgba(200,100,100,.1);border:1px solid rgba(200,100,100,.3);border-left:3px solid var(--err-soft);border-radius:6px;padding:12px 16px;font-size:14px;color:var(--text-mid)">
                 Update-Watcher nicht eingerichtet — der Button bleibt gesperrt bis der Service läuft. Siehe Anleitung unten.
               </div>
 
@@ -1262,7 +1290,7 @@ sudo ./install-service.sh</pre>
             <div class="help-panel-header"><span class="help-panel-icon">🗑</span><span class="help-panel-title">Datenverwaltung</span></div>
             <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
 
-              <div style="background:rgba(200,100,100,.1);border:1px solid rgba(200,100,100,.3);border-left:3px solid #f88;border-radius:6px;padding:12px 16px;font-size:14px;color:var(--text-mid);line-height:1.6">
+              <div style="background:rgba(200,100,100,.1);border:1px solid rgba(200,100,100,.3);border-left:3px solid var(--err-soft);border-radius:6px;padding:12px 16px;font-size:14px;color:var(--text-mid);line-height:1.6">
                 Diese Aktionen löschen Historiendaten unwiderruflich. Ein <strong style="color:var(--text)">Backup vor dem Löschen</strong> wird empfohlen.
               </div>
 
@@ -2290,10 +2318,10 @@ sudo ./install-service.sh</pre>
                     <th style="text-align:left;padding:5px 0 6px 0;font-family:var(--mono);font-size:12px;letter-spacing:2px;color:var(--text-dim);font-weight:400">HINWEIS</th>
                   </tr></thead>
                   <tbody style="color:var(--text-mid)">
-                    <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:7px 12px 7px 0;color:var(--text);font-weight:600">ESP32 DevKit V1</td><td style="padding:7px 12px 7px 0">38-Pin Development Board</td><td style="padding:7px 0">Wemos D1 R32 o. ä. funktionieren ebenfalls</td></tr>
-                    <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:7px 12px 7px 0;color:var(--text);font-weight:600">PN532 NFC-Modul</td><td style="padding:7px 12px 7px 0">NFC/RFID Controller (Adafruit oder kompatibel)</td><td style="padding:7px 0">Muss auf <strong>I²C-Modus</strong> gestellt werden</td></tr>
-                    <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:7px 12px 7px 0;color:var(--text);font-weight:600">WS2812B LED</td><td style="padding:7px 12px 7px 0">Einzelne RGB-LED oder 1 Pixel aus einem Strip</td><td style="padding:7px 0">Zeigt den Gerätestatus an</td></tr>
-                    <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:7px 12px 7px 0;color:var(--text);font-weight:600">USB-Kabel</td><td style="padding:7px 12px 7px 0">Micro-USB oder USB-C (je nach ESP32)</td><td style="padding:7px 0">Für Flash-Vorgang und Betrieb</td></tr>
+                    <tr style="border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent)"><td style="padding:7px 12px 7px 0;color:var(--text);font-weight:600">ESP32 DevKit V1</td><td style="padding:7px 12px 7px 0">38-Pin Development Board</td><td style="padding:7px 0">Wemos D1 R32 o. ä. funktionieren ebenfalls</td></tr>
+                    <tr style="border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent)"><td style="padding:7px 12px 7px 0;color:var(--text);font-weight:600">PN532 NFC-Modul</td><td style="padding:7px 12px 7px 0">NFC/RFID Controller (Adafruit oder kompatibel)</td><td style="padding:7px 0">Muss auf <strong>I²C-Modus</strong> gestellt werden</td></tr>
+                    <tr style="border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent)"><td style="padding:7px 12px 7px 0;color:var(--text);font-weight:600">WS2812B LED</td><td style="padding:7px 12px 7px 0">Einzelne RGB-LED oder 1 Pixel aus einem Strip</td><td style="padding:7px 0">Zeigt den Gerätestatus an</td></tr>
+                    <tr style="border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent)"><td style="padding:7px 12px 7px 0;color:var(--text);font-weight:600">USB-Kabel</td><td style="padding:7px 12px 7px 0">Micro-USB oder USB-C (je nach ESP32)</td><td style="padding:7px 0">Für Flash-Vorgang und Betrieb</td></tr>
                     <tr><td style="padding:7px 12px 7px 0;color:var(--text);font-weight:600">Jumperkabel</td><td style="padding:7px 12px 7px 0">7× weiblich–weiblich</td><td style="padding:7px 0">—</td></tr>
                   </tbody>
                 </table>
@@ -2318,9 +2346,9 @@ sudo ./install-service.sh</pre>
                     <div style="font-family:var(--mono);font-size:12px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:8px">PN532 → ESP32</div>
                     <table style="width:100%;border-collapse:collapse;font-size:15px">
                       <tbody style="color:var(--text-mid)">
-                        <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">VCC</td><td style="padding:5px 0">3.3V</td></tr>
-                        <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">GND</td><td style="padding:5px 0">GND</td></tr>
-                        <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">SDA</td><td style="padding:5px 0">GPIO 21</td></tr>
+                        <tr style="border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">VCC</td><td style="padding:5px 0">3.3V</td></tr>
+                        <tr style="border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">GND</td><td style="padding:5px 0">GND</td></tr>
+                        <tr style="border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">SDA</td><td style="padding:5px 0">GPIO 21</td></tr>
                         <tr><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">SCL</td><td style="padding:5px 0">GPIO 22</td></tr>
                       </tbody>
                     </table>
@@ -2329,8 +2357,8 @@ sudo ./install-service.sh</pre>
                     <div style="font-family:var(--mono);font-size:12px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:8px">WS2812B → ESP32</div>
                     <table style="width:100%;border-collapse:collapse;font-size:15px">
                       <tbody style="color:var(--text-mid)">
-                        <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">VCC</td><td style="padding:5px 0">3.3V</td></tr>
-                        <tr style="border-bottom:1px solid rgba(42,47,62,.5)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">GND</td><td style="padding:5px 0">GND</td></tr>
+                        <tr style="border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">VCC</td><td style="padding:5px 0">3.3V</td></tr>
+                        <tr style="border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent)"><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">GND</td><td style="padding:5px 0">GND</td></tr>
                         <tr><td style="padding:5px 12px 5px 0;color:var(--text);font-weight:600">DIN</td><td style="padding:5px 0">GPIO 2</td></tr>
                       </tbody>
                     </table>
@@ -2571,29 +2599,29 @@ sudo ./install-service.sh</pre>
                       <tbody>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Gäste</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Anzeigen, freischalten, bearbeiten, anlegen, löschen</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)"><td style="padding:6px 8px">Berechtigungen vergeben / entziehen</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Berechtigungen vergeben / entziehen</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Maschinen</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Anzeigen, schalten (EIN/AUS)</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)"><td style="padding:6px 8px">Anlegen, bearbeiten, löschen, QR neu generieren</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Anlegen, bearbeiten, löschen, QR neu generieren</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">CSV-Import, Kategorien, Standorte verwalten</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Plug-Pool</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Anzeigen</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)"><td style="padding:6px 8px">Anlegen, bearbeiten, löschen, testen, zuweisen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Anlegen, bearbeiten, löschen, testen, zuweisen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Automationen</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Anzeigen</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)"><td style="padding:6px 8px">Anlegen, bearbeiten, löschen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Anlegen, bearbeiten, löschen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Maschinenpflege</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Wartung erfassen, Übersicht</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)"><td style="padding:6px 8px">Intervalle anlegen, bearbeiten, löschen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Intervalle anlegen, bearbeiten, löschen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Kommunikation</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Aushänge: anlegen, bearbeiten, löschen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)"><td style="padding:6px 8px">Push-Nachrichten (ntfy): Topics verwalten</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Push-Nachrichten (ntfy): Topics verwalten</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Betrieb</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Raum öffnen / schliessen, Notfall-Alarm</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)"><td style="padding:6px 8px">Berechtigungen, Log, Statistiken</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Berechtigungen, Log, Statistiken</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">System</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Lab Manager: anlegen, bearbeiten, löschen, Rollen ändern</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)"><td style="padding:6px 8px">Backup & Restore</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Backup & Restore</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Einstellungen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr><td style="padding:6px 8px">In-App Update</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                       </tbody>
@@ -2785,6 +2813,7 @@ async function doLogin() {
     document.getElementById('nav-settings').style.display      = _isAdmin()      ? '' : 'none';
     document.getElementById('nav-backup').style.display        = _isAdmin()      ? '' : 'none';
     document.getElementById('nav-notifications').style.display = _isPowerPlus()  ? '' : 'none';
+    _applyUserTheme(currentUser);
   }
   loadAll();
 }
@@ -2792,6 +2821,30 @@ function doLogout() {
   token=''; localStorage.removeItem('ms_token');
   document.getElementById('login-overlay').style.display='flex';
 }
+
+// ── Hell-/Dunkelmodus ────────────────────────────────────
+function _updateThemeToggleLabel() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = isLight ? '☀️ Hell' : '🌙 Dunkel';
+}
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('ms_theme', next);
+  _updateThemeToggleLabel();
+  // Am Konto speichern, wenn eingeloggt — synct über Geräte hinweg statt nur lokal im Browser
+  if (currentUser?.id) PATCH(`/users/${currentUser.id}`, {theme_preference: next});
+}
+// Server-Praeferenz des Kontos anwenden (ueberschreibt den lokalen localStorage-Wert,
+// falls das Konto einen eigenen Wert gesetzt hat — sonst bleibt der lokale Stand).
+function _applyUserTheme(u) {
+  if (!u || (u.theme_preference !== 'light' && u.theme_preference !== 'dark')) return;
+  document.documentElement.setAttribute('data-theme', u.theme_preference);
+  localStorage.setItem('ms_theme', u.theme_preference);
+  _updateThemeToggleLabel();
+}
+_updateThemeToggleLabel();
 
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
@@ -2931,8 +2984,8 @@ async function loadAnnouncements() {
 
 function annStatusBadge(status) {
   const map = {
-    aktiv:        `<span style="background:rgba(34,197,94,.15);color:var(--success);border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:13px">● AKTIV</span>`,
-    geplant:      `<span style="background:rgba(34,211,238,.1);color:var(--accent2);border:1px solid rgba(34,211,238,.3);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:13px">◷ GEPLANT</span>`,
+    aktiv:        `<span style="background:color-mix(in srgb,var(--success) 15%,transparent);color:var(--success);border:1px solid color-mix(in srgb,var(--success) 30%,transparent);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:13px">● AKTIV</span>`,
+    geplant:      `<span style="background:color-mix(in srgb,var(--accent2) 10%,transparent);color:var(--accent2);border:1px solid color-mix(in srgb,var(--accent2) 30%,transparent);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:13px">◷ GEPLANT</span>`,
     abgelaufen:   `<span style="background:rgba(100,116,139,.15);color:var(--text-dim);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:13px">✕ ABGELAUFEN</span>`,
     deaktiviert:  `<span style="background:rgba(100,116,139,.15);color:var(--text-dim);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:13px">○ DEAKTIVIERT</span>`,
   };
@@ -3275,11 +3328,11 @@ function renderDashboard() {
         const rem = (m.idle_timeout_min != null && m.idle_since_min != null)
           ? Math.max(0, Math.ceil(m.idle_timeout_min - m.idle_since_min)) : '?';
         idleBanner = `<tr class="idle-warn-banner" style="animation:idle-warn-row 1.5s ease-in-out infinite">
-          <td colspan="6" style="padding:6px 16px;background:rgba(239,68,68,.13);border-top:1px solid rgba(239,68,68,.3);border-bottom:1px solid rgba(239,68,68,.3)">
+          <td colspan="6" style="padding:6px 16px;background:color-mix(in srgb,var(--danger) 13%,transparent);border-top:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-bottom:1px solid color-mix(in srgb,var(--danger) 30%,transparent)">
             <span style="font-family:var(--mono);font-size:13px;font-weight:700;color:#ef4444;letter-spacing:1px">
               ⚠ LEERLAUF — AUTOMATISCHE ABSCHALTUNG IN ${rem} MINUTE${rem===1?'':'N'}
             </span>
-            <span style="font-family:var(--mono);font-size:12px;color:rgba(239,68,68,.7);margin-left:12px">
+            <span style="font-family:var(--mono);font-size:12px;color:color-mix(in srgb,var(--danger) 70%,transparent);margin-left:12px">
               ${m.idle_since_min!=null?`Leerlauf seit ${Math.floor(m.idle_since_min)} min`:''}
             </span>
           </td>
@@ -3291,7 +3344,7 @@ function renderDashboard() {
           ? Math.max(0, Math.ceil(m.idle_timeout_min - m.idle_since_min)) : null;
         const remStr = rem != null ? ` — Abschaltung in ${rem} min` : '';
         idleBanner = `<tr class="idle-caution-banner">
-          <td colspan="6" style="padding:5px 16px;background:rgba(244,166,34,.08);border-top:1px solid rgba(244,166,34,.25);border-bottom:1px solid rgba(244,166,34,.25)">
+          <td colspan="6" style="padding:5px 16px;background:color-mix(in srgb,var(--accent) 8%,transparent);border-top:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-bottom:1px solid color-mix(in srgb,var(--accent) 25%,transparent)">
             <span style="font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:0.5px">
               ⏱ LEERLAUF${since}${remStr}
             </span>
@@ -3332,10 +3385,10 @@ function renderDashboard() {
     const isActive = inUse;
     let dotColor = 'var(--text-dim)'; // offline/unknown
     let borderColor = 'var(--border)';
-    if (m.status === 'maintenance')  { dotColor = 'var(--accent)';   borderColor = 'rgba(244,166,34,.3)'; }
-    else if (adapterError)           { dotColor = 'var(--text-dim)'; borderColor = 'rgba(239,68,68,.35)'; }
-    else if (isActive)               { dotColor = 'var(--accent2)'; borderColor = 'rgba(34,211,238,.5)'; }
-    else if (m.status === 'online')  { dotColor = 'var(--success)'; borderColor = 'rgba(34,197,94,.35)'; }
+    if (m.status === 'maintenance')  { dotColor = 'var(--accent)';   borderColor = 'color-mix(in srgb,var(--accent) 30%,transparent)'; }
+    else if (adapterError)           { dotColor = 'var(--text-dim)'; borderColor = 'color-mix(in srgb,var(--danger) 35%,transparent)'; }
+    else if (isActive)               { dotColor = 'var(--accent2)'; borderColor = 'color-mix(in srgb,var(--accent2) 50%,transparent)'; }
+    else if (m.status === 'online')  { dotColor = 'var(--success)'; borderColor = 'color-mix(in srgb,var(--success) 35%,transparent)'; }
 
     let idleTag = '';
     if (m.status === 'maintenance') {
@@ -3355,7 +3408,7 @@ function renderDashboard() {
       : '';
 
     const cardBg = isActive
-      ? 'background:rgba(34,211,238,.07);box-shadow:0 0 0 1px rgba(34,211,238,.15),0 0 14px rgba(34,211,238,.1)'
+      ? 'background:color-mix(in srgb,var(--accent2) 7%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent2) 15%,transparent),0 0 14px color-mix(in srgb,var(--accent2) 10%,transparent)'
       : 'background:var(--surface)';
     return `<div style="${cardBg};border:1px solid ${borderColor};border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:2px">
       <div style="display:flex;align-items:center;gap:8px">
@@ -3437,7 +3490,7 @@ function editGuest(id) {
     <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="e-email" value="${g.email||''}"></div>
     <div class="form-group"><label class="form-label">Telefon</label><input class="form-input" id="e-phone" value="${g.phone||''}"></div>
     <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-active"><option value="true" ${g.is_active?'selected':''}>aktiv</option><option value="false" ${!g.is_active?'selected':''}>inaktiv</option></select></div>
-    <div style="border-top:2px solid rgba(255,255,255,0.15);margin-top:12px;padding-top:12px">
+    <div style="border-top:2px solid var(--border-strong);margin-top:12px;padding-top:12px">
       <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">LOGIN-LINK</div>
       ${g.has_login_token
         ? `<div style="display:flex;align-items:center;gap:10px">
@@ -3448,7 +3501,7 @@ function editGuest(id) {
       }
     </div>
     ${g.ntfy_topic ? `
-    <div style="border-top:2px solid rgba(255,255,255,0.15);margin-top:12px;padding-top:12px">
+    <div style="border-top:2px solid var(--border-strong);margin-top:12px;padding-top:12px">
       <div style="font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px">NTFY</div>
       <span style="font-family:var(--mono);font-size:14px;color:var(--accent2)">${g.ntfy_topic}</span>
     </div>` : ''
@@ -3564,7 +3617,7 @@ function editLM(id) {
     ${isAdmin?`<div class="form-group"><label class="form-label">Rolle</label><select class="form-input" id="e-role" ${lockRole?'disabled':''}><option value="manager" ${u.role==='manager'?'selected':''}>Manager</option><option value="power_manager" ${u.role==='power_manager'?'selected':''}>Power-Manager</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select>${lockRole?'<div style="font-size:13px;color:var(--text-dim);margin-top:4px">Letzter Admin — Rolle nicht änderbar</div>':''}</div>`:''}
     <div class="form-group"><label class="form-label">Bereich</label><input class="form-input" id="e-area" value="${u.area||''}"></div>
     ${isAdmin&&!isSelf?`<div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-lm-active"><option value="true" ${u.is_active?'selected':''}>Aktiv</option><option value="false" ${!u.is_active?'selected':''}>Inaktiv</option></select></div>`:''}
-    ${isAdmin?`<div style="border-top:2px solid rgba(255,255,255,0.15);margin-top:12px;padding-top:12px">
+    ${isAdmin?`<div style="border-top:2px solid var(--border-strong);margin-top:12px;padding-top:12px">
       <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">LOGIN-LINK (OHNE PASSWORT)</div>
       ${u.has_login_token
         ?`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -3633,9 +3686,9 @@ function _showEmojiPicker(inputId){
     const b=document.createElement('button');
     b.type='button';
     b.textContent=e;
-    b.style.cssText='font-size:16px;background:rgba(255,255,255,.07);border:none;cursor:pointer;padding:3px 4px;border-radius:4px;line-height:1';
-    b.onmouseenter=()=>b.style.background='rgba(255,255,255,.2)';
-    b.onmouseleave=()=>b.style.background='rgba(255,255,255,.07)';
+    b.style.cssText='font-size:16px;background:var(--hover-strong);border:none;cursor:pointer;padding:3px 4px;border-radius:4px;line-height:1';
+    b.onmouseenter=()=>b.style.background='var(--hover-strong)';
+    b.onmouseleave=()=>b.style.background='var(--hover-strong)';
     b.onclick=()=>{inp.value=e;inp.dispatchEvent(new Event('input'));_closeEmojiPicker();};
     d.appendChild(b);
   });
@@ -4197,14 +4250,14 @@ function renderMachines() { filterMachines(); }
 function _machineSessionHtml(m) {
   if (m.current_guest_name) {
     const dur=m.session_duration_min!=null?` // ${formatDuration(m.session_duration_min)}`:'';
-    return `<div style="background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:14px">
+    return `<div style="background:color-mix(in srgb,var(--accent2) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent2) 20%,transparent);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:14px">
       <span style="color:var(--accent2)">● IN BENUTZUNG</span>
       <span style="color:var(--text-mid);margin-left:8px">${escHtml(m.current_guest_name)}${dur}</span>
     </div>`;
   } else if (m.status==='online') {
     if (m.plug_type!=='none' && m.plug_error==='unreachable')
       return `<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:14px;color:var(--accent)">⚠ ADAPTER NICHT ERREICHBAR</div>`;
-    return `<div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:14px;color:var(--success)">● VERFÜGBAR</div>`;
+    return `<div style="background:color-mix(in srgb,var(--success) 6%,transparent);border:1px solid color-mix(in srgb,var(--success) 15%,transparent);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:14px;color:var(--success)">● VERFÜGBAR</div>`;
   }
   return '';
 }
@@ -4227,7 +4280,7 @@ function _machineCard(m) {
   const inUseClass = m.in_use ? 'in-use' : '';
   return `<div class="machine-card ${m.status} ${idleClass} ${inUseClass}" id="mc-${m.id}">
     <div class="machine-icon">${icon}</div>
-    <div class="machine-name">${escHtml(m.name)}${m.training_required===false?'<span style="font-family:var(--mono);font-size:11px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3);border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle">OFFEN</span>':''}</div>
+    <div class="machine-name">${escHtml(m.name)}${m.training_required===false?'<span style="font-family:var(--mono);font-size:11px;background:color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--accent2);border:1px solid color-mix(in srgb,var(--accent2) 30%,transparent);border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle">OFFEN</span>':''}</div>
     <div class="machine-cat">${m.category}${m.location?' // '+escHtml(m.location):''}</div>
     ${mfrModel?`<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-top:2px">${escHtml(mfrModel)}</div>`:''}
     ${m.comment?`<div class="machine-comment" style="display:block">⚠ ${escHtml(m.comment)}</div>`:''}
@@ -4275,7 +4328,7 @@ function _machineTable(machines) {
       :`<span style="color:${m.plug_on?'var(--success)':'var(--text-dim)'}">${m.plug_on==null?'—':m.plug_on?'EIN':'AUS'}${m.power_w!=null?' · '+Math.round(m.power_w)+' W':''}</span>`;
     return `<tr>
       <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusDot}"></span></td>
-      <td><span style="font-size:16px;margin-right:6px">${icon}</span><strong>${escHtml(m.name)}</strong>${m.training_required===false?'<span style="font-family:var(--mono);font-size:11px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3);border-radius:3px;padding:1px 4px;margin-left:6px">OFFEN</span>':''}</td>
+      <td><span style="font-size:16px;margin-right:6px">${icon}</span><strong>${escHtml(m.name)}</strong>${m.training_required===false?'<span style="font-family:var(--mono);font-size:11px;background:color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--accent2);border:1px solid color-mix(in srgb,var(--accent2) 30%,transparent);border-radius:3px;padding:1px 4px;margin-left:6px">OFFEN</span>':''}</td>
       <td style="color:var(--text-mid)">${m.category}</td>
       <td style="color:var(--text-mid)">${escHtml(m.manufacturer||'—')}</td>
       <td style="color:var(--text-mid)">${escHtml(m.model||'—')}</td>
@@ -4615,7 +4668,7 @@ function renderPermMachineList(filter='') {
     return `<div class="perm-guest-item ${selectedPermMachineId===m.id?'active':''}" onclick="selectPermMachine(${m.id})">
       <div style="font-size:18px">${icon}</div>
       <div style="flex:1">
-        <div style="font-weight:600;color:var(--text)">${m.name}${isOpen?'<span style="font-family:var(--mono);font-size:11px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3);border-radius:3px;padding:1px 4px;margin-left:5px">OFFEN</span>':''}</div>
+        <div style="font-weight:600;color:var(--text)">${m.name}${isOpen?'<span style="font-family:var(--mono);font-size:11px;background:color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--accent2);border:1px solid color-mix(in srgb,var(--accent2) 30%,transparent);border-radius:3px;padding:1px 4px;margin-left:5px">OFFEN</span>':''}</div>
         <div style="font-family:var(--mono);font-size:12px;color:${statusColor(m)}">${m.category} · ${m.status}</div>
       </div>
       <span class="perm-count">${countLabel}</span>
@@ -4833,7 +4886,7 @@ async function selectPermGuest(guestId) {
       <button class="perm-toggle ${granted?'on':'off'}" id="toggle-${guestId}-${m.id}"></button>
       <div style="font-size:18px;text-align:center">${icon(m)}</div>
       <div>
-        <div class="perm-machine-name">${m.name}${isOpen?'<span style="font-family:var(--mono);font-size:11px;background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3);border-radius:3px;padding:1px 4px;margin-left:5px">OFFEN</span>':''}</div>
+        <div class="perm-machine-name">${m.name}${isOpen?'<span style="font-family:var(--mono);font-size:11px;background:color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--accent2);border:1px solid color-mix(in srgb,var(--accent2) 30%,transparent);border-radius:3px;padding:1px 4px;margin-left:5px">OFFEN</span>':''}</div>
         <div class="perm-machine-sub">${m.category}${m.location?' · '+m.location:''}</div>
       </div>
       <div style="font-family:var(--mono);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="perm-hist-comment-${m.id}">${commentHtml}</div>
@@ -4996,8 +5049,8 @@ async function showMachineQR() {
 async function _writeNfcTagUrl(url, label, boxEl, onDone) {
   const styles = {
     waiting: 'background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);color:#ca8a04',
-    success: 'background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--success)',
-    error:   'background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--danger)',
+    success: 'background:color-mix(in srgb,var(--success) 10%,transparent);border:1px solid color-mix(in srgb,var(--success) 30%,transparent);color:var(--success)',
+    error:   'background:color-mix(in srgb,var(--danger) 10%,transparent);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);color:var(--danger)',
   };
   function setStatus(state, msg) {
     boxEl.style.cssText = 'display:block;border-radius:6px;padding:10px 12px;font-size:15px;' + styles[state];
@@ -5100,8 +5153,8 @@ async function manualPlug(action) {
   const el=document.getElementById('plug-result');
   el.style.display='block';
   el.innerHTML=res&&res.ok
-    ?`<div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:10px;font-size:15px;color:var(--success)">✓ ${res.message}</div>`
-    :`<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:10px;font-size:15px;color:var(--danger)">✗ Fehler beim Schalten</div>`;
+    ?`<div style="background:color-mix(in srgb,var(--success) 10%,transparent);border:1px solid color-mix(in srgb,var(--success) 30%,transparent);border-radius:4px;padding:10px;font-size:15px;color:var(--success)">✓ ${res.message}</div>`
+    :`<div style="background:color-mix(in srgb,var(--danger) 10%,transparent);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:4px;padding:10px;font-size:15px;color:var(--danger)">✗ Fehler beim Schalten</div>`;
   if (res?.ok) showToast(res.message,'success');
 }
 
@@ -5355,14 +5408,14 @@ if (_ltParam) {
       token = res.access_token;
       localStorage.setItem('ms_token', token);
       history.replaceState(null, '', window.location.pathname);
-      GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=_isAdmin()?'':'none';document.getElementById('nav-backup').style.display=_isAdmin()?'':'none';document.getElementById('nav-notifications').style.display=_isPowerPlus()?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } });
+      GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=_isAdmin()?'':'none';document.getElementById('nav-backup').style.display=_isAdmin()?'':'none';document.getElementById('nav-notifications').style.display=_isPowerPlus()?'':'none'; _applyUserTheme(u); document.getElementById('login-overlay').style.display='none'; loadAll(); } });
     } else {
       document.getElementById('login-error').textContent='Ungültiger Login-Link.';
       document.getElementById('login-error').style.display='block';
     }
   });
 } else if (token) {
-  GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=_isAdmin()?'':'none';document.getElementById('nav-backup').style.display=_isAdmin()?'':'none';document.getElementById('nav-notifications').style.display=_isPowerPlus()?'':'none'; document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
+  GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=_isAdmin()?'':'none';document.getElementById('nav-backup').style.display=_isAdmin()?'':'none';document.getElementById('nav-notifications').style.display=_isPowerPlus()?'':'none'; _applyUserTheme(u); document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
 }
 document.getElementById('login-pass').addEventListener('keydown',e=>{ if (e.key==='Enter') doLogin(); });
 fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){_spaceName=n;document.getElementById('login-space-sub').textContent=n;document.getElementById('sidebar-space-sub').textContent=n;}_currency=s.currency||'CHF';_applyCurrencyLabels();}).catch(()=>{});
@@ -5400,6 +5453,7 @@ async function loadSettings() {
   document.getElementById('cfg-queue-min').value = s.queue_reservation_minutes ?? 5;
   document.getElementById('cfg-display-refresh').value = s.display_refresh_seconds ?? 30;
   document.getElementById('cfg-display-page-size').value = s.display_page_size ?? 8;
+  document.getElementById('cfg-public-pages-theme').value = s.public_pages_theme || 'dark';
   document.getElementById('cfg-dashboard-refresh').value = s.dashboard_refresh_seconds ?? 30;
   document.getElementById('cfg-announcement-size').value = s.announcement_font_size ?? 20;
   document.getElementById('cfg-ticker-size').value = s.ticker_font_size ?? 18;
@@ -5468,6 +5522,7 @@ function buildSettingsPayload() {
     queue_reservation_minutes: parseInt(document.getElementById('cfg-queue-min').value) || 5,
     display_refresh_seconds:    parseInt(document.getElementById('cfg-display-refresh').value) || 30,
     display_page_size:          parseInt(document.getElementById('cfg-display-page-size').value) || 8,
+    public_pages_theme:         document.getElementById('cfg-public-pages-theme').value === 'light' ? 'light' : 'dark',
     dashboard_refresh_seconds:  parseInt(document.getElementById('cfg-dashboard-refresh').value) || 30,
     announcement_font_size:    parseInt(document.getElementById('cfg-announcement-size').value) || 20,
     ticker_font_size:          parseInt(document.getElementById('cfg-ticker-size').value) || 18,
@@ -5529,8 +5584,8 @@ function _renderRemoteBackupStatus(status, message, at) {
   if (!status) { box.style.display = 'none'; return; }
   const ok = status === 'ok';
   box.style.cssText = `display:inline-block;${ok
-    ? 'background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.4);color:var(--success)'
-    : 'background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:var(--danger)'}`;
+    ? 'background:color-mix(in srgb,var(--success) 15%,transparent);border:1px solid color-mix(in srgb,var(--success) 40%,transparent);color:var(--success)'
+    : 'background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);color:var(--danger)'}`;
   const when = at ? new Date(at.endsWith('Z') ? at : at + 'Z').toLocaleString('de-CH') : '';
   box.textContent = `${ok ? '✓' : '✕'} ${message || (ok ? 'OK' : 'Fehler')}${when ? ' · ' + when : ''}`;
 }
@@ -5589,12 +5644,12 @@ async function tailscaleLoadStatus() {
   const s = await apiSilent('GET', '/tailscale/status');
   if (!s) { box.style.display = 'none'; return; }
   const map = {
-    running:  ['background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.4);color:var(--success)',      '● Verbunden'],
+    running:  ['background:color-mix(in srgb,var(--success) 15%,transparent);border:1px solid color-mix(in srgb,var(--success) 40%,transparent);color:var(--success)',      '● Verbunden'],
     starting: ['background:rgba(234,179,8,.15);border:1px solid rgba(234,179,8,.4);color:#ca8a04',             '◌ Verbindet…'],
     pending:  ['background:rgba(234,179,8,.15);border:1px solid rgba(234,179,8,.4);color:#ca8a04',             '◌ Wartet auf Anwenden'],
     stopped:  ['background:rgba(100,116,139,.15);border:1px solid rgba(100,116,139,.4);color:var(--text-dim)', '○ Gestoppt'],
     disabled: ['background:rgba(100,116,139,.15);border:1px solid rgba(100,116,139,.4);color:var(--text-dim)', '○ Deaktiviert'],
-    error:    ['background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:var(--danger)',        '✕ Fehler'],
+    error:    ['background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);color:var(--danger)',        '✕ Fehler'],
     unknown:  ['background:rgba(100,116,139,.15);border:1px solid rgba(100,116,139,.4);color:var(--text-dim)', '— Unbekannt'],
   };
   const [style, label] = map[s.status] || map.unknown;
@@ -5667,7 +5722,7 @@ async function loadUpdateStatus() {
     restartAllBtn.textContent = d.pending ? '⏳ Läuft…' : 'Alle neu starten';
   } else if (d.volume_mounted) {
     badge.textContent = '○ Watcher nicht aktiv';
-    badge.style.cssText = 'font-size:13px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(220,150,50,.15);color:#da7;border:1px solid rgba(220,150,50,.3)';
+    badge.style.cssText = 'font-size:13px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(220,150,50,.15);color:var(--warm-soft);border:1px solid rgba(220,150,50,.3)';
     warning.style.display = '';
     updateBtn.disabled = true;
     restartBtn.disabled = true;
@@ -5677,7 +5732,7 @@ async function loadUpdateStatus() {
     restartAllBtn.textContent = 'Alle neu starten';
   } else {
     badge.textContent = '○ Watcher nicht eingerichtet';
-    badge.style.cssText = 'font-size:13px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(200,100,100,.15);color:#f88;border:1px solid rgba(200,100,100,.3)';
+    badge.style.cssText = 'font-size:13px;padding:3px 8px;border-radius:4px;font-family:var(--mono);background:rgba(200,100,100,.15);color:var(--err-soft);border:1px solid rgba(200,100,100,.3)';
     warning.style.display = 'block';
     updateBtn.disabled = true;
     restartBtn.disabled = true;
@@ -6169,10 +6224,10 @@ function renderRoomStatus() {
   const btnC  = document.getElementById('room-btn-close');
   if (!bar) return;
   if (room_open) {
-    bar.style.background  = 'rgba(34,197,94,.07)';
-    bar.style.borderColor = 'rgba(34,197,94,.4)';
+    bar.style.background  = 'color-mix(in srgb,var(--success) 7%,transparent)';
+    bar.style.borderColor = 'color-mix(in srgb,var(--success) 40%,transparent)';
     dot.style.background  = '#22c55e';
-    dot.style.boxShadow   = '0 0 6px rgba(34,197,94,.6)';
+    dot.style.boxShadow   = '0 0 6px color-mix(in srgb,var(--success) 60%,transparent)';
     label.textContent     = `${_spaceName} geöffnet`;
     label.style.color     = '#22c55e';
     since.textContent     = '';
@@ -6232,13 +6287,13 @@ function _condChip(c) {
   const styles = 'font-size:13px;border-radius:4px;padding:2px 7px;border:1px solid';
   switch (c.type) {
     case 'power':
-      return `<span style="${styles} rgba(244,166,34,.4);background:rgba(244,166,34,.08);color:var(--accent)">⚡ ${escHtml(c.source_machine_name)} &gt;${c.power_on_w}W</span>`;
+      return `<span style="${styles} color-mix(in srgb,var(--accent) 40%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--accent)">⚡ ${escHtml(c.source_machine_name)} &gt;${c.power_on_w}W</span>`;
     case 'schedule': {
       const days = c.days.split(',').map(d=>DAY_LABELS[parseInt(d)-1]||d).join(' ');
-      return `<span style="${styles} rgba(34,211,238,.4);background:rgba(34,211,238,.08);color:var(--accent2)">🕐 ${days} ${c.time_on}–${c.time_off}</span>`;
+      return `<span style="${styles} color-mix(in srgb,var(--accent2) 40%,transparent);background:color-mix(in srgb,var(--accent2) 8%,transparent);color:var(--accent2)">🕐 ${days} ${c.time_on}–${c.time_off}</span>`;
     }
     case 'room_open':
-      return `<span style="${styles} rgba(34,197,94,.4);background:rgba(34,197,94,.08);color:var(--success)">🏠 Raum offen</span>`;
+      return `<span style="${styles} color-mix(in srgb,var(--success) 40%,transparent);background:color-mix(in srgb,var(--success) 8%,transparent);color:var(--success)">🏠 Raum offen</span>`;
     case 'session_active':
       return `<span style="${styles} rgba(168,85,247,.4);background:rgba(168,85,247,.08);color:#a855f7">👤 Aktive Session</span>`;
     default:
@@ -6281,9 +6336,9 @@ function _renderAutomationsList(rules) {
     const chips  = r.conditions.map(_condChip).join(' ');
     const delay  = r.off_delay_sec > 0 ? `<span style="font-size:13px;color:var(--text-muted)">Nachlauf ${r.off_delay_sec}s</span>` : '';
     const actionChip = r.action_type === 'room_open'
-      ? `<span style="font-size:13px;color:var(--success);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:1px 7px">🟢 ${_spaceName} öffnen</span>`
+      ? `<span style="font-size:13px;color:var(--success);background:color-mix(in srgb,var(--success) 10%,transparent);border:1px solid color-mix(in srgb,var(--success) 30%,transparent);border-radius:4px;padding:1px 7px">🟢 ${_spaceName} öffnen</span>`
       : r.action_type === 'room_close'
-        ? `<span style="font-size:13px;color:var(--danger);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:1px 7px">🔴 ${_spaceName} schliessen</span>`
+        ? `<span style="font-size:13px;color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,transparent);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:4px;padding:1px 7px">🔴 ${_spaceName} schliessen</span>`
         : r.action_type === 'notify'
           ? `<span style="font-size:13px;color:var(--accent2);background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);border-radius:4px;padding:1px 7px">🔔 Push-Nachricht</span>`
           : '';
@@ -6441,7 +6496,7 @@ function _ruleModalBody(r) {
         <option value="notify"     ${at==='notify'    ?'selected':''}>🔔 Push-Nachricht senden</option>
       </select>
     </div>
-    <div id="rule-room-hint" style="display:${at==='room_open'||at==='room_close'?'block':'none'};margin:-4px 0 12px;padding:10px 12px;background:rgba(244,166,34,.08);border:1px solid rgba(244,166,34,.3);border-radius:8px;font-size:14px;color:var(--text-mid);line-height:1.5">
+    <div id="rule-room-hint" style="display:${at==='room_open'||at==='room_close'?'block':'none'};margin:-4px 0 12px;padding:10px 12px;background:color-mix(in srgb,var(--accent) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:8px;font-size:14px;color:var(--text-mid);line-height:1.5">
       <strong style="color:var(--accent)">Hinweis:</strong> Das Ende des Zeitplans führt <em>nicht</em> automatisch die Gegenaktion aus. Für zeitgesteuertes Öffnen <em>und</em> Schliessen zwei separate Regeln anlegen — eine mit «${_spaceName} öffnen», eine mit «${_spaceName} schliessen».
     </div>
     <div id="rule-target-row" class="form-group" style="${isMachine?'':'display:none'}">
@@ -6706,7 +6761,7 @@ async function loadAdminQueues() {
   const groups = Object.values(byMachine).sort((a, b) => a.name.localeCompare(b.name, 'de'));
   const allRows = groups.map((grp, gi) => {
     const rows = grp.entries.map((e, i) => {
-      const sep = (i === 0 && gi > 0) ? 'border-top:2px solid rgba(255,255,255,0.15);padding-top:10px' : '';
+      const sep = (i === 0 && gi > 0) ? 'border-top:2px solid var(--border-strong);padding-top:10px' : '';
       const machineName = i === 0
         ? `<td style="${sep}" rowspan="${grp.entries.length + 1}">${grp.name}</td>`
         : '';
@@ -6849,9 +6904,9 @@ function populateMaintMachineFilter() {
 }
 
 function statusBadge(status) {
-  if (status === 'due')     return `<span style="background:rgba(239,68,68,.2);color:#ef4444;border:1px solid rgba(239,68,68,.5);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:13px;font-weight:700">⚠ FÄLLIG</span>`;
-  if (status === 'warning') return `<span style="background:rgba(244,166,34,.15);color:var(--accent);border:1px solid rgba(244,166,34,.4);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:13px">⏱ BALD FÄLLIG</span>`;
-  return `<span style="background:rgba(34,197,94,.1);color:var(--success);border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:13px">✓ OK</span>`;
+  if (status === 'due')     return `<span style="background:color-mix(in srgb,var(--danger) 20%,transparent);color:#ef4444;border:1px solid color-mix(in srgb,var(--danger) 50%,transparent);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:13px;font-weight:700">⚠ FÄLLIG</span>`;
+  if (status === 'warning') return `<span style="background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:13px">⏱ BALD FÄLLIG</span>`;
+  return `<span style="background:color-mix(in srgb,var(--success) 10%,transparent);color:var(--success);border:1px solid color-mix(in srgb,var(--success) 30%,transparent);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:13px">✓ OK</span>`;
 }
 
 function intervalMeta(iv) {
@@ -6982,7 +7037,7 @@ function renderDashboardMaintenance(data) {
   list.innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>Status</th><th>Maschine</th><th>Wartung</th><th>Verbleibend</th><th>Letzter Zählerstand</th><th>Aktion</th></tr></thead>
     <tbody>
-      ${urgent.map(iv => `<tr style="${iv.status==='due'?'background:rgba(239,68,68,.04)':''}">
+      ${urgent.map(iv => `<tr style="${iv.status==='due'?'background:color-mix(in srgb,var(--danger) 4%,transparent)':''}">
         <td>${statusBadge(iv.status)}</td>
         <td><strong>${iv.machine_name}</strong></td>
         <td style="font-size:15px">${iv.name}</td>
