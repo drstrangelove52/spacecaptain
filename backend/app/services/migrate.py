@@ -590,6 +590,10 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "users", "theme_preference", "VARCHAR(10) DEFAULT NULL")
         await _add_column_if_missing(conn, "guests", "theme_preference", "VARCHAR(10) DEFAULT NULL")
 
+        # ── v1.50: MAC-Adresse pro Plug (aus der Netzwerk-Discovery uebernommen,
+        # bei manuell angelegten Plugs optional nachtragbar) ──
+        await _add_column_if_missing(conn, "plugs", "mac", "VARCHAR(20) DEFAULT NULL")
+
     log.info("Migrationen abgeschlossen")
 
 

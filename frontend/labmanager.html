@@ -7407,6 +7407,13 @@ function _plugTypeLabel(t) {
   return {mystrom:'myStrom',shelly:'Shelly Gen1',shelly_gen2:'Shelly Gen2+'}[t] || t;
 }
 
+function formatMac(mac) {
+  if (!mac) return null;
+  const hex = String(mac).replace(/[^0-9a-fA-F]/g, '').toUpperCase();
+  if (hex.length !== 12) return mac; // unerwartetes Format — Rohwert statt falscher Formatierung
+  return hex.match(/.{2}/g).join(':');
+}
+
 function _plugOptionLabel(p, excludeMachineId) {
   const others = (p.machines||[]).filter(x=>x.id!==excludeMachineId).map(x=>x.name);
   let label = `${p.name} · ${_plugTypeLabel(p.plug_type)} · ${p.plug_ip}`;
@@ -7499,13 +7506,14 @@ function renderPlugsFiltered(plugs) {
   }
   el.innerHTML = `<table class="data-table" style="width:100%">
     <thead><tr>
-      ${_plugTh('Name','name')}${_plugTh('Typ','plug_type')}${_plugTh('IP-Adresse','plug_ip')}<th>Token</th>${_plugTh('Zugewiesen an','machine_name')}<th></th>
+      ${_plugTh('Name','name')}${_plugTh('Typ','plug_type')}${_plugTh('IP-Adresse','plug_ip')}<th>MAC-Adresse</th><th>Token</th>${_plugTh('Zugewiesen an','machine_name')}<th></th>
     </tr></thead>
     <tbody>
     ${plugs.map(p => `<tr>
       <td><strong>${escHtml(p.name)}</strong>${p.notes?`<div style="font-size:13px;color:var(--text-dim);margin-top:2px">${escHtml(p.notes)}</div>`:''}</td>
       <td><span class="badge badge-gray">${_plugTypeLabel(p.plug_type)}</span></td>
       <td><code style="font-size:14px;background:var(--surface2);padding:2px 6px;border-radius:4px">${escHtml(p.plug_ip)}</code></td>
+      <td>${p.mac ? `<code style="font-size:14px;background:var(--surface2);padding:2px 6px;border-radius:4px">${escHtml(formatMac(p.mac))}</code>` : '<span style="color:var(--text-dim)">—</span>'}</td>
       <td id="plug-token-cell-${p.id}">${p.plug_token
         ? `<span style="color:var(--text-dim);font-family:monospace">••••••</span><button class="btn btn-ghost btn-sm" onclick="togglePlugToken(${p.id})" title="Token anzeigen" style="padding:0 4px;font-size:14px;vertical-align:middle">👁</button>`
         : '<span style="color:var(--text-dim)">—</span>'}</td>
@@ -7537,6 +7545,7 @@ function showAddPlug() {
   document.getElementById('plug-name').value = '';
   document.getElementById('plug-type').value = 'shelly_gen2';
   document.getElementById('plug-ip').value = '';
+  document.getElementById('plug-mac').value = '';
   document.getElementById('plug-token').value = '';
   _resetPlugTokenToggle();
   document.getElementById('plug-notes').value = '';
@@ -7552,6 +7561,7 @@ function showEditPlug(id) {
   document.getElementById('plug-name').value = p.name;
   document.getElementById('plug-type').value = p.plug_type;
   document.getElementById('plug-ip').value = p.plug_ip;
+  document.getElementById('plug-mac').value = p.mac ? formatMac(p.mac) : '';
   document.getElementById('plug-token').value = p.plug_token || '';
   _resetPlugTokenToggle();
   document.getElementById('plug-notes').value = p.notes||'';
@@ -7583,10 +7593,15 @@ async function savePlug() {
   const name = document.getElementById('plug-name').value.trim();
   const ip = document.getElementById('plug-ip').value.trim();
   if (!name || !ip) return showToast('Name und IP sind Pflichtfelder', 'error');
+  const macRaw = document.getElementById('plug-mac').value.trim();
+  const macHex = macRaw.replace(/[^0-9a-fA-F]/g, '').toUpperCase();
+  if (macRaw && macHex.length !== 12) return showToast('MAC-Adresse muss 12 Hex-Zeichen haben (z.B. 00:11:22:33:44:55)', 'error');
+
   const payload = {
     name,
     plug_type: document.getElementById('plug-type').value,
     plug_ip: ip,
+    mac: macHex || null,
     notes: document.getElementById('plug-notes').value.trim()||null,
   };
   const tokenVal = document.getElementById('plug-token').value.trim();
@@ -7662,7 +7677,7 @@ function _renderDiscoverResults() {
       <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px" id="discover-row-${i}">
         <div style="flex:1;min-width:0">
           <div style="font-family:var(--mono);font-size:14px">${_escDiscover(d.ip)}</div>
-          <div style="font-size:13px;color:var(--text-dim)">${_escDiscover(_plugTypeLabels[d.plug_type] || d.plug_type)}${d.mac ? ' · ' + _escDiscover(d.mac) : ''}</div>
+          <div style="font-size:13px;color:var(--text-dim)">${_escDiscover(_plugTypeLabels[d.plug_type] || d.plug_type)}${d.mac ? ' · ' + _escDiscover(formatMac(d.mac)) : ''}</div>
         </div>
         ${d.already_registered ? `<span class="badge badge-gray">bereits erfasst</span>` : `
           <input class="form-input form-input-sm" id="discover-name-${i}" value="${_escDiscover(d.name || '')}" placeholder="Name" style="width:160px;flex-shrink:0">
@@ -7677,7 +7692,7 @@ async function _addDiscovered(i) {
   const d = _discoverResults[i];
   const name = document.getElementById(`discover-name-${i}`).value.trim();
   if (!name) return showToast('Bitte einen Namen angeben', 'error');
-  const res = await POST('/plugs', {name, plug_type: d.plug_type, plug_ip: d.ip});
+  const res = await POST('/plugs', {name, plug_type: d.plug_type, plug_ip: d.ip, mac: d.mac || null});
   if (!res) return;
   d.already_registered = true;
   await loadPlugs();
@@ -7710,7 +7725,7 @@ async function showDiscoverExclusions() {
       <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px">
         <div style="flex:1;min-width:0">
           <div style="font-family:var(--mono);font-size:14px">${_escDiscover(x.ip)}</div>
-          <div style="font-size:13px;color:var(--text-dim)">${_escDiscover(_plugTypeLabels[x.plug_type] || x.plug_type || '—')}${x.mac ? ' · ' + _escDiscover(x.mac) : ''}</div>
+          <div style="font-size:13px;color:var(--text-dim)">${_escDiscover(_plugTypeLabels[x.plug_type] || x.plug_type || '—')}${x.mac ? ' · ' + _escDiscover(formatMac(x.mac)) : ''}</div>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="_unexcludeDiscovered(${x.id})" style="flex-shrink:0">Wieder aufnehmen</button>
       </div>
@@ -7790,6 +7805,10 @@ function togglePlugToken(id) {
       <div class="form-group">
         <label class="form-label">IP-Adresse *</label>
         <input class="form-input" id="plug-ip" placeholder="192.168.1.100">
+      </div>
+      <div class="form-group">
+        <label class="form-label">MAC-Adresse <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>
+        <input class="form-input" id="plug-mac" placeholder="00:00:00:00:00:00">
       </div>
       <div class="form-group">
         <label class="form-label">Token / Auth <span style="color:var(--text-dim);font-weight:400">(optional)</span></label>

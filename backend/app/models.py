@@ -431,6 +431,7 @@ class Plug(Base):
     plug_type:              Mapped[str]           = mapped_column(String(20), nullable=False)
     plug_ip:                Mapped[str]           = mapped_column(String(50), nullable=False)
     plug_token:             Mapped[Optional[str]] = mapped_column(String(255), default=None)
+    mac:                    Mapped[Optional[str]] = mapped_column(String(20), default=None)
     notes:                  Mapped[Optional[str]] = mapped_column(Text, default=None)
     created_at:             Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
 

@@ -311,6 +311,7 @@ class PlugCreate(BaseModel):
     plug_type: str
     plug_ip: str
     plug_token: Optional[str] = None
+    mac: Optional[str] = None
     notes: Optional[str] = None
 
 class PlugUpdate(BaseModel):
@@ -318,6 +319,7 @@ class PlugUpdate(BaseModel):
     plug_type: Optional[str] = None
     plug_ip: Optional[str] = None
     plug_token: Optional[str] = None
+    mac: Optional[str] = None
     notes: Optional[str] = None
 
 class PlugOut(BaseModel):
@@ -326,6 +328,7 @@ class PlugOut(BaseModel):
     plug_type: str
     plug_ip: str
     plug_token: Optional[str] = None
+    mac: Optional[str] = None
     notes: Optional[str] = None
     created_at: datetime
     machines: list = []  # [{id, name}, ...]

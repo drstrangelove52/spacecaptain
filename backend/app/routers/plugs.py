@@ -41,6 +41,7 @@ async def _plug_out(plug: Plug, db: AsyncSession) -> dict:
         "plug_type": plug.plug_type,
         "plug_ip": plug.plug_ip,
         "plug_token": plug.plug_token,
+        "mac": plug.mac,
         "notes": plug.notes,
         "created_at": plug.created_at,
         "machines": machines,
