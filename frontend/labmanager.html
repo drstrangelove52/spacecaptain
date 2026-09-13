@@ -740,7 +740,10 @@
                 </div>
                 <div class="form-group" style="margin:0">
                   <label class="form-label">NFC-Schreibgerät</label>
-                  <input class="form-input" id="cfg-nfc-url" placeholder="http://nfc-writer.local">
+                  <div style="display:flex;gap:8px">
+                    <input class="form-input" id="cfg-nfc-url" placeholder="http://nfc-writer.local" style="flex:1">
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="showNfcDiscoverModal()" style="flex-shrink:0">🔍 Suchen</button>
+                  </div>
                   <div style="font-size:14px;color:var(--text-dim);margin-top:4px">ESP32-URL · leer = deaktiviert</div>
                 </div>
                 <div class="form-group" style="margin:0">
@@ -1714,8 +1717,14 @@ sudo ./install-service.sh</pre>
             <div class="help-article">
               <div class="help-article-title">Maschinenstatus manuell setzen</div>
               <div class="help-article-body">
-                Mögliche Zustände: <strong>Freigegeben</strong> (Teil des aktiven Bestands), <strong>Gesperrt</strong> (aktuell nicht nutzbar), <strong>In Wartung</strong> (in Reparatur/Service).
-                Status ändern: Maschine bearbeiten → Feld «Status». Maschinen im Status «Gesperrt» oder «In Wartung» können von Gästen nicht gestartet werden.
+                Status ändern: Maschine bearbeiten → Feld «Status».
+                <div class="help-warn" style="margin-top:8px"><strong>Zugriff ist bei «Gesperrt» und «In Wartung» identisch gesperrt</strong> — Gäste können die Maschine in beiden Fällen nicht starten oder einschalten, es gibt hier keinen Unterschied. Der eigentliche Unterschied liegt allein in der <strong>Sichtbarkeit</strong>:</div>
+                <ul style="margin-top:10px">
+                  <li><strong>Freigegeben</strong> — Teil des aktiven Bestands, normal nutzbar.</li>
+                  <li><strong>Gesperrt</strong> — verschwindet komplett aus TV-Display und Dashboard-Grid, so als wäre die Maschine gerade kein Teil des aktiven Maschinenparks. Sinnvoll z.B. bei ausgemusterten oder länger nicht verfügbaren Geräten, die niemand angezeigt bekommen soll.</li>
+                  <li><strong>In Wartung</strong> — bleibt in Display und Dashboard sichtbar, aber deutlich als «IN WARTUNG» gekennzeichnet. Ein optionaler Kommentar im Bearbeitungsdialog wird Gästen zusätzlich als Grund angezeigt (z.B. «Ersatzteil bestellt»). Sinnvoll, wenn Gäste wissen sollen, dass die Maschine bald wieder verfügbar ist und warum sie gerade nicht geht.</li>
+                </ul>
+                <div class="help-tip"><strong>Faustregel:</strong> «In Wartung» wählen, wenn die Abwesenheit kommuniziert werden soll (Gäste sehen die Maschine + Grund). «Gesperrt» wählen, wenn die Maschine aus der Übersicht verschwinden soll, ohne dass es dafür eine Erklärung braucht.</div>
               </div>
             </div>
             <div class="help-article">
@@ -7932,6 +7941,55 @@ async function _unexcludeDiscovered(id) {
   showDiscoverExclusions();
 }
 
+// ── NFC-Writer-Discovery ──────────────────────────────
+function showNfcDiscoverModal() {
+  document.getElementById('nfc-discover-cidr').value = '';
+  document.getElementById('nfc-discover-results').innerHTML = '';
+  document.getElementById('nfc-discover-modal').style.display = 'flex';
+  setTimeout(()=>document.getElementById('nfc-discover-cidr').focus(), 50);
+}
+function closeNfcDiscoverModal(e) {
+  if (e && e.target.id !== 'nfc-discover-modal') return;
+  if (e && !clientSettings.modal_backdrop_input) return;
+  document.getElementById('nfc-discover-modal').style.display = 'none';
+}
+
+async function runNfcDiscoverScan() {
+  const cidr = document.getElementById('nfc-discover-cidr').value.trim();
+  if (!cidr) return showToast('Bitte einen IP-Bereich angeben', 'error');
+  const btn = document.getElementById('nfc-discover-scan-btn');
+  const resultsEl = document.getElementById('nfc-discover-results');
+  btn.disabled = true;
+  btn.textContent = 'Scanne…';
+  resultsEl.innerHTML = `<div class="loading" style="justify-content:flex-start;padding:16px 0">⏳ Scanne ${escHtml(cidr)}…</div>`;
+
+  const res = await POST('/nfc/discover', {cidr});
+  btn.disabled = false;
+  btn.textContent = 'Scannen';
+  if (!res) { resultsEl.innerHTML = ''; return; }
+
+  if (!res.found.length) {
+    resultsEl.innerHTML = `<div style="color:var(--text-dim);font-size:14px;padding:12px 0">Kein NFC-Schreibgerät gefunden.</div>`;
+    return;
+  }
+
+  resultsEl.innerHTML = res.found.map(d => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;margin-top:12px">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--mono);font-size:14px">${escHtml(d.ip)}</div>
+        <div style="font-size:13px;color:var(--text-dim)">${escHtml(d.status || '')}${d.version ? ' · v' + escHtml(d.version) : ''}</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="_takeOverNfcWriter('${d.ip.replace(/'/g,"&#39;")}')">Übernehmen</button>
+    </div>
+  `).join('');
+}
+
+function _takeOverNfcWriter(ip) {
+  document.getElementById('cfg-nfc-url').value = `http://${ip}`;
+  document.getElementById('nfc-discover-modal').style.display = 'none';
+  showToast('NFC-Schreibgerät übernommen — zum Speichern nicht vergessen', 'success');
+}
+
 async function deletePlug(id) {
   const p = _plugs.find(x=>x.id===id);
   if (!confirm(`Plug "${p?.name}" wirklich löschen?`)) return;
@@ -8108,6 +8166,32 @@ function togglePlugToken(id) {
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="document.getElementById('bulk-clear-auth-modal').style.display='none'">Schliessen</button>
       <button class="btn btn-danger" id="bulk-clear-auth-apply-btn" onclick="applyBulkClearAuth()">Entfernen</button>
+    </div>
+  </div>
+</div>
+
+<!-- NFC-Discover-Modal -->
+<div class="modal-overlay" id="nfc-discover-modal" onclick="closeNfcDiscoverModal(event)" style="display:none">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title">NFC-Schreibgerät suchen</div>
+      <button class="modal-close" onclick="document.getElementById('nfc-discover-modal').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">IP-Bereich (CIDR)</label>
+        <div style="display:flex;gap:8px">
+          <input class="form-input" id="nfc-discover-cidr" placeholder="z.B. 10.10.1.0/24" style="flex:1" onkeydown="if(event.key==='Enter')runNfcDiscoverScan()">
+          <button class="btn btn-primary" id="nfc-discover-scan-btn" onclick="runNfcDiscoverScan()" style="flex-shrink:0">Scannen</button>
+        </div>
+        <div style="font-size:13px;color:var(--text-dim);margin-top:6px;line-height:1.5">
+          Sucht per HTTP-Abfrage (kein mDNS) im angegebenen Bereich — max. 1024 Adressen (z.B. /22), nur private Netzbereiche.
+        </div>
+      </div>
+      <div id="nfc-discover-results"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('nfc-discover-modal').style.display='none'">Schliessen</button>
     </div>
   </div>
 </div>
