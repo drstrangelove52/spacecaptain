@@ -727,7 +727,7 @@
           <div class="help-panel active" id="settings-panel-system">
             <div class="help-panel-header"><span class="help-panel-icon">⚙️</span><span class="help-panel-title">System</span></div>
             <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
-              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start;max-width:820px">
                 <div class="form-group" style="margin:0">
                   <label class="form-label">Makerspace-Name</label>
                   <input class="form-input" id="cfg-space-name" placeholder="z.B. FabLab Musterstadt">
@@ -786,7 +786,7 @@
           <div class="help-panel" id="settings-panel-display">
             <div class="help-panel-header"><span class="help-panel-icon">📺</span><span class="help-panel-title">Display</span></div>
             <div style="padding:20px">
-              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;max-width:820px">
                 <div class="form-group" style="margin:0">
                   <label class="form-label">TV-Display Aktualisierung</label>
                   <input class="form-input" id="cfg-display-refresh" type="number" min="10" max="300" placeholder="30">
@@ -813,7 +813,7 @@
           <div class="help-panel" id="settings-panel-aushaenge">
             <div class="help-panel-header"><span class="help-panel-icon">📢</span><span class="help-panel-title">Aushänge</span></div>
             <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
-              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;max-width:820px">
                 <div class="form-group" style="margin:0">
                   <label class="form-label">Aushang Schriftgrösse</label>
                   <input class="form-input" id="cfg-announcement-size" type="number" min="10" max="72" placeholder="20">
@@ -868,7 +868,7 @@
           <div class="help-panel" id="settings-panel-notfall">
             <div class="help-panel-header"><span class="help-panel-icon">🚨</span><span class="help-panel-title">Notfall-Alarm</span></div>
             <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
-              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start;max-width:820px">
                 <div class="form-group" style="margin:0">
                   <label class="form-label">Trigger-Token</label>
                   <input class="form-input" id="cfg-emergency-token" type="text" placeholder="z.B. xK9pQ3rTvZ…" autocomplete="off">
@@ -933,7 +933,7 @@
 
               <div>
                 <div style="font-family:var(--display);font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-bottom:14px">Automatisch (lokal)</div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;align-items:start">
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;align-items:start;max-width:820px">
                   <div class="form-group" style="margin:0">
                     <label class="form-label">Automatisches Backup aktivieren</label>
                     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
@@ -1045,7 +1045,7 @@
                 <span style="font-size:14px;color:var(--text-dim)">Auth Keys erstellen: <span style="font-family:var(--mono)">tailscale.com → Settings → Keys</span></span>
               </div>
 
-              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start;max-width:820px">
 
                 <div class="form-group" style="margin:0">
                   <label class="form-label">Tailscale aktivieren</label>
@@ -1157,7 +1157,7 @@ sudo ./install-service.sh</pre>
                 <span style="font-size:14px;color:var(--text-dim)">Erfordert Docker-Profil <code style="font-family:var(--mono)">mcp</code>. Der Token wird automatisch aus der Datenbank geladen — kein <code style="font-family:var(--mono)">.env</code>-Eintrag nötig.</span>
               </div>
 
-              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;align-items:start;max-width:820px">
 
                 <div class="form-group" style="margin:0">
                   <label class="form-label">MCP-Server aktivieren</label>
