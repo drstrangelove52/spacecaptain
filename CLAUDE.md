@@ -359,6 +359,20 @@ Der Token lebt ausschliesslich in der DB (`system_settings.mcp_api_token`) und w
 
 **FastMCP-Falle:** `host="0.0.0.0"` und `transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False)` im Konstruktor zwingend — sonst 403 bei LAN-Hostnamen.
 
+## Wiki für Maschinen-Anleitungen (SilverBullet, optional)
+
+Optionaler Service (`wiki`/`wiki_edit`), aktiviert mit `--profile wiki`. Kein neuer Code in SpaceCaptain nötig — nutzt das bereits vorhandene `Machine.doc_url`-Feld (siehe `models.py`, im UI unter "Dokumentations-Link" bei der Maschinen-Bearbeitung), das in der Gäste-App bereits als "📄 Dokumentation"-Link angezeigt wird (`index.html`). Ergänzt `safety_notes` (Kurztext, Pflicht-Bestätigung vor dem Einschalten) um ausführlichere Anleitungen mit Bildern/Formatierung.
+
+**Architektur:** zwei SilverBullet-Container auf demselben Markdown-Space (`./wiki-space`, Bind-Mount, nicht im SpaceCaptain-Backup enthalten — eigenständig sichern, z.B. simples Git-Repo oder Kopie ins NAS):
+- `wiki` (`SB_READ_ONLY=true`): öffentlich lesbar unter `/wiki/`, kein Login — Gäste sollen Anleitungen ohne zusätzliche Hürde nachschlagen können
+- `wiki_edit` (`SB_USER=${WIKI_EDIT_USER}`): Editieren unter `/wiki-edit/`, geschützt mit SilverBullet-eigenem Login (separat vom SpaceCaptain-JWT, kein Rollenbezug — jeder mit dem Passwort kann editieren)
+
+Beide Container über `SB_URL_PREFIX` unter einem Unterpfad der bestehenden Domain eingehängt (kein separates DNS/Zertifikat nötig) — Routing in `nginx/proxy.conf` folgt demselben `resolver`+Variable-Pattern wie Backend/Frontend/MCP (siehe Vorfall unten), zusätzlich `proxy_http_version 1.1` + `Upgrade`-Header, da SilverBullet für Live-Sync WebSockets nutzt.
+
+**Verknüpfung:** rein manuell — pro Maschine im `doc_url`-Feld die passende SilverBullet-Seite eintragen (z.B. `/wiki/Maschinen/Lasercutter`). Keine automatische Namenskonvention/Auto-Erstellung.
+
+**`.env`:** `WIKI_EDIT_USER` (Format `user:passwort`) vor dem ersten Start mit `--profile wiki` setzen, sonst gilt der unsichere Default `admin:aendern` — siehe `.env.example`. Bootstrap-Secret trotz Optional-Charakter, weil SilverBullet das beim Container-Start liest (kein Settings-Feld wie sonst üblich, da eigenes Auth-System statt SpaceCaptain-DB).
+
 ## Nginx-Proxy und Docker-DNS (Vorfall 2026-07-04)
 
 **Vorfall:** Nach einem Update-Rebuild von `backend`/`mcp_server` (neue Docker-interne Container-IP) antwortete `nginx` (Service `nginx`, Container `spacecaptain_proxy`) auf **allen** API-Calls inkl. Login mit 502 "Connection refused" — der Proxy-Container selbst lief seit Tagen unverändert weiter und hatte die alte Backend-IP für die Lebensdauer seines Worker-Prozesses gecached.

@@ -11,4 +11,5 @@ backups/
 certs/
 update_trigger/
 tailscale-state/
+wiki-space/
 .claude/settings.local.json
