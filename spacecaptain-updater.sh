@@ -28,12 +28,17 @@ log() {
 # Container beim Rebuild eine neue IP, wuerde nginx sonst mit 502 "Connection
 # refused" auf jeden API-Call antworten (inkl. Login) bis es selbst neu startet.
 # proxy.conf hat zusaetzlich einen resolver mit kurzer TTL als zweite Absicherung.
+# frontend ebenfalls immer mit neu starten: nginx/nginx.conf ist ein Volume-Mount
+# und wird nur einmal beim Prozessstart gelesen — Aenderungen daran (z.B. neue
+# error_page-Direktive) landen zwar per git pull auf der Platte, greifen aber
+# erst nach einem Neustart des Containers (Vorfall 2026-09-15: eigene 404-Seite
+# blieb inaktiv, weil frontend hier fehlte).
 # Wichtig: "--all" statt "--status running" — sonst wird mcp_server bei einem
 # kaputten Update (Container haengt in einer Restart-Schleife, Status
 # "restarting" statt "running") aus der Rebuild-Liste ausgeschlossen und bleibt
 # dauerhaft auf dem alten, kaputten Image stehen, auch nach korrektem git pull.
 compose_services() {
-  local services="backend nginx"
+  local services="backend nginx frontend"
   if docker compose ps --services --all 2>/dev/null | grep -q "^mcp_server$"; then
     services="$services mcp_server"
   fi
