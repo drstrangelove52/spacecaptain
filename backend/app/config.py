@@ -60,7 +60,7 @@ def get_settings() -> Settings:
     return s
 
 
-APP_VERSION = "1.41"
+APP_VERSION = "1.42"
 
 import os as _os, zoneinfo as _zi
 
