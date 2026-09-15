@@ -342,15 +342,6 @@
   </div>
 </div>
 
-<!-- DOKUMENTATION -->
-<div id="screen-doc" style="position:fixed;inset:0;background:var(--bg);z-index:200;display:none;flex-direction:column">
-  <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0">
-    <button class="btn-secondary" onclick="document.getElementById('screen-doc').style.display='none';document.getElementById('doc-iframe').src='about:blank'">← Zurück</button>
-    <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:1px" id="doc-machine-name"></div>
-  </div>
-  <iframe id="doc-iframe" style="flex:1;width:100%;border:0" src="about:blank"></iframe>
-</div>
-
 <!-- PASSWORT ÄNDERN -->
 <div id="screen-pw" style="position:fixed;inset:0;background:var(--bg);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px">
   <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:16px">
@@ -636,7 +627,7 @@ function renderMachineCard(containerId, m) {
     ${m.comment ? `<div class="machine-comment">⚠ ${escHtml(m.comment)}</div>` : ''}
     ${adapterOffline ? `<div class="machine-comment">⚠ Adapter nicht erreichbar — bitte an den Lab Manager wenden</div>` : ''}
     <div class="machine-status-row"><span class="status-badge ${sc}">${sl}</span>${plug}</div>
-    ${m.doc_url ? `<div style="margin-top:12px"><button type="button" data-doc-url="${escHtml(m.doc_url)}" data-doc-name="${escHtml(m.name)}" onclick="openDoc(this.dataset.docUrl,this.dataset.docName)" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--accent2);background:none;border:0;padding:0;font-family:inherit;cursor:pointer">📄 Dokumentation</button></div>` : ''}
+    ${m.doc_url ? `<div style="margin-top:12px"><a href="${escHtml(m.doc_url)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--accent2);text-decoration:none">📄 Dokumentation</a></div>` : ''}
     ${sessionInfo}`;
 }
 
@@ -931,12 +922,6 @@ function showSafetyScreen(mode) {
   document.getElementById('safety-btn').disabled = true;
   document.getElementById('safety-btn').textContent = mode === 'ack' ? '✓ Bestätigen' : '⚡ EINSCHALTEN';
   document.getElementById('screen-safety').style.display = 'flex';
-}
-
-function openDoc(url, name) {
-  document.getElementById('doc-machine-name').textContent = name ? name.toUpperCase() : '';
-  document.getElementById('doc-iframe').src = url;
-  document.getElementById('screen-doc').style.display = 'flex';
 }
 
 function handleTurnOn() {

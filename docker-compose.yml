@@ -94,36 +94,6 @@ services:
     profiles:
       - mcp
 
-  wiki:
-    image: ghcr.io/silverbulletmd/silverbullet:latest
-    container_name: spacecaptain_wiki
-    restart: unless-stopped
-    environment:
-      SB_HOSTNAME: 0.0.0.0
-      SB_URL_PREFIX: /wiki
-      SB_READ_ONLY: "true"
-    volumes:
-      - ./wiki-space:/space
-    networks:
-      - spacecaptain_net
-    profiles:
-      - wiki
-
-  wiki_edit:
-    image: ghcr.io/silverbulletmd/silverbullet:latest
-    container_name: spacecaptain_wiki_edit
-    restart: unless-stopped
-    environment:
-      SB_HOSTNAME: 0.0.0.0
-      SB_URL_PREFIX: /wiki-edit
-      SB_USER: ${WIKI_EDIT_USER:-admin:aendern}
-    volumes:
-      - ./wiki-space:/space
-    networks:
-      - spacecaptain_net
-    profiles:
-      - wiki
-
   tailscale:
     image: tailscale/tailscale:latest
     container_name: spacecaptain_tailscale
