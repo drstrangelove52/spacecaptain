@@ -1,7 +1,6 @@
 # Konzept: Modul «Inventar & Lagerorte»
 
-Status: **Etappe 1 umgesetzt** (2026-10-18, Branch `feature/inventar-modul`, noch nicht auf Dev
-ausgerollt). Etappen 2–5 offen. Backend: `models_inventory.py`, `services/inventory.py`,
+Status: **Etappen 1 und 2 umgesetzt** (2026-10-19, Branch `feature/inventar-modul`; Dev-Test läuft). Etappen 3–5 offen. Backend: `models_inventory.py`, `services/inventory.py`,
 `routers/inventory.py`; Oberfläche: `frontend/modules/inventory.js` (Modul im LabManager); Tests: `backend/tests` (`cd backend && pytest`).
 
 Planungsebene im Second Brain: `03 Bereiche/SpaceCaptain/Inventar-Modul.md`.
@@ -338,17 +337,25 @@ Standard sind **vorgeschnittene A4-Bögen** (Avery Zweckform Typenschild-Etikett
 
 ## 8. Backup
 
-Neue Top-Level-Sektion `inventory` in `_build_export_data` und `_do_import`:
-`areas` (Erweiterungsfelder), `furniture`, `levels`, `positions`, `items`,
-`placements`, `plan`. Die Kompatibilitätsregeln gelten: Lesen nur mit
-`payload.get("inventory", {})` und `.get("feld", default)`.
+Umgesetzt in `services/inventory_backup.py` (Export und Import), eingehängt an zwei Stellen in `routers/backup.py`
+(`_build_export_data`: Sektion `inventory`; `_do_import`: vor dem Aktivitätslog). Die Kompatibilitätsregeln gelten:
+fehlt die Sektion in einem älteren Backup, wird sie übersprungen; Felder werden mit `.get()` gelesen.
 
-Beim Restore die Reihenfolge einhalten (Bereiche → Maschinen → Möbel → Ebenen →
-Positionen → Werkzeug → Platzierungen) und Fremdschlüssel über **natürliche Schlüssel**
-auflösen (Bereichs-Code, `furniture`-Nummer, Ebenen-Nummer), nicht über DB-IDs, wie schon
-bei den Plugs und Eigentümern. Werkzeug wird beim Import über den **natürlichen Schlüssel**
-(Name + Ebenen-Code) dedupliziert, analog zu den Akkus (Merkmals-Schlüssel). Fotos sind
-nicht Teil des JSON-Backups (siehe Offene Punkte).
+Inhalt der Sektion `inventory`:
+
+| Teil | Inhalt | Verweis auf andere Daten |
+|---|---|---|
+| `areas` | Kürzel, Farbe, Plan-Rechteck je Bereich (die Bereiche selbst stehen in `machine_locations`) | Bereichsname |
+| `furniture` | Möbel (ohne das automatische M00) mit `levels` und `positions` (ohne die automatischen E00/P00), Art, Name, Notiz, «neu/veraltet», Plan-Rechteck | Bereichsname + Möbelnummer |
+| `items` | Werkzeug mit Menge, Synonymen, Status und `place` (Bereich, Möbel-, Ebenen-, Positionsnummer; `null` = ohne Platz) | natürliche Schlüssel |
+| `placements` | Maschine «steht auf» Möbel, Plan-Koordinaten | Maschinenname, Bereich + Möbelnummer |
+
+Es gibt **keine DB-IDs** im Export. Der Import läuft in der Transaktion des Aufrufers: Bereichs-Kürzel und -Farben (ein
+Kürzel wird nur gesetzt, wenn es gültig und frei ist), Nullplätze und Kürzel-Umstellung (`ensure_structure`), Möbel/Ebenen/
+Positionen, Nullplätze der neuen Möbel, Werkzeug, Platzierungen. **Ohne «Überschreiben»** bleibt Vorhandenes unberührt und
+nur Fehlendes wird ergänzt (ein zweiter Import legt nichts doppelt an); mit «Überschreiben» werden Felder aktualisiert.
+Werkzeug wird über (Name, Platz) dedupliziert. Fotos sind nicht Teil des JSON-Backups (siehe Offene Punkte).
+Statistik im Ergebnis: `inventory_areas`, `inventory_furniture`, `inventory_levels`, `inventory_items`, `inventory_placements`.
 
 ## 9. Migration
 
@@ -366,7 +373,7 @@ Idempotent, rein additiv, bei jedem Start:
 |---|---|---|
 | **0** | Dieses Konzept abstimmen | Freigabe durch Martin |
 | **1** ✅ | Migration, Modelle, Router (Struktur, Werkzeug, Suche), `inventar.html` (Struktur, Werkzeug, Import, Etiketten) auf der **Dev-Instanz** | Nutzbar fürs Einpacken und Inventarisieren beim Umzug |
-| **2** | `machines.area_id`, Backfill, Bereichswechsel, Anzeige in der Suche, Backup-Sektion und Restore-Test | Maschinen und Werkzeug in einer Suche |
+| **2** ✅ | `machines.area_id`, Backfill, Bereichswechsel, «steht auf», Anzeige in der Suche, Backup-Sektion und Restore-Test | Maschinen und Werkzeug in einer Suche |
 | **3** | Gästesuche in `index.html`, QR-Ziele für Schränke | Neue Gäste finden Dinge selbst |
 | **4** | Bauplan (Zeichnen, Verschieben, Suchtreffer-Markierung, Maschinen platzieren) | nach dem Umzug, sobald das Layout feststeht |
 | **5** | Optional: Fotos, Foto-Inventur per KI, Lesezugriff über den MCP-Server | |
@@ -411,12 +418,29 @@ Freigabe von Martin.
   Bereiche mit Möbeln oder Werkzeug lassen sich nicht löschen (409).
 - **Nullplätze entstehen auch nachträglich:** Standorte, die per CSV-Import oder Backup-Restore
   angelegt werden, bekommen `M00/E00/P00` beim nächsten Aufruf des Moduls.
-- **Noch nicht im Backup** (Etappe 2): Kürzel, Farben, Möbel und Werkzeug sind in der
-  JSON-Sicherung noch nicht enthalten. Bis dahin gilt die DB-Sicherung der Maschine.
 - **Nummern bleiben stabil:** Wird eine Ebene oder Position gelöscht, rücken die übrigen nicht
   nach (aufgedruckte Etiketten würden sonst falsch).
-- **Maschinen** sind in Suche und Plan erst ab Etappe 2 enthalten.
 - Der Menüpunkt «Inventar» erscheint nur, wenn das Modul in den Einstellungen (Admin) eingeschaltet ist.
+
+## 11b. Stand Etappe 2: Maschinen, Suche, Backup
+
+- **Zuordnung:** `machines.area_id` (ohne DB-FK) ist der massgebliche Bereich; `machines.location` (Text) bleibt für die
+  bisherigen Ansichten (Maschinenliste, CSV, Display) erhalten. **Beide werden in Einklang gehalten:**
+  - Das Maschinenformular, CSV-Import und Restore schreiben nur den Text. `area_id` wird daraus nachgezogen
+    (Gross-/Kleinschreibung egal; Text ohne passenden Bereich bleibt als Text, die Maschine gilt als «ohne Bereich»;
+    leerer Text = kein Bereich). Beim Anlegen und Bearbeiten über das Formular sofort, sonst beim nächsten Aufruf des
+    Moduls bzw. beim Start.
+  - Im Inventar geschriebene Bereichswechsel setzen `area_id` **und** den Text.
+  - **Umbenennen eines Standorts** zieht die Maschinen mit (Text und Zuordnung). Das behebt den bekannten Fehler, dass
+    der Text bei den Maschinen nach dem Umbenennen veraltet blieb.
+  - Löschen einer Maschine entfernt ihre Platzierung.
+- **Bereichswechsel:** `PATCH /api/inventory/machines/{id}` (Power-Manager/Admin), Log `machine_area_changed` mit
+  Herkunft und Ziel. Ein «steht auf» passt nur im selben Bereich: beim Wechsel wird es automatisch entfernt, ein Möbel
+  aus einem anderen Bereich wird abgelehnt (409), M00 ebenfalls (400).
+- **Oberfläche:** Reiter «Maschinen» (Liste mit Bereich und «steht auf» als Auswahl, Filter «Ohne Bereich»; Manager sehen
+  nur), Maschinenzahl je Bereich im Strukturbaum, Maschinen-Treffer über der Werkzeugliste, Maschinen in der API-Suche
+  (`type: "machine"`, mit Pfad «Laser › Tisch 1»).
+- **Keine Etikett-Codes für Maschinen**, wie entschieden: Sie sind über Bereich, Möbel und später den Bauplan auffindbar.
 
 ## 12. Offene Punkte
 

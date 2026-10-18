@@ -130,6 +130,7 @@
     el.innerHTML = `
     <div class="inv-tabs">
       <div class="inv-tab active" data-tab="items" onclick="Inv.showTab('items')">🔧 Werkzeug</div>
+      <div class="inv-tab" data-tab="machines" onclick="Inv.showTab('machines')">🏭 Maschinen</div>
       <div class="inv-tab" data-tab="structure" onclick="Inv.showTab('structure')">🗄️ Struktur</div>
       <div class="inv-tab" data-tab="labels" onclick="Inv.showTab('labels')">🏷️ Etiketten</div>
       <div class="inv-tab" data-tab="import" onclick="Inv.showTab('import')">📥 Import</div>
@@ -148,6 +149,7 @@
         <span class="inv-chip" id="inv-chip-level_open" onclick="Inv.toggleChip('level_open')" title="Im Möbel, aber Ebene noch nicht festgelegt (E00)">Ebene offen</span>
         <button class="btn btn-primary" onclick="Inv.openItemModal()">+ Werkzeug</button>
       </div>
+      <div id="inv-machine-hits" class="inv-hint" style="display:none"></div>
       <div class="table-wrap" style="margin-bottom:0">
         <table><thead><tr><th>Name</th><th>Menge</th><th>Lagerort</th><th>Status</th><th></th></tr></thead>
         <tbody id="inv-items-body"></tbody></table>
@@ -155,6 +157,24 @@
       <div class="inv-pager"><span class="inv-dim inv-small" id="inv-items-count"></span><span class="inv-sp"></span>
         <button class="btn btn-ghost btn-sm" id="inv-btn-prev" onclick="Inv.pageItems(-1)">‹ zurück</button>
         <button class="btn btn-ghost btn-sm" id="inv-btn-next" onclick="Inv.pageItems(1)">weiter ›</button></div>
+    </div>
+
+    <div class="inv-page" id="inv-page-machines">
+      <div class="inv-hint">
+        Die Maschinen selbst pflegst du unter <b>Maschinen</b>. Hier legst du fest, in welchem <b>Bereich</b> eine Maschine steht
+        (identisch mit dem Standort dort) und auf welchem <b>Möbel</b> sie steht, z.B. auf einem Tisch. Die Maschinen tragen keinen Etikett-Code;
+        sie sind über die Suche und später im Bauplan auffindbar.
+      </div>
+      <div class="inv-toolbar">
+        <div class="search-wrap"><span class="search-icon">🔍</span>
+          <input class="search-input" id="inv-m-q" placeholder="Maschine, Kategorie oder Bereich…" oninput="Inv.debouncedLoadMachines()"></div>
+        <select class="filter-input" id="inv-m-area" onchange="Inv.loadMachines()"></select>
+        <span class="inv-dim inv-small" id="inv-m-count"></span>
+      </div>
+      <div class="table-wrap" style="margin-bottom:0">
+        <table><thead><tr><th>Maschine</th><th>Bereich</th><th>Steht auf</th><th>Status</th></tr></thead>
+        <tbody id="inv-machines-body"></tbody></table>
+      </div>
     </div>
 
     <div class="inv-page" id="inv-page-structure">
@@ -249,6 +269,7 @@
     await loadTree();
     fillAreaSelect($('f-area'), 'Alle Bereiche');
     fillAreaSelect($('l-area'), 'Alle Bereiche');
+    fillMachineAreaFilter();
     // Einsprung über QR-Code / Link: #inventory/ELE-M01
     const iid = window._invItem;
     if (iid) {                                   // QR-Code eines Werkzeug-Etiketts: «gehört nach …»
@@ -286,6 +307,7 @@
     root.querySelectorAll('.inv-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     root.querySelectorAll('.inv-page').forEach(p => p.classList.toggle('active', p.id === 'inv-page-' + name));
     if (name === 'items') loadItems();
+    if (name === 'machines') loadMachines();
     if (name === 'structure') renderStructure();
     if (name === 'labels') loadLabels();
   }
@@ -293,6 +315,7 @@
   async function loadTree() {
     const t = await GET('/inventory/tree');
     if (t) tree = t;
+    fillMachineAreaFilter();
     return tree;
   }
   function fillAreaSelect(sel, firstLabel) {
@@ -348,6 +371,7 @@
     $('items-count').textContent = `${from}–${to} von ${r.total}`;
     $('btn-prev').disabled = itemsPage === 0;
     $('btn-next').disabled = to >= r.total;
+    showMachineHits(q);
   }
 
   async function deleteItem(id) {
@@ -473,7 +497,7 @@
           <span class="inv-swatch"></span>
           <span class="inv-name">${esc(a.name)}</span>
           ${a.code ? `<span class="inv-code">${esc(a.code)}</span>` : '<span class="badge badge-red">Kürzel fehlt</span>'}
-          <span class="inv-dim inv-small">${real.length} Möbel · ${a.item_count} Werkzeuge</span>
+          <span class="inv-dim inv-small">${real.length} Möbel · ${a.item_count} Werkzeuge · ${a.machine_count || 0} Maschinen</span>
           <span class="inv-sp"></span>
           ${isPower() ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();Inv.openAreaModal(${a.id})">✏️ Bereich</button>
             <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();Inv.openFurnModal(null,${a.id})" ${a.code ? '' : 'disabled title="Zuerst ein Kürzel vergeben"'}>+ Möbel</button>` : ''}
@@ -1043,6 +1067,78 @@
   }
 
   // ═══════════════════════════════════════════════════════
+  // Maschinen
+  // ═══════════════════════════════════════════════════════
+  let machines = [], _mdeb = null;
+  const MSTATUS = { online: 'Freigegeben', offline: 'Gesperrt', maintenance: 'In Wartung' };    // wie in der Maschinenliste
+  function fillMachineAreaFilter() {
+    const sel = $('m-area'); if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Alle Bereiche</option><option value="none">Ohne Bereich</option>' +
+      tree.map(a => `<option value="${a.id}">${esc(a.name)}${a.code ? ` (${esc(a.code)})` : ''}</option>`).join('');
+    sel.value = cur;
+  }
+  function debouncedLoadMachines() { clearTimeout(_mdeb); _mdeb = setTimeout(loadMachines, 250); }
+  async function loadMachines() {
+    const p = new URLSearchParams();
+    const q = $('m-q').value.trim(); if (q) p.set('q', q);
+    const a = $('m-area').value;
+    if (a === 'none') p.set('unassigned', 'true'); else if (a) p.set('area_id', a);
+    const r = await GET('/inventory/machines?' + p);
+    if (!r) return;
+    machines = r;
+    renderMachines();
+  }
+  function furnOptionsFor(areaId, selId) {
+    const a = areaById(areaId);
+    if (!a) return '';
+    return a.furniture.filter(f => f.number > 0).map(f =>
+      `<option value="${f.id}" ${f.id === selId ? 'selected' : ''}>${esc(f.name || ((KIND[f.kind] || 'Möbel').replace(/^\S+\s/, '') + ' ' + f.number))} (${esc(f.code)})</option>`).join('');
+  }
+  function renderMachines() {
+    const power = isPower();
+    $('m-count').textContent = `${machines.length} Maschine${machines.length === 1 ? '' : 'n'}`;
+    $('machines-body').innerHTML = machines.length ? machines.map(m => {
+      const aid = m.area ? m.area.id : '';
+      const areaCell = power
+        ? `<select class="filter-input" style="width:auto;min-width:170px" onchange="Inv.setMachineArea(${m.id}, this.value)">
+             <option value="">— kein Bereich —</option>${tree.map(a => `<option value="${a.id}" ${a.id === aid ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select>`
+        : (m.area ? esc(m.area.name) : '<span class="inv-dim">—</span>');
+      const onCell = power
+        ? `<select class="filter-input" style="width:auto;min-width:170px" ${m.area ? '' : 'disabled'} onchange="Inv.setMachineFurn(${m.id}, this.value)">
+             <option value="">— kein Möbel —</option>${furnOptionsFor(aid, m.stands_on ? m.stands_on.furniture_id : 0)}</select>`
+        : (m.stands_on ? esc(m.stands_on.title) : '<span class="inv-dim">—</span>');
+      const noMatch = !m.area && m.location
+        ? `<div class="inv-dim inv-small" title="Dieser Standort-Text entspricht keinem Bereich">«${esc(m.location)}» ist kein Bereich</div>` : '';
+      return `<tr>
+        <td><b>${esc(m.name)}</b><div class="inv-dim inv-small">${esc(m.category || '')}${m.manufacturer ? ' · ' + esc(m.manufacturer) : ''}</div></td>
+        <td>${areaCell}${noMatch}</td><td>${onCell}</td>
+        <td><span class="inv-dim">${esc(MSTATUS[m.status] || m.status)}</span></td></tr>`;
+    }).join('') : '<tr><td colspan="4" class="inv-empty">Keine Maschinen gefunden.</td></tr>';
+  }
+  async function setMachineArea(id, v) {
+    const r = await PATCH('/inventory/machines/' + id, { area_id: v ? +v : null });
+    if (r) { showToast('Bereich gespeichert', 'success'); await loadTree(); }
+    await loadMachines();                                  // bei Fehler: Auswahl zurücksetzen
+  }
+  async function setMachineFurn(id, v) {
+    if (await PATCH('/inventory/machines/' + id, { furniture_id: v ? +v : null })) showToast('Gespeichert', 'success');
+    await loadMachines();
+  }
+  // Treffer von Maschinen oberhalb der Werkzeugliste
+  async function showMachineHits(q) {
+    const box = $('machine-hits');
+    if (!q) { box.style.display = 'none'; return; }
+    const r = await apiSilent('GET', '/inventory/machines?q=' + encodeURIComponent(q));
+    if (!r || !r.length) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    box.innerHTML = '🏭 <b>Maschinen:</b> ' +
+      r.slice(0, 6).map(m => `<span style="white-space:nowrap"><b>${esc(m.name)}</b> <span class="inv-dim">· ${esc(m.path || 'kein Bereich')}</span></span>`).join(' &nbsp;·&nbsp; ') +
+      (r.length > 6 ? ` … +${r.length - 6}` : '') + ` · <a href="#" onclick="Inv.openMachines(decodeURIComponent('${encodeURIComponent(q)}'));return false">in «Maschinen» zeigen</a>`;
+  }
+  function openMachines(q) { $('m-q').value = q; showTab('machines'); }
+
+  // ═══════════════════════════════════════════════════════
   // Import
   // ═══════════════════════════════════════════════════════
   function parseImport() {
@@ -1071,6 +1167,7 @@
     openFurnModal, deleteFurn, addLevels, addPositions, renameLevel, renamePos, deleteLevel, deletePos,
     toggleOutdated, loadLabels, renderLabels, printLabels, printCalibration, setTemplate, offsetChanged, markPrinted, runImport,
     toggleLabel, setLabelCopies, toggleLevelsOf, selectBy, labelFor,
+    debouncedLoadMachines, loadMachines, setMachineArea, setMachineFurn, openMachines,
     setLabelMode, debouncedToolLoad, toggleTool, setCopies, toolSelectAll, toolSelectNone, toolCopiesQty,
   };
 

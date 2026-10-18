@@ -314,6 +314,10 @@ async def tree(db: AsyncSession = Depends(get_db), _: User = Depends(get_current
         select(InvItem.position_id, func.count(InvItem.id))
         .where(InvItem.position_id.is_not(None)).group_by(InvItem.position_id))).all())
 
+    mcount = dict((await db.execute(
+        select(Machine.area_id, func.count(Machine.id)).where(Machine.area_id.is_not(None))
+        .group_by(Machine.area_id))).all())
+
     pos_by_level: dict[int, list] = {}
     for p in poss:
         pos_by_level.setdefault(p.level_id, []).append(p)
@@ -350,7 +354,7 @@ async def tree(db: AsyncSession = Depends(get_db), _: User = Depends(get_current
             fo = _furniture_out(a, f)
             fo.update({"item_count": f_total, "levels": l_list})
             f_list.append(fo)
-        ao = _area_out(a)
+        ao = _area_out(a, machine_count=mcount.get(a.id, 0))
         ao.update({"item_count": a_total, "furniture": f_list})
         out.append(ao)
     return out
