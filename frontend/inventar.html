@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpaceCaptain — Inventar</title>
+<script>
+  // Frueh anwenden (vor dem ersten Paint), verhindert Flackern beim Laden
+  document.documentElement.setAttribute('data-theme', localStorage.getItem('ms_theme') || 'dark');
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0f12;--surface:#151820;--surface2:#1c2030;--border:#2a2f3e;
+    --accent:#f4a622;--accent2:#22d3ee;--danger:#ef4444;--success:#22c55e;
+    --text:#e2e8f0;--text-dim:#a8bece;--text-mid:#c8d8e5;
+    --mono:'Share Tech Mono',monospace;--body:'Barlow',sans-serif;--display:'Barlow Condensed',sans-serif;
+    --hover:rgba(255,255,255,.04);
+  }
+  :root[data-theme="light"] {
+    --bg:#f4f6f8;--surface:#ffffff;--surface2:#eef1f5;--border:#d8dee6;
+    --accent:#b45309;--accent2:#0e7490;--danger:#dc2626;--success:#16a34a;
+    --text:#0f172a;--text-dim:#475569;--text-mid:#334155;
+    --hover:rgba(15,23,32,.05);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;line-height:1.5;font-size:16px}
+  a,a:visited{color:var(--accent2);text-decoration:none} a:hover{text-decoration:underline}
+  code,.mono{font-family:var(--mono)}
+
+  .topbar{display:flex;align-items:center;gap:14px;padding:0 20px;height:60px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}
+  .topbar img{height:34px}
+  .title{font-family:var(--display);font-size:20px;font-weight:900;letter-spacing:1px;text-transform:uppercase;flex:1}
+  .title small{font-family:var(--mono);font-size:13px;color:var(--text-dim);letter-spacing:2px;margin-left:8px}
+  .wrap{max-width:1200px;margin:0 auto;padding:20px}
+
+  .tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:18px}
+  .tab{padding:10px 18px;cursor:pointer;color:var(--text-mid);font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab:hover{color:var(--text);background:var(--hover)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .page{display:none}.page.active{display:block}
+
+  .btn{padding:8px 16px;border:none;border-radius:4px;cursor:pointer;font-family:var(--body);font-size:15px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+  .btn-primary{background:var(--accent);color:var(--bg)}.btn-primary:hover{filter:brightness(1.1)}
+  .btn-ghost{background:transparent;color:var(--text-mid);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}.btn-danger:hover{background:var(--danger);color:#fff}
+  .btn-sm{padding:4px 9px;font-size:13px}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+
+  input,select,textarea{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-family:var(--body);font-size:15px;outline:none;width:100%}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+  textarea{resize:vertical;min-height:70px}
+  label{display:block;font-family:var(--mono);font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);margin:12px 0 4px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .row>*{flex:1;min-width:130px}.row>.fix{flex:none;min-width:0}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .toolbar input[type=search]{flex:2;min-width:200px}.toolbar select{flex:1;min-width:140px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--border);border-radius:99px;cursor:pointer;font-size:14px;color:var(--text-mid);user-select:none}
+  .chip.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+
+  table{width:100%;border-collapse:collapse}
+  th{font-family:var(--mono);font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+  td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  tr:hover td{background:var(--hover)}
+  .tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:6px}
+  .dim{color:var(--text-dim)} .small{font-size:13px}
+  .code{display:inline-block;font-family:var(--mono);font-size:14px;padding:2px 8px;border-radius:4px;border:1px solid var(--cc,var(--border));background:color-mix(in srgb,var(--cc,var(--accent2)) 14%,transparent);color:var(--text);white-space:nowrap}
+  .badge{display:inline-block;font-size:12px;font-weight:700;padding:1px 7px;border-radius:99px;font-family:var(--mono)}
+  .badge.warn{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent)}
+  .badge.bad{background:color-mix(in srgb,var(--danger) 20%,transparent);color:var(--danger)}
+  .empty{text-align:center;color:var(--text-dim);padding:40px 10px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:12px}
+  .card-h{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;flex-wrap:wrap}
+  .card-h .name{font-weight:700;font-size:17px}
+  .card-h .sp{flex:1}
+  .card-b{padding:4px 14px 12px 14px;border-top:1px solid var(--border)}
+  .swatch{width:12px;height:12px;border-radius:3px;background:var(--cc,var(--accent2));flex:none}
+  .furn{border-left:3px solid var(--cc,var(--border));margin:10px 0 0 4px;padding:2px 0 2px 12px}
+  .furn-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0;cursor:pointer}
+  .lvl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:3px 0 3px 18px;border-top:1px dashed var(--border)}
+  .pos{display:inline-flex;align-items:center;gap:4px;margin:2px 4px 2px 0;padding:1px 6px;border:1px solid var(--border);border-radius:4px;font-size:13px;font-family:var(--mono)}
+  .hint{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:14px;color:var(--text-mid);margin-bottom:14px}
+  .hint b{color:var(--text)}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:200;padding:12px}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;width:560px;max-width:100%;max-height:92vh;overflow-y:auto;padding:20px 22px}
+  .modal h3{font-family:var(--display);font-size:20px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+  .loc-box{border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-top:6px;background:var(--surface2)}
+
+  #toasts{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:500}
+  .toast{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent2);padding:10px 14px;border-radius:4px;box-shadow:0 6px 20px rgba(0,0,0,.4);max-width:360px;font-size:15px}
+  .toast.error{border-left-color:var(--danger)}.toast.success{border-left-color:var(--success)}
+
+  .center-card{max-width:520px;margin:12vh auto;text-align:center;padding:30px}
+
+  /* Etikettendruck */
+  #print-area{display:none}
+  .lbl-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .lbl{width:var(--lw,60mm);height:var(--lh,30mm);border:1px solid #888;border-top:5px solid var(--cc,#888);display:flex;gap:2mm;align-items:center;padding:1.5mm 2mm;background:#fff;color:#000;overflow:hidden;page-break-inside:avoid;break-inside:avoid}
+  .lbl img{height:calc(var(--lh,30mm) - 6mm);width:calc(var(--lh,30mm) - 6mm);flex:none;image-rendering:pixelated}
+  .lbl .t{min-width:0;display:flex;flex-direction:column;gap:0.5mm}
+  .lbl .c{font-family:'Share Tech Mono',monospace;font-weight:700;line-height:1.05;white-space:nowrap}
+  .lbl .n{font-size:calc(var(--lh,30mm) * .15);line-height:1.15;overflow:hidden;max-height:calc(var(--lh,30mm) * .4)}
+  .lbl .a{font-size:calc(var(--lh,30mm) * .12);color:#444}
+  @media print{
+    body{background:#fff;color:#000}
+    body>*:not(#print-area){display:none!important}
+    #print-area{display:block}
+    .lbl{border-color:#000}
+    @page{margin:8mm}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/labmanager.html" title="Zurück zum LabManager"><img src="/SpaceCaptain.svg" alt="SpaceCaptain"></a>
+  <div class="title">Inventar <small id="who"></small></div>
+  <a href="/labmanager.html" class="btn btn-ghost btn-sm">← LabManager</a>
+  <button class="btn btn-ghost btn-sm" id="theme-btn" onclick="toggleTheme()">🌙</button>
+</div>
+
+<div class="wrap" id="app" style="display:none">
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-tab="items" onclick="showTab('items')">🔧 Werkzeug</div>
+    <div class="tab" data-tab="structure" onclick="showTab('structure')">🗄️ Struktur</div>
+    <div class="tab" data-tab="labels" onclick="showTab('labels')">🏷️ Etiketten</div>
+    <div class="tab" data-tab="import" onclick="showTab('import')">📥 Import</div>
+  </div>
+
+  <!-- WERKZEUG -->
+  <div class="page active" id="page-items">
+    <div id="code-banner" class="hint" style="display:none"></div>
+    <div class="toolbar">
+      <input type="search" id="f-q" placeholder="Suchen: Name, Synonym oder Code (z.B. Akkuschrauber, EL-S2)…" oninput="debouncedLoadItems()">
+      <select id="f-area" onchange="loadItems()"></select>
+      <select id="f-status" onchange="loadItems()">
+        <option value="">Alle Status</option>
+        <option value="aktiv">aktiv</option><option value="defekt">defekt</option><option value="ausgemustert">ausgemustert</option>
+      </select>
+      <span class="chip" id="chip-unplaced" onclick="toggleChip('unplaced')">Ohne Platz</span>
+      <span class="chip" id="chip-level_open" onclick="toggleChip('level_open')" title="Im Möbel, aber Ebene noch nicht festgelegt (E0)">Ebene offen</span>
+      <button class="btn btn-primary" onclick="openItemModal()">+ Werkzeug</button>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Name</th><th>Menge</th><th>Lagerort</th><th>Status</th><th></th></tr></thead>
+        <tbody id="items-body"></tbody>
+      </table>
+    </div>
+    <div class="row" style="margin-top:10px;align-items:center">
+      <span class="dim small" id="items-count"></span>
+      <span class="fix"><button class="btn btn-ghost btn-sm" id="btn-prev" onclick="pageItems(-1)">‹ zurück</button>
+      <button class="btn btn-ghost btn-sm" id="btn-next" onclick="pageItems(1)">weiter ›</button></span>
+    </div>
+  </div>
+
+  <!-- STRUKTUR -->
+  <div class="page" id="page-structure">
+    <div class="hint">
+      <b>Code:</b> Bereich, Schrank, Ebene, Position, z.B. <code>EL-S2-E3-P4</code> = Elektronik, Schrank 2, Ebene 3, Platz 4.
+      Ebenen zählen <b>von oben nach unten</b>, Positionen <b>von links nach rechts</b>.
+      Die <b>0</b> heisst «nicht unterteilt oder noch nicht festgelegt» (<code>S0</code> = im Bereich ohne Möbel,
+      <code>E0</code> = Ebene offen, <code>P0</code> = kein fester Platz). Auf Etiketten entfallen abschliessende Nullen.
+    </div>
+    <div class="toolbar" id="structure-tools"></div>
+    <div id="structure-list"></div>
+  </div>
+
+  <!-- ETIKETTEN -->
+  <div class="page" id="page-labels">
+    <div class="toolbar">
+      <select id="l-area" onchange="loadLabels()"></select>
+      <span class="chip" id="chip-outdated" onclick="toggleOutdated()">Nur veraltete</span>
+      <select id="l-size" onchange="applyLabelSize()">
+        <option value="60,30">Klein 60 × 30 mm</option>
+        <option value="90,50">Mittel 90 × 50 mm</option>
+        <option value="100,60">Gross 100 × 60 mm</option>
+      </select>
+      <span class="chip on" id="chip-levels" onclick="toggleLevels()">Mit Ebenen</span>
+      <button class="btn btn-primary" onclick="printLabels()">🖨️ Drucken</button>
+    </div>
+    <div class="hint" id="labels-hint">Je Möbel ein Etikett (QR führt zum Inhalt), optional je Ebene ein kleines. Nach dem Drucken «Als gedruckt markieren».</div>
+    <div class="lbl-grid" id="labels-preview"></div>
+    <div style="margin-top:14px"><button class="btn btn-ghost" onclick="markPrinted()">✓ Angezeigte als gedruckt markieren</button></div>
+  </div>
+
+  <!-- IMPORT -->
+  <div class="page" id="page-import">
+    <div class="hint">
+      Eine Zeile pro Werkzeug: <code>Name ; Synonyme ; Code ; Menge</code> (Trennzeichen <code>;</code> oder Tab —
+      Zeilen aus Excel lassen sich direkt einfügen). Synonyme, Code und Menge sind optional.
+      Der Code darf gekürzt sein: <code>EL-S2</code> = Elektronik, Schrank 2, Ebene offen. Fehlt der Code, wird das Werkzeug
+      «ohne Platz» angelegt und kann später zugeordnet werden.
+    </div>
+    <textarea id="import-text" style="min-height:220px;font-family:var(--mono);font-size:14px"
+      placeholder="Akkuschrauber ; Bohrschrauber, Schrauber ; EL-S1-E2 ; 2&#10;Seitenschneider ; Zange ; EL-S2&#10;Hammer"></textarea>
+    <div class="row" style="margin-top:10px">
+      <span class="fix"><button class="btn btn-ghost" onclick="runImport(true)">Prüfen (nichts speichern)</button></span>
+      <span class="fix"><button class="btn btn-primary" onclick="runImport(false)">Importieren</button></span>
+    </div>
+    <div id="import-result" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<div class="center-card card" id="gate" style="display:none"></div>
+
+<!-- Modal: Werkzeug -->
+<div class="modal-overlay" id="modal-item">
+  <div class="modal">
+    <h3 id="item-title">Werkzeug</h3>
+    <label>Name *</label><input id="i-name" maxlength="150">
+    <label>Synonyme (kommagetrennt)</label><input id="i-syn" placeholder="Bohrschrauber, Schrauber, Drill">
+    <div class="row">
+      <div><label>Menge</label><input id="i-qty" type="number" min="0" value="1"></div>
+      <div><label>Status</label>
+        <select id="i-status"><option value="aktiv">aktiv</option><option value="defekt">defekt</option><option value="ausgemustert">ausgemustert</option></select></div>
+    </div>
+    <label>Lagerort</label>
+    <div class="loc-box">
+      <div class="row"><input id="i-code" placeholder="Code, z.B. EL-S2-E3" onchange="applyCodeField()" style="font-family:var(--mono)"></div>
+      <div class="row" style="margin-top:8px">
+        <select id="i-area" onchange="locAreaChanged()"></select>
+        <select id="i-furn" onchange="locFurnChanged()"></select>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <select id="i-lvl" onchange="locLvlChanged()"></select>
+        <select id="i-pos" onchange="locPosChanged()"></select>
+      </div>
+    </div>
+    <label>Beschreibung</label><textarea id="i-desc"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-item')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveItem()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Bereich -->
+<div class="modal-overlay" id="modal-area">
+  <div class="modal">
+    <h3 id="area-title">Bereich</h3>
+    <label>Name *</label><input id="a-name" maxlength="100">
+    <div class="row">
+      <div><label>Kürzel (2–4 Zeichen)</label><input id="a-code" maxlength="4" placeholder="EL" style="font-family:var(--mono);text-transform:uppercase"></div>
+      <div><label>Farbe</label><input id="a-color" type="color" value="#22d3ee" style="padding:2px;height:38px"></div>
+    </div>
+    <div class="hint" style="margin-top:14px">Das Kürzel ist der erste Teil jedes Lagerort-Codes. Wird es geändert, ändern sich die Codes aller Möbel dieses Bereichs, die Etiketten müssen neu gedruckt werden.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-area')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveArea()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Möbel -->
+<div class="modal-overlay" id="modal-furn">
+  <div class="modal">
+    <h3 id="furn-title">Möbel</h3>
+    <div class="row">
+      <div><label>Bereich *</label><select id="f-area-sel"></select></div>
+      <div><label>Art</label>
+        <select id="f-kind">
+          <option value="schrank">Schrank</option><option value="regal">Regal</option>
+          <option value="wand">Werkzeugwand</option><option value="tisch">Tisch / Werkbank</option>
+        </select></div>
+    </div>
+    <label>Name (optional, z.B. «Hilti Schrank 1»)</label><input id="f-name" maxlength="100">
+    <div class="row" id="f-counts">
+      <div><label>Ebenen (Fächer, Schubladen)</label><input id="f-levels" type="number" min="0" max="40" value="3"></div>
+      <div><label>Positionen je Ebene</label><input id="f-positions" type="number" min="0" max="40" value="0"></div>
+    </div>
+    <div class="hint" style="margin-top:12px" id="f-counts-hint">Ebenen und Positionen lassen sich später ergänzen. Ohne Ebenen bleibt nur <code>E0</code> (z.B. Tischplatte).</div>
+    <label>Bemerkung</label><textarea id="f-note"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-furn')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveFurn()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<div id="print-area"></div>
+<div id="toasts"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// Grundlagen
+// ═══════════════════════════════════════════════════════
+const API = '/api';
+let token = localStorage.getItem('ms_token') || '';
+let me = null;
+let tree = [];            // Bereich → Möbel → Ebene → Position (inkl. Codes, Zaehler)
+let itemsPage = 0;
+const PAGE = 100;
+let chips = { unplaced:false, level_open:false };
+let editingItemId = null, editingAreaId = null, editingFurnId = null;
+let itemsCache = {};
+let labelData = [], labelOutdatedOnly = false, labelWithLevels = true;
+
+const KIND = { schrank:'🗄️ Schrank', regal:'📚 Regal', wand:'🔨 Werkzeugwand', tisch:'🪵 Tisch / Werkbank', bereich:'Im Bereich' };
+
+function escHtml(s){ if(s==null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function isPower(){ return me && (me.role==='admin' || me.role==='power_manager'); }
+
+function showToast(msg,type='info'){
+  const el=document.createElement('div'); el.className='toast '+type; el.textContent=msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='.3s'; setTimeout(()=>el.remove(),300); },3500);
+}
+
+async function api(method, path, body=null, silent=false){
+  try{
+    const opts={method,headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})}};
+    if(body!==null) opts.body=JSON.stringify(body);
+    const r=await fetch(API+path,opts);
+    if(r.status===401){ gate('Sitzung abgelaufen','Bitte im LabManager neu anmelden.'); return null; }
+    if(!r.ok){
+      const err=await r.json().catch(()=>({detail:r.statusText}));
+      if(!silent) showToast(typeof err.detail==='string'?err.detail:JSON.stringify(err.detail),'error');
+      return null;
+    }
+    return await r.json();
+  }catch(e){ console.error(e); if(!silent) showToast('Verbindungsfehler','error'); return null; }
+}
+const GET=(p)=>api('GET',p), POST=(p,b)=>api('POST',p,b), PATCH=(p,b)=>api('PATCH',p,b), DEL=(p)=>api('DELETE',p);
+
+function gate(title, text){
+  document.getElementById('app').style.display='none';
+  const g=document.getElementById('gate'); g.style.display='block';
+  g.innerHTML=`<h2 style="font-family:var(--display);text-transform:uppercase;letter-spacing:1px">${escHtml(title)}</h2>
+    <p class="dim" style="margin:12px 0 20px">${text}</p><a class="btn btn-primary" href="/labmanager.html">Zum LabManager</a>`;
+}
+
+function toggleTheme(){
+  const next=document.documentElement.getAttribute('data-theme')==='light'?'dark':'light';
+  document.documentElement.setAttribute('data-theme',next); localStorage.setItem('ms_theme',next); themeLabel();
+}
+function themeLabel(){ document.getElementById('theme-btn').textContent = document.documentElement.getAttribute('data-theme')==='light'?'☀️':'🌙'; }
+
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open')); });
+
+function showTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===name));
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+name));
+  if(name==='items') loadItems();
+  if(name==='structure') renderStructure();
+  if(name==='labels') loadLabels();
+}
+
+// ═══════════════════════════════════════════════════════
+// Start
+// ═══════════════════════════════════════════════════════
+async function init(){
+  themeLabel();
+  if(!token){ gate('Anmeldung nötig','Das Inventar nutzt die Anmeldung des LabManagers. Bitte dort anmelden und zurückkehren.'); return; }
+  const pub = await api('GET','/settings/public',null,true);
+  me = await api('GET','/auth/me',null,true);
+  if(!me){ return; }
+  document.getElementById('who').textContent = me.name;
+  if(!pub || !pub.inventory_enabled){
+    gate('Inventar-Modul ist aus','Ein Admin kann es im LabManager unter Einstellungen → System einschalten.'); return;
+  }
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='block';
+  await loadTree();
+  fillAreaSelect(document.getElementById('f-area'), 'Alle Bereiche');
+  fillAreaSelect(document.getElementById('l-area'), 'Alle Bereiche');
+  const code = new URLSearchParams(location.search).get('code');
+  if(code){ document.getElementById('f-q').value = code; }
+  loadItems();
+}
+
+async function loadTree(){
+  const t = await GET('/inventory/tree');
+  if(t) tree = t;
+  return tree;
+}
+
+function fillAreaSelect(sel, firstLabel){
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${escHtml(firstLabel)}</option>` +
+    tree.map(a=>`<option value="${a.id}">${escHtml(a.name)}${a.code?` (${escHtml(a.code)})`:''}</option>`).join('');
+  sel.value = cur;
+}
+
+// ═══════════════════════════════════════════════════════
+// Werkzeug
+// ═══════════════════════════════════════════════════════
+let _deb=null;
+function debouncedLoadItems(){ clearTimeout(_deb); _deb=setTimeout(()=>{ itemsPage=0; loadItems(); },250); }
+function toggleChip(k){ chips[k]=!chips[k]; document.getElementById('chip-'+k).classList.toggle('on',chips[k]); itemsPage=0; loadItems(); }
+function pageItems(d){ itemsPage=Math.max(0,itemsPage+d); loadItems(); }
+
+function codeChip(pos){
+  if(!pos) return '<span class="badge bad">ohne Platz</span>';
+  return `<span class="code" style="--cc:${escHtml(pos.color||'#22d3ee')}" title="${escHtml(pos.path)}">${escHtml(pos.code)}</span>
+          <div class="dim small">${escHtml(pos.path)}</div>`;
+}
+
+async function loadItems(){
+  const q = document.getElementById('f-q').value.trim();
+  const p = new URLSearchParams({limit:PAGE, offset:itemsPage*PAGE});
+  if(q) p.set('q',q);
+  const area=document.getElementById('f-area').value; if(area) p.set('area_id',area);
+  const st=document.getElementById('f-status').value; if(st) p.set('status',st);
+  if(chips.unplaced) p.set('unplaced','true');
+  if(chips.level_open) p.set('level_open','true');
+  const r = await GET('/inventory/items?'+p);
+  if(!r) return;
+  const body=document.getElementById('items-body');
+  itemsCache = Object.fromEntries(r.items.map(i=>[i.id,i]));
+  if(!r.items.length){
+    body.innerHTML=`<tr><td colspan="5" class="empty">Keine Werkzeuge gefunden.</td></tr>`;
+  } else {
+    body.innerHTML = r.items.map(i=>`
+      <tr>
+        <td><b>${escHtml(i.name)}</b>${i.synonyms?`<div class="dim small">${escHtml(i.synonyms)}</div>`:''}</td>
+        <td class="mono">${i.quantity}</td>
+        <td>${codeChip(i.position)}</td>
+        <td>${i.status==='aktiv'?'<span class="dim">aktiv</span>':`<span class="badge bad">${escHtml(i.status)}</span>`}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-ghost btn-sm" onclick="openItemModal(itemsCache[${i.id}])">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteItem(${i.id})">🗑</button>
+        </td>
+      </tr>`).join('');
+  }
+  const from = r.total? itemsPage*PAGE+1 : 0, to = Math.min(r.total,(itemsPage+1)*PAGE);
+  document.getElementById('items-count').textContent = `${from}–${to} von ${r.total}`;
+  document.getElementById('btn-prev').disabled = itemsPage===0;
+  document.getElementById('btn-next').disabled = to>=r.total;
+  const banner=document.getElementById('code-banner'), code=new URLSearchParams(location.search).get('code');
+  if(code && q===code){ banner.style.display='block'; banner.innerHTML=`Inhalt von <code>${escHtml(code)}</code> · <a href="#" onclick="clearCode();return false">Filter aufheben</a>`; }
+  else banner.style.display='none';
+}
+function clearCode(){ history.replaceState(null,'',location.pathname); document.getElementById('f-q').value=''; loadItems(); }
+
+async function deleteItem(id){
+  const name = itemsCache[id] ? itemsCache[id].name : 'Eintrag';
+  if(!confirm(`«${name}» wirklich löschen?`)) return;
+  if(await DEL('/inventory/items/'+id)){ showToast('Gelöscht','success'); await loadTree(); loadItems(); }
+}
+
+// ── Lagerort-Auswahl (Bereich → Möbel → Ebene → Position) ──
+function areaById(id){ return tree.find(a=>a.id==id); }
+function furnLabel(f){ return f.number===0 ? 'Im Bereich, ohne Möbel (S0)' : `${f.name||(KIND[f.kind]||'Möbel').replace(/^\S+\s/,'')+' '+f.number} (${f.code.split('-').slice(1).join('-')})`; }
+function lvlLabel(l){ return l.number===0 ? 'Ebene offen / nicht unterteilt (E0)' : `${l.label||'Ebene '+l.number} (E${l.number})`; }
+function posLabel(p){ return p.number===0 ? 'kein fester Platz (P0)' : `${p.label||'Platz '+p.number} (P${p.number})`; }
+
+function fillLocSelects(sel){          // sel = {area,furn,lvl,pos} als IDs oder ''
+  const aSel=document.getElementById('i-area');
+  aSel.innerHTML = '<option value="">— kein Platz —</option>' +
+    tree.map(a=>`<option value="${a.id}" ${a.code?'':'disabled'}>${escHtml(a.name)}${a.code?` (${escHtml(a.code)})`:' — Kürzel fehlt'}</option>`).join('');
+  aSel.value = sel.area||'';
+  const a = areaById(aSel.value);
+  const fSel=document.getElementById('i-furn'), lSel=document.getElementById('i-lvl'), pSel=document.getElementById('i-pos');
+  [fSel,lSel,pSel].forEach(s=>{ s.innerHTML=''; s.disabled=!a; });
+  if(!a){ syncCodeField(); return; }
+  fSel.innerHTML = a.furniture.map(f=>`<option value="${f.id}">${escHtml(furnLabel(f))}</option>`).join('');
+  fSel.value = sel.furn || (a.furniture.find(f=>f.number>0)||a.furniture[0]).id;
+  const f = a.furniture.find(x=>x.id==fSel.value);
+  lSel.innerHTML = f.levels.map(l=>`<option value="${l.id}">${escHtml(lvlLabel(l))}</option>`).join('');
+  lSel.value = sel.lvl || f.levels.find(l=>l.number===0).id;
+  const l = f.levels.find(x=>x.id==lSel.value);
+  pSel.innerHTML = l.positions.map(p=>`<option value="${p.id}">${escHtml(posLabel(p))}</option>`).join('');
+  pSel.value = sel.pos || l.positions.find(p=>p.number===0).id;
+  syncCodeField();
+}
+function locAreaChanged(){ fillLocSelects({area:document.getElementById('i-area').value}); }
+function locFurnChanged(){ fillLocSelects({area:document.getElementById('i-area').value, furn:document.getElementById('i-furn').value}); }
+function locLvlChanged(){ fillLocSelects({area:document.getElementById('i-area').value, furn:document.getElementById('i-furn').value, lvl:document.getElementById('i-lvl').value}); }
+function locPosChanged(){ syncCodeField(); }
+function currentPositionNode(){
+  const a=areaById(document.getElementById('i-area').value); if(!a) return null;
+  const f=a.furniture.find(x=>x.id==document.getElementById('i-furn').value); if(!f) return null;
+  const l=f.levels.find(x=>x.id==document.getElementById('i-lvl').value); if(!l) return null;
+  return l.positions.find(x=>x.id==document.getElementById('i-pos').value)||null;
+}
+function syncCodeField(){ const p=currentPositionNode(); document.getElementById('i-code').value = p ? p.code : ''; }
+function applyCodeField(){
+  const raw=document.getElementById('i-code').value.trim().toUpperCase();
+  if(!raw){ fillLocSelects({}); return; }
+  const m=raw.match(/^([A-Z0-9]{2,4})(?:-S(\d+))?(?:-E(\d+))?(?:-P(\d+))?$/);
+  if(!m){ showToast('Ungültiger Code (Beispiel: EL-S2-E3-P4)','error'); syncCodeField(); return; }
+  const a=tree.find(x=>x.code===m[1]); if(!a){ showToast(`Bereich «${m[1]}» nicht gefunden`,'error'); syncCodeField(); return; }
+  const f=a.furniture.find(x=>x.number===+(m[2]||0)); if(!f){ showToast(`${m[1]}-S${m[2]} gibt es nicht`,'error'); syncCodeField(); return; }
+  const l=f.levels.find(x=>x.number===+(m[3]||0)); if(!l){ showToast(`Ebene E${m[3]} gibt es nicht`,'error'); syncCodeField(); return; }
+  const p=l.positions.find(x=>x.number===+(m[4]||0)); if(!p){ showToast(`Platz P${m[4]} gibt es nicht`,'error'); syncCodeField(); return; }
+  fillLocSelects({area:a.id,furn:f.id,lvl:l.id,pos:p.id});
+}
+
+function openItemModal(item){
+  editingItemId = item ? item.id : null;
+  document.getElementById('item-title').textContent = item ? 'Werkzeug bearbeiten' : 'Neues Werkzeug';
+  document.getElementById('i-name').value = item ? item.name : '';
+  document.getElementById('i-syn').value = item ? item.synonyms : '';
+  document.getElementById('i-qty').value = item ? item.quantity : 1;
+  document.getElementById('i-status').value = item ? item.status : 'aktiv';
+  document.getElementById('i-desc').value = item ? item.description : '';
+  const pos = item && item.position;
+  fillLocSelects(pos ? {area:pos.area_id, furn:pos.furniture_id, lvl:pos.level_id, pos:pos.position_id} : {});
+  openModal('modal-item');
+  document.getElementById('i-name').focus();
+}
+
+async function saveItem(){
+  const name=document.getElementById('i-name').value.trim();
+  if(!name){ showToast('Name fehlt','error'); return; }
+  const p=currentPositionNode();
+  const body={ name, synonyms:document.getElementById('i-syn').value, description:document.getElementById('i-desc').value,
+    quantity:parseInt(document.getElementById('i-qty').value||'0',10), status:document.getElementById('i-status').value };
+  let r;
+  if(editingItemId){
+    if(p) body.position_id=p.id; else body.unplace=true;
+    r = await PATCH('/inventory/items/'+editingItemId, body);
+  } else {
+    if(p) body.position_id=p.id;
+    r = await POST('/inventory/items', body);
+  }
+  if(r){ closeModal('modal-item'); showToast('Gespeichert','success'); await loadTree(); loadItems(); }
+}
+
+// ═══════════════════════════════════════════════════════
+// Struktur
+// ═══════════════════════════════════════════════════════
+const openAreas = new Set(), openFurn = new Set();
+
+function renderStructure(){
+  const tools=document.getElementById('structure-tools');
+  tools.innerHTML = isPower()
+    ? `<button class="btn btn-primary" onclick="openAreaModal()">+ Bereich</button>
+       <button class="btn btn-primary" onclick="openFurnModal()">+ Möbel</button>`
+    : `<span class="dim small">Nur Power-Manager und Admins können die Struktur ändern.</span>`;
+  const list=document.getElementById('structure-list');
+  if(!tree.length){ list.innerHTML='<div class="empty">Noch keine Bereiche.</div>'; return; }
+  list.innerHTML = tree.map(a=>{
+    const open = openAreas.has(a.id);
+    const real = a.furniture.filter(f=>f.number>0);
+    return `<div class="card" style="--cc:${escHtml(a.color||'#22d3ee')}">
+      <div class="card-h" onclick="toggleArea(${a.id})">
+        <span class="swatch"></span>
+        <span class="name">${escHtml(a.name)}</span>
+        ${a.code?`<span class="code">${escHtml(a.code)}</span>`:'<span class="badge bad">Kürzel fehlt</span>'}
+        <span class="dim small">${real.length} Möbel · ${a.item_count} Werkzeuge</span>
+        <span class="sp"></span>
+        ${isPower()?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openAreaModal(${a.id})">✏️ Bereich</button>
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openFurnModal(null,${a.id})" ${a.code?'':'disabled title="Zuerst ein Kürzel vergeben"'}>+ Möbel</button>`:''}
+        <span>${open?'▾':'▸'}</span>
+      </div>
+      ${open?`<div class="card-b">${a.furniture.map(f=>furnHtml(a,f)).join('') || '<div class="dim small" style="padding:8px 0">Keine Möbel.</div>'}</div>`:''}
+    </div>`;
+  }).join('');
+}
+function toggleArea(id){ openAreas.has(id)?openAreas.delete(id):openAreas.add(id); renderStructure(); }
+function toggleFurn(id){ openFurn.has(id)?openFurn.delete(id):openFurn.add(id); renderStructure(); }
+
+function furnHtml(a,f){
+  const open = openFurn.has(f.id), p = isPower();
+  const title = f.number===0 ? '<i>Im Bereich, ohne Möbel</i>' : escHtml(f.name || KIND[f.kind]?.replace(/^\S+\s/,'') + ' ' + f.number);
+  return `<div class="furn" style="--cc:${escHtml(a.color||'#888')}">
+    <div class="furn-h" onclick="toggleFurn(${f.id})">
+      <span class="code">${escHtml(f.code)}</span>
+      <b>${title}</b>
+      ${f.number>0?`<span class="dim small">${KIND[f.kind]||''}</span>`:''}
+      <span class="dim small">${f.item_count} Werkzeuge</span>
+      ${f.label_outdated?'<span class="badge warn" title="Code hat sich geändert">Etikett veraltet</span>':''}
+      <span class="sp" style="flex:1"></span>
+      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gotoItems('${escHtml(f.code)}')">Werkzeug anzeigen</button>
+      ${p&&f.number>0?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openFurnModal(${f.id})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteFurn(${f.id},'${escHtml(f.code)}')">🗑</button>`:''}
+      <span>${open?'▾':'▸'}</span>
+    </div>
+    ${open?`${f.levels.map(l=>levelHtml(a,f,l)).join('')}
+      ${p&&f.number>0?`<div style="padding:6px 0 4px 18px"><button class="btn btn-ghost btn-sm" onclick="addLevels(${f.id})">+ Ebene</button></div>`:''}`:''}
+  </div>`;
+}
+
+function levelHtml(a,f,l){
+  const p = isPower();
+  const real = l.positions.filter(x=>x.number>0);
+  return `<div class="lvl">
+    <span class="code">${escHtml(l.code)}</span>
+    <span>${l.number===0?'<i class="dim">Ebene offen / nicht unterteilt</i>':escHtml(l.label||'Ebene '+l.number)}</span>
+    <span class="dim small">${l.item_count} Werkzeuge</span>
+    <span style="flex:1"></span>
+    ${p&&l.number>0?`<button class="btn btn-ghost btn-sm" onclick="renameLevel(${l.id})">Name</button>
+      <button class="btn btn-ghost btn-sm" onclick="addPositions(${l.id})">+ Platz</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteLevel(${l.id},'${escHtml(l.code)}')">🗑</button>`:''}
+    <div style="flex-basis:100%;padding-left:6px">${real.map(x=>`
+      <span class="pos" title="${escHtml(x.code)}">P${x.number}${x.label?' · '+escHtml(x.label):''}${x.item_count?` <b>${x.item_count}</b>`:''}
+        ${p?`<a href="#" onclick="renamePos(${x.id});return false" title="Name">✎</a>
+        <a href="#" onclick="deletePos(${x.id},'${escHtml(x.code)}');return false" title="Löschen" style="color:var(--danger)">✕</a>`:''}
+      </span>`).join('')}</div>
+  </div>`;
+}
+
+function gotoItems(code){
+  document.getElementById('f-q').value = code; itemsPage = 0; showTab('items');
+}
+
+// ── Bereich ──
+function openAreaModal(id){
+  editingAreaId = id || null;
+  const a = id ? areaById(id) : null;
+  document.getElementById('area-title').textContent = a ? 'Bereich bearbeiten' : 'Neuer Bereich';
+  document.getElementById('a-name').value = a ? a.name : '';
+  document.getElementById('a-code').value = a ? (a.code||'') : '';
+  document.getElementById('a-color').value = a && a.color ? a.color : '#22d3ee';
+  openModal('modal-area');
+}
+async function saveArea(){
+  const body={ name:document.getElementById('a-name').value.trim(),
+    code:document.getElementById('a-code').value.trim().toUpperCase(), color:document.getElementById('a-color').value };
+  if(!body.name){ showToast('Name fehlt','error'); return; }
+  if(!body.code) body.code = editingAreaId ? '' : null;
+  const r = editingAreaId ? await PATCH('/inventory/areas/'+editingAreaId, body) : await POST('/inventory/areas', body);
+  if(r){ closeModal('modal-area'); showToast('Gespeichert','success'); await refreshAll(); }
+}
+
+// ── Möbel ──
+function openFurnModal(id, areaId){
+  editingFurnId = id || null;
+  let f=null, a=null;
+  if(id){ for(const x of tree){ const m=x.furniture.find(y=>y.id===id); if(m){ f=m; a=x; } } }
+  document.getElementById('furn-title').textContent = f ? 'Möbel bearbeiten' : 'Neues Möbel';
+  const sel=document.getElementById('f-area-sel');
+  sel.innerHTML = tree.map(x=>`<option value="${x.id}" ${x.code?'':'disabled'}>${escHtml(x.name)}${x.code?` (${escHtml(x.code)})`:' — Kürzel fehlt'}</option>`).join('');
+  sel.value = a ? a.id : (areaId || (tree.find(x=>x.code)||{}).id || '');
+  document.getElementById('f-kind').value = f ? f.kind : 'schrank';
+  document.getElementById('f-name').value = f ? (f.name||'') : '';
+  document.getElementById('f-note').value = f ? (f.note||'') : '';
+  document.getElementById('f-counts').style.display = f ? 'none' : '';
+  document.getElementById('f-counts-hint').style.display = f ? 'none' : '';
+  document.getElementById('f-levels').value = 3; document.getElementById('f-positions').value = 0;
+  openModal('modal-furn');
+}
+async function saveFurn(){
+  const body={ area_id:+document.getElementById('f-area-sel').value, kind:document.getElementById('f-kind').value,
+    name:document.getElementById('f-name').value, note:document.getElementById('f-note').value };
+  if(!body.area_id){ showToast('Bereich wählen','error'); return; }
+  let r;
+  if(editingFurnId){
+    r = await PATCH('/inventory/furniture/'+editingFurnId, body);
+  } else {
+    body.levels = parseInt(document.getElementById('f-levels').value||'0',10);
+    body.positions = parseInt(document.getElementById('f-positions').value||'0',10);
+    r = await POST('/inventory/furniture', body);
+    if(r) openAreas.add(body.area_id);
+  }
+  if(r){ closeModal('modal-furn'); showToast(editingFurnId?'Gespeichert':`Angelegt: ${r.code}`,'success'); await refreshAll(); }
+}
+async function deleteFurn(id,code){
+  if(!confirm(`Möbel ${code} samt Ebenen und Positionen löschen? (Nur möglich, wenn kein Werkzeug darin liegt.)`)) return;
+  if(await DEL('/inventory/furniture/'+id)){ showToast('Gelöscht','success'); await refreshAll(); }
+}
+async function addLevels(fid){
+  const n = parseInt(prompt('Wie viele Ebenen ergänzen?','1')||'0',10); if(!n) return;
+  const pos = parseInt(prompt('Positionen je Ebene (0 = keine)','0')||'0',10);
+  if(await POST(`/inventory/furniture/${fid}/levels`,{count:n,positions:pos||0})){ await refreshAll(); }
+}
+async function addPositions(lid){
+  const n = parseInt(prompt('Wie viele Positionen ergänzen?','1')||'0',10); if(!n) return;
+  if(await POST(`/inventory/levels/${lid}/positions`,{count:n})){ await refreshAll(); }
+}
+function findLevel(lid){ for(const a of tree) for(const f of a.furniture) for(const l of f.levels) if(l.id===lid) return l; return null; }
+function findPos(pid){ for(const a of tree) for(const f of a.furniture) for(const l of f.levels) for(const p of l.positions) if(p.id===pid) return p; return null; }
+async function renameLevel(lid){ const cur=(findLevel(lid)||{}).label||''; const v=prompt('Name der Ebene (leer = «Ebene n»)',cur); if(v===null) return; if(await PATCH('/inventory/levels/'+lid,{label:v})) await refreshAll(); }
+async function renamePos(pid){ const cur=(findPos(pid)||{}).label||''; const v=prompt('Name der Position (leer = «Platz n»)',cur); if(v===null) return; if(await PATCH('/inventory/positions/'+pid,{label:v})) await refreshAll(); }
+async function deleteLevel(lid,code){ if(!confirm(`Ebene ${code} löschen? Die Nummern der übrigen Ebenen bleiben bestehen.`)) return; if(await DEL('/inventory/levels/'+lid)) await refreshAll(); }
+async function deletePos(pid,code){ if(!confirm(`Position ${code} löschen?`)) return; if(await DEL('/inventory/positions/'+pid)) await refreshAll(); }
+
+async function refreshAll(){
+  await loadTree();
+  fillAreaSelect(document.getElementById('f-area'),'Alle Bereiche');
+  fillAreaSelect(document.getElementById('l-area'),'Alle Bereiche');
+  renderStructure();
+}
+
+// ═══════════════════════════════════════════════════════
+// Etiketten
+// ═══════════════════════════════════════════════════════
+function toggleOutdated(){ labelOutdatedOnly=!labelOutdatedOnly; document.getElementById('chip-outdated').classList.toggle('on',labelOutdatedOnly); loadLabels(); }
+function toggleLevels(){ labelWithLevels=!labelWithLevels; document.getElementById('chip-levels').classList.toggle('on',labelWithLevels); renderLabels(); }
+function applyLabelSize(){ renderLabels(); }
+
+async function loadLabels(){
+  const p=new URLSearchParams();
+  const a=document.getElementById('l-area').value; if(a) p.set('area_id',a);
+  if(labelOutdatedOnly) p.set('outdated','true');
+  const r = await GET('/inventory/labels?'+p);
+  if(r){ labelData=r; renderLabels(); }
+}
+
+function qrUrl(code){
+  const target = `${location.origin}/inventar.html?code=${encodeURIComponent(code)}`;
+  return `${API}/qr/url-png?u=${encodeURIComponent(target)}`;
+}
+function codeFontMm(code){
+  // Platz fuer den Text = Etikettbreite - QR - Raender; Monospace-Zeichen ~0.62 em breit
+  const [w,h]=document.getElementById('l-size').value.split(',').map(Number);
+  const avail = w - (h - 6) - 8;
+  return Math.max(2.5, Math.min(h*0.26, avail/(code.length*0.62)));
+}
+function labelHtml(code, name, area, color, small){
+  return `<div class="lbl" style="--cc:${escHtml(color||'#888')}">
+    <img src="${qrUrl(code)}" alt="">
+    <div class="t"><div class="c" style="font-size:${codeFontMm(code).toFixed(2)}mm">${escHtml(code)}</div><div class="n">${escHtml(name)}</div>${small?'':`<div class="a">${escHtml(area)}</div>`}</div>
+  </div>`;
+}
+function labelsMarkup(){
+  const out=[];
+  for(const f of labelData){
+    out.push(labelHtml(f.code, f.name, f.area, f.color));
+    if(labelWithLevels) for(const l of f.levels) out.push(labelHtml(l.code, l.label||('Ebene '+l.number), f.area, f.color, true));
+  }
+  return out.join('');
+}
+function renderLabels(){
+  const [w,h]=document.getElementById('l-size').value.split(',');
+  const box=document.getElementById('labels-preview');
+  box.style.setProperty('--lw',w+'mm'); box.style.setProperty('--lh',h+'mm');
+  document.getElementById('print-area').style.cssText=`--lw:${w}mm;--lh:${h}mm`;
+  box.innerHTML = labelData.length ? labelsMarkup() : '<div class="empty" style="width:100%">Keine Etiketten (zuerst Möbel anlegen).</div>';
+}
+function printLabels(){
+  if(!labelData.length){ showToast('Keine Etiketten zum Drucken','error'); return; }
+  const pa=document.getElementById('print-area');
+  pa.innerHTML = `<div class="lbl-grid">${labelsMarkup()}</div>`;
+  // Bilder abwarten, damit die QR-Codes im Druck sind
+  const imgs=[...pa.querySelectorAll('img')];
+  Promise.all(imgs.map(i=>i.complete?Promise.resolve():new Promise(r=>{i.onload=i.onerror=r;}))).then(()=>window.print());
+}
+async function markPrinted(){
+  const ids=labelData.map(f=>f.furniture_id);
+  if(!ids.length) return;
+  if(await POST('/inventory/furniture/printed',{furniture_ids:ids})){ showToast('Als gedruckt markiert','success'); await refreshAll(); loadLabels(); }
+}
+
+// ═══════════════════════════════════════════════════════
+// Import
+// ═══════════════════════════════════════════════════════
+function parseImport(){
+  return document.getElementById('import-text').value.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(line=>{
+    const c = (line.includes('\t') ? line.split('\t') : line.split(';')).map(x=>x.trim());
+    return { name:c[0]||'', synonyms:c[1]||null, code:c[2]||null, quantity:parseInt(c[3]||'1',10)||1 };
+  });
+}
+async function runImport(dry){
+  const rows=parseImport();
+  if(!rows.length){ showToast('Nichts zum Importieren','error'); return; }
+  const r = await POST('/inventory/items/import',{rows,dry_run:dry});
+  if(!r) return;
+  const box=document.getElementById('import-result');
+  box.innerHTML = `<div class="hint"><b>${dry?'Prüfung':'Importiert'}:</b> ${r.valid} von ${rows.length} Zeilen ${dry?'sind gültig':'angelegt'}${r.errors.length?`, ${r.errors.length} mit Fehler`:''}.</div>` +
+    (r.errors.length?`<div class="tablewrap"><table><thead><tr><th>Zeile</th><th>Problem</th></tr></thead><tbody>${r.errors.map(e=>`<tr><td class="mono">${e.line}</td><td>${escHtml(e.error)}</td></tr>`).join('')}</tbody></table></div>`:'');
+  if(!dry){ showToast(`${r.created} Werkzeuge importiert`,'success'); await loadTree(); if(!r.errors.length) document.getElementById('import-text').value=''; }
+}
+
+init();
+</script>
+</body>
+</html>

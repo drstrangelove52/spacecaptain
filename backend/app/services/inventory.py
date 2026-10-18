@@ -194,11 +194,22 @@ async def position_info(db: AsyncSession, position_id: int) -> Optional[dict]:
     return describe(*row) if row else None
 
 
+KIND_LABEL = {"schrank": "Schrank", "regal": "Regal", "wand": "Werkzeugwand", "tisch": "Tisch"}
+
+
+def furniture_title(furn: InvFurniture) -> str:
+    """Anzeigename: eigener Name, sonst «Regal 1» / «Schrank 2» …"""
+    if furn.name:
+        return furn.name
+    kind = furn.kind.value if hasattr(furn.kind, "value") else str(furn.kind)
+    return f"{KIND_LABEL.get(kind, 'Möbel')} {furn.number}"
+
+
 def describe(area: MachineLocation, furn: InvFurniture, lvl: InvLevel, pos: InvPosition) -> dict:
     code = short_code(area.code, furn.number, lvl.number, pos.number)
     parts = [area.name]
     if furn.number:
-        parts.append(furn.name or f"Möbel {furn.number}")
+        parts.append(furniture_title(furn))
     else:
         parts.append("ohne Möbel")
     if lvl.number:

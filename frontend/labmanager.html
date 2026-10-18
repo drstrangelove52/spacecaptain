@@ -305,6 +305,7 @@
     <div class="nav-item" data-page="machines" onclick="navigate(this)"><span class="nav-icon">🏭</span> Maschinen <span class="nav-badge" id="badge-machines">0</span></div>
     <div class="nav-item" data-page="plugs" onclick="navigate(this)"><span class="nav-icon">🔌</span> Plug-Pool <span class="nav-badge" id="badge-plugs">0</span></div>
     <div class="nav-item" data-page="batteries" onclick="navigate(this)"><span class="nav-icon">🔋</span> Akkus <span class="nav-badge" id="badge-batteries">0</span></div>
+    <a class="nav-item" id="nav-inventory" href="/inventar.html" style="display:none;text-decoration:none"><span class="nav-icon">🗄️</span> Inventar <span style="font-size:12px;color:var(--text-dim);margin-left:auto">↗</span></a>
     <div class="nav-item" data-page="automations" onclick="navigate(this)"><span class="nav-icon">⚡</span> Automationen <span class="nav-badge" id="badge-automations">0</span></div>
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
     <div class="nav-item" data-page="permissions" onclick="navigate(this)"><span class="nav-icon">🔑</span> Berechtigungen</div>
@@ -737,6 +738,13 @@
                   <label class="form-label">Währung</label>
                   <input class="form-input" id="cfg-currency" maxlength="10" placeholder="z.B. CHF">
                   <div style="font-size:14px;color:var(--text-dim);margin-top:4px">Für den Neuwert bei Maschinen und Akkus sowie die Inventarliste</div>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Inventar-Modul</label>
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:16px">
+                    <input type="checkbox" id="cfg-inventory-enabled" style="width:auto"> Lagerorte &amp; Werkzeug aktivieren
+                  </label>
+                  <div style="font-size:14px;color:var(--text-dim);margin-top:4px">Zeigt den Menüpunkt «Inventar» (Schränke, Ebenen, Werkzeug, Etiketten). Ausgeschaltet bleibt alles unsichtbar.</div>
                 </div>
                 <div class="form-group" style="margin:0">
                   <label class="form-label">NFC-Schreibgerät</label>
@@ -5460,7 +5468,7 @@ if (_ltParam) {
   GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=_isAdmin()?'':'none';document.getElementById('nav-backup').style.display=_isAdmin()?'':'none';document.getElementById('nav-notifications').style.display=_isPowerPlus()?'':'none'; _applyUserTheme(u); document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
 }
 document.getElementById('login-pass').addEventListener('keydown',e=>{ if (e.key==='Enter') doLogin(); });
-fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){_spaceName=n;document.getElementById('login-space-sub').textContent=n;document.getElementById('sidebar-space-sub').textContent=n;}_currency=s.currency||'CHF';_applyCurrencyLabels();}).catch(()=>{});
+fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){_spaceName=n;document.getElementById('login-space-sub').textContent=n;document.getElementById('sidebar-space-sub').textContent=n;}_currency=s.currency||'CHF';_applyCurrencyLabels();_applyInventoryNav(!!s.inventory_enabled);}).catch(()=>{});
 setInterval(()=>{ if(document.querySelector('.nav-item.active')?.dataset.page==='log') loadLog(); },30000);
 // ═══════════════════════════════════════════════════════
 // EINSTELLUNGEN
@@ -5519,6 +5527,8 @@ async function loadSettings() {
   document.getElementById('cfg-guest-ttl-hours').value = s.guest_token_ttl_hours ?? 8;
   document.getElementById('cfg-space-name').value = s.space_name ?? '';
   document.getElementById('cfg-currency').value = s.currency ?? 'CHF';
+  document.getElementById('cfg-inventory-enabled').checked = !!s.inventory_enabled;
+  _applyInventoryNav(!!s.inventory_enabled);
   document.getElementById('cfg-mcp-enabled').checked = !!s.mcp_enabled;
   document.getElementById('cfg-mcp-token').value = s.mcp_api_token || '';
   _updateMcpHints(s.mcp_api_token || '');
@@ -5585,6 +5595,7 @@ function buildSettingsPayload() {
     auto_backup_keep:          parseInt(document.getElementById('cfg-auto-backup-keep').value) || 30,
     space_name:                document.getElementById('cfg-space-name').value.trim(),
     currency:                  document.getElementById('cfg-currency').value.trim() || 'CHF',
+    inventory_enabled:         document.getElementById('cfg-inventory-enabled').checked,
     guest_token_ttl_hours:     parseInt(document.getElementById('cfg-guest-ttl-hours').value) || 8,
     mcp_enabled:               document.getElementById('cfg-mcp-enabled').checked,
     mcp_user_id:               parseInt(document.getElementById('cfg-mcp-user-id').value) || 0,
@@ -6244,6 +6255,8 @@ async function deleteBackupFile(filename) {
 let _roomStatus = {room_open: false, room_open_since: null, room_open_auto: true};
 let _spaceName = 'Raum';
 let _currency = 'CHF';
+// Inventar-Modul: Menuepunkt nur zeigen, wenn es in den Einstellungen aktiviert ist
+function _applyInventoryNav(on){ const el=document.getElementById('nav-inventory'); if(el) el.style.display = on ? '' : 'none'; }
 function _applyCurrencyLabels(){
   const el=document.getElementById('battery-price-label');
   if(el) el.textContent=`Neuwert (${_currency})`;

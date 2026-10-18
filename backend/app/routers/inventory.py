@@ -654,8 +654,8 @@ async def search(q: str = Query("", max_length=100), limit: int = Query(30, ge=1
         select(MachineLocation, InvFurniture).join(InvFurniture, InvFurniture.area_id == MachineLocation.id)
         .where(InvFurniture.number > 0, and_(*fcond)).limit(10))).all()
     for a, f in frows:
-        results.append({"type": "furniture", "id": f.id, "name": f.name or f"{f.kind.value.capitalize()} {f.number}",
-                        "code": inv.short_code(a.code, f.number), "path": f"{a.name} › {f.name or 'Möbel ' + str(f.number)}",
+        results.append({"type": "furniture", "id": f.id, "name": inv.furniture_title(f),
+                        "code": inv.short_code(a.code, f.number), "path": f"{a.name} › {inv.furniture_title(f)}",
                         "color": a.color})
     return results
 
@@ -710,7 +710,7 @@ async def labels(area_id: Optional[int] = None, outdated: bool = False,
     for a, f in pairs:
         out.append({
             "furniture_id": f.id, "code": inv.short_code(a.code, f.number),
-            "name": f.name or f"{f.kind.value.capitalize()} {f.number}", "area": a.name,
+            "name": inv.furniture_title(f), "area": a.name,
             "area_code": a.code, "color": a.color, "outdated": bool(f.label_outdated),
             "levels": [{"id": l.id, "number": l.number, "label": l.label,
                         "code": inv.short_code(a.code, f.number, l.number)} for l in by_f.get(f.id, [])],

@@ -1,6 +1,8 @@
 # Konzept: Modul «Inventar & Lagerorte»
 
-Status: **Entwurf zur Abstimmung** (2026-10-18). Noch kein Code.
+Status: **Etappe 1 umgesetzt** (2026-10-18, Branch `feature/inventar-modul`, noch nicht auf Dev
+ausgerollt). Etappen 2–5 offen. Backend: `models_inventory.py`, `services/inventory.py`,
+`routers/inventory.py`; Oberfläche: `frontend/inventar.html`; Tests: `backend/tests` (`cd backend && pytest`).
 
 Planungsebene im Second Brain: `03 Bereiche/SpaceCaptain/Inventar-Modul.md`.
 
@@ -272,7 +274,7 @@ Idempotent, rein additiv, bei jedem Start:
 | Etappe | Inhalt | Ergebnis |
 |---|---|---|
 | **0** | Dieses Konzept abstimmen | Freigabe durch Martin |
-| **1** | Migration, Modelle, Router (Struktur, Werkzeug, Suche), `inventar.html` (Struktur, Werkzeug, Listen, Etiketten) auf der **Dev-Instanz** | Nutzbar fürs Einpacken und Inventarisieren beim Umzug |
+| **1** ✅ | Migration, Modelle, Router (Struktur, Werkzeug, Suche), `inventar.html` (Struktur, Werkzeug, Import, Etiketten) auf der **Dev-Instanz** | Nutzbar fürs Einpacken und Inventarisieren beim Umzug |
 | **2** | `machines.area_id`, Backfill, Bereichswechsel, Anzeige in der Suche, Backup-Sektion und Restore-Test | Maschinen und Werkzeug in einer Suche |
 | **3** | Gästesuche in `index.html`, QR-Ziele für Schränke | Neue Gäste finden Dinge selbst |
 | **4** | Bauplan (Zeichnen, Verschieben, Suchtreffer-Markierung, Maschinen platzieren) | nach dem Umzug, sobald das Layout feststeht |
@@ -309,6 +311,21 @@ Freigabe von Martin.
 - Migration: zweimal starten ändert nichts; Backfill von `area_id`.
 - Backup: Export/Import mit und ohne Sektion `inventory` (altes Backup darf nicht brechen).
 - Bereichswechsel einer Maschine aktualisiert `area_id` und `location` und schreibt das Log.
+
+## 11a. Stand Etappe 1: Abweichungen und Grenzen
+
+- **Kein DB-Fremdschlüssel** von `inv_furniture.area_id` auf `machine_locations.id`: Der Typ dieser
+  Spalte ist je nach Installation signed (vom ORM) oder unsigned (`init.sql`); ein FK würde beim
+  Start mit `errno 150` scheitern (Vorfall `b24a3e9`). Die Integrität sichert die Anwendung:
+  Bereiche mit Möbeln oder Werkzeug lassen sich nicht löschen (409).
+- **Nullplätze entstehen auch nachträglich:** Standorte, die per CSV-Import oder Backup-Restore
+  angelegt werden, bekommen `S0/E0/P0` beim nächsten Aufruf des Moduls.
+- **Noch nicht im Backup** (Etappe 2): Kürzel, Farben, Möbel und Werkzeug sind in der
+  JSON-Sicherung noch nicht enthalten. Bis dahin gilt die DB-Sicherung der Maschine.
+- **Nummern bleiben stabil:** Wird eine Ebene oder Position gelöscht, rücken die übrigen nicht
+  nach (aufgedruckte Etiketten würden sonst falsch).
+- **Maschinen** sind in Suche und Plan erst ab Etappe 2 enthalten.
+- Der Menüpunkt «Inventar» erscheint nur, wenn das Modul in den Einstellungen (Admin) eingeschaltet ist.
 
 ## 12. Offene Punkte
 

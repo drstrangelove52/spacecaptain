@@ -161,7 +161,7 @@ async def test_item_lifecycle_search_and_move(client, enabled, power):
         "name": "Akkuschrauber", "synonyms": "Bohrschrauber, Schrauber", "code": "EL-S1-E2-P1"})
     item = r.json()
     assert item["position"]["code"] == "EL-S1-E2-P1"
-    assert item["position"]["path"] == "Elektronik › Möbel 1 › Ebene 2 › Platz 1"
+    assert item["position"]["path"] == "Elektronik › Schrank 1 › Ebene 2 › Platz 1"
 
     # Suche ueber Synonym, Teilwort, Gross-/Kleinschreibung und Code
     for q in ("Bohrschrauber", "schrauber", "AKKU", "EL-S1-E2", "el-s1", "EL"):
