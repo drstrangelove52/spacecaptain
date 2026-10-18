@@ -289,9 +289,15 @@ Standard sind **vorgeschnittene A4-Bögen** (Avery Zweckform Typenschild-Etikett
   Nummern 1–48 auf normales Papier drucken, gegen das Licht über den Bogen halten) und einen
   einstellbaren **Versatz X/Y** (wird im Browser gemerkt).
 - **Startposition:** «Beginnen bei Nr.» erlaubt, angebrochene Bögen weiterzuverwenden.
-- **Auswahl:** Gedruckt wird nur, was in der Liste angehakt ist (Möbel- und Ebenen-Etiketten einzeln).
-  Schnellwahl: Alle, Keine, Neue/veraltete, Nur Möbel, Nur Ebenen; je Möbel «Ebenen ✓/✗». Vorschau und
-  Druck zeigen genau die Auswahl. **Nachdruck:** im Strukturbaum öffnet 🏷️ beim Möbel oder der Ebene
+- **Auswahl und Anzahl:** Gedruckt wird nur, was in der Liste angehakt ist (Möbel-, Ebenen- und
+  Positions-Etiketten einzeln), **jedes in der gewünschten Anzahl** (Feld «Anzahl»; eintippen wählt die Zeile,
+  0 wählt ab). Der Zähler nennt Etiketten und Stückzahl, der Druckknopf die Gesamtzahl («15 Etiketten drucken»),
+  der Tooltip die Bogenzahl. Schnellwahl: Alle, Keine, Neue/veraltete, Nur Möbel, Nur Ebenen, Nur Positionen;
+  je Möbel «Ebenen ✓/✗». Vorschau und Druck zeigen genau die Auswahl.
+- **Inhalt auf dem Etikett:** Die Liste zeigt je Ebene und Position, **was dort liegt** («Lineal 30 cm ×12, Zollstock ×5»;
+  leere Plätze sind als «leer» markiert). Ebenen- und Positions-Etiketten drucken Name und Inhalt. Es werden so viele
+  Werkzeuge ausgeschrieben, wie bei lesbarer Schrift (mindestens 2,8 mm) passen, der Rest als «… +n».
+  Die Daten liefert `GET /api/inventory/labels` (je Möbel, Ebene und Position: `items` (max. 8/12) und `item_count`). **Nachdruck:** im Strukturbaum öffnet 🏷️ beim Möbel oder der Ebene
   den Reiter mit genau diesem Etikett vorgewählt.
 - **«Neu/veraltet»:** Ein neu angelegtes Möbel gilt als «Etikett noch nicht gedruckt»; ebenso, wenn sich
   sein Code ändert (Kürzel oder Bereich). Nach dem Druck fragt das Modul, ob die Etiketten als gedruckt

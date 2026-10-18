@@ -708,7 +708,8 @@ async def by_code(code: str, db: AsyncSession = Depends(get_db), _: User = Depen
 @router.get("/labels")
 async def labels(area_id: Optional[int] = None, outdated: bool = False,
                  db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
-    """Daten fuer den Etikettendruck: je Moebel ein Etikett, je Ebene (>0) ein Etikett."""
+    """Daten für den Etikettendruck: je Möbel, je Ebene (>0) und je Position (>0) ein Etikett.
+    Mitgeliefert wird, was dort liegt (Name und Menge), damit es auf dem Etikett stehen kann."""
     q = (select(MachineLocation, InvFurniture)
          .join(InvFurniture, InvFurniture.area_id == MachineLocation.id)
          .where(InvFurniture.number > 0)
@@ -719,18 +720,55 @@ async def labels(area_id: Optional[int] = None, outdated: bool = False,
         q = q.where(InvFurniture.label_outdated.is_(True))
     pairs = (await db.execute(q)).all()
     fids = [f.id for _, f in pairs]
-    lvls = (await db.execute(select(InvLevel).where(
-        InvLevel.furniture_id.in_(fids), InvLevel.number > 0).order_by(InvLevel.number))).scalars().all() if fids else []
-    by_f: dict[int, list] = {}
-    for l in lvls:
-        by_f.setdefault(l.furniture_id, []).append(l)
+    all_lvls = (await db.execute(select(InvLevel).where(InvLevel.furniture_id.in_(fids))
+                                 .order_by(InvLevel.number))).scalars().all() if fids else []
+    lvl_ids = [l.id for l in all_lvls]
+    poss = (await db.execute(select(InvPosition).where(InvPosition.level_id.in_(lvl_ids), InvPosition.number > 0)
+                             .order_by(InvPosition.number))).scalars().all() if lvl_ids else []
+
+    # Inhalte: Werkzeug je Position, Ebene und Möbel (Name + Menge)
+    rows = (await db.execute(
+        select(InvItem.name, InvItem.quantity, InvPosition.id, InvPosition.level_id)
+        .join(InvPosition, InvPosition.id == InvItem.position_id)
+        .where(InvPosition.level_id.in_(lvl_ids)).order_by(InvItem.name))).all() if lvl_ids else []
+    lvl_furn = {l.id: l.furniture_id for l in all_lvls}
+    by_pos: dict[int, list] = {}
+    by_lvl: dict[int, list] = {}
+    by_furn: dict[int, list] = {}
+    for name, qty, pid, lid in rows:
+        entry = {"name": name, "quantity": qty}
+        by_pos.setdefault(pid, []).append(entry)
+        by_lvl.setdefault(lid, []).append(entry)
+        by_furn.setdefault(lvl_furn[lid], []).append(entry)
+
+    def cut(entries, n):
+        return {"items": (entries or [])[:n], "item_count": len(entries or [])}
+
+    pos_by_lvl: dict[int, list] = {}
+    for p in poss:
+        pos_by_lvl.setdefault(p.level_id, []).append(p)
+    lvl_by_f: dict[int, list] = {}
+    for l in all_lvls:
+        if l.number > 0:
+            lvl_by_f.setdefault(l.furniture_id, []).append(l)
+
     out = []
-    for a, f in pairs:
+    for a_, f in pairs:
+        levels = []
+        for l in lvl_by_f.get(f.id, []):
+            levels.append({
+                "id": l.id, "number": l.number, "label": l.label,
+                "code": inv.short_code(a_.code, f.number, l.number),
+                **cut(by_lvl.get(l.id), 12),
+                "positions": [{"id": p.id, "number": p.number, "label": p.label,
+                               "code": inv.short_code(a_.code, f.number, l.number, p.number),
+                               **cut(by_pos.get(p.id), 12)} for p in pos_by_lvl.get(l.id, [])],
+            })
         out.append({
-            "furniture_id": f.id, "code": inv.short_code(a.code, f.number),
-            "name": inv.furniture_title(f), "area": a.name,
-            "area_code": a.code, "color": a.color, "outdated": bool(f.label_outdated),
-            "levels": [{"id": l.id, "number": l.number, "label": l.label,
-                        "code": inv.short_code(a.code, f.number, l.number)} for l in by_f.get(f.id, [])],
+            "furniture_id": f.id, "code": inv.short_code(a_.code, f.number),
+            "name": inv.furniture_title(f), "area": a_.name,
+            "area_code": a_.code, "color": a_.color, "outdated": bool(f.label_outdated),
+            **cut(by_furn.get(f.id), 8),
+            "levels": levels,
         })
     return out

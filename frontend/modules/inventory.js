@@ -20,7 +20,7 @@
   let chips = { unplaced: false, level_open: false };
   let editingItemId = null, editingAreaId = null, editingFurnId = null;
   let labelData = [], labelOutdatedOnly = false;
-  let selected = new Set(), selInit = false, pendingSel = null, lastPrinted = [];
+  let selected = new Map(), selInit = false, pendingSel = null, lastPrinted = [];   // selected: Etikett-Code → Anzahl
   let labelMode = 'furn', toolList = [], toolSel = new Map();   // Etikettenart; Werkzeug: id → Kopien
   let activeTab = 'items';
   const openAreas = new Set(), openFurn = new Set();
@@ -39,7 +39,8 @@
   .inv-lbl img{flex:none;image-rendering:pixelated}
   .inv-lbl .t{min-width:0;display:flex;flex-direction:column;gap:.4mm}
   .inv-lbl .c{font-family:'Share Tech Mono','Consolas','Courier New',monospace;font-weight:700;line-height:1.05;white-space:nowrap}
-  .inv-lbl .n{font-size:calc(var(--lh) * .15);line-height:1.15;overflow:hidden;max-height:calc(var(--lh) * .36)}
+  .inv-lbl .n{font-size:calc(var(--lh) * .15);line-height:1.12;overflow:hidden;overflow-wrap:anywhere}
+  .inv-lbl .n .ct{color:#222}
   .inv-lbl .a{font-size:calc(var(--lh) * .12);color:#444}
   .inv-lbl.tool .n{font-weight:700;line-height:1.1;overflow:hidden;overflow-wrap:anywhere;max-height:none;flex:0 1 auto}
   .inv-lbl.tool .c{font-weight:400;color:#222}
@@ -92,7 +93,10 @@
   #page-inventory .inv-sel-head{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border)}
   #page-inventory .inv-sel-list{max-height:300px;overflow:auto}
   #page-inventory .inv-sel-row{display:flex;align-items:center;gap:10px;padding:5px 12px;cursor:pointer;margin:0;font-size:15px}
-  #page-inventory .inv-sel-row.lvl{padding-left:44px}
+  #page-inventory .inv-sel-row.level{padding-left:44px}
+  #page-inventory .inv-sel-row.pos{padding-left:76px}
+  #page-inventory .inv-sel-row input.inv-copies{width:74px}
+  #page-inventory .inv-sel-ct{flex:1;min-width:0;color:var(--text-dim);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #page-inventory .inv-sel-row:hover{background:var(--hover-subtle)}
   #page-inventory .inv-sel-row input{width:auto;margin:0}
   ${LABEL_CSS}
@@ -169,6 +173,7 @@
           <button class="btn btn-ghost btn-sm" onclick="Inv.selectBy('outdated')" title="Neue Möbel und solche, deren Code sich geändert hat">Neue/veraltete</button>
           <button class="btn btn-ghost btn-sm" onclick="Inv.selectBy('furn')">Nur Möbel</button>
           <button class="btn btn-ghost btn-sm" onclick="Inv.selectBy('level')">Nur Ebenen</button>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.selectBy('pos')" title="Etiketten für einzelne Plätze (P1, P2 …) mit dem, was dort liegt">Nur Positionen</button>
         </div>
         <div class="inv-sel-list" id="inv-sel-list"></div>
       </div>
@@ -637,6 +642,8 @@
   if (!TEMPLATES[tplKey]) tplKey = 'avery';
   const tpl = () => TEMPLATES[tplKey];
   const PREVIEW_SCALE = 0.42;
+  const MAX_COPIES = 200;
+  const clampCopies = (v) => Math.min(MAX_COPIES, Math.max(1, parseInt(v, 10) || 1));
 
   function initLabelControls() {
     const sel = $('l-tpl');
@@ -651,11 +658,11 @@
     root.querySelectorAll('.inv-sheet-only').forEach(e => { e.style.display = t.sheet ? '' : 'none'; });
     if (t.sheet) $('l-start').max = t.cols * t.rows;
     $('l-hint').innerHTML = t.sheet
-      ? `<b>Vorgeschnittene Bögen (A4, ${t.cols * t.rows} Etiketten).</b> Gedruckt wird die <b>Auswahl</b> oben (Möbel und Ebenen einzeln wählbar, auch für Nachdrucke). Der QR-Code führt zum Inhalt.
+      ? `<b>Vorgeschnittene Bögen (A4, ${t.cols * t.rows} Etiketten).</b> Gedruckt wird die <b>Auswahl</b> oben, je Etikett in der gewünschten <b>Anzahl</b>. Auf Ebenen- und Positions-Etiketten steht, <b>was dort liegt</b>. Der QR-Code führt zum Inhalt.
          Druckdialog: Papier <b>A4</b>, Skalierung <b>100 % / «Tatsächliche Grösse»</b> (nicht «Anpassen»), Kopf- und Fusszeilen <b>aus</b>, Ränder <b>keine</b>.
          Typenschild-Etiketten L6009 sind für Laserdrucker gedacht. Vor dem ersten Druck den <b>Testbogen</b> auf normales Papier drucken und gegen das Licht über einen Etikettenbogen halten;
          sitzt das Raster nicht genau, den Versatz einstellen.`
-      : 'Einzeletiketten zum Ausschneiden (mit Rahmen). Gedruckt wird die Auswahl oben.';
+      : 'Einzeletiketten zum Ausschneiden (mit Rahmen). Gedruckt wird die Auswahl oben, je Etikett in der gewünschten Anzahl.';
   }
   function setTemplate() { tplKey = $('l-tpl').value; lsSet('inv_label_tpl', tplKey); applyTemplateUi(); renderLabels(); }
   function offsetChanged() { lsSet('inv_label_offx', $('l-offx').value); lsSet('inv_label_offy', $('l-offy').value); renderLabels(); }
@@ -670,7 +677,10 @@
     if (!r) return;
     labelData = r;
     if (pendingSel) { selected = pendingSel; pendingSel = null; selInit = true; }
-    else if (!selInit) { selected = new Set(allLabels().filter(l => l.outdated).map(l => l.code)); selInit = true; }  // Erst-Auswahl: neue/veraltete
+    else if (!selInit) {                       // Erst-Auswahl: neue/veraltete Möbel mit ihren Ebenen (je 1×)
+      selected = new Map(allLabels().filter(l => l.outdated && l.kind !== 'pos').map(l => [l.code, 1]));
+      selInit = true;
+    }
     renderLabelList();
     renderLabels();
   }
@@ -678,16 +688,35 @@
   const qrFor = (target) => `${location.origin}/api/qr/url-png?u=${encodeURIComponent(target)}`;
   const codeUrl = (code) => `${location.origin}/inventar.html?code=${encodeURIComponent(code)}`;
   const itemUrl = (id) => `${location.origin}/inventar.html?item=${id}`;     // bleibt nach einem Umlagern gültig
-  // Alle möglichen Etiketten (Möbel + Ebenen) der geladenen Daten
+
+  // «Lineal 30 cm ×12, Zollstock ×5, … +3»
+  function contentsText(items, count, max) {
+    if (!items || !items.length) return '';
+    const shown = items.slice(0, max).map(i => i.name + (i.quantity > 1 ? ' ×' + i.quantity : ''));
+    const more = (count || items.length) - shown.length;
+    return shown.join(', ') + (more > 0 ? ` … +${more}` : '');
+  }
+
+  // Alle möglichen Etiketten (Möbel, Ebenen, Positionen) der geladenen Daten
   function allLabels() {
     const out = [];
     for (const f of labelData) {
-      out.push({ code: f.code, name: f.name, area: f.area, color: f.color, small: false, kind: 'furn', fid: f.furniture_id, outdated: f.outdated });
-      for (const l of f.levels) out.push({ code: l.code, name: l.label || ('Ebene ' + l.number), area: f.area, color: f.color, small: true, kind: 'level', fid: f.furniture_id, outdated: f.outdated });
+      out.push({ code: f.code, name: f.name, area: f.area, color: f.color, kind: 'furn', fid: f.furniture_id, outdated: f.outdated, items: f.items, count: f.item_count });
+      for (const l of f.levels) {
+        out.push({ code: l.code, name: l.label || ('Ebene ' + l.number), area: f.area, color: f.color, kind: 'level', fid: f.furniture_id, outdated: f.outdated, items: l.items, count: l.item_count });
+        for (const p of (l.positions || [])) {
+          out.push({ code: p.code, name: p.label || ('Platz ' + p.number), area: f.area, color: f.color, kind: 'pos', fid: f.furniture_id, outdated: f.outdated, items: p.items, count: p.item_count });
+        }
+      }
     }
     return out;
   }
-  const furnItems = () => allLabels().filter(l => selected.has(l.code));
+  // Auswahl mit Anzahl: jedes gewählte Etikett so oft wie angegeben
+  function furnItems() {
+    const out = [];
+    for (const l of allLabels()) { const n = selected.get(l.code) || 0; for (let i = 0; i < n; i++) out.push(l); }
+    return out;
+  }
   // Werkzeug: je Stück ein Etikett (Kopien)
   function toolItems() {
     const out = [];
@@ -695,29 +724,41 @@
       const it = toolList.find(x => x.id === id);
       if (!it) continue;
       for (let i = 0; i < copies; i++) {
-        out.push({ kind: 'tool', id, code: it.position ? it.position.code : '', name: it.name, color: it.position && it.position.color, small: false });
+        out.push({ kind: 'tool', id, code: it.position ? it.position.code : '', name: it.name, color: it.position && it.position.color });
       }
     }
     return out;
   }
   const labelItems = () => (labelMode === 'tool' ? toolItems() : furnItems());
 
+  const KIND_TXT = { furn: 'Möbel', level: 'Ebene', pos: 'Position' };
   function renderLabelList() {
     const rows = allLabels();
-    $('sel-list').innerHTML = rows.length ? rows.map(l => `
-      <label class="inv-sel-row ${l.kind === 'level' ? 'lvl' : ''}">
-        <input type="checkbox" ${selected.has(l.code) ? 'checked' : ''} onchange="Inv.toggleLabel('${esc(l.code)}', this.checked)">
-        <span class="inv-code" style="--cc:${esc(l.color || '#22d3ee')}">${esc(l.code)}</span>
-        <span>${esc(l.name)}</span>
+    $('sel-list').innerHTML = rows.length ? rows.map(l => {
+      const n = selected.get(l.code) || 0, c = esc(l.code);
+      const ct = l.kind === 'furn'
+        ? (l.count ? `${l.count} Werkzeug${l.count > 1 ? 'e' : ''}` : '')
+        : contentsText(l.items, l.count, 8);
+      const full = l.items && l.items.length ? l.items.map(i => i.name + (i.quantity > 1 ? ' ×' + i.quantity : '')).join(', ') : '';
+      return `<label class="inv-sel-row ${l.kind}">
+        <input type="checkbox" data-code="${c}" ${n ? 'checked' : ''} onchange="Inv.toggleLabel('${c}', this.checked)">
+        <span class="inv-code" style="--cc:${esc(l.color || '#22d3ee')}">${c}</span>
+        <b>${esc(l.name)}</b>
         ${l.kind === 'furn' && l.outdated ? '<span class="badge badge-orange" title="Neu angelegt oder Code geändert">neu/veraltet</span>' : ''}
-        ${l.kind === 'furn' ? `<a href="#" class="inv-dim inv-small" style="margin-left:auto" onclick="Inv.toggleLevelsOf(${l.fid});return false">Ebenen ✓/✗</a>` : ''}
-      </label>`).join('') : '<div class="inv-empty">Keine Möbel vorhanden.</div>';
+        <span class="inv-sel-ct" title="${esc(full)}">${ct ? esc(ct) : (l.kind === 'furn' ? '' : '<i>leer</i>')}</span>
+        ${l.kind === 'furn' ? `<a href="#" class="inv-dim inv-small" onclick="Inv.toggleLevelsOf(${l.fid});return false" title="Alle Ebenen dieses Möbels an-/abwählen">Ebenen ✓/✗</a>` : ''}
+        <span class="inv-dim inv-small">Anzahl</span>
+        <input type="number" class="inv-copies" data-code="${c}" min="0" max="${MAX_COPIES}" value="${n || 1}" onclick="event.stopPropagation()" onchange="Inv.setLabelCopies('${c}', this.value)" title="Wie viele Etiketten gedruckt werden (0 = nicht drucken)">
+      </label>`;
+    }).join('') : '<div class="inv-empty">Keine Möbel vorhanden.</div>';
     updateSelCount();
   }
   function updateSelCount() {
     const items = labelItems(), n = items.length;
     if (labelMode === 'furn') {
-      $('sel-count').textContent = `${n} von ${allLabels().length} gewählt`;
+      $('sel-count').textContent = selected.size
+        ? `${selected.size} Etikett${selected.size > 1 ? 'en' : ''} gewählt · ${n} Stück`
+        : 'Nichts gewählt';
     } else {
       const kinds = new Set(items.map(i => i.id)).size;
       $('tl-count').textContent = `${kinds} Werkzeug${kinds === 1 ? '' : 'e'} · ${n} Etikett${n === 1 ? '' : 'en'}`;
@@ -727,29 +768,52 @@
     $('btn-print').disabled = !n;
     $('btn-print').title = per && n ? `${Math.ceil((n + Math.max(0, num('l-start', 1) - 1)) / per)} Bogen` : '';
   }
+  // Zeile in der Liste anpassen, ohne die ganze Liste neu zu zeichnen (Fokus/Scrollposition bleiben)
+  function syncRow(code) {
+    const n = selected.get(code) || 0;
+    const cb = root.querySelector(`#inv-sel-list input[type=checkbox][data-code="${code}"]`);
+    const ni = root.querySelector(`#inv-sel-list input.inv-copies[data-code="${code}"]`);
+    if (cb) cb.checked = n > 0;
+    if (ni && n > 0) ni.value = n;
+  }
   function toggleLabel(code, on) {
-    if (on) selected.add(code); else selected.delete(code);
-    renderLabels(); updateSelCount();
+    if (on) {
+      const ni = root.querySelector(`#inv-sel-list input.inv-copies[data-code="${code}"]`);
+      selected.set(code, clampCopies(ni ? ni.value : 1));
+    } else selected.delete(code);
+    syncRow(code); renderLabels();
+  }
+  function setLabelCopies(code, v) {
+    const n = Math.min(MAX_COPIES, parseInt(v, 10) || 0);
+    if (n <= 0) selected.delete(code); else selected.set(code, n);
+    syncRow(code);
+    const cb = root.querySelector(`#inv-sel-list input[type=checkbox][data-code="${code}"]`);
+    if (cb) cb.checked = n > 0;
+    renderLabels();
   }
   function toggleLevelsOf(fid) {
     const lv = allLabels().filter(l => l.kind === 'level' && l.fid === fid);
     const allOn = lv.every(l => selected.has(l.code));
-    lv.forEach(l => allOn ? selected.delete(l.code) : selected.add(l.code));
+    lv.forEach(l => allOn ? selected.delete(l.code) : selected.set(l.code, 1));
     renderLabelList(); renderLabels();
   }
   function selectBy(mode) {
     const rows = allLabels();
-    const pick = { all: () => true, none: () => false, outdated: l => l.outdated, furn: l => l.kind === 'furn', level: l => l.kind === 'level' }[mode];
-    selected = new Set(rows.filter(pick).map(l => l.code));
+    const pick = {
+      all: () => true, none: () => false,
+      outdated: l => l.outdated && l.kind !== 'pos',
+      furn: l => l.kind === 'furn', level: l => l.kind === 'level', pos: l => l.kind === 'pos',
+    }[mode];
+    selected = new Map(rows.filter(pick).map(l => [l.code, 1]));
     renderLabelList(); renderLabels();
   }
   // Einzel-Nachdruck aus dem Strukturbaum: genau dieses Etikett vorwählen
   async function labelFor(code) {
     $('l-area').value = ''; labelOutdatedOnly = false; $('chip-outdated').classList.remove('on');
-    pendingSel = new Set([code]);
+    pendingSel = new Map([[code, 1]]);
     showTab('labels');
   }
-  // ── Etikettenart: Möbel & Ebenen oder Werkzeug ──
+  // ── Etikettenart: Möbel, Ebenen & Positionen oder Werkzeug ──
   function setLabelMode(mode) {
     labelMode = mode;
     $('mode-furn').classList.toggle('on', mode === 'furn');
@@ -769,7 +833,6 @@
     toolList = r.items;
     renderToolList(); renderLabels();
   }
-  const clampCopies = (v) => Math.min(200, Math.max(1, parseInt(v, 10) || 1));
   function renderToolList() {
     $('tl-list').innerHTML = toolList.length ? toolList.map(i => `
       <label class="inv-sel-row">
@@ -778,8 +841,8 @@
         ${i.position ? `<span class="inv-code" style="--cc:${esc(i.position.color || '#22d3ee')}">${esc(i.position.code)}</span>` : '<span class="badge badge-red">ohne Platz</span>'}
         <span class="inv-dim inv-small">Menge ${i.quantity}</span>
         <span class="inv-sp"></span>
-        <span class="inv-dim inv-small">Kopien</span>
-        <input type="number" min="1" max="200" value="${toolSel.get(i.id) || clampCopies(i.quantity)}" style="width:76px" onclick="event.stopPropagation()" onchange="Inv.setCopies(${i.id}, this.value)">
+        <span class="inv-dim inv-small">Anzahl</span>
+        <input type="number" class="inv-copies" min="1" max="${MAX_COPIES}" value="${toolSel.get(i.id) || clampCopies(i.quantity)}" onclick="event.stopPropagation()" onchange="Inv.setCopies(${i.id}, this.value)" title="Wie viele Etiketten gedruckt werden">
       </label>`).join('') : '<div class="inv-empty">Keine Werkzeuge gefunden.</div>';
     updateSelCount();
   }
@@ -798,15 +861,15 @@
     const avail = t.w - qr - (t.sheet ? 3 : 4) - 1.5;
     return Math.max(2.4, Math.min(t.h * 0.26, avail / (code.length * 0.62)));
   }
-  // Werkzeugname: grösste Schrift (mm), bei der der ganze Name an Wortgrenzen umgebrochen auf das Etikett passt
-  function nameFontMm(name, t) {
+  // Textblock: grösste Schrift (mm), bei der der ganze Text an Wortgrenzen umgebrochen neben dem QR-Code
+  // und unter der Code-Zeile auf das Etikett passt. «factor» = mittlere Zeichenbreite in em.
+  function fitFontMm(text, t, codeH, factor, maxFs, extraH) {
     const qr = t.sheet ? t.h - 3.2 : t.h - 6;
     const availW = t.w - qr - (t.sheet ? 3 : 4) - 1.5;
-    const codeH = Math.min(t.h * 0.15, 3.4) * 1.15;
-    const availH = t.h - (t.sheet ? 2.3 : 6) - codeH - 0.6;
-    const words = String(name).split(/\s+/).filter(Boolean);
-    for (let fs = Math.min(t.h * 0.19, 5); fs >= 2.3; fs -= 0.1) {
-      const perLine = Math.floor(availW / (fs * 0.56));          // fette Proportionalschrift ≈ 0.56 em je Zeichen
+    const availH = t.h - (t.sheet ? 2.3 : 6) - codeH - 0.6 - (extraH || 0);
+    const words = String(text).split(/\s+/).filter(Boolean);
+    for (let fs = maxFs; fs >= 2.2; fs -= 0.1) {
+      const perLine = Math.floor(availW / (fs * factor));
       if (words.some(w => w.length > perLine)) continue;
       let lines = 1, cur = 0;
       for (const w of words) {
@@ -815,14 +878,34 @@
       }
       if (lines * fs * 1.12 <= availH) return fs;
     }
-    return 2.3;
+    return 2.2;
   }
   function labelHtml(it, t, extraStyle, cls) {
     const tool = it.kind === 'tool';
     const target = tool ? itemUrl(it.id) : codeUrl(it.code);
-    const body = tool
-      ? `<div class="n" style="font-size:${nameFontMm(it.name, t).toFixed(2)}mm">${esc(it.name)}</div><div class="c" style="font-size:${Math.min(t.h * 0.15, 3.4).toFixed(2)}mm">${it.code ? '→ ' + esc(it.code) : 'ohne Platz'}</div>`
-      : `<div class="c" style="font-size:${codeFontMm(it.code, t).toFixed(2)}mm">${esc(it.code)}</div><div class="n">${esc(it.name)}</div>${it.small || t.sheet ? '' : `<div class="a">${esc(it.area)}</div>`}`;
+    let body;
+    if (tool) {
+      const codeFs = Math.min(t.h * 0.15, 3.4);
+      body = `<div class="n" style="font-size:${fitFontMm(it.name, t, codeFs * 1.15, 0.56, Math.min(t.h * 0.19, 5)).toFixed(2)}mm">${esc(it.name)}</div>
+              <div class="c" style="font-size:${codeFs.toFixed(2)}mm">${it.code ? '→ ' + esc(it.code) : 'ohne Platz'}</div>`;
+    } else {
+      // Möbel: Name; Ebene/Position: Name und was dort liegt
+      const showArea = !t.sheet && it.kind === 'furn';
+      const codeFs = codeFontMm(it.code, t);
+      const fitFor = (txt) => fitFontMm(txt, t, codeFs * 1.1, 0.54, Math.min(t.h * 0.17, 4.2), showArea ? t.h * 0.12 * 1.3 : 0);
+      // Inhalt: so viele Werkzeuge ausschreiben, wie bei lesbarer Schrift (≥ 2.8 mm) auf das Etikett passen, Rest als «+n»
+      let ct = '', fs = fitFor(it.name);
+      if (it.kind !== 'furn' && it.items && it.items.length) {
+        for (let k = Math.min(t.sheet ? 4 : 8, it.items.length); k >= 1; k--) {
+          ct = contentsText(it.items, it.count, k);
+          fs = fitFor(it.name + ' ' + ct);
+          if (fs >= 2.8) break;
+        }
+      }
+      body = `<div class="c" style="font-size:${codeFs.toFixed(2)}mm">${esc(it.code)}</div>
+              <div class="n" style="font-size:${fs.toFixed(2)}mm"><b>${esc(it.name)}</b>${ct ? ` <span class="ct">${esc(ct)}</span>` : ''}</div>
+              ${showArea ? `<div class="a">${esc(it.area)}</div>` : ''}`;
+    }
     return `<div class="inv-lbl ${cls}${tool ? ' tool' : ''}" style="--cc:${esc(it.color || '#888')};--lw:${t.w}mm;--lh:${t.h}mm;${extraStyle || ''}">
       <img src="${qrFor(target)}" alt="">
       <div class="t">${body}</div>
@@ -864,7 +947,7 @@
   function renderLabels() {
     const t = tpl(), box = $('labels-preview'), items = labelItems();
     updateSelCount();
-    if (!items.length) { box.className = 'inv-sheetrow'; box.innerHTML = '<div class="inv-empty" style="width:100%">Nichts gewählt — oben Etiketten anhaken (oder «Alle» wählen).</div>'; return; }
+    if (!items.length) { box.className = 'inv-sheetrow'; box.innerHTML = '<div class="inv-empty" style="width:100%">Nichts gewählt — oben Etiketten anhaken (oder «Alle» wählen) und die Anzahl angeben.</div>'; return; }
     if (t.sheet) {
       const pages = sheetPages(items, t, true);
       const wmm = 210 * PREVIEW_SCALE, hmm = 297 * PREVIEW_SCALE;
@@ -903,7 +986,7 @@
   function printLabels() {
     const t = tpl(), items = labelItems();
     if (!items.length) { showToast('Nichts gewählt', 'error'); return; }
-    lastPrinted = labelMode === 'furn' ? items.map(i => i.code) : [];     // Werkzeug-Etiketten haben kein «gedruckt»-Kennzeichen
+    lastPrinted = labelMode === 'furn' ? [...new Set(items.map(i => i.code))] : [];     // Werkzeug-Etiketten haben kein «gedruckt»-Kennzeichen
     if (items.length > 480 && !confirm(`${items.length} Etiketten (${Math.ceil(items.length / 48)} Bögen) drucken?`)) return;
     if (t.sheet) {
       const pages = sheetPages(items, t, false);
@@ -918,7 +1001,7 @@
     printInFrame(calibrationHtml(t), '@page{size:A4;margin:0}');
   }
   // «Neu/veraltet» wird nur zurückgesetzt, wenn das Möbel-Etikett UND alle Ebenen-Etiketten gedruckt wurden
-  // (ändert sich ein Code, müssen alle Etiketten des Möbels neu gedruckt werden).
+  // (ändert sich ein Code, müssen alle Etiketten des Möbels neu gedruckt werden). Positions-Etiketten zählen nicht mit.
   async function markPrinted(codes) {
     const set = new Set(codes || labelItems().map(i => i.code));
     if (!set.size) { showToast('Nichts gewählt', 'error'); return; }
@@ -965,7 +1048,7 @@
     toggleArea, toggleFurn, gotoItems, openAreaModal, suggestAreaCode, assignMissingCodes,
     openFurnModal, deleteFurn, addLevels, addPositions, renameLevel, renamePos, deleteLevel, deletePos,
     toggleOutdated, loadLabels, renderLabels, printLabels, printCalibration, setTemplate, offsetChanged, markPrinted, runImport,
-    toggleLabel, toggleLevelsOf, selectBy, labelFor,
+    toggleLabel, setLabelCopies, toggleLevelsOf, selectBy, labelFor,
     setLabelMode, debouncedToolLoad, toggleTool, setCopies, toolSelectAll, toolSelectNone, toolCopiesQty,
   };
 

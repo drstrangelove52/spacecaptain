@@ -423,3 +423,36 @@ async def test_get_single_item_for_qr_landing(client, enabled, power):
     await client.patch(f"/api/inventory/items/{item['id']}", headers=power, json={"code": "EL-S1-E1"})
     assert (await client.get(f"/api/inventory/items/{item['id']}", headers=power)).json()["position"]["code"] == "EL-S1-E1"
     assert (await client.get("/api/inventory/items/99999", headers=power)).status_code == 404
+
+
+async def test_labels_contain_contents_and_positions(client, enabled, power):
+    area = await _area(client, power)
+    await client.post("/api/inventory/furniture", headers=power,
+                      json={"area_id": area["id"], "levels": 2, "positions": 2})
+    mk = lambda name, code, qty=1: client.post("/api/inventory/items", headers=power,
+                                               json={"name": name, "code": code, "quantity": qty})
+    await mk("Lineal 30 cm", "EL-S1-E2-P1", 12)
+    await mk("Zollstock", "EL-S1-E2-P2", 5)
+    await mk("Hammer", "EL-S1-E2", 1)             # Ebene ohne feste Position (P0)
+    await mk("Zange", "EL-S1-E1-P1")
+    data = (await client.get("/api/inventory/labels", headers=power)).json()
+    f = data[0]
+    assert f["code"] == "EL-S1" and f["item_count"] == 4
+    e1, e2 = f["levels"]
+    assert e2["code"] == "EL-S1-E2" and e2["item_count"] == 3
+    assert [i["name"] for i in e2["items"]] == ["Hammer", "Lineal 30 cm", "Zollstock"]     # alphabetisch
+    assert {"name": "Lineal 30 cm", "quantity": 12} in e2["items"]
+    assert [i["name"] for i in e1["items"]] == ["Zange"]
+    p1, p2 = e2["positions"]
+    assert (p1["code"], p1["item_count"]) == ("EL-S1-E2-P1", 1) and p1["items"][0]["name"] == "Lineal 30 cm"
+    assert p2["code"] == "EL-S1-E2-P2" and p2["items"][0]["quantity"] == 5
+    assert e1["positions"][1]["items"] == [] and e1["positions"][1]["item_count"] == 0
+
+
+async def test_labels_cap_contents(client, enabled, power):
+    area = await _area(client, power)
+    await client.post("/api/inventory/furniture", headers=power, json={"area_id": area["id"], "levels": 1})
+    for i in range(20):
+        await client.post("/api/inventory/items", headers=power, json={"name": f"Teil {i:02d}", "code": "EL-S1-E1"})
+    lvl = (await client.get("/api/inventory/labels", headers=power)).json()[0]["levels"][0]
+    assert lvl["item_count"] == 20 and len(lvl["items"]) == 12
