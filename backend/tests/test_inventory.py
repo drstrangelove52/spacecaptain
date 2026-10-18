@@ -313,3 +313,96 @@ async def test_areas_created_elsewhere_get_zero_rows_lazily(client, enabled, pow
     assert [f["number"] for f in tree[0]["furniture"]] == [0]
     r = await client.post("/api/inventory/items", headers=power, json={"name": "Kiste", "code": "IM"})
     assert r.status_code == 200 and r.json()["position"]["code"] == "IM-S0"
+
+
+# ── Kuerzel-Vorschlag und Zusammenspiel mit «Standorte» ──────────────────────
+@pytest.mark.parametrize("name,expected", [
+    ("Elektronik", "EL"), ("Precious Plastic", "PP"), ("3D-Druck", "3D"),
+    ("Werkzeugwand", "WE"), ("Äpfel", "AP"), ("Öl-Lager", "OL"), ("Hilti Schrank 1", "HS1"),
+])
+async def test_suggest_area_code(db, name, expected):
+    assert await inv.suggest_area_code(db, name) == expected
+
+
+async def test_suggest_area_code_skips_taken(db):
+    db.add_all([MachineLocation(name="Holz", code="HO"), MachineLocation(name="Hobby", code="HOB")])
+    await db.commit()
+    assert await inv.suggest_area_code(db, "Holzbau") == "HOL"
+    db.add(MachineLocation(name="Holzbau", code="HOL"))
+    await db.commit()
+    assert await inv.suggest_area_code(db, "Hoch") == "HOC"
+
+
+async def test_new_location_gets_code_and_color_when_module_on(client, enabled, power):
+    r = await client.post("/api/locations", headers=power, json={"name": "Elektronik"})
+    assert r.status_code == 200
+    assert r.json()["code"] == "EL" and r.json()["color"].startswith("#")
+    # ... und ist sofort im Inventar nutzbar
+    area_id = r.json()["id"]
+    f = await client.post("/api/inventory/furniture", headers=power, json={"area_id": area_id, "levels": 1})
+    assert f.status_code == 200 and f.json()["code"] == "EL-S1"
+
+
+async def test_new_location_without_module_stays_untouched(client, power):
+    r = await client.post("/api/locations", headers=power, json={"name": "Elektronik"})
+    assert r.status_code == 200 and r.json()["code"] is None and r.json()["color"] is None
+
+
+async def test_location_with_explicit_code(client, enabled, power):
+    r = await client.post("/api/locations", headers=power, json={"name": "Elektronik", "code": "el", "color": "#112233"})
+    assert r.json()["code"] == "EL" and r.json()["color"] == "#112233"
+    assert (await client.post("/api/locations", headers=power, json={"name": "Eloxal", "code": "EL"})).status_code == 409
+    assert (await client.post("/api/locations", headers=power, json={"name": "Holz", "code": "H"})).status_code == 400
+    # Auch das ungueltige Kuerzel darf keinen halbfertigen Standort hinterlassen... Name bleibt frei nutzbar
+    listing = (await client.get("/api/locations", headers=power)).json()
+    assert {x["name"] for x in listing} >= {"Elektronik"}
+
+
+async def test_location_patch_code_marks_labels_outdated(client, enabled, power):
+    loc = (await client.post("/api/locations", headers=power, json={"name": "Elektronik"})).json()
+    await client.post("/api/inventory/furniture", headers=power, json={"area_id": loc["id"], "levels": 1})
+    r = await client.patch(f"/api/locations/{loc['id']}", headers=power, json={"code": "ELX", "color": "#abcdef"})
+    assert r.status_code == 200 and r.json()["code"] == "ELX" and r.json()["color"] == "#abcdef"
+    lab = (await client.get("/api/inventory/labels", params={"outdated": True}, headers=power)).json()
+    assert [x["code"] for x in lab] == ["ELX-S1"]
+    # Leeres Kuerzel im Standorte-Dialog = unveraendert
+    r = await client.patch(f"/api/locations/{loc['id']}", headers=power, json={"name": "Elektronik 2", "code": ""})
+    assert r.json()["code"] == "ELX" and r.json()["name"] == "Elektronik 2"
+
+
+async def test_code_cannot_be_removed_while_furniture_exists(client, enabled, power):
+    area = await _area(client, power)
+    await client.post("/api/inventory/furniture", headers=power, json={"area_id": area["id"], "levels": 1})
+    r = await client.patch(f"/api/inventory/areas/{area['id']}", headers=power, json={"code": ""})
+    assert r.status_code == 409
+
+
+async def test_assign_missing_codes_dry_run_and_apply(client, enabled, power, db):
+    db.add_all([MachineLocation(name="Holz"), MachineLocation(name="Hobby"),
+                MachineLocation(name="Laser", code="LA"), MachineLocation(name="3D-Druck")])
+    await db.commit()
+    r = (await client.post("/api/inventory/areas/assign-missing-codes", headers=power)).json()
+    assert r["dry_run"] is True
+    assert {a["name"]: a["code"] for a in r["areas"]} == {"Hobby": "HO", "Holz": "HO2", "3D-Druck": "3D"}
+    areas = (await client.get("/api/inventory/areas", headers=power)).json()
+    assert [a["code"] for a in areas if a["name"] == "Holz"] == [None]      # Trockenlauf aendert nichts
+
+    r = (await client.post("/api/inventory/areas/assign-missing-codes", params={"dry_run": False}, headers=power)).json()
+    assert len(r["areas"]) == 3
+    areas = {a["name"]: a for a in (await client.get("/api/inventory/areas", headers=power)).json()}
+    assert areas["Hobby"]["code"] == "HO" and areas["Holz"]["code"] == "HO2" and areas["Laser"]["code"] == "LA"
+    colors = [a["color"] for a in areas.values() if a["name"] != "Laser"]
+    assert all(colors) and len(set(colors)) == len(colors)      # jede neue Farbe ist verschieden
+    # Zweiter Lauf: nichts mehr zu tun
+    r = (await client.post("/api/inventory/areas/assign-missing-codes", params={"dry_run": False}, headers=power)).json()
+    assert r["areas"] == []
+
+
+async def test_assign_missing_codes_requires_power_manager(client, enabled, manager):
+    r = await client.post("/api/inventory/areas/assign-missing-codes", headers=manager)
+    assert r.status_code == 403
+
+
+async def test_suggest_code_endpoint(client, enabled, manager):
+    r = await client.get("/api/inventory/areas/suggest-code", params={"name": "Precious Plastic"}, headers=manager)
+    assert r.json() == {"code": "PP"}

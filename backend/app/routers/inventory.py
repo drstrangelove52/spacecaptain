@@ -246,13 +246,34 @@ async def create_area(payload: AreaCreate, db: AsyncSession = Depends(get_db),
     code = inv.normalize_area_code(payload.code) if payload.code else None
     if code and await db.scalar(select(MachineLocation.id).where(MachineLocation.code == code)):
         raise HTTPException(409, f"Kürzel «{code}» ist schon vergeben")
-    a = MachineLocation(name=payload.name.strip(), code=code, color=_clean(payload.color))
+    if not code:
+        code = await inv.suggest_area_code(db, payload.name)
+    a = MachineLocation(name=payload.name.strip(), code=code, color=_clean(payload.color) or inv.default_color(code, await inv._used_colors(db)))
     db.add(a)
     await db.commit()
     await db.refresh(a)
     await inv.ensure_area_structure(db, a.id)
     await log_svc.log(db, LogType.location_created, f"Bereich {a.name} hinzugefügt", user_id=current.id)
     return _area_out(a)
+
+
+@router.get("/areas/suggest-code")
+async def suggest_code(name: str = Query(..., min_length=1, max_length=100), area_id: Optional[int] = None,
+                       db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+    return {"code": await inv.suggest_area_code(db, name, exclude_id=area_id)}
+
+
+@router.post("/areas/assign-missing-codes")
+async def assign_missing_codes(dry_run: bool = True, db: AsyncSession = Depends(get_db),
+                               current: User = Depends(require_power_manager)):
+    """Vergibt allen Bereichen ohne Kürzel einen Vorschlag. Standard: nur anzeigen (dry_run)."""
+    result = await inv.assign_missing_codes(db, dry_run)
+    if not dry_run and result:
+        await log_svc.log(db, LogType.inventory_area_updated,
+                          f"Kürzel für {len(result)} Bereiche vergeben: "
+                          + ", ".join(f"{r['name']}={r['code']}" for r in result),
+                          user_id=current.id)
+    return {"dry_run": dry_run, "areas": result}
 
 
 @router.patch("/areas/{area_id}")
@@ -265,24 +286,12 @@ async def update_area(area_id: int, payload: AreaUpdate, db: AsyncSession = Depe
                 MachineLocation.name == changes["name"].strip(), MachineLocation.id != a.id)):
             raise HTTPException(409, "Bereich existiert bereits")
         a.name = changes["name"].strip()
-    code_changed = False
     if "code" in changes:
-        new = inv.normalize_area_code(changes["code"]) if changes["code"] else None
-        if new != a.code:
-            if new and await db.scalar(select(MachineLocation.id).where(
-                    MachineLocation.code == new, MachineLocation.id != a.id)):
-                raise HTTPException(409, f"Kürzel «{new}» ist schon vergeben")
-            a.code = new
-            code_changed = True
+        await inv.set_area_code(db, a, changes["code"])   # markiert bei Aenderung die Etiketten als veraltet
     if "color" in changes:
         a.color = _clean(changes["color"])
     if "sort_order" in changes and changes["sort_order"] is not None:
         a.sort_order = changes["sort_order"]
-    if code_changed:
-        # Der Code aller Moebel im Bereich aendert sich -> Etiketten neu drucken
-        for f in (await db.execute(select(InvFurniture).where(
-                InvFurniture.area_id == a.id, InvFurniture.number > 0))).scalars():
-            f.label_outdated = True
     await db.commit()
     await db.refresh(a)
     await log_svc.log(db, LogType.inventory_area_updated, f"Bereich {a.name} bearbeitet",

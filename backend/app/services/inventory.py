@@ -6,10 +6,11 @@ Die 0 bedeutet auf jeder Stufe «nicht unterteilt oder noch nicht festgelegt».
 Siehe docs/inventar-konzept.md.
 """
 import re
+import unicodedata
 from typing import Optional
 
 from fastapi import HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import MachineLocation
@@ -48,6 +49,104 @@ def parse_code(text: str) -> tuple[str, int, int, int]:
         raise HTTPException(400, f"Ungültiger Code: {text!r} (Beispiel: EL-S2-E3-P4)")
     area, s, e, p = m.groups()
     return area, int(s or 0), int(e or 0), int(p or 0)
+
+
+_PALETTE = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed",
+            "#0891b2", "#db2777", "#4b5563", "#65a30d", "#ea580c"]
+
+
+def default_color(code: str, used=()) -> str:
+    """Farbe fuer einen neuen Bereich: stabil aus dem Kuerzel, aber eine noch nicht
+    vergebene bevorzugen (die Palette hat 10 Farben, danach wiederholen sie sich)."""
+    start = sum(ord(c) for c in code) % len(_PALETTE)
+    used = {u.lower() for u in used if u}
+    for i in range(len(_PALETTE)):
+        c = _PALETTE[(start + i) % len(_PALETTE)]
+        if c.lower() not in used:
+            return c
+    return _PALETTE[start]
+
+
+async def _used_colors(db: AsyncSession) -> set:
+    return {c.lower() for c in (await db.execute(
+        select(MachineLocation.color).where(MachineLocation.color.is_not(None)))).scalars().all() if c}
+
+
+def _ascii_upper(text: str) -> str:
+    text = (text or "").replace("ß", "ss")
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().upper()
+
+
+async def suggest_area_code(db: AsyncSession, name: str, exclude_id: Optional[int] = None) -> str:
+    """Schlaegt ein freies Kuerzel aus dem Namen vor:
+    Initialen bei mehreren Woertern («Precious Plastic» → PP, «3D-Druck» → 3D),
+    sonst die ersten 2, 3, 4 Buchstaben; als letzte Rueckfalloption mit Ziffer."""
+    words = [re.sub(r"[^A-Z0-9]", "", w) for w in re.split(r"[\s\-_/]+", _ascii_upper(name))]
+    words = [w for w in words if w]
+    flat = "".join(words)
+    cands: list[str] = []
+    if len(words) >= 2:
+        cands.append("".join(w[0] for w in words)[:4])
+    cands += [flat[:n] for n in (2, 3, 4)]
+    base = (flat[:2] or "XX").ljust(2, "X")
+    cands += [f"{base}{i}" for i in range(2, 10)]
+    q = select(MachineLocation.code).where(MachineLocation.code.is_not(None))
+    if exclude_id is not None:
+        q = q.where(MachineLocation.id != exclude_id)
+    used = set((await db.execute(q)).scalars().all())
+    for c in cands:
+        if AREA_CODE_RE.match(c) and c not in used:
+            return c
+    raise HTTPException(409, "Kein freies Kürzel gefunden — bitte von Hand vergeben")
+
+
+async def set_area_code(db: AsyncSession, area: MachineLocation, raw: Optional[str]) -> bool:
+    """Setzt das Kuerzel eines Bereichs (validiert, eindeutig). Aendert sich der Code, sind die
+    Etiketten aller Moebel des Bereichs veraltet. Gibt zurueck, ob sich etwas geaendert hat."""
+    new = normalize_area_code(raw) if (raw or "").strip() else None
+    if new == area.code:
+        return False
+    if new is None:
+        real = await db.scalar(select(func.count(InvFurniture.id)).where(
+            InvFurniture.area_id == area.id, InvFurniture.number > 0))
+        if real:
+            raise HTTPException(409, "Das Kürzel lässt sich nicht entfernen, solange der Bereich Möbel hat")
+    elif await db.scalar(select(MachineLocation.id).where(
+            MachineLocation.code == new, MachineLocation.id != area.id)):
+        raise HTTPException(409, f"Kürzel «{new}» ist schon vergeben")
+    area.code = new
+    for f in (await db.execute(select(InvFurniture).where(
+            InvFurniture.area_id == area.id, InvFurniture.number > 0))).scalars():
+        f.label_outdated = True
+    return True
+
+
+async def assign_missing_codes(db: AsyncSession, dry_run: bool) -> list[dict]:
+    """Vergibt allen Bereichen ohne Kuerzel einen Vorschlag (und eine Farbe, falls leer)."""
+    areas = (await db.execute(select(MachineLocation).where(
+        or_(MachineLocation.code.is_(None), MachineLocation.code == ""))
+        .order_by(MachineLocation.sort_order, MachineLocation.name))).scalars().all()
+    # Erst alle Vorschlaege berechnen, danach anwenden: sonst sieht die naechste Abfrage per
+    # Autoflush schon das eben vergebene Kuerzel und Vorschau und Ergebnis wuerden abweichen.
+    out, taken = [], set()
+    for a in areas:
+        code = await suggest_area_code(db, a.name, exclude_id=a.id)
+        n = 2
+        while code in taken:               # innerhalb dieses Laufs nicht doppelt vergeben
+            code = f"{code[:2]}{n}"
+            n += 1
+        taken.add(code)
+        out.append({"id": a.id, "name": a.name, "code": code})
+    if not dry_run:
+        used = await _used_colors(db)
+        for a, o in zip(areas, out):
+            a.code = o["code"]
+            if not a.color:
+                a.color = default_color(o["code"], used)
+                used.add(a.color.lower())
+    if not dry_run:
+        await db.commit()
+    return out
 
 
 # ── Nullplaetze ──────────────────────────────────────────────────────────────

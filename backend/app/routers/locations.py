@@ -8,6 +8,7 @@ from app.schemas import MachineLocationCreate, MachineLocationOut, MachineLocati
 from app.services.auth import get_current_user, require_power_manager
 from app.services import logger as log_svc
 from app.services import inventory as inv_svc
+from app.services.system_settings import get_system_settings
 
 router = APIRouter(prefix="/locations", tags=["locations"])
 
@@ -29,8 +30,18 @@ async def create_location(
     existing = await db.execute(select(MachineLocation).where(MachineLocation.name == payload.name))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Standort existiert bereits")
-    loc = MachineLocation(**payload.model_dump())
+    loc = MachineLocation(name=payload.name, sort_order=payload.sort_order,
+                          color=(payload.color or "").strip() or None)
     db.add(loc)
+    await db.commit()
+    await db.refresh(loc)
+    # Inventar-Modul: Bereich braucht ein Kuerzel — gewaehltes pruefen, sonst bei aktivem Modul vorschlagen
+    if (payload.code or "").strip():
+        await inv_svc.set_area_code(db, loc, payload.code)
+    elif (await get_system_settings(db)).inventory_enabled:
+        loc.code = await inv_svc.suggest_area_code(db, loc.name, exclude_id=loc.id)
+    if loc.code and not loc.color:
+        loc.color = inv_svc.default_color(loc.code, await inv_svc._used_colors(db))
     await db.commit()
     await db.refresh(loc)
     await inv_svc.ensure_area_structure(db, loc.id)
@@ -49,8 +60,14 @@ async def update_location(
     if not loc:
         raise HTTPException(status_code=404, detail="Nicht gefunden")
     changes = payload.model_dump(exclude_unset=True)
+    code = changes.pop("code", None)
+    if "color" in changes:
+        changes["color"] = (changes["color"] or "").strip() or None
     for k, v in changes.items():
         setattr(loc, k, v)
+    if (code or "").strip():                     # leeres Kuerzel = unveraendert (Entfernen nur im Inventar)
+        await inv_svc.set_area_code(db, loc, code)
+        changes["code"] = code
     await db.commit()
     await db.refresh(loc)
     await log_svc.log(db, LogType.location_updated, f"Standort {loc.name} bearbeitet",

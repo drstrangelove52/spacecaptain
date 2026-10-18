@@ -243,9 +243,11 @@
 <div class="modal-overlay" id="modal-area">
   <div class="modal">
     <h3 id="area-title">Bereich</h3>
-    <label>Name *</label><input id="a-name" maxlength="100">
+    <label>Name *</label><input id="a-name" maxlength="100" onblur="suggestAreaCode(false)">
     <div class="row">
-      <div><label>Kürzel (2–4 Zeichen)</label><input id="a-code" maxlength="4" placeholder="EL" style="font-family:var(--mono);text-transform:uppercase"></div>
+      <div><label>Kürzel (2–4 Zeichen)</label>
+        <div style="display:flex;gap:6px"><input id="a-code" maxlength="4" placeholder="auto" style="font-family:var(--mono);text-transform:uppercase">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="suggestAreaCode(true)" title="Vorschlag aus dem Namen">✨</button></div></div>
       <div><label>Farbe</label><input id="a-color" type="color" value="#22d3ee" style="padding:2px;height:38px"></div>
     </div>
     <div class="hint" style="margin-top:14px">Das Kürzel ist der erste Teil jedes Lagerort-Codes. Wird es geändert, ändern sich die Codes aller Möbel dieses Bereichs, die Etiketten müssen neu gedruckt werden.</div>
@@ -531,9 +533,11 @@ const openAreas = new Set(), openFurn = new Set();
 
 function renderStructure(){
   const tools=document.getElementById('structure-tools');
+  const missing = tree.filter(a=>!a.code).length;
   tools.innerHTML = isPower()
     ? `<button class="btn btn-primary" onclick="openAreaModal()">+ Bereich</button>
-       <button class="btn btn-primary" onclick="openFurnModal()">+ Möbel</button>`
+       <button class="btn btn-primary" onclick="openFurnModal()">+ Möbel</button>
+       ${missing?`<button class="btn btn-ghost" onclick="assignMissingCodes()" title="Schlägt für alle Bereiche ohne Kürzel eines aus dem Namen vor">✨ Kürzel für ${missing} Bereich${missing>1?'e':''} vergeben</button>`:''}`
     : `<span class="dim small">Nur Power-Manager und Admins können die Struktur ändern.</span>`;
   const list=document.getElementById('structure-list');
   if(!tree.length){ list.innerHTML='<div class="empty">Noch keine Bereiche.</div>'; return; }
@@ -603,6 +607,21 @@ function gotoItems(code){
 }
 
 // ── Bereich ──
+async function assignMissingCodes(){
+  const p = await api('POST','/inventory/areas/assign-missing-codes?dry_run=true');
+  if(!p || !p.areas.length){ showToast('Alle Bereiche haben schon ein Kürzel','success'); return; }
+  const lines = p.areas.map(a=>`${a.name}  →  ${a.code}`).join('\n');
+  if(!confirm(`Diese Kürzel werden vergeben:\n\n${lines}\n\nSie lassen sich danach einzeln ändern (vor dem Etikettendruck).`)) return;
+  const r = await api('POST','/inventory/areas/assign-missing-codes?dry_run=false');
+  if(r){ showToast(`${r.areas.length} Kürzel vergeben`,'success'); await refreshAll(); }
+}
+async function suggestAreaCode(force){
+  const codeEl=document.getElementById('a-code'), name=document.getElementById('a-name').value.trim();
+  if(!name || (codeEl.value.trim() && !force)) return;
+  const q = new URLSearchParams({name}); if(editingAreaId) q.set('area_id', editingAreaId);
+  const r = await api('GET','/inventory/areas/suggest-code?'+q, null, true);
+  if(r){ codeEl.value = r.code; }
+}
 function openAreaModal(id){
   editingAreaId = id || null;
   const a = id ? areaById(id) : null;
@@ -611,12 +630,13 @@ function openAreaModal(id){
   document.getElementById('a-code').value = a ? (a.code||'') : '';
   document.getElementById('a-color').value = a && a.color ? a.color : '#22d3ee';
   openModal('modal-area');
+  if(a && !a.code) suggestAreaCode(false);        // Bereich ohne Kürzel: Vorschlag vorbelegen
 }
 async function saveArea(){
   const body={ name:document.getElementById('a-name').value.trim(),
     code:document.getElementById('a-code').value.trim().toUpperCase(), color:document.getElementById('a-color').value };
   if(!body.name){ showToast('Name fehlt','error'); return; }
-  if(!body.code) body.code = editingAreaId ? '' : null;
+  if(!body.code && !editingAreaId) body.code = null;      // neu ohne Kürzel: der Server schlägt eines vor
   const r = editingAreaId ? await PATCH('/inventory/areas/'+editingAreaId, body) : await POST('/inventory/areas', body);
   if(r){ closeModal('modal-area'); showToast('Gespeichert','success'); await refreshAll(); }
 }
