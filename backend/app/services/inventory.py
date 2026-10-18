@@ -292,10 +292,14 @@ async def machines_need_sync(db: AsyncSession) -> bool:
         Machine.area_id.is_(None), *_machine_text_conds())) or 0
     empty_text = await db.scalar(select(func.count(Machine.id)).where(
         Machine.area_id.is_not(None), or_(Machine.location.is_(None), Machine.location == ""))) or 0
-    mismatch = await db.scalar(select(func.count(Machine.id))
-                               .join(MachineLocation, MachineLocation.id == Machine.area_id)
-                               .where(*_machine_text_conds(), MachineLocation.name != Machine.location)) or 0
-    return bool(no_area or empty_text or mismatch)
+    if no_area or empty_text:
+        return True
+    # Text und Bereichsname werden in Python verglichen, NICHT per SQL: machines (init.sql) und machine_locations (ORM)
+    # haben je nach Installation verschiedene Sortierungen, ein Vergleich der Spalten bricht mit «Illegal mix of collations» ab.
+    rows = (await db.execute(select(Machine.location, MachineLocation.name)
+                             .join(MachineLocation, MachineLocation.id == Machine.area_id)
+                             .where(*_machine_text_conds()))).all()
+    return any((loc or "").strip().lower() != (name or "").lower() for loc, name in rows)
 
 
 async def sync_machine_areas(db: AsyncSession) -> int:

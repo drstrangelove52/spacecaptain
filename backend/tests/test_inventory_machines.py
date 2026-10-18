@@ -247,3 +247,28 @@ async def test_backup_import_is_idempotent_and_keeps_existing(client, enabled, p
 async def test_old_backup_without_inventory_section_still_imports(client, enabled, admin, db):
     r = await client.post("/api/backup/import", headers=admin, json={"version": "3.0", "machine_locations": [{"name": "Laser"}]})
     assert r.status_code == 200 and r.json()["ok"] is True
+
+
+async def test_machines_need_sync_compares_text_in_python(db):
+    """Regression (Dev, MariaDB): machines und machine_locations haben verschiedene Sortierungen; der Vergleich der
+    Textspalten per SQL scheiterte mit 'Illegal mix of collations'. Jetzt wird in Python verglichen."""
+    from app.services import inventory as inv
+    db.add(MachineLocation(name="Laser", code="LAS"))
+    await db.commit()
+    a = await db.scalar(select(MachineLocation))
+    m = _machine("Lasercutter", "laser")                     # Schreibweise weicht ab, gleicher Bereich
+    m.area_id = a.id
+    db.add(m)
+    await db.commit()
+    assert await inv.machines_need_sync(db) is False         # gross/klein ist kein Unterschied
+    m.location = "Holz"                                      # Text zeigt woanders hin
+    await db.commit()
+    assert await inv.machines_need_sync(db) is True
+    m.location = "Laser"
+    m2 = _machine("Plotter", "Laser")                        # Text ohne area_id
+    db.add(m2)
+    await db.commit()
+    assert await inv.machines_need_sync(db) is True
+    await inv.sync_machine_areas(db)
+    await db.commit()
+    assert await inv.machines_need_sync(db) is False
