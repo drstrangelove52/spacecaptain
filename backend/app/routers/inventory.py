@@ -10,7 +10,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func, or_, and_
+from sqlalchemy import select, func, or_, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -417,6 +417,7 @@ async def delete_furniture(fid: int, db: AsyncSession = Depends(get_db),
         raise HTTPException(409, f"Im Möbel liegen noch {n} Werkzeuge — zuerst umlagern")
     area = await _get_area(db, f.area_id)
     code = inv.short_code(area.code, f.number)
+    await db.execute(update(InvPlacement).where(InvPlacement.furniture_id == f.id).values(furniture_id=None, level_id=None))
     await db.delete(f)
     await db.commit()
     await log_svc.log(db, LogType.inventory_furniture_deleted, f"Möbel {code} gelöscht", user_id=current.id)
@@ -464,6 +465,7 @@ async def delete_level(lid: int, db: AsyncSession = Depends(get_db),
     n = await _count_items(db, level_id=lvl.id)
     if n:
         raise HTTPException(409, f"Auf der Ebene liegen noch {n} Werkzeuge — zuerst umlagern")
+    await db.execute(update(InvPlacement).where(InvPlacement.level_id == lvl.id).values(level_id=None))
     await db.delete(lvl)
     await db.commit()
     return {"ok": True}
@@ -662,22 +664,29 @@ async def import_items(payload: ImportPayload, db: AsyncSession = Depends(get_db
 
 # ── Maschinen ────────────────────────────────────────────────────────────────
 _MACHINE_JOIN = (
-    select(Machine, MachineLocation, InvPlacement, InvFurniture)
+    select(Machine, MachineLocation, InvPlacement, InvFurniture, InvLevel)
     .outerjoin(MachineLocation, MachineLocation.id == Machine.area_id)
     .outerjoin(InvPlacement, InvPlacement.machine_id == Machine.id)
     .outerjoin(InvFurniture, InvFurniture.id == InvPlacement.furniture_id)
+    .outerjoin(InvLevel, InvLevel.id == InvPlacement.level_id)
 )
 
 
 def _machine_dict(row) -> dict:
-    m, area, _pl, furn = row
+    m, area, _pl, furn, lvl = row
     stands_on = None
     if furn is not None and area is not None:
+        level = None
+        if lvl is not None and lvl.furniture_id == furn.id and lvl.number > 0:
+            level = {"id": lvl.id, "number": lvl.number, "label": lvl.label,
+                     "code": inv.short_code(area.code, furn.number, lvl.number)}
         stands_on = {"furniture_id": furn.id, "code": inv.short_code(area.code, furn.number),
-                     "title": inv.furniture_title(furn)}
+                     "title": inv.furniture_title(furn), "level": level}
     path = area.name if area else (m.location or "")
     if stands_on:
         path += " › " + stands_on["title"]
+        if stands_on["level"]:
+            path += " › " + (stands_on["level"]["label"] or f"Ebene {stands_on['level']['number']}")
     status = m.status.value if hasattr(m.status, "value") else m.status
     return {
         "id": m.id, "name": m.name, "category": m.category, "manufacturer": m.manufacturer, "model": m.model,
@@ -690,6 +699,7 @@ def _machine_dict(row) -> dict:
 class MachineAssign(BaseModel):
     area_id: Optional[int] = None          # None = kein Bereich
     furniture_id: Optional[int] = None     # None = steht auf keinem Möbel
+    level_id: Optional[int] = None         # None = keine bestimmte Ebene
 
 
 @router.get("/machines")
@@ -712,8 +722,8 @@ async def list_machines(q: str = "", area_id: Optional[int] = None, unassigned: 
 @router.patch("/machines/{machine_id}")
 async def assign_machine(machine_id: int, payload: MachineAssign, db: AsyncSession = Depends(get_db),
                          current: User = Depends(require_power_manager)):
-    """Bereich wechseln und/oder festlegen, auf welchem Möbel die Maschine steht. Der Standort-Text der Maschine wird
-    mitgeführt, damit Maschinenliste, CSV-Export und Display weiter stimmen."""
+    """Bereich wechseln und/oder festlegen, auf welchem Möbel (und welcher Ebene) die Maschine steht. Der Standort-Text
+    der Maschine wird mitgeführt, damit Maschinenliste, CSV-Export und Display weiter stimmen."""
     m = await db.get(Machine, machine_id)
     if not m:
         raise HTTPException(404, "Maschine nicht gefunden")
@@ -727,6 +737,9 @@ async def assign_machine(machine_id: int, payload: MachineAssign, db: AsyncSessi
             m.location = new_area.name if new_area else None
             moved = True
     pl = await db.get(InvPlacement, m.id)
+    if pl is None and ({"furniture_id", "level_id"} & given):
+        pl = InvPlacement(machine_id=m.id)
+        db.add(pl)
     if "furniture_id" in given:
         fid = payload.furniture_id
         if fid is not None:
@@ -735,14 +748,26 @@ async def assign_machine(machine_id: int, payload: MachineAssign, db: AsyncSessi
                 raise HTTPException(400, "«Im Bereich, ohne Möbel» lässt sich nicht als Standfläche wählen")
             if f.area_id != m.area_id:
                 raise HTTPException(409, "Das Möbel gehört zu einem anderen Bereich als die Maschine")
-        if pl is None:
-            pl = InvPlacement(machine_id=m.id)
-            db.add(pl)
+        if pl.furniture_id != fid:
+            pl.level_id = None                                   # andere Standfläche → alte Ebene gilt nicht mehr
         pl.furniture_id = fid
     elif moved and pl and pl.furniture_id:
         f = await db.get(InvFurniture, pl.furniture_id)         # «steht auf» passt nur im selben Bereich
         if not f or f.area_id != m.area_id:
             pl.furniture_id = None
+    if "level_id" in given:
+        lid = payload.level_id
+        if lid is not None:
+            lvl = await db.get(InvLevel, lid)
+            if not lvl:
+                raise HTTPException(404, "Ebene nicht gefunden")
+            if lvl.number == 0:
+                raise HTTPException(400, "«Ebene offen» (E00) lässt sich nicht wählen — dann einfach keine Ebene angeben")
+            if pl.furniture_id is None or lvl.furniture_id != pl.furniture_id:
+                raise HTTPException(409, "Die Ebene gehört nicht zum gewählten Möbel")
+        pl.level_id = lid
+    if pl is not None and pl.furniture_id is None:
+        pl.level_id = None
     await db.commit()
     if moved:
         new_name = m.location or "kein Bereich"

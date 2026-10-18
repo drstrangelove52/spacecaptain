@@ -84,9 +84,11 @@ async def export_inventory(db: AsyncSession) -> dict:
         if pl.machine_id not in machine_name:
             continue
         f = furn_by_id.get(pl.furniture_id) if pl.furniture_id else None
+        lv = lvl_by_id.get(pl.level_id) if pl.level_id else None
         out_pl.append({
             "machine": machine_name[pl.machine_id],
             "furniture": {"area": area_name[f.area_id], "number": f.number} if f and f.area_id in area_name else None,
+            "level": lv.number if lv and f and lv.furniture_id == f.id and lv.number > 0 else None,
             "plan_x": pl.plan_x, "plan_y": pl.plan_y, "plan_w": pl.plan_w, "plan_h": pl.plan_h, "plan_rot": pl.plan_rot,
         })
 
@@ -218,6 +220,7 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
     machine_id = {m.name: m.id for m in (await db.execute(select(Machine))).scalars().all()}
     placed = {pl.machine_id: pl for pl in (await db.execute(select(InvPlacement))).scalars().all()}
     furn_ids = {(area_by_id[f.area_id], f.number): f.id for f in furn_by_id.values() if f.area_id in area_by_id}
+    lvl_ids = {(l.furniture_id, l.number): l.id for l in (await db.execute(select(InvLevel))).scalars().all()}
     for p in data.get("placements", []) or []:
         mid = machine_id.get(p.get("machine"))
         if mid is None:
@@ -233,6 +236,7 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
         elif not overwrite:
             continue
         row.furniture_id = fid
+        row.level_id = lvl_ids.get((fid, p.get("level"))) if fid and p.get("level") else None
         for k in ("plan_x", "plan_y", "plan_w", "plan_h", "plan_rot"):
             setattr(row, k, p.get(k))
     await db.flush()

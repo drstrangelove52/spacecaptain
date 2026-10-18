@@ -318,9 +318,20 @@ async def sync_machine_areas(db: AsyncSession) -> int:
         if aid is not None and m.area_id != aid:
             m.area_id = aid
             changed += 1
+            await _clear_foreign_placement(db, m)
     if changed:
         await db.flush()
     return changed
+
+
+async def _clear_foreign_placement(db: AsyncSession, machine: Machine) -> None:
+    """«Steht auf» gilt nur im Bereich der Maschine: wechselt der Bereich, entfaellt Moebel und Ebene."""
+    pl = await db.get(InvPlacement, machine.id)
+    if pl and pl.furniture_id:
+        f = await db.get(InvFurniture, pl.furniture_id)
+        if not f or f.area_id != machine.area_id:
+            pl.furniture_id = None
+            pl.level_id = None
 
 
 async def sync_machine_area_from_text(db: AsyncSession, machine: Machine) -> None:
@@ -332,6 +343,7 @@ async def sync_machine_area_from_text(db: AsyncSession, machine: Machine) -> Non
         area = await db.scalar(select(MachineLocation).where(func.lower(MachineLocation.name) == txt.lower()))
         if area:
             machine.area_id = area.id
+    await _clear_foreign_placement(db, machine)
     await db.commit()
 
 

@@ -617,6 +617,9 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "machines", "area_id", "INT UNSIGNED DEFAULT NULL")
         await _extend_enum_if_needed(conn, "activity_log", "type", ["machine_area_changed"])
 
+        # ── v1.53: Maschine steht auf einer bestimmten Ebene eines Moebels (z.B. Regal 1 › Ebene 3) ──
+        await _add_column_if_missing(conn, "inv_placements", "level_id", "INT UNSIGNED DEFAULT NULL")
+
     log.info("Migrationen abgeschlossen")
 
 

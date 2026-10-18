@@ -100,6 +100,8 @@ class InvPlacement(Base):
     __tablename__ = "inv_placements"
     machine_id:   Mapped[int]             = mapped_column(UINT(unsigned=True), primary_key=True, autoincrement=False)
     furniture_id: Mapped[Optional[int]]   = mapped_column(UINT(unsigned=True), ForeignKey("inv_furniture.id", ondelete="SET NULL"), default=None)
+    # optional: auf welcher Ebene des Moebels (z.B. Regal 1 › Ebene 3); nur mit furniture_id gueltig
+    level_id:     Mapped[Optional[int]]   = mapped_column(UINT(unsigned=True), ForeignKey("inv_levels.id", ondelete="SET NULL"), default=None)
     plan_x:       Mapped[Optional[float]] = mapped_column(Float, default=None)
     plan_y:       Mapped[Optional[float]] = mapped_column(Float, default=None)
     plan_w:       Mapped[Optional[float]] = mapped_column(Float, default=None)

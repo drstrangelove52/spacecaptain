@@ -77,7 +77,7 @@ async def test_stands_on_furniture(client, enabled, power, db):
 
     r = await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"furniture_id": tisch["id"]})
     assert r.status_code == 200
-    assert r.json()["stands_on"] == {"furniture_id": tisch["id"], "code": "LAS-M01", "title": "Tisch 1"}
+    assert r.json()["stands_on"] == {"furniture_id": tisch["id"], "code": "LAS-M01", "title": "Tisch 1", "level": None}
     assert r.json()["path"] == "Laser › Tisch 1"
     # anderer Bereich → 409, «Im Bereich, ohne Möbel» (M00) → 400
     assert (await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"furniture_id": fremd["id"]})).status_code == 409
@@ -272,3 +272,86 @@ async def test_machines_need_sync_compares_text_in_python(db):
     await inv.sync_machine_areas(db)
     await db.commit()
     assert await inv.machines_need_sync(db) is False
+
+
+async def test_machine_on_a_level_of_a_shelf(client, enabled, power, db):
+    await _setup(db)
+    holz = await _area_id(client, power, "Holz")
+    laser = await _area_id(client, power, "Laser")
+    regal = (await client.post("/api/inventory/furniture", headers=power,
+                               json={"area_id": holz, "kind": "regal", "levels": 3})).json()
+    fremd = (await client.post("/api/inventory/furniture", headers=power,
+                               json={"area_id": laser, "kind": "regal", "levels": 2})).json()
+    tree = (await client.get("/api/inventory/tree", headers=power)).json()
+    lv = {l["number"]: l["id"] for a in tree if a["name"] == "Holz" for f in a["furniture"] if f["number"] == 1 for l in f["levels"]}
+    lv_fremd = [l["id"] for a in tree if a["name"] == "Laser" for f in a["furniture"] if f["number"] == 1 for l in f["levels"] if l["number"] == 1][0]
+    mid = (await _machines(client, power))["Tischkreissäge"]["id"]
+
+    # Möbel und Ebene in einem Schritt
+    r = await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"furniture_id": regal["id"], "level_id": lv[3]})
+    assert r.status_code == 200, r.text
+    so = r.json()["stands_on"]
+    assert so["title"] == "Regal 1" and so["level"]["number"] == 3 and so["level"]["code"] == "HOL-M01-E03"
+    assert r.json()["path"] == "Holz › Regal 1 › Ebene 3"
+    # E00 und fremde Ebene werden abgelehnt
+    assert (await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"level_id": lv[0]})).status_code == 400
+    assert (await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"level_id": lv_fremd})).status_code == 409
+    # nur die Ebene wechseln, Möbel bleibt
+    r = await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"level_id": lv[1]})
+    assert r.json()["stands_on"]["level"]["number"] == 1 and r.json()["stands_on"]["title"] == "Regal 1"
+    # Ebene entfernen
+    r = await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"level_id": None})
+    assert r.json()["stands_on"]["level"] is None and r.json()["stands_on"]["title"] == "Regal 1"
+    # Ebene ohne Möbel ist ungültig
+    mid2 = (await _machines(client, power))["Lasercutter"]["id"]
+    assert (await client.patch(f"/api/inventory/machines/{mid2}", headers=power, json={"level_id": lv_fremd})).status_code == 409
+
+
+async def test_level_is_cleared_when_furniture_changes_or_level_is_deleted(client, enabled, power, db):
+    await _setup(db)
+    holz = await _area_id(client, power, "Holz")
+    r1 = (await client.post("/api/inventory/furniture", headers=power, json={"area_id": holz, "kind": "regal", "levels": 2})).json()
+    r2 = (await client.post("/api/inventory/furniture", headers=power, json={"area_id": holz, "kind": "regal", "levels": 2})).json()
+    tree = (await client.get("/api/inventory/tree", headers=power)).json()
+    lv = {(f["number"], l["number"]): l["id"] for a in tree if a["name"] == "Holz" for f in a["furniture"] for l in f["levels"]}
+    mid = (await _machines(client, power))["Tischkreissäge"]["id"]
+    await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"furniture_id": r1["id"], "level_id": lv[(1, 2)]})
+    # anderes Möbel gewählt → alte Ebene entfällt
+    r = await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"furniture_id": r2["id"]})
+    assert r.json()["stands_on"]["title"] == "Regal 2" and r.json()["stands_on"]["level"] is None
+    # Ebene löschen → Zuordnung der Maschine verliert die Ebene, nicht das Möbel
+    await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"level_id": lv[(2, 2)]})
+    assert (await client.delete(f"/api/inventory/levels/{lv[(2, 2)]}", headers=power)).status_code == 200
+    r = (await _machines(client, power))["Tischkreissäge"]
+    assert r["stands_on"]["title"] == "Regal 2" and r["stands_on"]["level"] is None
+    # Möbel löschen → keine Standfläche mehr
+    assert (await client.delete(f"/api/inventory/furniture/{r2['id']}", headers=power)).status_code == 200
+    assert (await _machines(client, power))["Tischkreissäge"]["stands_on"] is None
+
+
+async def test_backup_keeps_the_level_of_a_machine(client, enabled, power, admin, db):
+    await _setup(db)
+    holz = await _area_id(client, power, "Holz")
+    regal = (await client.post("/api/inventory/furniture", headers=power, json={"area_id": holz, "kind": "regal", "levels": 3})).json()
+    tree = (await client.get("/api/inventory/tree", headers=power)).json()
+    lvl2 = [l["id"] for a in tree if a["name"] == "Holz" for f in a["furniture"] if f["number"] == 1 for l in f["levels"] if l["number"] == 2][0]
+    mid = (await _machines(client, power))["Tischkreissäge"]["id"]
+    await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"furniture_id": regal["id"], "level_id": lvl2})
+    backup = (await client.get("/api/backup/export", headers=admin)).json()
+    assert backup["inventory"]["placements"][0]["level"] == 2
+    await _wipe_inventory(db)
+    assert (await client.post("/api/backup/import", headers=admin, json=backup)).status_code == 200
+    so = (await _machines(client, power))["Tischkreissäge"]["stands_on"]
+    assert so["title"] == "Regal 1" and so["level"]["number"] == 2
+
+
+async def test_changing_the_location_in_the_machine_form_drops_a_foreign_stands_on(client, enabled, power, db):
+    await _setup(db)
+    laser = await _area_id(client, power, "Laser")
+    tisch = (await client.post("/api/inventory/furniture", headers=power, json={"area_id": laser, "kind": "tisch"})).json()
+    mid = (await _machines(client, power))["Lasercutter"]["id"]
+    await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"furniture_id": tisch["id"]})
+    assert (await _machines(client, power))["Lasercutter"]["stands_on"] is not None
+    await client.patch(f"/api/machines/{mid}", headers=power, json={"location": "Holz"})        # altes Formular
+    m = (await _machines(client, power))["Lasercutter"]
+    assert m["area"]["name"] == "Holz" and m["stands_on"] is None                               # Tisch gehört zu Laser

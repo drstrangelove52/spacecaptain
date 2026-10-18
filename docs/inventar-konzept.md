@@ -441,6 +441,16 @@ Freigabe von Martin.
   nur), Maschinenzahl je Bereich im Strukturbaum, Maschinen-Treffer über der Werkzeugliste, Maschinen in der API-Suche
   (`type: "machine"`, mit Pfad «Laser › Tisch 1»).
 - **Keine Etikett-Codes für Maschinen**, wie entschieden: Sie sind über Bereich, Möbel und später den Bauplan auffindbar.
+- **«Steht auf» mit Ebene:** Eine Maschine kann auf einem Möbel **und** einer Ebene stehen («Druckerregal › Ebene 2»);
+  `inv_placements.level_id` (Migration v1.53, ohne DB-FK), nur gültig zusammen mit dem Möbel und nie E00. Wechselt das Möbel oder der
+  Bereich, entfällt die Ebene; beim Löschen von Ebene/Möbel wird die Zuordnung der Maschine bereinigt. Backup: `level` (Ebenennummer).
+- **Begriffe:** Bei aktivem Inventar heisst «Standort» im ganzen LabManager **«Bereich»** (Formular, Filter, Tabelle, Schaltfläche,
+  Dialoge); ohne Inventar bleibt «Standort». CSV-Spalten behalten ihren Namen (Import-Kompatibilität).
+- **Maschinenformular:** Neben «Bereich» steht «Steht auf (Möbel / Ebene)»; die Auswahl zeigt die Möbel des gewählten Bereichs mit ihren
+  Ebenen und wird mit dem Formular gespeichert (das Feld kommt aus dem Inventar-Modul, das dafür nachgeladen wird). Beim Anlegen einer
+  Maschine wird der **Bereich mit demselben Namen wie die Kategorie vorgewählt** (nur wenn noch keiner gewählt ist).
+- **Kategorie und Bereich** sind zwei Angaben: Die Kategorie sagt, *was* die Maschine ist (Filter, Symbole, Statistik, MCP), der Bereich,
+  *wo* sie steht (Lagerort-Code, Suche, Plan). Sie decken sich oft («3D-Druck»), müssen es aber nicht (z.B. CNC-Fräse im Bereich «Holz»).
 
 ## 12. Offene Punkte
 

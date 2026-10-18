@@ -2905,7 +2905,7 @@ const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',mach
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>${_isAdmin()?` <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`:''}`,
-  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)">`:''} <button class="btn btn-ghost btn-sm" onclick="showInventoryExportModal()">📋 Inventarliste</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ Standorte</button> <button class="btn btn-ghost btn-sm" onclick="showOwnersModal()">⚙ Eigentümer</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`:''}`,
+  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)">`:''} <button class="btn btn-ghost btn-sm" onclick="showInventoryExportModal()">📋 Inventarliste</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ ${_locWord(true)}</button> <button class="btn btn-ghost btn-sm" onclick="showOwnersModal()">⚙ Eigentümer</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`:''}`,
   plugs:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('plugs')" title="Hilfe zu Plug-Pool">? Hilfe</button> <button class="btn btn-ghost" id="plug-status-refresh-btn" onclick="loadPlugLiveStatus()">🔄 Status aktualisieren</button>${_isPowerPlus()?` <button class="btn btn-ghost" onclick="showDiscoverModal()">🔍 Geräte suchen</button> <button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`:''}`,
   batteries:()=>`${_isPowerPlus()?`<button class="btn btn-primary" onclick="showAddBattery()">+ Akku hinzufügen</button>`:''}`,
   automations:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('automations')" title="Hilfe zu Automationen">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddRule()">+ Neue Regel</button>`:''}`,
@@ -3799,7 +3799,7 @@ function _emojiOutside(e){if(!document.getElementById('_emoji-picker')?.contains
 function _catIcon(name){const c=cache.categories.find(x=>x.name===name);return c?c.icon:'🔧';}
 function _catOptions(selected=''){return cache.categories.map(c=>`<option value="${escHtml(c.name)}"${c.name===selected?' selected':''}>${escHtml(c.icon)} ${escHtml(c.name)}</option>`).join('');}
 function _refreshCatFilter(){const s=document.getElementById('machine-filter-cat');if(!s)return;const cur=s.value;s.innerHTML='<option value="">Alle Kategorien</option>'+cache.categories.map(c=>`<option value="${escHtml(c.name)}"${c.name===cur?' selected':''}>${escHtml(c.icon)} ${escHtml(c.name)}</option>`).join('');}
-function _refreshLocFilter(){const s=document.getElementById('machine-filter-loc');if(!s)return;const cur=s.value;s.innerHTML='<option value="">Alle Standorte</option>'+cache.locations.map(l=>`<option value="${escHtml(l.name)}"${l.name===cur?' selected':''}>${escHtml(l.name)}</option>`).join('');}
+function _refreshLocFilter(){const s=document.getElementById('machine-filter-loc');if(!s)return;const cur=s.value;s.innerHTML='<option value="">Alle '+_locWord(true)+'</option>'+cache.locations.map(l=>`<option value="${escHtml(l.name)}"${l.name===cur?' selected':''}>${escHtml(l.name)}</option>`).join('');}
 async function loadCategories(){const data=await GET('/categories');if(data){cache.categories=data;_refreshCatFilter();}}
 async function loadLocations(){const data=await GET('/locations');if(data){cache.locations=data;_refreshLocFilter();}}
 async function loadOwners(){const data=await GET('/owners');if(data)cache.owners=data;}
@@ -3864,7 +3864,7 @@ async function deleteCategory(id,name){
 // ── Standorte ─────────────────────────────────────────────────────────────────
 function _locOptions(selected=''){
   const opts=cache.locations.map(l=>`<option value="${escHtml(l.name)}"${l.name===selected?' selected':''}>${escHtml(l.name)}</option>`).join('');
-  return `<option value="">— kein Standort —</option>`+opts;
+  return `<option value="">— kein ${_locWord()} —</option>`+opts;
 }
 function _renderLocList(){
   return cache.locations.map(l=>`
@@ -3879,7 +3879,7 @@ function _renderLocList(){
 }
 
 async function showLocationsModal(){
-  openModal('Standorte verwalten',`
+  openModal(_locWord(true)+' verwalten',`
     <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);display:flex;gap:8px;margin-bottom:6px;padding:0 2px">
       <span style="flex:1">NAME</span>
       ${_inventoryOn?'<span style="width:62px;text-align:center" title="Kürzel für den Lagerort-Code im Inventar">KÜRZEL</span><span style="width:38px;text-align:center">FARBE</span>':''}
@@ -3888,7 +3888,7 @@ async function showLocationsModal(){
     </div>
     <div id="loc-list">${_renderLocList()}</div>
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
-      <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-bottom:8px">NEUER STANDORT</div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-bottom:8px">NEUER ${_locWord().toUpperCase()}</div>
       <div style="display:flex;gap:8px;align-items:center">
         <input class="form-input form-input-sm" id="new-loc-name" placeholder="Name" style="flex:1;min-width:0">
         ${_inventoryOn?'<input class="form-input form-input-sm" id="new-loc-code" maxlength="3" placeholder="Kürzel (auto)" title="Leer lassen: es wird ein Kürzel aus dem Namen vorgeschlagen" style="width:110px;flex-shrink:0;text-transform:uppercase;font-family:var(--mono)">':''}
@@ -3927,7 +3927,7 @@ async function addLocation(){
 }
 
 async function deleteLocation(id,name){
-  if(!confirm(`Standort „${name}" wirklich löschen?`))return;
+  if(!confirm(`${_locWord()} „${name}" wirklich löschen?`))return;
   const res=await DELETE(`/locations/${id}`);
   if(res){await loadLocations();document.getElementById('loc-list').innerHTML=_renderLocList();showToast(`${name} gelöscht`,'warn');}
 }
@@ -4459,7 +4459,7 @@ function _machineTable(machines) {
       ${_machineTableTh('Hersteller','manufacturer')}
       ${_machineTableTh('Modell','model')}
       ${_machineTableTh('Seriennummer','serial_number')}
-      ${_machineTableTh('Standort','location')}
+      ${_machineTableTh(_locWord(),'location')}
       <th>Session</th><th>Plug</th><th>Aktionen</th>
     </tr></thead>
     <tbody>${rows}</tbody>
@@ -4499,7 +4499,7 @@ function showAddMachine() {
   openModal('Maschine hinzufügen',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="mc-name" placeholder="Lasercutter XL-40"></div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="mc-cat">${_catOptions()}</select></div>
+      <div class="form-group"><label class="form-label" title="Art der Maschine (z.B. Laser, CNC) — für Filter, Symbole und Auswertungen">Kategorie</label><select class="form-input" id="mc-cat" onchange="_autoArea()">${_catOptions()}</select></div>
       <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="mc-status"><option value="online">Freigegeben</option><option value="offline">Gesperrt</option><option value="maintenance">In Wartung</option></select></div>
     </div>
     <div class="form-row">
@@ -4508,8 +4508,9 @@ function showAddMachine() {
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="mc-serial" placeholder="SN-123456"></div>
-      <div class="form-group"><label class="form-label">Standort</label><select class="form-input" id="mc-loc">${_locOptions()}</select></div>
+      <div class="form-group"><label class="form-label" title="Wo die Maschine steht">${_locWord()}</label><select class="form-input" id="mc-loc" onchange="window.Inv&&Inv.formAreaChanged()">${_locOptions()}</select></div>
     </div>
+    ${_inventoryOn?'<div class="form-group" id="inv-form-slot"></div>':''}
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="mc-comment" rows="2" placeholder="z.B. Linse verschmutzt, bitte melden"></textarea></div>
     <div class="form-group"><label class="form-label">Dokumentations-Link</label><input class="form-input" id="mc-doc-url" type="url" placeholder="https://..."></div>
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="mc-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden&#10;Wird vor dem Einschalten als Pflicht-Bestätigung angezeigt."></textarea></div>
@@ -4572,9 +4573,11 @@ function showAddMachine() {
     const res=await POST('/machines',{name,category:document.getElementById('mc-cat').value,status:document.getElementById('mc-status').value,manufacturer:document.getElementById('mc-mfr').value.trim()||null,model:document.getElementById('mc-model').value.trim()||null,serial_number:document.getElementById('mc-serial').value.trim()||null,location:document.getElementById('mc-loc').value.trim(),comment:document.getElementById('mc-comment').value.trim()||null,doc_url:document.getElementById('mc-doc-url').value.trim()||null,safety_notes:document.getElementById('mc-safety').value.trim()||null,plug_type:'none',idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required,force_off_on_close,purchase_date,value_new:value_new?parseFloat(value_new):null,owner_id:owner_id?parseInt(owner_id):null});
     if (res) {
       if (plugId) await POST(`/plugs/${plugId}/assign?machine_id=${res.id}`,{});
+      await _saveInvSlot(res.id);
       closeModal(); await loadAll(); showToast(`${res.name} hinzugefügt!`,'success');
     }
   }, undefined, undefined, 'input', 900);
+  _mountInvSlot(null);
 }
 
 let _editMachinePlugs = [];        // [{id, name, plug_ip, plug_type}] — aktueller Zustand im Dialog
@@ -4633,7 +4636,7 @@ function editMachine(id) {
   openModal('Maschine bearbeiten',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${escHtml(m.name)}"></div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="e-cat">${_catOptions(m.category)}</select></div>
+      <div class="form-group"><label class="form-label" title="Art der Maschine (z.B. Laser, CNC) — für Filter, Symbole und Auswertungen">Kategorie</label><select class="form-input" id="e-cat">${_catOptions(m.category)}</select></div>
       <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-status"><option value="online" ${m.status==='online'?'selected':''}>Freigegeben</option><option value="offline" ${m.status==='offline'?'selected':''}>Gesperrt</option><option value="maintenance" ${m.status==='maintenance'?'selected':''}>In Wartung</option></select></div>
     </div>
     <div class="form-row">
@@ -4642,8 +4645,9 @@ function editMachine(id) {
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="e-serial" value="${escHtml(m.serial_number||'')}"></div>
-      <div class="form-group"><label class="form-label">Standort</label><select class="form-input" id="e-loc">${_locOptions(m.location||'')}</select></div>
+      <div class="form-group"><label class="form-label" title="Wo die Maschine steht">${_locWord()}</label><select class="form-input" id="e-loc" onchange="window.Inv&&Inv.formAreaChanged()">${_locOptions(m.location||'')}</select></div>
     </div>
+    ${_inventoryOn?'<div class="form-group" id="inv-form-slot"></div>':''}
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="e-comment" rows="2" placeholder="z.B. Linse verschmutzt">${m.comment||''}</textarea></div>
     <div class="form-group"><label class="form-label">Dokumentations-Link</label><input class="form-input" id="e-doc-url" type="url" placeholder="https://..." value="${escHtml(m.doc_url||'')}"></div>
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="e-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden">${m.safety_notes||''}</textarea></div>
@@ -4707,10 +4711,11 @@ function editMachine(id) {
     const owner_id=document.getElementById('e-owner')?.value;
     const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,manufacturer:document.getElementById('e-mfr').value.trim()||null,model:document.getElementById('e-model').value.trim()||null,serial_number:document.getElementById('e-serial').value.trim()||null,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,doc_url:document.getElementById('e-doc-url').value.trim()||null,safety_notes:document.getElementById('e-safety').value.trim()||null,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required,force_off_on_close,purchase_date,value_new:value_new?parseFloat(value_new):null,owner_id:owner_id?parseInt(owner_id):null};
     const res=await PATCH(`/machines/${id}`,payload);
-    if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
+    if (res) { await _saveInvSlot(id); closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
   }, undefined, undefined, 'input', 900);
   // Nach Modal-Render: Liste und Dropdown initialisieren
   setTimeout(()=>{ _renderEditPlugList(); _refreshEditPlugDropdown(); }, 0);
+  _mountInvSlot(id);
 }
 
 function updateMcIdleRow() {
@@ -6315,7 +6320,27 @@ let _spaceName = 'Raum';
 let _currency = 'CHF';
 // Inventar-Modul: Menuepunkt nur zeigen, wenn es in den Einstellungen aktiviert ist
 let _inventoryOn = false, _hashHandled = false;
-function _applyInventoryNav(on){ _inventoryOn = !!on; const el=document.getElementById('nav-inventory'); if(el) el.style.display = on ? '' : 'none'; _openInventoryFromHash(); }
+// Begriff: «Standort» der Maschinen heisst bei aktivem Inventar «Bereich» (dieselbe Liste)
+function _locWord(plural){ return _inventoryOn ? (plural ? 'Bereiche' : 'Bereich') : (plural ? 'Standorte' : 'Standort'); }
+function _applyInventoryNav(on){
+  _inventoryOn = !!on; const el=document.getElementById('nav-inventory'); if(el) el.style.display = on ? '' : 'none';
+  try { _refreshLocFilter(); if (typeof renderMachines === 'function' && document.getElementById('page-machines')?.classList.contains('active')) { renderMachines(); document.getElementById('topbar-actions').innerHTML = pageActions.machines(); } } catch(e) {}
+  _openInventoryFromHash();
+}
+// Maschinenformular: «Steht auf» (Möbel/Ebene) kommt aus dem nachladbaren Inventar-Modul
+function _mountInvSlot(machineId){
+  if (!_inventoryOn) return;
+  const el=document.getElementById('inv-form-slot'); if (!el) return;
+  LabModules.load('inventory').then(d=>d.mountMachineSlot(el, machineId)).catch(()=>el.remove());
+}
+async function _saveInvSlot(machineId){ try { if (_inventoryOn && window.Inv) await Inv.saveFormPlacement(machineId); } catch(e) { console.error(e); } }
+// Neue Maschine: Bereich mit demselben Namen wie die Kategorie vorwählen (spart Doppelarbeit)
+function _autoArea(){
+  if (!_inventoryOn) return;
+  const loc=document.getElementById('mc-loc'), cat=document.getElementById('mc-cat'); if (!loc || !cat || loc.value) return;
+  const opt=[...loc.options].find(o=>o.value && o.value.toLowerCase()===cat.value.toLowerCase());
+  if (opt) { loc.value=opt.value; window.Inv && Inv.formAreaChanged && Inv.formAreaChanged(); }
+}
 // QR-Codes zeigen auf /inventar.html?code=ELE-M01 → leitet nach /labmanager.html#inventory/ELE-M01 weiter
 function _openInventoryFromHash(){
   if (_hashHandled || !token || !currentUser || !_inventoryOn) return;
