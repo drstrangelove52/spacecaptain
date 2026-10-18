@@ -27,6 +27,23 @@
   // ═══════════════════════════════════════════════════════
   // Styles (alles mit Präfix inv-, damit nichts im LabManager kollidiert)
   // ═══════════════════════════════════════════════════════
+  /* gemeinsame Styles der Etiketten (Vorschau und Druckfenster) */
+  const LABEL_CSS = `
+  .inv-lbl{box-sizing:border-box;background:#fff;color:#000;display:flex;gap:1.5mm;align-items:center;overflow:hidden;break-inside:avoid;page-break-inside:avoid;width:var(--lw);height:var(--lh)}
+  .inv-lbl.free{border:1px solid #888;border-top:5px solid var(--cc,#888);padding:1.5mm 2mm}
+  .inv-lbl.free img{height:calc(var(--lh) - 6mm);width:calc(var(--lh) - 6mm)}
+  .inv-lbl.sheet{position:absolute;border:0;border-top:1mm solid var(--cc,#888);padding:.8mm 1.5mm .5mm}
+  .inv-lbl.sheet img{height:calc(var(--lh) - 3.2mm);width:calc(var(--lh) - 3.2mm)}
+  .inv-lbl img{flex:none;image-rendering:pixelated}
+  .inv-lbl .t{min-width:0;display:flex;flex-direction:column;gap:.4mm}
+  .inv-lbl .c{font-family:'Share Tech Mono','Consolas','Courier New',monospace;font-weight:700;line-height:1.05;white-space:nowrap}
+  .inv-lbl .n{font-size:calc(var(--lh) * .15);line-height:1.15;overflow:hidden;max-height:calc(var(--lh) * .36)}
+  .inv-lbl .a{font-size:calc(var(--lh) * .12);color:#444}
+  .inv-sheet{position:relative;width:210mm;height:297mm;background:#fff;overflow:hidden;break-after:page;page-break-after:always}
+  .inv-cal{position:absolute;box-sizing:border-box;border:.2mm solid #000;font:2.6mm Arial,sans-serif;color:#000;padding:.6mm 1mm}
+  .inv-cal b{display:block;font-size:3.6mm}
+  `;
+
   const CSS = `
   #page-inventory .inv-tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:18px}
   #page-inventory .inv-tab{padding:10px 18px;cursor:pointer;color:var(--text-mid);font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px}
@@ -58,20 +75,17 @@
   #page-inventory .inv-lbl-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
   .inv-loc-box{border:1px solid var(--border);border-radius:6px;padding:10px 12px;background:var(--surface2)}
   .inv-loc-box .form-row{margin-top:8px}
-  .inv-lbl{width:var(--lw,60mm);height:var(--lh,30mm);border:1px solid #888;border-top:5px solid var(--cc,#888);display:flex;gap:2mm;align-items:center;padding:1.5mm 2mm;background:#fff;color:#000;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
-  .inv-lbl img{height:calc(var(--lh,30mm) - 6mm);width:calc(var(--lh,30mm) - 6mm);flex:none;image-rendering:pixelated}
-  .inv-lbl .t{min-width:0;display:flex;flex-direction:column;gap:.5mm}
-  .inv-lbl .c{font-family:'Share Tech Mono',monospace;font-weight:700;line-height:1.05;white-space:nowrap}
-  .inv-lbl .n{font-size:calc(var(--lh,30mm) * .15);line-height:1.15;overflow:hidden;max-height:calc(var(--lh,30mm) * .4)}
-  .inv-lbl .a{font-size:calc(var(--lh,30mm) * .12);color:#444}
-  #inv-print{display:none}
-  @media print{
-    body.inv-printing{background:#fff!important;color:#000!important}
-    body.inv-printing>*:not(#inv-print){display:none!important}
-    body.inv-printing #inv-print{display:block}
-    body.inv-printing .inv-lbl{border-color:#000}
-    @page{margin:8mm}
-  }`;
+  #page-inventory .inv-labelopts{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+  #page-inventory .inv-labelopts .form-group{margin:0}
+  #page-inventory .inv-labelopts input[type=number]{width:96px}
+  #page-inventory .inv-sheetrow{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-top:12px}
+  #page-inventory .inv-sheetwrap{position:relative;flex:none;box-shadow:0 2px 12px rgba(0,0,0,.35);background:#fff;overflow:hidden}
+  #page-inventory .inv-sheetwrap .inv-sheet{transform-origin:0 0}
+  #page-inventory .inv-sheetwrap .inv-lbl{outline:.2mm dashed #c4c4c4}
+  #page-inventory .inv-sheetwrap .inv-lbl.skip{outline:.2mm dashed #e0b4b4;background:repeating-linear-gradient(45deg,#fff,#fff 1mm,#f1e6e6 1mm,#f1e6e6 2mm)}
+  #page-inventory .inv-freegrid{display:flex;flex-wrap:wrap;gap:2mm;margin-top:12px}
+  ${LABEL_CSS}
+`;
 
   function ensureStyle() {
     if (document.getElementById('inv-style')) return;
@@ -132,14 +146,22 @@
       <div class="inv-toolbar">
         <select class="filter-input" id="inv-l-area" onchange="Inv.loadLabels()"></select>
         <span class="inv-chip" id="inv-chip-outdated" onclick="Inv.toggleOutdated()">Nur veraltete</span>
-        <select class="filter-input" id="inv-l-size" onchange="Inv.renderLabels()">
-          <option value="60,30">Klein 60 × 30 mm</option><option value="90,50">Mittel 90 × 50 mm</option><option value="100,60">Gross 100 × 60 mm</option>
-        </select>
         <span class="inv-chip on" id="inv-chip-levels" onclick="Inv.toggleLevels()">Mit Ebenen</span>
+      </div>
+      <div class="inv-labelopts">
+        <div class="form-group"><label class="form-label">Vorlage</label>
+          <select class="form-input" id="inv-l-tpl" onchange="Inv.setTemplate()"></select></div>
+        <div class="form-group inv-sheet-only"><label class="form-label" title="Für angebrochene Bögen: das erste freie Etikett">Beginnen bei Nr.</label>
+          <input class="form-input" id="inv-l-start" type="number" min="1" value="1" onchange="Inv.renderLabels()"></div>
+        <div class="form-group inv-sheet-only"><label class="form-label" title="Korrektur, falls der Druck leicht verschoben ist (+ = nach rechts)">Versatz X (mm)</label>
+          <input class="form-input" id="inv-l-offx" type="number" step="0.1" value="0" onchange="Inv.offsetChanged()"></div>
+        <div class="form-group inv-sheet-only"><label class="form-label" title="+ = nach unten">Versatz Y (mm)</label>
+          <input class="form-input" id="inv-l-offy" type="number" step="0.1" value="0" onchange="Inv.offsetChanged()"></div>
+        <button class="btn btn-ghost inv-sheet-only" onclick="Inv.printCalibration()" title="Raster auf normales Papier drucken und gegen das Licht über einen Etikettenbogen halten">📐 Testbogen</button>
         <button class="btn btn-primary" onclick="Inv.printLabels()">🖨️ Drucken</button>
       </div>
-      <div class="inv-hint">Je Möbel ein Etikett (der QR-Code führt zum Inhalt), optional je Ebene ein kleines. Nach dem Drucken «Als gedruckt markieren».</div>
-      <div class="inv-lbl-grid" id="inv-labels-preview"></div>
+      <div class="inv-hint" id="inv-l-hint"></div>
+      <div class="inv-sheetrow" id="inv-labels-preview"></div>
       <div style="margin-top:14px"><button class="btn btn-ghost" onclick="Inv.markPrinted()">✓ Angezeigte als gedruckt markieren</button></div>
     </div>
 
@@ -158,9 +180,7 @@
       </div>
       <div id="inv-import-result" style="margin-top:14px"></div>
     </div>`;
-    if (!document.getElementById('inv-print')) {
-      const pa = document.createElement('div'); pa.id = 'inv-print'; document.body.appendChild(pa);
-    }
+    initLabelControls();
   }
 
   async function show() {
@@ -545,6 +565,46 @@
   // ═══════════════════════════════════════════════════════
   // Etiketten
   // ═══════════════════════════════════════════════════════
+  // Vorlagen. «sheet» = vorgeschnittener A4-Bogen mit festem Raster, sonst Einzeletiketten (Fliesslayout).
+  // Raster Avery L6009 / L4736 / L6040 (45,7 × 21,2 mm, 4 × 12): Drittquelle mr-label.com (MR109) —
+  // am echten Bogen mit dem Testbogen prüfen und bei Bedarf über «Versatz» korrigieren.
+  const TEMPLATES = {
+    avery: { name: 'Avery Zweckform L6009 · 45,7 × 21,2 mm · 48 pro Bogen', sheet: true,
+             w: 45.7, h: 21.2, cols: 4, rows: 12, left: 9.85, top: 21.3, pitchX: 48.2, pitchY: 21.2 },
+    f60:   { name: 'Einzeletiketten 60 × 30 mm', sheet: false, w: 60, h: 30 },
+    f90:   { name: 'Einzeletiketten 90 × 50 mm', sheet: false, w: 90, h: 50 },
+    f100:  { name: 'Einzeletiketten 100 × 60 mm', sheet: false, w: 100, h: 60 },
+  };
+  const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* ohne Speicher weiter */ } };
+  let tplKey = lsGet('inv_label_tpl', 'avery');
+  if (!TEMPLATES[tplKey]) tplKey = 'avery';
+  const tpl = () => TEMPLATES[tplKey];
+  const PREVIEW_SCALE = 0.42;
+
+  function initLabelControls() {
+    const sel = $('l-tpl');
+    sel.innerHTML = Object.entries(TEMPLATES).map(([k, t]) => `<option value="${k}">${esc(t.name)}</option>`).join('');
+    sel.value = tplKey;
+    $('l-offx').value = lsGet('inv_label_offx', '0');
+    $('l-offy').value = lsGet('inv_label_offy', '0');
+    applyTemplateUi();
+  }
+  function applyTemplateUi() {
+    const t = tpl();
+    root.querySelectorAll('.inv-sheet-only').forEach(e => { e.style.display = t.sheet ? '' : 'none'; });
+    if (t.sheet) $('l-start').max = t.cols * t.rows;
+    $('l-hint').innerHTML = t.sheet
+      ? `<b>Vorgeschnittene Bögen (A4, ${t.cols * t.rows} Etiketten).</b> Je Möbel ein Etikett (der QR-Code führt zum Inhalt), optional je Ebene ein kleines.
+         Druckdialog: Papier <b>A4</b>, Skalierung <b>100 % / «Tatsächliche Grösse»</b> (nicht «Anpassen»), Kopf- und Fusszeilen <b>aus</b>, Ränder <b>keine</b>.
+         Typenschild-Etiketten L6009 sind für Laserdrucker gedacht. Vor dem ersten Druck den <b>Testbogen</b> auf normales Papier drucken und gegen das Licht über einen Etikettenbogen halten;
+         sitzt das Raster nicht genau, den Versatz einstellen.`
+      : 'Einzeletiketten zum Ausschneiden (mit Rahmen). Nach dem Drucken «Als gedruckt markieren».';
+  }
+  function setTemplate() { tplKey = $('l-tpl').value; lsSet('inv_label_tpl', tplKey); applyTemplateUi(); renderLabels(); }
+  function offsetChanged() { lsSet('inv_label_offx', $('l-offx').value); lsSet('inv_label_offy', $('l-offy').value); renderLabels(); }
+  const num = (id, d = 0) => { const v = parseFloat($(id).value); return isNaN(v) ? d : v; };
+
   function toggleOutdated() { labelOutdatedOnly = !labelOutdatedOnly; $('chip-outdated').classList.toggle('on', labelOutdatedOnly); loadLabels(); }
   function toggleLevels() { labelWithLevels = !labelWithLevels; $('chip-levels').classList.toggle('on', labelWithLevels); renderLabels(); }
   async function loadLabels() {
@@ -554,47 +614,112 @@
     const r = await GET('/inventory/labels?' + p);
     if (r) { labelData = r; renderLabels(); }
   }
+
   function qrUrl(code) {
     const target = `${location.origin}/inventar.html?code=${encodeURIComponent(code)}`;
-    return `/api/qr/url-png?u=${encodeURIComponent(target)}`;
+    return `${location.origin}/api/qr/url-png?u=${encodeURIComponent(target)}`;
   }
-  function codeFontMm(code) {
-    // Platz fuer den Text = Etikettbreite - QR - Raender; Monospace-Zeichen ~0.62 em breit
-    const [w, h] = $('l-size').value.split(',').map(Number);
-    const avail = w - (h - 6) - 8;
-    return Math.max(2.5, Math.min(h * 0.26, avail / (code.length * 0.62)));
-  }
-  function labelHtml(code, name, area, color, small) {
-    return `<div class="inv-lbl" style="--cc:${esc(color || '#888')}">
-      <img src="${qrUrl(code)}" alt="">
-      <div class="t"><div class="c" style="font-size:${codeFontMm(code).toFixed(2)}mm">${esc(code)}</div><div class="n">${esc(name)}</div>${small ? '' : `<div class="a">${esc(area)}</div>`}</div>
-    </div>`;
-  }
-  function labelsMarkup() {
+  function labelItems() {
     const out = [];
     for (const f of labelData) {
-      out.push(labelHtml(f.code, f.name, f.area, f.color));
-      if (labelWithLevels) for (const l of f.levels) out.push(labelHtml(l.code, l.label || ('Ebene ' + l.number), f.area, f.color, true));
+      out.push({ code: f.code, name: f.name, area: f.area, color: f.color, small: false });
+      if (labelWithLevels) for (const l of f.levels) out.push({ code: l.code, name: l.label || ('Ebene ' + l.number), area: f.area, color: f.color, small: true });
     }
-    return out.join('');
+    return out;
   }
+  // Schriftgrösse (mm) so wählen, dass der Code neben dem QR-Code Platz hat
+  function codeFontMm(code, t) {
+    const qr = t.sheet ? t.h - 3.2 : t.h - 6;
+    const avail = t.w - qr - (t.sheet ? 3 : 4) - 1.5;
+    return Math.max(2.4, Math.min(t.h * 0.26, avail / (code.length * 0.62)));
+  }
+  function labelHtml(it, t, extraStyle, cls) {
+    return `<div class="inv-lbl ${cls}" style="--cc:${esc(it.color || '#888')};--lw:${t.w}mm;--lh:${t.h}mm;${extraStyle || ''}">
+      <img src="${qrUrl(it.code)}" alt="">
+      <div class="t"><div class="c" style="font-size:${codeFontMm(it.code, t).toFixed(2)}mm">${esc(it.code)}</div><div class="n">${esc(it.name)}</div>${it.small || t.sheet ? '' : `<div class="a">${esc(it.area)}</div>`}</div>
+    </div>`;
+  }
+  // Bögen: Etiketten auf Seiten verteilen; auf der ersten Seite ab der gewählten Startposition
+  function sheetPages(items, t, withSkips) {
+    const per = t.cols * t.rows;
+    const start = Math.min(Math.max(1, Math.round(num('l-start', 1))), per) - 1;
+    const pages = [];
+    let cur = [], slot = start;
+    for (let i = 0; i < start && withSkips; i++) cur.push({ skip: true, slot: i });
+    for (const it of items) {
+      if (slot >= per) { pages.push(cur); cur = []; slot = 0; }
+      cur.push({ it, slot });
+      slot++;
+    }
+    if (cur.length) pages.push(cur);
+    return pages;
+  }
+  function slotStyle(t, slot) {
+    const c = slot % t.cols, r = Math.floor(slot / t.cols);
+    const x = t.left + c * t.pitchX + num('l-offx'), y = t.top + r * t.pitchY + num('l-offy');
+    return `left:${x.toFixed(2)}mm;top:${y.toFixed(2)}mm;`;
+  }
+  function sheetHtml(page, t, preview) {
+    return `<div class="inv-sheet">${page.map(p => p.skip
+      ? (preview ? `<div class="inv-lbl sheet skip" style="--lw:${t.w}mm;--lh:${t.h}mm;${slotStyle(t, p.slot)}"></div>` : '')
+      : labelHtml(p.it, t, slotStyle(t, p.slot), 'sheet')).join('')}</div>`;
+  }
+  function calibrationHtml(t) {
+    const cells = [];
+    for (let i = 0; i < t.cols * t.rows; i++) {
+      cells.push(`<div class="inv-cal" style="${slotStyle(t, i)}width:${t.w}mm;height:${t.h}mm"><b>${i + 1}</b>${t.w} × ${t.h} mm</div>`);
+    }
+    return `<div class="inv-sheet">${cells.join('')}</div>`;
+  }
+
   function renderLabels() {
-    const [w, h] = $('l-size').value.split(',');
-    const box = $('labels-preview');
-    box.style.setProperty('--lw', w + 'mm'); box.style.setProperty('--lh', h + 'mm');
-    document.getElementById('inv-print').style.cssText = `--lw:${w}mm;--lh:${h}mm`;
-    box.innerHTML = labelData.length ? labelsMarkup() : '<div class="inv-empty" style="width:100%">Keine Etiketten (zuerst Möbel anlegen).</div>';
+    const t = tpl(), box = $('labels-preview'), items = labelItems();
+    if (!items.length) { box.innerHTML = '<div class="inv-empty" style="width:100%">Keine Etiketten (zuerst Möbel anlegen).</div>'; return; }
+    if (t.sheet) {
+      const pages = sheetPages(items, t, true);
+      const wmm = 210 * PREVIEW_SCALE, hmm = 297 * PREVIEW_SCALE;
+      box.className = 'inv-sheetrow';
+      box.innerHTML = pages.map((pg, i) => `<div><div class="inv-dim inv-small" style="margin-bottom:4px">Bogen ${i + 1} von ${pages.length}</div>
+        <div class="inv-sheetwrap" style="width:${wmm}mm;height:${hmm}mm"><div style="transform:scale(${PREVIEW_SCALE});transform-origin:0 0;width:210mm;height:297mm">${sheetHtml(pg, t, true)}</div></div></div>`).join('');
+    } else {
+      box.className = 'inv-freegrid';
+      box.innerHTML = items.map(it => labelHtml(it, t, '', 'free')).join('');
+    }
+  }
+
+  // Druck in einem unsichtbaren iframe: eigene Seitenregeln (@page), kein Einfluss auf den LabManager
+  function printInFrame(bodyHtml, pageCss) {
+    const f = document.createElement('iframe');
+    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    document.body.appendChild(f);
+    const d = f.contentDocument;
+    d.open();
+    d.write(`<!doctype html><html><head><meta charset="utf-8"><title>Etiketten</title>
+      <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+      <style>html,body{margin:0;padding:0;background:#fff}${LABEL_CSS}${pageCss}</style></head><body>${bodyHtml}</body></html>`);
+    d.close();
+    const waitImgs = Promise.all([...d.images].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })));
+    const timeout = (ms) => new Promise(r => setTimeout(r, ms));
+    Promise.race([Promise.all([waitImgs, d.fonts ? d.fonts.ready : 0]), timeout(6000)]).then(() => {
+      f.contentWindow.focus();
+      f.contentWindow.print();
+      setTimeout(() => f.remove(), 120000);
+    });
   }
   function printLabels() {
-    if (!labelData.length) { showToast('Keine Etiketten zum Drucken', 'error'); return; }
-    const pa = document.getElementById('inv-print');
-    pa.innerHTML = `<div class="inv-lbl-grid">${labelsMarkup()}</div>`;
-    const imgs = [...pa.querySelectorAll('img')];
-    Promise.all(imgs.map(i => i.complete ? Promise.resolve() : new Promise(r => { i.onload = i.onerror = r; }))).then(() => {
-      document.body.classList.add('inv-printing');
-      window.addEventListener('afterprint', () => document.body.classList.remove('inv-printing'), { once: true });
-      window.print();
-    });
+    const t = tpl(), items = labelItems();
+    if (!items.length) { showToast('Keine Etiketten zum Drucken', 'error'); return; }
+    if (t.sheet) {
+      const pages = sheetPages(items, t, false);
+      printInFrame(pages.map(pg => sheetHtml(pg, t, false)).join(''), '@page{size:A4;margin:0}');
+    } else {
+      printInFrame(`<div class="inv-freegrid" style="display:flex;flex-wrap:wrap;gap:2mm">${items.map(it => labelHtml(it, t, '', 'free')).join('')}</div>`, '@page{size:A4;margin:8mm}');
+    }
+  }
+  function printCalibration() {
+    const t = tpl();
+    if (!t.sheet) return;
+    printInFrame(calibrationHtml(t), '@page{size:A4;margin:0}');
   }
   async function markPrinted() {
     const ids = labelData.map(f => f.furniture_id);
@@ -629,7 +754,7 @@
     locAreaChanged, locFurnChanged, locLvlChanged, syncCodeField, applyCodeField,
     toggleArea, toggleFurn, gotoItems, openAreaModal, suggestAreaCode, assignMissingCodes,
     openFurnModal, deleteFurn, addLevels, addPositions, renameLevel, renamePos, deleteLevel, deletePos,
-    toggleOutdated, toggleLevels, loadLabels, renderLabels, printLabels, markPrinted, runImport,
+    toggleOutdated, toggleLevels, loadLabels, renderLabels, printLabels, printCalibration, setTemplate, offsetChanged, markPrinted, runImport,
   };
 
   LabModules.register('inventory', { title: 'Inventar', mount, show });

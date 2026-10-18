@@ -240,8 +240,8 @@ Display und Gast-Dashboard zählt hier der Inventargedanke.
     `escHtml`, `currentUser`, `_isPowerPlus()`), also gleiches Aussehen, gleiche Anmeldung, gleiches
     Hell/Dunkel. Alle Namen liegen im Namensraum `Inv`, alle CSS-Klassen tragen das Präfix `inv-`.
   - Cache: Das Skript wird mit `?v=<Build-Nummer>` geladen.
-  - **Druck:** Etiketten werden nur gedruckt, wenn `body.inv-printing` gesetzt ist; die Druck-CSS
-    verändert das Drucken anderer Seiten nicht.
+  - **Etikettendruck:** Gedruckt wird in einem unsichtbaren `iframe` mit eigenen Seitenregeln
+    (`@page`); das Drucken anderer LabManager-Seiten bleibt unberührt.
 - **`frontend/inventar.html`** ist nur noch ein Einsprung: QR-Codes auf Schränken zeigen auf
   `/inventar.html?code=EL-S1`, das nach `/labmanager.html#inventory/EL-S1` weiterleitet (Inhalt des
   Schranks gefiltert). In Etappe 3 wird daraus die schlanke Gäste-Seite ohne Sidebar.
@@ -274,6 +274,25 @@ Regel: nur auslagern, wenn man dort ohnehin etwas ändert; je Bereich ein eigene
 Bereichen genügt es, den Code unverändert zu verschieben (Funktionen bleiben global, `onclick`
 funktioniert weiter); zu prüfen sind Funktionen, die der Kern vor dem Nachladen aufruft (z.B.
 `loadPlugs()` beim Start).
+
+## 7b. Etiketten und Vorlagen
+
+Standard sind **vorgeschnittene A4-Bögen** (Avery Zweckform Typenschild-Etiketten L6009-20,
+45,7 × 21,2 mm, 4 × 12 = 48 pro Bogen; dasselbe Raster haben L4736 und L6040).
+
+- **Vorlagen** sind in `modules/inventory.js` (`TEMPLATES`) als Daten beschrieben (Etikettgrösse, Spalten,
+  Zeilen, Rand links/oben, Abstand). Weitere Bögen lassen sich durch einen Eintrag ergänzen. Daneben
+  gibt es Einzeletiketten zum Ausschneiden (60×30, 90×50, 100×60 mm).
+- **Raster L6009:** links 9,85 mm, oben 21,3 mm, Spaltenabstand 48,2 mm, Zeilenabstand 21,2 mm
+  (Quelle: Datenblatt eines kompatiblen Herstellers, mr-label.com MR109; symmetrisch zentriert auf A4).
+  **Nicht an einem Originalbogen verifiziert** — darum gibt es den **Testbogen** (Raster mit
+  Nummern 1–48 auf normales Papier drucken, gegen das Licht über den Bogen halten) und einen
+  einstellbaren **Versatz X/Y** (wird im Browser gemerkt).
+- **Startposition:** «Beginnen bei Nr.» erlaubt, angebrochene Bögen weiterzuverwenden.
+- **Inhalt je Etikett:** QR-Code (führt zum Inhalt des Möbels/der Ebene), Code in Grossschrift
+  (Schriftgrösse passt sich der Codelänge an), Name; Farbbalken des Bereichs.
+- **Druckdialog:** Papier A4, Skalierung 100 % («Tatsächliche Grösse»), Kopf-/Fusszeilen aus, Ränder keine.
+  L6009 ist für Laserdrucker gedacht.
 
 ## 8. Backup
 
@@ -364,7 +383,8 @@ Freigabe von Martin.
    Verzicht in Etappe 1.
 2. ~~Positionen ohne Fachteiler~~ → entschieden: 0-Regel (`P0`), siehe Abschnitt 3.
 3. ~~Token-Teilung~~ → erledigt: Das Modul läuft im LabManager und teilt dessen Anmeldung.
-4. **Etiketten:** Format und Grösse (Brother/Dymo, A4-Bogen)? Bestimmt das Druck-CSS.
+4. ~~Etiketten: Format und Grösse~~ → entschieden: vorgeschnittene A4-Bögen (Avery L6009-20), siehe 7b.
+   Offen: Raster am echten Bogen bestätigen.
 5. **Verbrauchsmaterial und Akkus:** Die vorhandene Akku-Verwaltung (`batteries`, eigene
    Seite unter AUSSTATTUNG) bleibt getrennt. Sollen Akkus später auch einen Lagerort
    bekommen (`position_id` an `batteries`)? Da Akkus als loser Pool gelten,
