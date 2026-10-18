@@ -488,6 +488,24 @@ Ordnungsmerkmal:
 - **Tests:** `tests/test_inventory_public.py` (Suche ohne Login, Code-Ansicht mit Maschinen, Verbergen von Ausgemustertem,
   404 bei ausgeschaltetem Modul).
 
+## 11e. Abgrenzung Maschine / Werkzeug, Buchhaltungsfelder
+
+**Entscheidung (Martin, 2026-10-19):** Ein Gerät ist entweder **Maschine** oder **Werkzeug**, nie beides. Massgebend ist, ob es
+einen **Standort** (steht/hängt fest, Bereich, ggf. Möbel und Ebene) oder einen **Platz** (liegt im Schrank, gehört dorthin
+zurück, Etikett mit QR) hat. Typisch für Maschinen sind Einweisung, Smart Plug und Wartungsintervall, für Werkzeug fehlen sie
+und es gibt oft mehrere Stück. **Versicherung gehört nicht zur Abgrenzung:** Ein versicherter Akkuschrauber ohne Einweisung
+mit festem Schrankplatz bleibt Werkzeug.
+
+Dafür tragen Werkzeuge dieselben **optionalen Buchhaltungsfelder** wie Maschinen (Migration v1.54, `inv_items`):
+`serial_number`, `purchase_date`, `value_new` (Neuwert **je Stück**), `owner_id` (→ `machine_owners`, ohne DB-FK, wie alle
+Verweise im Modul). API: `ItemCreate`/`ItemUpdate`, Filter `GET /inventory/items?valued=true` (nur mit Neuwert). Die
+**Inventarliste** (Maschinen-Seite, CSV und Druck) enthält Maschinen und Werkzeug mit Neuwert (Wert = Neuwert × Menge, Kategorie
+«Werkzeug»). Im Backup stehen die Felder je Werkzeug (`owner` als Name, `purchase_date` ISO); ältere Backups ohne die Felder
+bleiben importierbar. Auf der öffentlichen Gäste-Seite sind sie nie sichtbar.
+
+Verworfen: Maschinen ebenfalls mit Platz und Etikett auszustatten. Dann wären beide Arten praktisch gleich und die Trennung
+überflüssig.
+
 ## 12. Offene Punkte
 
 1. **Fotos:** Wo liegen die Bilder (eigenes Volume `inventory_media`)? JSON-Backup enthält

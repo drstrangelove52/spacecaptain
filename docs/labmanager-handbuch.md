@@ -11,6 +11,7 @@ Dieses Handbuch richtet sich an **Lab Manager** und **Administratoren**, die das
 3. [Gäste verwalten](#3-gäste-verwalten)
 4. [Lab Manager verwalten](#4-lab-manager-verwalten)
 5. [Maschinen verwalten](#5-maschinen-verwalten)
+   - [5a. Inventar & Standorte](#5a-inventar--standorte)
 6. [Berechtigungen](#6-berechtigungen)
 7. [QR-System](#7-qr-system)
 8. [Aktivitätslog](#8-aktivitätslog)
@@ -188,9 +189,9 @@ Jede Maschine wird als Karte angezeigt mit:
 1. **+ Maschine anlegen** klicken
 2. Grunddaten ausfüllen:
    - **Name** *(Pflichtfeld)*
-   - **Kategorie**
+   - **Kategorie** — entfällt bei aktivem Inventar-Modul (ergibt sich aus dem Standort, siehe [5a](#5a-inventar--standorte))
    - **Hersteller** / **Modell** *(optional)*
-   - **Standort** *(optional)* — z. B. "Raum A, links"
+   - **Standort** *(optional)* — z. B. "Raum A, links"; bei aktivem Inventar-Modul der **Bereich**, optional mit Möbel und Ebene
    - **Status** — Online / Offline / Wartung
    - **Kommentar** *(optional)* — Wird dem Gast bei der Anmeldung angezeigt (z. B. Sicherheitshinweise)
 3. **Smart Plug** konfigurieren (optional, siehe [Smarte Steckdosen](#14-smarte-steckdosen))
@@ -216,6 +217,79 @@ Jede Maschine hat einen eindeutigen QR-Token. Über **QR erneuern** wird ein neu
 ### Maschine löschen
 
 Löscht die Maschine dauerhaft. Alle zugehörigen Berechtigungen werden ebenfalls gelöscht. Aktivitätslogs und Sitzungsaufzeichnungen bleiben erhalten.
+
+---
+
+## 5a. Inventar & Standorte
+
+Das optionale **Inventar-Modul** beantwortet zwei Fragen: *«Wo ist …?»* (Gäste finden Werkzeug und Maschinen selbst) und *«Wohin gehört …?»* (Werkzeug landet nicht im falschen Schrank). Es wird von einem **Admin** unter Einstellungen → System → **Inventar-Modul** eingeschaltet; danach erscheint in der Sidebar der Punkt **Inventar**. Ausgeschaltet bleibt alles unsichtbar.
+
+### Maschine oder Werkzeug?
+
+Jedes Gerät steht entweder als **Maschine** oder als **Werkzeug** im System, nie doppelt. Die Trennung hängt an der Frage, ob es einen *Standort* oder einen *Platz* hat:
+
+| | Maschine | Werkzeug |
+|---|---|---|
+| Wo? | **Standort**: steht oder hängt fest (Bereich, ggf. auf Tisch/Regal und Ebene) | **Platz**: liegt im Schrank und gehört dorthin zurück |
+| Etikett | kein Etikett-Code | Etikett mit Code und QR («gehört nach …») |
+| Typisch | Einweisung, Smart Plug, Wartungsintervall | keine Einweisung, oft mehrere Stück |
+| Erfasst unter | Sidebar → Maschinen | Inventar → Werkzeug |
+
+**Versichern ist ein eigenes Thema:** Kaufdatum, Neuwert, Seriennummer und Eigentümer lassen sich bei beiden erfassen. Beim Werkzeug sind sie optional (Formularabschnitt «Buchhaltung / Versicherung»), z. B. für einen versicherten Akkuschrauber. Der Neuwert gilt **je Stück**; solche Geräte werden einzeln geführt, nicht als Sammelmenge. Die **📋 Inventarliste** (Maschinen-Seite) enthält Maschinen **und** Werkzeug mit Neuwert, mit Summe.
+
+**Faustregel für Handgeräte** (Akkuschrauber, Stichsäge, Lötstation): ohne Einweisung und mit festem Schrankplatz ist es Werkzeug; braucht es Einweisung, Plug oder Wartungsintervall, ist es eine Maschine.
+
+### Der Code
+
+Ein Code beschreibt einen Ort von gross nach klein, z. B. `ELE-M02-E03-P04`:
+
+| Teil | Bedeutung |
+|---|---|
+| `ELE` | **Bereich** (genau 3 Zeichen, z. B. Elektronik) |
+| `M02` | **Möbel** 2: Schrank, Regal, Werkzeugwand oder Tisch |
+| `E03` | **Ebene** 3, von oben nach unten gezählt |
+| `P04` | **Platz** 4, von links nach rechts gezählt |
+
+Alle Nummern sind zweistellig. **00** heisst «nicht unterteilt oder noch nicht festgelegt» (`M00` = im Bereich ohne Möbel, `E00` = Ebene offen, `P00` = kein fester Platz). Auf Etiketten entfallen abschliessende Nullen; `ELE-M02` steht für das ganze Möbel.
+
+### Einrichten *(Power-Manager und Admin)*
+
+1. **Bereiche** sind die bisherigen Standorte (dieselbe Liste, Maschinen → **⚙ Bereiche**). Jeder Bereich braucht ein **Kürzel** aus 3 Zeichen (wird vorgeschlagen) und kann eine Farbe haben. Ein geändertes Kürzel ändert alle Codes darunter; die Etiketten gelten dann als «veraltet».
+2. Inventar → **Struktur** → **+ Möbel**: Art, Name und Anzahl Ebenen/Plätze angeben.
+3. Löschen ist nur möglich, wenn nichts mehr daran hängt.
+
+### Werkzeug erfassen
+
+Inventar → **Werkzeug** → **+ Werkzeug**: Name, Synonyme (z. B. «Bohrschrauber»), Menge, Status (aktiv, defekt, ausgemustert), Standort (Code tippen oder Bereich → Möbel → Ebene → Platz wählen), Beschreibung. Mehrere auf einmal: Inventar → **Import** (eine Zeile pro Werkzeug: `Name ; Synonyme ; Code ; Menge`, aus Excel einfügbar, mit «Prüfen» vorab).
+
+### Maschinen: Standort statt Kategorie
+
+Bei aktivem Inventar ersetzt der **Bereich** die Kategorie:
+
+- Im Maschinenformular gibt es nur den **Standort** (Bereich, optional Möbel und Ebene, mit Code).
+- Die **Kategorie** wird automatisch abgeleitet (gleicher Name wie der Bereich, ohne Bereich «Sonstiges»). **⚙ Kategorien** und der Kategoriefilter entfallen.
+- Einen Bereich **umzubenennen** zieht Maschinen und Kategorie mit; ihn zu **löschen** setzt seine Maschinen auf «Sonstiges».
+- Inventar → **Maschinen** zeigt alle Maschinen mit Standort und erlaubt das schnelle Umstellen (auch «Ohne Bereich»).
+- Beim Ausschalten des Moduls erscheinen Kategorie und einfaches Standort-Dropdown wieder; die zuletzt abgeleiteten Kategorien bleiben bestehen.
+
+### Etiketten
+
+Inventar → **Etiketten**: links die Auswahl (Möbel und Ebenen oder Werkzeug) mit **Anzahl**, rechts Vorlage und Vorschau. Vorbereitet ist der **Avery Zweckform L6009-20** (45,7 × 21,2 mm, 48 pro A4-Bogen, Laserdrucker); über die Startposition lassen sich angefangene Bögen weiterverwenden. Drucken in A4 mit 100 % Skalierung, ohne Kopf-/Fusszeilen und Ränder. Vor dem ersten Druck den **Testbogen** auf normales Papier drucken, gegen das Licht über einen Etikettenbogen halten und bei Bedarf den **Versatz X/Y** einstellen. Neue oder geänderte Möbel sind als «Etikett neu/veraltet» markiert.
+
+Der QR-Code führt Gäste zur Seite des Ortes bzw. des Werkzeugs («gehört nach …»); er bleibt nach dem Umlagern gültig.
+
+### Gäste-Seite «Wo ist …?»
+
+`/inventar.html` ist eine schlanke Seite **ohne Anmeldung** (zusätzlich als «🔎 Wo ist …?» in der Gast-App). Sie zeigt nur Name, Beschreibung, Menge, Status und Standort; ausgemustertes Werkzeug ist verborgen, Maschinen erscheinen ohne Status, Plug oder Seriennummer, Buchhaltungsfelder nie. Ist das Modul ausgeschaltet, antwortet sie mit «nicht aktiviert».
+
+### Rechte im Inventar
+
+| Funktion | Manager | Power-Manager | Admin |
+|---|:---:|:---:|:---:|
+| Suchen, ansehen | ✅ | ✅ | ✅ |
+| Werkzeug anlegen, bearbeiten, umlagern, importieren | ✅ | ✅ | ✅ |
+| Bereiche, Möbel, Ebenen, Plätze; Maschinen einem Standort zuweisen | ❌ | ✅ | ✅ |
+| Modul ein-/ausschalten | ❌ | ❌ | ✅ |
 
 ---
 
@@ -328,6 +402,8 @@ Das Aktivitätslog ist das vollständige Protokoll aller Systemereignisse.
 | `machine_created` / `machine_deleted` | Maschine angelegt / gelöscht |
 | `login` / `guest_login` | Lab-Manager- / Gast-Anmeldung |
 | `maintenance_due` / `maintenance_done` | Wartung fällig / durchgeführt |
+| `inventory_*` | Inventar: Bereich, Möbel, Ebene bzw. Werkzeug angelegt, geändert, gelöscht, umgelagert oder importiert |
+| `machine_area_changed` | Maschine in einen anderen Bereich (Standort) verschoben |
 | `error` | Systemfehler |
 
 ---
@@ -434,6 +510,8 @@ Die Backup-Datei enthält:
 - Sitzungsaufzeichnungen
 - Komplettes Aktivitätslog
 - Wartungsintervalle und -protokolle
+- Kategorien, Standorte (Bereiche), Eigentümer und Akkus
+- Inventar (Möbel, Ebenen, Werkzeug mit Buchhaltungsfeldern, Standorte der Maschinen)
 
 ### Import (Wiederherstellung)
 
@@ -481,16 +559,21 @@ Der Update-Watcher muss einmalig auf dem Host eingerichtet sein (siehe [README �
 
 ## 13. Rollen und Rechte
 
-| Funktion | Manager | Admin |
-|---|---|---|
-| Gäste anzeigen / bearbeiten | ✅ | ✅ |
-| Gäste löschen | ✅ | ✅ |
-| Maschinen anzeigen / bearbeiten | ✅ | ✅ |
-| Berechtigungen verwalten | ✅ | ✅ |
-| Eigenes Profil bearbeiten | ✅ | ✅ |
-| Lab Manager anlegen / löschen | ❌ | ✅ |
-| Rollen anderer Benutzer ändern | ❌ | ✅ |
-| Backup exportieren / importieren | ❌ | ✅ |
+Es gibt drei Rollen mit aufsteigenden Rechten: **Manager** (Betrieb), **Power-Manager** (Konfiguration) und **Admin** (Systemverwaltung).
+
+| Funktion | Manager | Power-Manager | Admin |
+|---|:---:|:---:|:---:|
+| Gäste anzeigen / bearbeiten / löschen | ✅ | ✅ | ✅ |
+| Berechtigungen verwalten | ✅ | ✅ | ✅ |
+| Maschinen anzeigen und schalten | ✅ | ✅ | ✅ |
+| Maschinen anlegen / bearbeiten / löschen, CSV-Import, Kategorien, Standorte | ❌ | ✅ | ✅ |
+| Plug-Pool, Automationen, Aushänge, Wartungsintervalle, Push-Topics verwalten | ❌ | ✅ | ✅ |
+| Inventar: Werkzeug pflegen | ✅ | ✅ | ✅ |
+| Inventar: Bereiche, Möbel, Maschinen-Standorte | ❌ | ✅ | ✅ |
+| Lab Manager anlegen / löschen, Rollen ändern | ❌ | ❌ | ✅ |
+| Backup, Einstellungen (inkl. Inventar-Modul), In-App-Update | ❌ | ❌ | ✅ |
+
+Die vollständige Rechtetabelle steht in der App unter Hilfe → Rollen & Rechte.
 
 ---
 

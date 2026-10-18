@@ -14,6 +14,7 @@ Fragen oder Ideen? → [GitHub Issue erstellen](https://github.com/drstrangelove
 
 - **Gästeverwaltung** — Gäste anlegen, Selbstregistrierung mit Freischaltung, Login per Passwort oder Token-Link
 - **Maschinenverwaltung** — Maschinen mit Kategorien, Standort, Smart Plug, Leerlauf-Automatik und Betriebsstunden-Tracking
+- **Inventar & Standorte** *(optional)* — Bereiche, Möbel, Ebenen und Plätze mit Code (`ELE-M02-E03-P04`), Werkzeug- und Maschinen-Standorte, Etikettendruck (QR) auf Avery-Bögen und eine Gäste-Suche «Wo ist …?» ohne Anmeldung. Siehe [Inventar-Konzept](docs/inventar-konzept.md)
 - **Berechtigungs-Matrix** — Zugriffsrechte pro Gast und Maschine mit Sperren, Kommentaren und Verlauf
 - **QR-Code & NFC-Tags** — Maschinenfreigabe per QR- oder NFC-Scan mit dem Smartphone
 - **Leerlauf-Automatik** — Plug schaltet automatisch aus wenn die Maschine den konfigurierten Verbrauchsschwellwert unterschreitet

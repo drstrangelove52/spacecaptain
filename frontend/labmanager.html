@@ -745,7 +745,7 @@
                   <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:16px">
                     <input type="checkbox" id="cfg-inventory-enabled" style="width:auto"> Standorte &amp; Werkzeug aktivieren
                   </label>
-                  <div style="font-size:14px;color:var(--text-dim);margin-top:4px">Zeigt den Menüpunkt «Inventar» (Schränke, Ebenen, Werkzeug, Etiketten). Ausgeschaltet bleibt alles unsichtbar.</div>
+                  <div style="font-size:14px;color:var(--text-dim);margin-top:4px">Zeigt den Menüpunkt «Inventar» (Möbel, Ebenen, Werkzeug, Etiketten), nennt die Standorte «Bereiche» und leitet die Maschinen-Kategorie aus dem Bereich ab. Zusätzlich gibt es die Gäste-Suche «Wo ist …?». Ausgeschaltet bleibt alles unsichtbar. Siehe Hilfe → Inventar & Standorte.</div>
                 </div>
                 <div class="form-group" style="margin:0">
                   <label class="form-label">NFC-Schreibgerät</label>
@@ -1505,6 +1505,7 @@ sudo ./install-service.sh</pre>
             <div class="help-nav-item active" onclick="selectHelpCat('start')"><span class="help-nav-icon">🚀</span><span class="help-nav-label">Erste Schritte</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('guests')"><span class="help-nav-icon">👥</span><span class="help-nav-label">Gästeverwaltung</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('machines')"><span class="help-nav-icon">🏭</span><span class="help-nav-label">Maschinen</span></div>
+            <div class="help-nav-item" onclick="selectHelpCat('inventory')"><span class="help-nav-icon">🗄️</span><span class="help-nav-label">Inventar & Standorte</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('plugs')"><span class="help-nav-icon">🔌</span><span class="help-nav-label">Plug-Pool</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('permissions')"><span class="help-nav-icon">🔑</span><span class="help-nav-label">Berechtigungen</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('automations')"><span class="help-nav-icon">⚡</span><span class="help-nav-label">Automationen</span></div>
@@ -1684,6 +1685,7 @@ sudo ./install-service.sh</pre>
                   <li>Sidebar → <strong>Maschinen</strong> → «+ Maschine hinzufügen»</li>
                   <li>Name, Kategorie, Hersteller und Modell eingeben</li>
                   <li>Optional: Standort, Kommentar, Smart Plug konfigurieren</li>
+                  <li>Bei aktivem Inventar-Modul entfällt die Kategorie: Sie ergibt sich aus dem Standort (Bereich). Siehe <a href="#" onclick="navigateToHelp('inventory');return false">Inventar & Standorte</a>.</li>
                   <li>«Schulung erforderlich» aktivieren wenn Gäste eine explizite Berechtigung brauchen</li>
                 </ol>
                 <div class="help-tip"><strong>Tipp:</strong> Maschinen ohne «Schulung erforderlich» sind für alle aktiven Gäste automatisch zugänglich — sofern sie nicht explizit gesperrt wurden.</div>
@@ -1767,7 +1769,7 @@ sudo ./install-service.sh</pre>
             <div class="help-article">
               <div class="help-article-title">Maschinenkategorien verwalten</div>
               <div class="help-article-body">
-                Kategorien gruppieren Maschinen thematisch (z.B. Laser, CNC, 3D-Druck) und bestimmen die Anzeigereihenfolge auf der Display-Seite.
+                Kategorien gruppieren Maschinen thematisch (z.B. Laser, CNC, 3D-Druck) und bestimmen die Anzeigereihenfolge auf der Display-Seite. <em>Bei aktivem Inventar-Modul werden sie automatisch aus den Bereichen abgeleitet; «⚙ Kategorien» ist dann ausgeblendet.</em>
                 <ol style="margin-top:8px">
                   <li>Sidebar → <strong>Maschinen</strong> → «⚙ Kategorien»</li>
                   <li><strong>Neu:</strong> Name und Icon-Emoji eingeben → «Hinzufügen»</li>
@@ -1796,6 +1798,112 @@ sudo ./install-service.sh</pre>
                 </ol>
                 Beim nächsten Einschalten erscheint der Text in einem orangefarbenen Hinweis-Panel. Der Gast muss «Ich habe die Sicherheitshinweise gelesen und befolge sie» anhaken bevor der Einschaltenknopf aktiv wird.
                 <div class="help-tip"><strong>Tipp:</strong> Feld leer lassen = kein Bestätigungs-Dialog. Der normale Einschaltfluss wird nur bei befülltem Feld unterbrochen.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Inventar & Standorte ── -->
+            <div class="help-panel" id="help-panel-inventory">
+              <div class="help-panel-header"><span class="help-panel-icon">🗄️</span><span class="help-panel-title">Inventar & Standorte</span></div>
+              <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Wozu das Inventar?</div>
+              <div class="help-article-body">
+                Das Inventar beantwortet zwei Fragen: <strong>«Wo ist …?»</strong> (neue Gäste finden Werkzeug und Maschinen selbst) und
+                <strong>«Wohin gehört …?»</strong> (Werkzeug landet nicht im falschen Schrank). Dafür bekommt jeder Ort einen kurzen Code, den du auf Etiketten druckst.
+                <ol style="margin-top:8px">
+                  <li>Ein <strong>Admin</strong> aktiviert das Modul unter Einstellungen → System → «Inventar-Modul».</li>
+                  <li>Danach erscheint in der Sidebar der Punkt <strong>Inventar</strong>. Ausgeschaltet bleibt alles unsichtbar.</li>
+                  <li>Die bisherigen «Standorte» der Maschinen heissen dann <strong>Bereiche</strong> (dieselbe Liste).</li>
+                </ol>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Maschine oder Werkzeug?</div>
+              <div class="help-article-body">
+                Jedes Gerät steht entweder als <strong>Maschine</strong> oder als <strong>Werkzeug</strong> im System, nie doppelt. Die Trennung hängt an der Frage, ob es einen <em>Standort</em> oder einen <em>Platz</em> hat:
+                <table style="width:100%;border-collapse:collapse;font-size:14px;margin:10px 0">
+                  <thead><tr style="border-bottom:1px solid var(--border);text-align:left"><th style="padding:6px 8px"></th><th style="padding:6px 8px">Maschine</th><th style="padding:6px 8px">Werkzeug</th></tr></thead>
+                  <tbody>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Wo?</td><td style="padding:6px 8px"><strong>Standort</strong>: steht oder hängt fest (Bereich, ggf. auf Tisch/Regal und Ebene)</td><td style="padding:6px 8px"><strong>Platz</strong>: liegt im Schrank und gehört dorthin zurück</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Etikett</td><td style="padding:6px 8px">kein Etikett-Code</td><td style="padding:6px 8px">Etikett mit Code und QR («gehört nach …»)</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Typisch</td><td style="padding:6px 8px">Einweisung, Smart Plug, Wartungsintervall</td><td style="padding:6px 8px">keine Einweisung, oft mehrere Stück</td></tr>
+                    <tr><td style="padding:6px 8px">Erfasst unter</td><td style="padding:6px 8px">Sidebar → Maschinen</td><td style="padding:6px 8px">Inventar → Werkzeug</td></tr>
+                  </tbody>
+                </table>
+                <strong>Versichern ist ein eigenes Thema:</strong> Kaufdatum, Neuwert, Seriennummer und Eigentümer kannst du bei beiden erfassen. Beim Werkzeug sind sie optional («Buchhaltung / Versicherung» im Formular), z.B. für einen versicherten Akkuschrauber. Der Neuwert gilt <strong>je Stück</strong>; führe solche Geräte einzeln, nicht als Sammelmenge. Die «📋 Inventarliste» unter Maschinen enthält Maschinen <strong>und</strong> Werkzeug mit Neuwert.
+                <div class="help-tip"><strong>Faustregel für Handgeräte</strong> (Akkuschrauber, Stichsäge, Lötstation): ohne Einweisung und mit festem Schrankplatz ist es Werkzeug; braucht es Einweisung, Plug oder Wartungsintervall, ist es eine Maschine.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Der Code: Bereich – Möbel – Ebene – Platz</div>
+              <div class="help-article-body">
+                Ein Code beschreibt einen Ort von gross nach klein, z.B. <code>ELE-M02-E03-P04</code>:
+                <ul style="margin:8px 0 8px 18px">
+                  <li><code>ELE</code> = <strong>Bereich</strong> (genau 3 Zeichen, z.B. Elektronik)</li>
+                  <li><code>M02</code> = <strong>Möbel</strong> 2 (Schrank, Regal, Werkzeugwand oder Tisch)</li>
+                  <li><code>E03</code> = <strong>Ebene</strong> 3, gezählt von oben nach unten</li>
+                  <li><code>P04</code> = <strong>Platz</strong> 4, gezählt von links nach rechts</li>
+                </ul>
+                Alle Nummern sind zweistellig. Die <strong>00</strong> heisst «nicht unterteilt oder noch nicht festgelegt» (<code>M00</code> = im Bereich ohne Möbel, <code>E00</code> = Ebene offen, <code>P00</code> = kein fester Platz). Auf Etiketten entfallen abschliessende Nullen: <code>ELE-M02</code> steht für das ganze Möbel.
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Bereiche, Möbel und Ebenen einrichten</div>
+              <div class="help-article-body">
+                <em>(Power-Manager und Admin)</em>
+                <ol>
+                  <li><strong>Bereiche</strong> pflegst du wie bisher über Maschinen → «⚙ Bereiche» (oder Inventar → Struktur). Jeder Bereich braucht ein <strong>Kürzel</strong> aus 3 Zeichen; das System schlägt eines vor. Ändert sich das Kürzel, ändern sich alle Codes darunter, die Etiketten gelten dann als «veraltet».</li>
+                  <li>Inventar → <strong>Struktur</strong> → «+ Möbel»: Art, Name und Anzahl Ebenen/Plätze angeben. Ebenen und Plätze lassen sich später ergänzen.</li>
+                  <li>Löschen geht nur, wenn nichts mehr daran hängt (Werkzeug, Maschinen).</li>
+                </ol>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Werkzeug erfassen</div>
+              <div class="help-article-body">
+                Inventar → <strong>Werkzeug</strong> → «+ Werkzeug»: Name, Synonyme (z.B. «Bohrschrauber» für Akkuschrauber), Menge, Status (aktiv, defekt, ausgemustert) und Standort. Der Standort lässt sich als Code tippen oder über Bereich → Möbel → Ebene → Platz auswählen. «Ohne Platz» zeigt Werkzeug, das noch keinen Ort hat.
+                <br><strong>Viele auf einmal:</strong> Inventar → <strong>Import</strong>. Eine Zeile pro Werkzeug: <code>Name ; Synonyme ; Code ; Menge</code> (aus Excel einfügbar). «Prüfen» zeigt Fehler, ohne zu speichern.
+                <div class="help-tip"><strong>Tipp:</strong> Sammelartikel wie Lineale legst du einmal mit Menge an und klebst auf jedes Stück ein Etikett (Anzahl beim Drucken wählen).</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Maschinen: Standort statt Kategorie</div>
+              <div class="help-article-body">
+                Bei aktivem Inventar ersetzt der <strong>Bereich</strong> die Kategorie. Im Maschinenformular wählst du nur noch den <strong>Standort</strong> (Bereich, optional Möbel und Ebene, jeweils mit Code, z.B. <code>LAS-M01-E02</code>).
+                <ul style="margin:8px 0 8px 18px">
+                  <li>Die <strong>Kategorie</strong> ergibt sich automatisch: gleicher Name wie der Bereich, ohne Bereich «Sonstiges». «⚙ Kategorien» und der Kategoriefilter entfallen.</li>
+                  <li><strong>Bereich umbenennen</strong> benennt die Maschinen und die Kategorie mit um; <strong>Bereich löschen</strong> setzt seine Maschinen auf «Sonstiges».</li>
+                  <li>Der Reiter Inventar → <strong>Maschinen</strong> zeigt alle Maschinen mit ihrem Standort und erlaubt das schnelle Umstellen. Maschinen ohne Bereich sind filterbar.</li>
+                  <li>Schaltest du das Modul wieder aus, siehst du wieder Kategorie und einfaches Standort-Dropdown; die zuletzt abgeleiteten Kategorien bleiben stehen.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Etiketten drucken</div>
+              <div class="help-article-body">
+                Inventar → <strong>Etiketten</strong>. Links wählst du aus, welche Etiketten gedruckt werden (Möbel und Ebenen, oder Werkzeug) und in welcher <strong>Anzahl</strong>. Rechts stellst du die Vorlage ein und siehst die Vorschau.
+                <ul style="margin:8px 0 8px 18px">
+                  <li>Vorbereitet ist der <strong>Avery Zweckform L6009-20</strong> (45,7 × 21,2 mm, 48 Etiketten je A4-Bogen, Laserdrucker). Angefangene Bögen lassen sich über die <em>Startposition</em> weiterverwenden.</li>
+                  <li>Drucken: A4, Skalierung <strong>100 %</strong> («Tatsächliche Grösse»), Kopf-/Fusszeilen aus, keine Ränder.</li>
+                  <li>Vor dem ersten Druck den <strong>Testbogen</strong> auf normales Papier drucken und gegen das Licht über einen Etikettenbogen halten; bei einem Versatz die Werte «Versatz X/Y» anpassen.</li>
+                  <li>Neue oder geänderte Möbel sind mit <strong>«Etikett neu/veraltet»</strong> markiert; «Neue/veraltete» wählt sie zum Nachdrucken aus.</li>
+                  <li>Der QR-Code führt auf die Gäste-Seite des Ortes bzw. des Werkzeugs («gehört nach …»), das Werkzeug-Etikett bleibt auch nach dem Umlagern gültig.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Gäste: «Wo ist …?»</div>
+              <div class="help-article-body">
+                Unter <code>/inventar.html</code> gibt es eine schlanke Seite <strong>ohne Anmeldung</strong> (auch über «🔎 Wo ist …?» in der Gast-App). Gäste suchen dort nach Werkzeug, Möbeln und Maschinen (auch über Synonyme) oder stöbern durch die Bereiche. Die QR-Codes auf Möbeln und Ebenen zeigen den Inhalt, die QR-Codes auf Werkzeug zeigen «gehört nach …».
+                <div class="help-tip"><strong>Datenschutz:</strong> Die Seite zeigt nur Name, Beschreibung, Menge, Status und Standort. Ausgemustertes Werkzeug ist verborgen; Maschinen erscheinen ohne Status, Plug oder Seriennummer. Buchhaltungsfelder sind nie sichtbar. Ist das Modul aus, ist die Seite leer (404).</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Backup</div>
+              <div class="help-article-body">
+                Das Inventar ist im JSON-Backup enthalten (Sektion «inventory»): Bereichs-Kürzel und -Farben, Möbel, Ebenen, Plätze, Werkzeug (mit Buchhaltungsfeldern) und die Standorte der Maschinen. Verweise laufen über Namen und Nummern, deshalb funktioniert der Restore auch auf einer anderen Instanz. Ältere Backups ohne Inventar lassen sich weiterhin einspielen.
               </div>
             </div>
           </div>
@@ -2293,6 +2401,8 @@ sudo ./install-service.sh</pre>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">plug_created / plug_updated / plug_deleted / plug_assigned / plug_unassigned</td><td style="padding:4px 8px">Plug-Pool-Verwaltung (Anlegen, Bearbeiten, Löschen, Zuweisen zu/Entfernen von einer Maschine)</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">battery_created / battery_updated / battery_deleted</td><td style="padding:4px 8px">Akku-Verwaltung</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">category_* / location_* / owner_*</td><td style="padding:4px 8px">Kategorien/Standorte/Eigentümer angelegt, bearbeitet oder gelöscht</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">inventory_*</td><td style="padding:4px 8px">Inventar: Bereich, Möbel, Ebene bzw. Werkzeug angelegt, geändert, gelöscht, umgelagert oder importiert</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">machine_area_changed</td><td style="padding:4px 8px">Maschine in einen anderen Bereich (Standort) verschoben</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">tailscale_updated</td><td style="padding:4px 8px">Tailscale-Fernzugriff aktiviert/deaktiviert</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">machine_qr_regenerated</td><td style="padding:4px 8px">QR-Code einer Maschine neu generiert (alter Code wird ungültig)</td></tr>
                   </tbody>
@@ -2615,7 +2725,7 @@ sudo ./install-service.sh</pre>
             <div class="help-article">
               <div class="help-article-title">Was ist im Backup enthalten?</div>
               <div class="help-article-body">
-                <strong>Enthalten:</strong> Einstellungen, Benutzer, Gäste, Maschinen, Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln.<br><br>
+                <strong>Enthalten:</strong> Einstellungen, Benutzer, Gäste, Maschinen, Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln, Kategorien, Standorte (Bereiche), Eigentümer, Akkus und das Inventar (Möbel, Ebenen, Werkzeug, Standorte der Maschinen).<br><br>
                 <strong>Nicht enthalten:</strong> Aktive Warteschlangen-Einträge und NFC-Gast-Tokens (temporäre Laufzeitdaten, die nach einem Restore automatisch neu erstellt werden). Bei den SFTP-Einstellungen für das externe Backup: Host/Port/Benutzername/Zielverzeichnis/Auth-Typ sind enthalten, Passwort/SSH-Key/Passphrase bewusst nicht (siehe «Externes Backup (SFTP)» oben).
               </div>
             </div>
@@ -2631,7 +2741,7 @@ sudo ./install-service.sh</pre>
                   <div class="help-article-body">
                     SpaceCaptain kennt drei Rollen mit aufsteigenden Rechten:<br><br>
                     <strong>Manager</strong> — Betrieb: Gäste verwalten, Maschinen schalten, Berechtigungen vergeben, Wartung erfassen, Raum und Alarm steuern.<br><br>
-                    <strong>Power-Manager</strong> — Konfiguration: Alles was Manager darf, zusätzlich Maschinen anlegen/bearbeiten/löschen, Plugs, Automationen, Aushänge, Wartungsintervalle, Kategorien, Standorte und Push-Topics verwalten.<br><br>
+                    <strong>Power-Manager</strong> — Konfiguration: Alles was Manager darf, zusätzlich Maschinen anlegen/bearbeiten/löschen, Plugs, Automationen, Aushänge, Wartungsintervalle, Kategorien, Standorte (bzw. Bereiche) und Push-Topics verwalten; mit aktivem Inventar zusätzlich Möbel, Ebenen und Maschinen-Standorte.<br><br>
                     <strong>Admin</strong> — Systemverwaltung: Alles was Power-Manager darf, zusätzlich Lab Manager verwalten, Backup/Restore, Einstellungen und In-App-Update.
                   </div>
                 </div>
@@ -2667,6 +2777,11 @@ sudo ./install-service.sh</pre>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Kommunikation</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Aushänge: anlegen, bearbeiten, löschen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Push-Nachrichten (ntfy): Topics verwalten</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Inventar (wenn aktiviert)</td></tr>
+                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Suchen, Standorte und Werkzeug ansehen</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Werkzeug anlegen, bearbeiten, umlagern, importieren</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Bereiche, Möbel, Ebenen, Plätze; Maschinen einem Standort zuweisen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Inventar-Modul ein-/ausschalten</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Betrieb</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Raum öffnen / schliessen, Notfall-Alarm</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Berechtigungen, Log, Statistiken</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
@@ -2903,6 +3018,7 @@ _updateThemeToggleLabel();
 const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',plugs:'Plug-Pool',batteries:'Akkus',inventory:'Inventar',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Aushänge',notifications:'Push-Nachrichten',backup:'Backup & Restore',settings:'Einstellungen',automations:'Automationen',info:'Info',help:'Hilfe & Dokumentation'};
 const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',machines:'machines',permissions:'permissions',maintenance:'maintenance',backup:'backup',settings:'settings'};
 const pageActions={
+  inventory:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('inventory')" title="Hilfe zu Inventar">? Hilfe</button>`,
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>${_isAdmin()?` <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`:''}`,
   machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)">`:''} <button class="btn btn-ghost btn-sm" onclick="showInventoryExportModal()">📋 Inventarliste</button>${_isPowerPlus()?`${_inventoryOn?'':' <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button>'} <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ ${_locWord(true)}</button> <button class="btn btn-ghost btn-sm" onclick="showOwnersModal()">⚙ Eigentümer</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`:''}`,
@@ -3017,8 +3133,8 @@ function selectSettingsCat(id) {
 function selectHelpCat(id) {
   _helpActiveCat = id;
   document.getElementById('help-search').value = '';
-  const ids = ['start','guests','machines','plugs','permissions','automations','maintenance','announcements','notifications','emergency','stats','log','display','nfc','settings','backup','roles','problems'];
-  document.querySelectorAll('.help-nav-item').forEach((item, i) => item.classList.toggle('active', ids[i] === id));
+  const ids = ['start','guests','machines','inventory','plugs','permissions','automations','maintenance','announcements','notifications','emergency','stats','log','display','nfc','settings','backup','roles','problems'];
+  document.querySelectorAll('#page-help .help-nav-item').forEach((item, i) => item.classList.toggle('active', ids[i] === id));
   document.querySelectorAll('.help-panel').forEach(p => p.classList.toggle('active', p.id === 'help-panel-' + id));
   document.getElementById('help-search-results').style.display = 'none';
   document.getElementById('help-no-result').style.display = 'none';
@@ -3038,7 +3154,7 @@ function helpSearch(query) {
   }
   document.querySelectorAll('.help-panel').forEach(p => p.classList.remove('active'));
   const catNames = {
-    start:'Erste Schritte', guests:'Gästeverwaltung', machines:'Maschinen',
+    start:'Erste Schritte', guests:'Gästeverwaltung', machines:'Maschinen', inventory:'Inventar & Standorte',
     permissions:'Berechtigungen', maintenance:'Maschinenpflege', announcements:'Aushänge',
     notifications:'Push-Nachrichten', emergency:'Notfall-Alarm', stats:'Statistiken',
     log:'Aktivitätslog', display:'Display & Kiosk', nfc:'NFC-Writer',
