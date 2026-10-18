@@ -296,6 +296,10 @@ Standard sind **vorgeschnittene A4-Bögen** (Avery Zweckform Typenschild-Etikett
   Nummern 1–48 auf normales Papier drucken, gegen das Licht über den Bogen halten) und einen
   einstellbaren **Versatz X/Y** (wird im Browser gemerkt).
 - **Startposition:** «Beginnen bei Nr.» erlaubt, angebrochene Bögen weiterzuverwenden.
+- **Layout des Reiters:** zweispaltig. Links die **Auswahl** (in voller Höhe scrollbar, Möbel/Ebenen/Positionen
+  bzw. Werkzeug), rechts **Vorlage, Startposition, Versatz, Druckknopf und die Bogenvorschau**, die in der
+  Spalte mitscrollt (sticky) und deren Massstab sich der Spaltenbreite anpasst. Unter 1180 px Breite stapeln sich
+  die Spalten (Auswahl oben).
 - **Auswahl und Anzahl:** Gedruckt wird nur, was in der Liste angehakt ist (Möbel-, Ebenen- und
   Positions-Etiketten einzeln), **jedes in der gewünschten Anzahl** (Feld «Anzahl»; eintippen wählt die Zeile,
   0 wählt ab). Der Zähler nennt Etiketten und Stückzahl, der Druckknopf die Gesamtzahl («15 Etiketten drucken»),

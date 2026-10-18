@@ -90,6 +90,16 @@
   #page-inventory .inv-sheetwrap .inv-lbl{outline:.2mm dashed #c4c4c4}
   #page-inventory .inv-sheetwrap .inv-lbl.skip{outline:.2mm dashed #e0b4b4;background:repeating-linear-gradient(45deg,#fff,#fff 1mm,#f1e6e6 1mm,#f1e6e6 2mm)}
   #page-inventory .inv-freegrid{display:flex;flex-wrap:wrap;gap:2mm;margin-top:12px}
+  #page-inventory .inv-lbl-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+  #page-inventory .inv-lbl-left,#page-inventory .inv-lbl-right{min-width:0}
+  #page-inventory .inv-lbl-right{position:sticky;top:8px}
+  #page-inventory .inv-lbl-layout .inv-sel-list{max-height:calc(100vh - 250px);min-height:340px}
+  #page-inventory details.inv-hint summary{cursor:pointer;font-weight:600;color:var(--text)}
+  @media (max-width:1180px){
+    #page-inventory .inv-lbl-layout{grid-template-columns:minmax(0,1fr)}
+    #page-inventory .inv-lbl-right{position:static}
+    #page-inventory .inv-lbl-layout .inv-sel-list{max-height:320px;min-height:0}
+  }
   #page-inventory .inv-sel-box{border:1px solid var(--border);border-radius:6px;background:var(--surface);margin-bottom:12px}
   #page-inventory .inv-sel-head{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border)}
   #page-inventory .inv-sel-list{max-height:300px;overflow:auto}
@@ -160,6 +170,8 @@
     </div>
 
     <div class="inv-page" id="inv-page-labels">
+      <div class="inv-lbl-layout">
+        <div class="inv-lbl-left">
       <div class="inv-toolbar">
         <span class="inv-chip on" id="inv-mode-furn" onclick="Inv.setLabelMode('furn')">🗄️ Möbel &amp; Ebenen</span>
         <span class="inv-chip" id="inv-mode-tool" onclick="Inv.setLabelMode('tool')" title="Ein Etikett pro Stück, z.B. für jedes Lineal">🔧 Werkzeug</span>
@@ -193,6 +205,9 @@
         </div>
         <div class="inv-sel-list" id="inv-tl-list"></div>
       </div>
+      <div style="margin-top:14px" id="inv-mark-wrap"><button class="btn btn-ghost" onclick="Inv.markPrinted()" title="Setzt bei den gewählten Möbeln das Kennzeichen «neu/veraltet» zurück">✓ Auswahl als gedruckt markieren</button></div>
+        </div>
+        <div class="inv-lbl-right">
       <div class="inv-labelopts">
         <div class="form-group"><label class="form-label">Vorlage</label>
           <select class="form-input" id="inv-l-tpl" onchange="Inv.setTemplate()"></select></div>
@@ -205,9 +220,10 @@
         <button class="btn btn-ghost inv-sheet-only" onclick="Inv.printCalibration()" title="Raster auf normales Papier drucken und gegen das Licht über einen Etikettenbogen halten">📐 Testbogen</button>
         <button class="btn btn-primary" id="inv-btn-print" onclick="Inv.printLabels()">🖨️ Auswahl drucken</button>
       </div>
-      <div class="inv-hint" id="inv-l-hint"></div>
-      <div class="inv-sheetrow" id="inv-labels-preview"></div>
-      <div style="margin-top:14px" id="inv-mark-wrap"><button class="btn btn-ghost" onclick="Inv.markPrinted()" title="Setzt bei den gewählten Möbeln das Kennzeichen «neu/veraltet» zurück">✓ Auswahl als gedruckt markieren</button></div>
+          <details class="inv-hint"><summary>Hinweise zum Druck</summary><div id="inv-l-hint" style="margin-top:8px"></div></details>
+          <div class="inv-sheetrow" id="inv-labels-preview"></div>
+        </div>
+      </div>
     </div>
 
     <div class="inv-page" id="inv-page-import">
@@ -226,6 +242,7 @@
       <div id="inv-import-result" style="margin-top:14px"></div>
     </div>`;
     initLabelControls();
+    window.addEventListener('resize', () => { if (activeTab === 'labels' && root.isConnected) renderLabels(); });
   }
 
   async function show() {
@@ -952,10 +969,11 @@
     if (!items.length) { box.className = 'inv-sheetrow'; box.innerHTML = '<div class="inv-empty" style="width:100%">Nichts gewählt — oben Etiketten anhaken (oder «Alle» wählen) und die Anzahl angeben.</div>'; return; }
     if (t.sheet) {
       const pages = sheetPages(items, t, true);
-      const wmm = 210 * PREVIEW_SCALE, hmm = 297 * PREVIEW_SCALE;
+      const sc = Math.max(0.3, Math.min(0.8, ((box.clientWidth || 380) - 6) / 793.7));     // 210 mm = 793.7 px
+      const wmm = 210 * sc, hmm = 297 * sc;
       box.className = 'inv-sheetrow';
       box.innerHTML = pages.map((pg, i) => `<div><div class="inv-dim inv-small" style="margin-bottom:4px">Bogen ${i + 1} von ${pages.length}</div>
-        <div class="inv-sheetwrap" style="width:${wmm}mm;height:${hmm}mm"><div style="transform:scale(${PREVIEW_SCALE});transform-origin:0 0;width:210mm;height:297mm">${sheetHtml(pg, t, true)}</div></div></div>`).join('');
+        <div class="inv-sheetwrap" style="width:${wmm}mm;height:${hmm}mm"><div style="transform:scale(${sc});transform-origin:0 0;width:210mm;height:297mm">${sheetHtml(pg, t, true)}</div></div></div>`).join('');
     } else {
       box.className = 'inv-freegrid';
       box.innerHTML = items.map(it => labelHtml(it, t, '', 'free')).join('');
