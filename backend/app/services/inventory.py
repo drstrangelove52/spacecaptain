@@ -11,10 +11,11 @@ import unicodedata
 from typing import Optional
 
 from fastapi import HTTPException
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import MachineLocation, Machine
+from app.models import MachineLocation, Machine, MachineCategory
+from app.services.system_settings import get_system_settings
 from app.models_inventory import InvFurniture, InvLevel, InvPosition, InvItem, InvPlacement, FurnitureKind
 
 AREA_LEN = 3
@@ -173,7 +174,7 @@ async def assign_missing_codes(db: AsyncSession, dry_run: bool) -> list[dict]:
 
 
 # ── Nullplaetze ──────────────────────────────────────────────────────────────
-async def ensure_structure(db: AsyncSession, commit: bool = True) -> int:
+async def ensure_structure(db: AsyncSession, commit: bool = True, align: bool = False) -> int:
     """Legt fehlende Nullplaetze an: M00 je Bereich, E00 je Moebel, P00 je Ebene.
     Idempotent, gibt die Anzahl neu angelegter Zeilen zurueck."""
     created = await upgrade_legacy_codes(db, commit)
@@ -208,6 +209,8 @@ async def ensure_structure(db: AsyncSession, commit: bool = True) -> int:
             db.add(InvPosition(level_id=lid, number=0))
             created += 1
     created += await sync_machine_areas(db)
+    if align:
+        created += await align_categories(db)
     await (db.commit() if commit else db.flush())
     return created
 
@@ -219,8 +222,8 @@ async def ensure_structure_if_needed(db: AsyncSession) -> None:
     zero = await db.scalar(select(func.count(InvFurniture.id)).where(InvFurniture.number == 0)) or 0
     legacy = await db.scalar(select(func.count(MachineLocation.id)).where(
         MachineLocation.code.is_not(None), func.length(MachineLocation.code) != AREA_LEN)) or 0
-    if zero < areas or legacy or await machines_need_sync(db):
-        await ensure_structure(db)
+    if zero < areas or legacy or await machines_need_sync(db) or await categories_need_align(db):
+        await ensure_structure(db, align=True)
 
 
 async def ensure_area_structure(db: AsyncSession, area_id: int) -> None:
@@ -288,23 +291,21 @@ def _machine_text_conds():
 
 
 async def machines_need_sync(db: AsyncSession) -> bool:
-    no_area = await db.scalar(select(func.count(Machine.id)).where(
-        Machine.area_id.is_(None), *_machine_text_conds())) or 0
-    empty_text = await db.scalar(select(func.count(Machine.id)).where(
-        Machine.area_id.is_not(None), or_(Machine.location.is_(None), Machine.location == ""))) or 0
-    if no_area or empty_text:
-        return True
-    # Text und Bereichsname werden in Python verglichen, NICHT per SQL: machines (init.sql) und machine_locations (ORM)
-    # haben je nach Installation verschiedene Sortierungen, ein Vergleich der Spalten bricht mit «Illegal mix of collations» ab.
-    rows = (await db.execute(select(Machine.location, MachineLocation.name)
-                             .join(MachineLocation, MachineLocation.id == Machine.area_id)
-                             .where(*_machine_text_conds()))).all()
-    return any((loc or "").strip().lower() != (name or "").lower() for loc, name in rows)
+    """Stimmen `area_id` und Standort-Text bei allen Maschinen ueberein? Der Vergleich passiert in Python, NICHT per SQL:
+    machines (init.sql) und machine_locations (ORM) haben je nach Installation verschiedene Sortierungen, ein Vergleich der
+    Textspalten bricht mit «Illegal mix of collations» ab."""
+    by_name = {a.name.lower(): a.id for a in (await db.execute(select(MachineLocation))).scalars().all()}
+    for loc, aid in (await db.execute(select(Machine.location, Machine.area_id))).all():
+        txt = (loc or "").strip().lower()
+        want = by_name.get(txt) if txt else None
+        if want != aid:                       # None == None: kein Text/unbekannter Text und kein Bereich → in Ordnung
+            return True
+    return False
 
 
 async def sync_machine_areas(db: AsyncSession) -> int:
-    """Zieht `area_id` aus dem Standort-Text nach: Text → Bereich (ohne Gross-/Kleinschreibung), leerer Text →
-    kein Bereich. Texte, die keinem Bereich entsprechen, bleiben unberuehrt. Gibt die Anzahl Aenderungen zurueck."""
+    """Zieht `area_id` aus dem Standort-Text nach: Text → Bereich (ohne Gross-/Kleinschreibung); leerer oder keinem Bereich
+    entsprechender Text → kein Bereich (der Text selbst bleibt unveraendert). Gibt die Anzahl Aenderungen zurueck."""
     by_name = {a.name.lower(): a.id for a in (await db.execute(select(MachineLocation))).scalars().all()}
     changed = 0
     for m in (await db.execute(select(Machine))).scalars().all():
@@ -315,7 +316,7 @@ async def sync_machine_areas(db: AsyncSession) -> int:
                 changed += 1
             continue
         aid = by_name.get(txt.lower())
-        if aid is not None and m.area_id != aid:
+        if m.area_id != aid:                  # auch Text ohne passenden Bereich: dann kein Bereich
             m.area_id = aid
             changed += 1
             await _clear_foreign_placement(db, m)
@@ -344,6 +345,8 @@ async def sync_machine_area_from_text(db: AsyncSession, machine: Machine) -> Non
         if area:
             machine.area_id = area.id
     await _clear_foreign_placement(db, machine)
+    if await inventory_enabled(db):
+        await align_categories(db)
     await db.commit()
 
 
@@ -351,6 +354,88 @@ async def delete_placement(db: AsyncSession, machine_id: int) -> None:
     pl = await db.get(InvPlacement, machine_id)
     if pl:
         await db.delete(pl)
+
+
+# ── Kategorie aus dem Bereich (bei aktivem Inventar) ─────────────────────────
+# Bereich und Kategorie sagten bei euch dasselbe. Bei aktivem Inventar ist der Bereich das einzige Ordnungsmerkmal; die
+# Kategorie der Maschine wird daraus abgeleitet (gleicher Name, ohne Bereich «Sonstiges»). Die Spalte `category` bleibt
+# bestehen, damit Filter, Statistik, Gaeste-Ansicht, CSV und MCP unveraendert funktionieren.
+DEFAULT_CATEGORY = "Sonstiges"
+
+
+async def inventory_enabled(db: AsyncSession) -> bool:
+    return bool((await get_system_settings(db)).inventory_enabled)
+
+
+async def _area_names(db: AsyncSession) -> dict:
+    return {a.id: a.name for a in (await db.execute(select(MachineLocation))).scalars().all()}
+
+
+async def categories_need_align(db: AsyncSession) -> bool:
+    names = await _area_names(db)
+    for cat, aid in (await db.execute(select(Machine.category, Machine.area_id))).all():
+        if (cat or "") != ((names.get(aid) if aid else None) or DEFAULT_CATEGORY):
+            return True
+    have = {(c or "").lower() for c in (await db.execute(select(MachineCategory.name))).scalars().all()}
+    return any(n.lower() not in have for n in set(names.values()) | {DEFAULT_CATEGORY})
+
+
+async def align_categories(db: AsyncSession) -> int:
+    """Legt fehlende Kategorien fuer alle Bereiche (und «Sonstiges») an und setzt die Kategorie jeder Maschine auf den
+    Namen ihres Bereichs. Idempotent; gibt die Anzahl geaenderter Maschinen zurueck."""
+    names = await _area_names(db)
+    cats = (await db.execute(select(MachineCategory))).scalars().all()
+    have = {(c.name or "").lower() for c in cats}
+    order = max([c.sort_order for c in cats] + [0]) + 1
+    for n in sorted(set(names.values()) | {DEFAULT_CATEGORY}, key=str.lower):
+        if n.lower() not in have:
+            db.add(MachineCategory(name=n, icon="🔧", sort_order=order))
+            order += 1
+    changed = 0
+    for m in (await db.execute(select(Machine))).scalars().all():
+        want = (names.get(m.area_id) if m.area_id else None) or DEFAULT_CATEGORY
+        if m.category != want:
+            m.category = want
+            changed += 1
+    await db.flush()
+    return changed
+
+
+async def apply_area_rules(db: AsyncSession) -> None:
+    """Nach Massenaenderungen (CSV-Import): Bereich aus dem Text, Kategorie aus dem Bereich — nur bei aktivem Inventar."""
+    if await inventory_enabled(db):
+        await sync_machine_areas(db)
+        await align_categories(db)
+        await db.commit()
+
+
+async def propagate_area_rename(db: AsyncSession, area_id: int, old: str, new: str) -> None:
+    """Umbenennen eines Bereichs: Maschinen (Text und Zuordnung) und bei aktivem Inventar auch die gleichnamige Kategorie."""
+    await db.execute(update(Machine)
+                     .where(or_(Machine.area_id == area_id, func.lower(Machine.location) == old.lower()))
+                     .values(location=new, area_id=area_id))
+    if await inventory_enabled(db):
+        row = await db.scalar(select(MachineCategory).where(func.lower(MachineCategory.name) == old.lower()))
+        taken = await db.scalar(select(MachineCategory.id).where(func.lower(MachineCategory.name) == new.lower()))
+        if row is not None and taken is None:
+            row.name = new
+        await align_categories(db)
+
+
+async def release_machines_of_area(db: AsyncSession, area: MachineLocation) -> None:
+    """Bereich wird geloescht: seine Maschinen haben danach keinen Bereich (Text leer) und die Kategorie «Sonstiges»;
+    die gleichnamige Kategorie entfaellt, wenn sie niemand mehr nutzt. Nur bei aktivem Inventar."""
+    if not await inventory_enabled(db):
+        return
+    await db.execute(update(Machine)
+                     .where(or_(Machine.area_id == area.id, func.lower(Machine.location) == area.name.lower()))
+                     .values(location=None, area_id=None))
+    await align_categories(db)
+    used = await db.scalar(select(func.count(Machine.id)).where(func.lower(Machine.category) == area.name.lower())) or 0
+    if not used:
+        row = await db.scalar(select(MachineCategory).where(func.lower(MachineCategory.name) == area.name.lower()))
+        if row is not None and row.name.lower() != DEFAULT_CATEGORY.lower():
+            await db.delete(row)
 
 
 # ── Aufloesung & Beschreibung ────────────────────────────────────────────────

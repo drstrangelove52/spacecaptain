@@ -285,8 +285,8 @@ async def update_machine(
         setattr(machine, field, value)
     await db.commit()
     await db.refresh(machine)
-    if "location" in changes:
-        await inv_svc.sync_machine_area_from_text(db, machine)  # Inventar: Bereich nachziehen
+    if "location" in changes or "category" in changes:
+        await inv_svc.sync_machine_area_from_text(db, machine)  # Inventar: Bereich nachziehen, Kategorie aus dem Bereich
     await log_svc.log(db, LogType.machine_updated,
                       f"Maschine {machine.name} bearbeitet",
                       machine_id=machine.id, user_id=current.id,
@@ -688,6 +688,7 @@ async def import_machines_confirm(
             skipped += 1
 
     await db.commit()
+    await inv_svc.apply_area_rules(db)                          # Inventar: Bereich aus dem Standort, Kategorie aus dem Bereich
 
     if imported > 0 or updated > 0:
         await log_svc.log(

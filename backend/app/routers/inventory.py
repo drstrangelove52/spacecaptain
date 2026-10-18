@@ -257,6 +257,8 @@ async def create_area(payload: AreaCreate, db: AsyncSession = Depends(get_db),
     await db.commit()
     await db.refresh(a)
     await inv.ensure_area_structure(db, a.id)
+    await inv.align_categories(db)                                        # Kategorie «<Bereich>» anlegen
+    await db.commit()
     await log_svc.log(db, LogType.location_created, f"Bereich {a.name} hinzugefügt", user_id=current.id)
     return _area_out(a)
 
@@ -289,7 +291,9 @@ async def update_area(area_id: int, payload: AreaUpdate, db: AsyncSession = Depe
         if await db.scalar(select(MachineLocation.id).where(
                 MachineLocation.name == changes["name"].strip(), MachineLocation.id != a.id)):
             raise HTTPException(409, "Bereich existiert bereits")
+        old_name = a.name
         a.name = changes["name"].strip()
+        await inv.propagate_area_rename(db, a.id, old_name, a.name)       # Maschinen und Kategorie ziehen mit
     if "code" in changes:
         await inv.set_area_code(db, a, changes["code"])   # markiert bei Aenderung die Etiketten als veraltet
     if "color" in changes:
@@ -768,6 +772,8 @@ async def assign_machine(machine_id: int, payload: MachineAssign, db: AsyncSessi
         pl.level_id = lid
     if pl is not None and pl.furniture_id is None:
         pl.level_id = None
+    if moved:
+        await inv.align_categories(db)                           # Kategorie folgt dem Bereich
     await db.commit()
     if moved:
         new_name = m.location or "kein Bereich"

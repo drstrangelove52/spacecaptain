@@ -45,6 +45,9 @@ async def create_location(
     await db.commit()
     await db.refresh(loc)
     await inv_svc.ensure_area_structure(db, loc.id)
+    if await inv_svc.inventory_enabled(db):                     # Kategorie «<Bereich>» anlegen
+        await inv_svc.align_categories(db)
+        await db.commit()
     await log_svc.log(db, LogType.location_created, f"Standort {loc.name} hinzugefügt", user_id=current.id)
     return loc
 
@@ -67,10 +70,8 @@ async def update_location(
     for k, v in changes.items():
         setattr(loc, k, v)
     if "name" in changes and changes["name"] != old_name:
-        # Umbenennen: Maschinen dieses Standorts (feste Zuordnung oder gleicher Text) ziehen mit
-        await db.execute(update(Machine)
-                         .where(or_(Machine.area_id == loc.id, func.lower(Machine.location) == old_name.lower()))
-                         .values(location=changes["name"], area_id=loc.id))
+        # Umbenennen: Maschinen dieses Standorts (feste Zuordnung oder gleicher Text) und die gleichnamige Kategorie ziehen mit
+        await inv_svc.propagate_area_rename(db, loc.id, old_name, changes["name"])
     if (code or "").strip():                     # leeres Kuerzel = unveraendert (Entfernen nur im Inventar)
         await inv_svc.set_area_code(db, loc, code)
         changes["code"] = code
@@ -91,6 +92,7 @@ async def delete_location(
     if not loc:
         raise HTTPException(status_code=404, detail="Nicht gefunden")
     await inv_svc.remove_empty_area_structure(db, loc)   # 409, wenn noch Moebel/Werkzeug zugeordnet sind
+    await inv_svc.release_machines_of_area(db, loc)      # Maschinen ohne Bereich → «Sonstiges»
     await log_svc.log(db, LogType.location_deleted, f"Standort {loc.name} gelöscht", user_id=current.id)
     await db.delete(loc)
     await db.commit()

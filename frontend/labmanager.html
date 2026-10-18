@@ -2905,7 +2905,7 @@ const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',mach
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>${_isAdmin()?` <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`:''}`,
-  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)">`:''} <button class="btn btn-ghost btn-sm" onclick="showInventoryExportModal()">📋 Inventarliste</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ ${_locWord(true)}</button> <button class="btn btn-ghost btn-sm" onclick="showOwnersModal()">⚙ Eigentümer</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`:''}`,
+  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)">`:''} <button class="btn btn-ghost btn-sm" onclick="showInventoryExportModal()">📋 Inventarliste</button>${_isPowerPlus()?`${_inventoryOn?'':' <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button>'} <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ ${_locWord(true)}</button> <button class="btn btn-ghost btn-sm" onclick="showOwnersModal()">⚙ Eigentümer</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`:''}`,
   plugs:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('plugs')" title="Hilfe zu Plug-Pool">? Hilfe</button> <button class="btn btn-ghost" id="plug-status-refresh-btn" onclick="loadPlugLiveStatus()">🔄 Status aktualisieren</button>${_isPowerPlus()?` <button class="btn btn-ghost" onclick="showDiscoverModal()">🔍 Geräte suchen</button> <button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`:''}`,
   batteries:()=>`${_isPowerPlus()?`<button class="btn btn-primary" onclick="showAddBattery()">+ Akku hinzufügen</button>`:''}`,
   automations:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('automations')" title="Hilfe zu Automationen">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddRule()">+ Neue Regel</button>`:''}`,
@@ -4388,7 +4388,7 @@ function _machineCard(m) {
   return `<div class="machine-card ${m.status} ${idleClass} ${inUseClass}" id="mc-${m.id}">
     <div class="machine-icon">${icon}</div>
     <div class="machine-name">${escHtml(m.name)}${m.training_required===false?'<span style="font-family:var(--mono);font-size:11px;background:color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--accent2);border:1px solid color-mix(in srgb,var(--accent2) 30%,transparent);border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle">OFFEN</span>':''}</div>
-    <div class="machine-cat">${m.category}${m.location?' // '+escHtml(m.location):''}</div>
+    <div class="machine-cat">${_inventoryOn?escHtml(m.category):m.category+(m.location?' // '+escHtml(m.location):'')}</div>
     ${mfrModel?`<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-top:2px">${escHtml(mfrModel)}</div>`:''}
     ${m.comment?`<div class="machine-comment" style="display:block">⚠ ${escHtml(m.comment)}</div>`:''}
     ${sessionHtml}
@@ -4436,11 +4436,11 @@ function _machineTable(machines) {
     return `<tr>
       <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusDot}"></span></td>
       <td><span style="font-size:16px;margin-right:6px">${icon}</span><strong>${escHtml(m.name)}</strong>${m.training_required===false?'<span style="font-family:var(--mono);font-size:11px;background:color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--accent2);border:1px solid color-mix(in srgb,var(--accent2) 30%,transparent);border-radius:3px;padding:1px 4px;margin-left:6px">OFFEN</span>':''}</td>
-      <td style="color:var(--text-mid)">${m.category}</td>
+      ${_inventoryOn?'':`<td style="color:var(--text-mid)">${m.category}</td>`}
       <td style="color:var(--text-mid)">${escHtml(m.manufacturer||'—')}</td>
       <td style="color:var(--text-mid)">${escHtml(m.model||'—')}</td>
       <td style="color:var(--text-mid)">${escHtml(m.serial_number||'—')}</td>
-      <td style="color:var(--text-mid)">${escHtml(m.location||'—')}</td>
+      <td style="color:var(--text-mid)">${escHtml(m.location||(_inventoryOn?m.category:'—'))}</td>
       <td>${session}</td>
       <td>${plug}</td>
       <td style="white-space:nowrap">
@@ -4455,7 +4455,7 @@ function _machineTable(machines) {
     <thead><tr>
       <th></th>
       ${_machineTableTh('Name','name')}
-      ${_machineTableTh('Kategorie','category')}
+      ${_inventoryOn?'':_machineTableTh('Kategorie','category')}
       ${_machineTableTh('Hersteller','manufacturer')}
       ${_machineTableTh('Modell','model')}
       ${_machineTableTh('Seriennummer','serial_number')}
@@ -4498,8 +4498,20 @@ async function managerSwitchMachine(id, action, btn) {
 function showAddMachine() {
   openModal('Maschine hinzufügen',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="mc-name" placeholder="Lasercutter XL-40"></div>
+    ${_inventoryOn?`
+    <input type="hidden" id="mc-cat" value="Sonstiges"><input type="hidden" id="mc-loc" value="">
     <div class="form-row">
-      <div class="form-group"><label class="form-label" title="Art der Maschine (z.B. Laser, CNC) — für Filter, Symbole und Auswertungen">Kategorie</label><select class="form-input" id="mc-cat" onchange="_autoArea()">${_catOptions()}</select></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="mc-status"><option value="online">Freigegeben</option><option value="offline">Gesperrt</option><option value="maintenance">In Wartung</option></select></div>
+      <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="mc-serial" placeholder="SN-123456"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Hersteller</label><input class="form-input" id="mc-mfr"></div>
+      <div class="form-group"><label class="form-label">Modell</label><input class="form-input" id="mc-model"></div>
+    </div>
+    <div class="form-group" id="inv-form-slot"></div>
+    `:`
+    <div class="form-row">
+      <div class="form-group"><label class="form-label" title="Art der Maschine (z.B. Laser, CNC) — für Filter, Symbole und Auswertungen">Kategorie</label><select class="form-input" id="mc-cat">${_catOptions()}</select></div>
       <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="mc-status"><option value="online">Freigegeben</option><option value="offline">Gesperrt</option><option value="maintenance">In Wartung</option></select></div>
     </div>
     <div class="form-row">
@@ -4508,9 +4520,9 @@ function showAddMachine() {
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="mc-serial" placeholder="SN-123456"></div>
-      <div class="form-group"><label class="form-label" title="Wo die Maschine steht">${_locWord()}</label><select class="form-input" id="mc-loc" onchange="window.Inv&&Inv.formAreaChanged()">${_locOptions()}</select></div>
+      <div class="form-group"><label class="form-label" title="Wo die Maschine steht">${_locWord()}</label><select class="form-input" id="mc-loc">${_locOptions()}</select></div>
     </div>
-    ${_inventoryOn?'<div class="form-group" id="inv-form-slot"></div>':''}
+    `}
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="mc-comment" rows="2" placeholder="z.B. Linse verschmutzt, bitte melden"></textarea></div>
     <div class="form-group"><label class="form-label">Dokumentations-Link</label><input class="form-input" id="mc-doc-url" type="url" placeholder="https://..."></div>
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="mc-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden&#10;Wird vor dem Einschalten als Pflicht-Bestätigung angezeigt."></textarea></div>
@@ -4635,6 +4647,18 @@ function editMachine(id) {
   _editMachinePlugsOrig = [...(m.plugs||[]).map(p=>({...p}))];
   openModal('Maschine bearbeiten',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${escHtml(m.name)}"></div>
+    ${_inventoryOn?`
+    <input type="hidden" id="e-cat" value="${escHtml(m.category||'Sonstiges')}"><input type="hidden" id="e-loc" value="${escHtml(m.location||'')}">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-status"><option value="online" ${m.status==='online'?'selected':''}>Freigegeben</option><option value="offline" ${m.status==='offline'?'selected':''}>Gesperrt</option><option value="maintenance" ${m.status==='maintenance'?'selected':''}>In Wartung</option></select></div>
+      <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="e-serial" value="${escHtml(m.serial_number||'')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Hersteller</label><input class="form-input" id="e-mfr" value="${escHtml(m.manufacturer||'')}"></div>
+      <div class="form-group"><label class="form-label">Modell</label><input class="form-input" id="e-model" value="${escHtml(m.model||'')}"></div>
+    </div>
+    <div class="form-group" id="inv-form-slot"></div>
+    `:`
     <div class="form-row">
       <div class="form-group"><label class="form-label" title="Art der Maschine (z.B. Laser, CNC) — für Filter, Symbole und Auswertungen">Kategorie</label><select class="form-input" id="e-cat">${_catOptions(m.category)}</select></div>
       <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-status"><option value="online" ${m.status==='online'?'selected':''}>Freigegeben</option><option value="offline" ${m.status==='offline'?'selected':''}>Gesperrt</option><option value="maintenance" ${m.status==='maintenance'?'selected':''}>In Wartung</option></select></div>
@@ -4645,9 +4669,9 @@ function editMachine(id) {
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="e-serial" value="${escHtml(m.serial_number||'')}"></div>
-      <div class="form-group"><label class="form-label" title="Wo die Maschine steht">${_locWord()}</label><select class="form-input" id="e-loc" onchange="window.Inv&&Inv.formAreaChanged()">${_locOptions(m.location||'')}</select></div>
+      <div class="form-group"><label class="form-label" title="Wo die Maschine steht">${_locWord()}</label><select class="form-input" id="e-loc">${_locOptions(m.location||'')}</select></div>
     </div>
-    ${_inventoryOn?'<div class="form-group" id="inv-form-slot"></div>':''}
+    `}
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="e-comment" rows="2" placeholder="z.B. Linse verschmutzt">${m.comment||''}</textarea></div>
     <div class="form-group"><label class="form-label">Dokumentations-Link</label><input class="form-input" id="e-doc-url" type="url" placeholder="https://..." value="${escHtml(m.doc_url||'')}"></div>
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="e-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden">${m.safety_notes||''}</textarea></div>
@@ -4999,7 +5023,7 @@ async function selectPermGuest(guestId) {
       <div style="font-size:18px;text-align:center">${icon(m)}</div>
       <div>
         <div class="perm-machine-name">${m.name}${isOpen?'<span style="font-family:var(--mono);font-size:11px;background:color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--accent2);border:1px solid color-mix(in srgb,var(--accent2) 30%,transparent);border-radius:3px;padding:1px 4px;margin-left:5px">OFFEN</span>':''}</div>
-        <div class="perm-machine-sub">${m.category}${m.location?' · '+m.location:''}</div>
+        <div class="perm-machine-sub">${_inventoryOn?escHtml(m.category):m.category+(m.location?' · '+m.location:'')}</div>
       </div>
       <div style="font-family:var(--mono);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="perm-hist-comment-${m.id}">${commentHtml}</div>
       <div style="font-family:var(--mono);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="perm-hist-user-${m.id}">${userHtml}</div>
@@ -6324,23 +6348,18 @@ let _inventoryOn = false, _hashHandled = false;
 function _locWord(plural){ return _inventoryOn ? (plural ? 'Bereiche' : 'Bereich') : (plural ? 'Standorte' : 'Standort'); }
 function _applyInventoryNav(on){
   _inventoryOn = !!on; const el=document.getElementById('nav-inventory'); if(el) el.style.display = on ? '' : 'none';
+  // Bei aktivem Inventar ersetzt der Bereich die Kategorie: Filter ausblenden
+  const cf=document.getElementById('machine-filter-cat'); if(cf){ cf.style.display = on ? 'none' : ''; if(on) cf.value=''; }
   try { _refreshLocFilter(); if (typeof renderMachines === 'function' && document.getElementById('page-machines')?.classList.contains('active')) { renderMachines(); document.getElementById('topbar-actions').innerHTML = pageActions.machines(); } } catch(e) {}
   _openInventoryFromHash();
 }
-// Maschinenformular: «Steht auf» (Möbel/Ebene) kommt aus dem nachladbaren Inventar-Modul
+// Maschinenformular: «Lagerort» (Bereich/Möbel/Ebene) kommt aus dem nachladbaren Inventar-Modul
 function _mountInvSlot(machineId){
   if (!_inventoryOn) return;
   const el=document.getElementById('inv-form-slot'); if (!el) return;
   LabModules.load('inventory').then(d=>d.mountMachineSlot(el, machineId)).catch(()=>el.remove());
 }
 async function _saveInvSlot(machineId){ try { if (_inventoryOn && window.Inv) await Inv.saveFormPlacement(machineId); } catch(e) { console.error(e); } }
-// Neue Maschine: Bereich mit demselben Namen wie die Kategorie vorwählen (spart Doppelarbeit)
-function _autoArea(){
-  if (!_inventoryOn) return;
-  const loc=document.getElementById('mc-loc'), cat=document.getElementById('mc-cat'); if (!loc || !cat || loc.value) return;
-  const opt=[...loc.options].find(o=>o.value && o.value.toLowerCase()===cat.value.toLowerCase());
-  if (opt) { loc.value=opt.value; window.Inv && Inv.formAreaChanged && Inv.formAreaChanged(); }
-}
 // QR-Codes zeigen auf /inventar.html?code=ELE-M01 → leitet nach /labmanager.html#inventory/ELE-M01 weiter
 function _openInventoryFromHash(){
   if (_hashHandled || !token || !currentUser || !_inventoryOn) return;

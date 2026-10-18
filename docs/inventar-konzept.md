@@ -452,6 +452,22 @@ Freigabe von Martin.
 - **Kategorie und Bereich** sind zwei Angaben: Die Kategorie sagt, *was* die Maschine ist (Filter, Symbole, Statistik, MCP), der Bereich,
   *wo* sie steht (Lagerort-Code, Suche, Plan). Sie decken sich oft («3D-Druck»), müssen es aber nicht (z.B. CNC-Fräse im Bereich «Holz»).
 
+## 11c. Kategorie aus dem Bereich, Feld «Lagerort»
+
+Bereich und Kategorie sagten bei den Maschinen dasselbe. Bei **aktivem Inventar** ist deshalb der Bereich das einzige
+Ordnungsmerkmal:
+
+- **Kategorie wird abgeleitet:** `machines.category` = Name des Bereichs, ohne Bereich «Sonstiges». Die Spalte bleibt, damit
+  Filter, Statistik, Gäste-Ansicht, CSV und MCP unverändert funktionieren. Für jeden Bereich (und «Sonstiges») legt der
+  Server die gleichnamige Kategorie an. Umbenennen eines Bereichs benennt die Kategorie mit um, Löschen setzt seine Maschinen
+  auf «Sonstiges» (ohne Bereich) und entfernt die unbenutzte Kategorie. Ausgerichtet wird beim Anlegen/Bearbeiten, beim
+  Bereichswechsel, nach dem CSV-Import und beim ersten Aufruf des Moduls (`align_categories`).
+- **Standort-Text ohne passenden Bereich** zählt als «ohne Bereich» (Text bleibt stehen, Kategorie «Sonstiges»).
+- **Oberfläche:** Im Maschinenformular entfallen «Kategorie» und das Bereichs-Dropdown; es gibt ein einziges Feld **«Lagerort»**
+  (Bereich, Möbel oder Ebene, jeweils mit Code, z.B. `LAS · Laser`, `LAS-M01 · Regal 1`). «⚙ Kategorien» und der
+  Kategorie-Filter sind ausgeblendet. Der frühere Begriff «Steht auf» heisst überall «Lagerort».
+- Bei ausgeschaltetem Inventar bleibt alles wie bisher (Kategorien frei wählbar).
+
 ## 12. Offene Punkte
 
 1. **Fotos:** Wo liegen die Bilder (eigenes Volume `inventory_media`)? JSON-Backup enthält

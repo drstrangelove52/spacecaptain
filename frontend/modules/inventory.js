@@ -161,19 +161,19 @@
 
     <div class="inv-page" id="inv-page-machines">
       <div class="inv-hint">
-        Die Maschinen selbst pflegst du unter <b>Maschinen</b>; dort steht dieselbe Angabe auch im Formular («Bereich», «Steht auf»).
-        Hier siehst und änderst du, in welchem <b>Bereich</b> eine Maschine steht und auf welchem <b>Möbel</b> (und welcher Ebene), z.B. auf einem Tisch
-        oder in einem Regal. Maschinen tragen keinen Etikett-Code; sie sind über die Suche und später im Bauplan auffindbar.
-        <b>Kategorie</b> sagt, <i>was</i> eine Maschine ist (Laser, CNC …), <b>Bereich</b>, <i>wo</i> sie steht.
+        Die Maschinen selbst pflegst du unter <b>Maschinen</b>; dort steht dieselbe Angabe als Feld «Lagerort» im Formular.
+        Der <b>Lagerort</b> ist wie bei Werkzeug der Code: Bereich, Möbel und Ebene, z.B. <code>ELE-M02-E03</code> = Elektronik, Regal 2, Ebene 3.
+        Ein Bereich allein (<code>ELE</code>) heisst «irgendwo im Bereich». Maschinen tragen keinen Etikett-Code; sie sind über die Suche
+        und später im Bauplan auffindbar. Die <b>Kategorie</b> einer Maschine ergibt sich aus ihrem Bereich (ohne Bereich: «Sonstiges»).
       </div>
       <div class="inv-toolbar">
         <div class="search-wrap"><span class="search-icon">🔍</span>
-          <input class="search-input" id="inv-m-q" placeholder="Maschine, Kategorie oder Bereich…" oninput="Inv.debouncedLoadMachines()"></div>
+          <input class="search-input" id="inv-m-q" placeholder="Maschine oder Bereich…" oninput="Inv.debouncedLoadMachines()"></div>
         <select class="filter-input" id="inv-m-area" onchange="Inv.loadMachines()"></select>
         <span class="inv-dim inv-small" id="inv-m-count"></span>
       </div>
       <div class="table-wrap" style="margin-bottom:0">
-        <table><thead><tr><th>Maschine</th><th>Bereich</th><th>Steht auf (Möbel / Ebene)</th><th>Status</th></tr></thead>
+        <table><thead><tr><th>Maschine</th><th>Lagerort</th><th>Status</th></tr></thead>
         <tbody id="inv-machines-body"></tbody></table>
       </div>
     </div>
@@ -1090,91 +1090,83 @@
     machines = r;
     renderMachines();
   }
-  // «Steht auf»: Möbel und darunter deren Ebenen in einer Auswahl. Wert: f:<Möbel> oder l:<Möbel>:<Ebene>
-  function standsOnOptions(area, sel) {
-    if (!area) return '';
-    return area.furniture.filter(f => f.number > 0).map(f => {
-      const t = f.name || ((KIND[f.kind] || 'Möbel').replace(/^\S+\s/, '') + ' ' + f.number);
-      return `<option value="f:${f.id}" ${sel === 'f:' + f.id ? 'selected' : ''}>${esc(t)} (${esc(f.code)})</option>` +
-        f.levels.filter(l => l.number > 0).map(l =>
-          `<option value="l:${f.id}:${l.id}" ${sel === `l:${f.id}:${l.id}` ? 'selected' : ''}>&nbsp;&nbsp;↳ ${esc(l.label || 'Ebene ' + l.number)} (${esc(l.code)})</option>`).join('');
+  // «Lagerort» einer Maschine: Bereich, Möbel und Ebene in EINER Auswahl, jeweils mit Code.
+  // Wert: a:<Bereich> | f:<Bereich>:<Möbel> | l:<Bereich>:<Möbel>:<Ebene>
+  const furnTitle = (f) => f.name || ((KIND[f.kind] || 'Möbel').replace(/^\S+\s/, '') + ' ' + f.number);
+  function placeOptions(sel) {
+    return tree.map(a => {
+      const head = (a.code ? a.code + ' · ' : '') + a.name;
+      return `<option value="a:${a.id}" ${sel === 'a:' + a.id ? 'selected' : ''}>${esc(head)}</option>` +
+        a.furniture.filter(f => f.number > 0).map(f =>
+          `<option value="f:${a.id}:${f.id}" ${sel === `f:${a.id}:${f.id}` ? 'selected' : ''}>&nbsp;&nbsp;${esc(f.code)} · ${esc(furnTitle(f))}</option>` +
+          f.levels.filter(l => l.number > 0).map(l =>
+            `<option value="l:${a.id}:${f.id}:${l.id}" ${sel === `l:${a.id}:${f.id}:${l.id}` ? 'selected' : ''}>&nbsp;&nbsp;&nbsp;&nbsp;↳ ${esc(l.code)} · ${esc(l.label || 'Ebene ' + l.number)}</option>`).join('')).join('');
     }).join('');
   }
-  const standsOnValue = (s) => !s ? '' : (s.level ? `l:${s.furniture_id}:${s.level.id}` : `f:${s.furniture_id}`);
-  function parseStand(v) {
+  const placeValue = (m) => !m.area ? '' : !m.stands_on ? 'a:' + m.area.id
+    : m.stands_on.level ? `l:${m.area.id}:${m.stands_on.furniture_id}:${m.stands_on.level.id}` : `f:${m.area.id}:${m.stands_on.furniture_id}`;
+  function parsePlace(v) {
     const p = String(v || '').split(':');
-    if (p[0] === 'f') return { furniture_id: +p[1], level_id: null };
-    if (p[0] === 'l') return { furniture_id: +p[1], level_id: +p[2] };
-    return { furniture_id: null, level_id: null };
+    if (p[0] === 'a') return { area_id: +p[1], furniture_id: null, level_id: null };
+    if (p[0] === 'f') return { area_id: +p[1], furniture_id: +p[2], level_id: null };
+    if (p[0] === 'l') return { area_id: +p[1], furniture_id: +p[2], level_id: +p[3] };
+    return { area_id: null, furniture_id: null, level_id: null };
   }
-  const standsOnText = (so) => !so ? '' : so.title + (so.level ? ' › ' + (so.level.label || 'Ebene ' + so.level.number) : '');
-  function furnOptionsFor(areaId, selId) {
-    const a = areaById(areaId);
-    if (!a) return '';
-    return a.furniture.filter(f => f.number > 0).map(f =>
-      `<option value="${f.id}" ${f.id === selId ? 'selected' : ''}>${esc(f.name || ((KIND[f.kind] || 'Möbel').replace(/^\S+\s/, '') + ' ' + f.number))} (${esc(f.code)})</option>`).join('');
-  }
+  const placeCode = (m) => !m.area ? '' : m.stands_on ? (m.stands_on.level ? m.stands_on.level.code : m.stands_on.code) : (m.area.code || '');
   function renderMachines() {
     const power = isPower();
     $('m-count').textContent = `${machines.length} Maschine${machines.length === 1 ? '' : 'n'}`;
     $('machines-body').innerHTML = machines.length ? machines.map(m => {
-      const aid = m.area ? m.area.id : '';
-      const areaCell = power
-        ? `<select class="filter-input" style="width:auto;min-width:170px" onchange="Inv.setMachineArea(${m.id}, this.value)">
-             <option value="">— kein Bereich —</option>${tree.map(a => `<option value="${a.id}" ${a.id === aid ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select>`
-        : (m.area ? esc(m.area.name) : '<span class="inv-dim">—</span>');
-      const onCell = power
-        ? `<select class="filter-input" style="width:auto;min-width:170px" ${m.area ? '' : 'disabled'} onchange="Inv.setMachineFurn(${m.id}, this.value)">
-             <option value="">— kein Möbel —</option>${standsOnOptions(areaById(aid), standsOnValue(m.stands_on))}</select>`
-        : (m.stands_on ? esc(standsOnText(m.stands_on)) : '<span class="inv-dim">—</span>');
+      const cell = power
+        ? `<select class="filter-input" style="width:auto;min-width:240px" onchange="Inv.setMachinePlace(${m.id}, this.value)">
+             <option value="">— kein Lagerort —</option>${placeOptions(placeValue(m))}</select>`
+        : (m.area ? `<span class="inv-code">${esc(placeCode(m))}</span> ${esc(m.path)}` : '<span class="inv-dim">—</span>');
       const noMatch = !m.area && m.location
-        ? `<div class="inv-dim inv-small" title="Dieser Standort-Text entspricht keinem Bereich">«${esc(m.location)}» ist kein Bereich</div>` : '';
+        ? `<div class="inv-dim inv-small" title="Dieser Text entspricht keinem Bereich">«${esc(m.location)}» ist kein Bereich</div>` : '';
       return `<tr>
-        <td><b>${esc(m.name)}</b><div class="inv-dim inv-small">${esc(m.category || '')}${m.manufacturer ? ' · ' + esc(m.manufacturer) : ''}</div></td>
-        <td>${areaCell}${noMatch}</td><td>${onCell}</td>
+        <td><b>${esc(m.name)}</b>${m.manufacturer ? `<div class="inv-dim inv-small">${esc(m.manufacturer)}</div>` : ''}</td>
+        <td>${cell}${noMatch}</td>
         <td><span class="inv-dim">${esc(MSTATUS[m.status] || m.status)}</span></td></tr>`;
-    }).join('') : '<tr><td colspan="4" class="inv-empty">Keine Maschinen gefunden.</td></tr>';
+    }).join('') : '<tr><td colspan="3" class="inv-empty">Keine Maschinen gefunden.</td></tr>';
   }
-  async function setMachineArea(id, v) {
-    const r = await PATCH('/inventory/machines/' + id, { area_id: v ? +v : null });
-    if (r) { showToast('Bereich gespeichert', 'success'); await loadTree(); }
+  async function setMachinePlace(id, v) {
+    const r = await PATCH('/inventory/machines/' + id, parsePlace(v));
+    if (r) { showToast('Lagerort gespeichert', 'success'); await loadTree(); }
     await loadMachines();                                  // bei Fehler: Auswahl zurücksetzen
   }
-  async function setMachineFurn(id, v) {
-    if (await PATCH('/inventory/machines/' + id, parseStand(v))) showToast('Gespeichert', 'success');
-    await loadMachines();
-  }
-  // ── Maschinenformular (labmanager.html): «Steht auf» direkt beim Bereich wählen ──
+  // ── Maschinenformular (labmanager.html): ein Feld «Lagerort» (Bereich, Möbel, Ebene) ──
+  // Der Bereichsname wandert in das versteckte Feld mc-loc/e-loc; der Server leitet daraus Bereich und Kategorie ab.
   let slot = null;                                   // { el, machineId, orig }
-  const formAreaName = () => { const e = document.getElementById('e-loc') || document.getElementById('mc-loc'); return e ? e.value : ''; };
-  function renderSlot(selValue) {
+  const locField = () => document.getElementById('e-loc') || document.getElementById('mc-loc');
+  function renderSlot(selValue, legacyText) {
     if (!slot || !slot.el.isConnected) return;
-    const name = formAreaName().trim().toLowerCase();
-    const area = tree.find(a => a.name.toLowerCase() === name);
-    const furn = area ? area.furniture.filter(f => f.number > 0) : [];
-    slot.el.innerHTML = `<label class="form-label">Steht auf (Möbel / Ebene)</label>
-      <select class="form-input" id="inv-form-stand" ${furn.length ? '' : 'disabled'}>
-        <option value="">— kein Möbel —</option>${standsOnOptions(area, selValue || '')}</select>
-      <div style="font-size:14px;color:var(--text-dim);margin-top:4px">${!area ? 'Zuerst einen Bereich wählen.'
-        : (!furn.length ? 'Dieser Bereich hat noch keine Möbel (Inventar → Struktur).' : 'Tisch oder Regal (und Ebene), auf dem die Maschine steht.')}</div>`;
+    slot.el.innerHTML = `<label class="form-label" title="Bereich, Möbel und Ebene, z.B. ELE-M02-E03 — Tippen springt zum Code">Lagerort</label>
+      <select class="form-input" id="inv-form-place" onchange="Inv.formPlaceChanged()">
+        <option value="">— kein Lagerort${legacyText ? ' (bisher: «' + esc(legacyText) + '»)' : ''} —</option>${placeOptions(selValue || '')}</select>
+      <div style="font-size:14px;color:var(--text-dim);margin-top:4px">Wo die Maschine steht: im Bereich, auf einem Tisch oder in einem Regal (und Ebene). Die Kategorie ergibt sich aus dem Bereich.</div>`;
   }
   async function mountMachineSlot(el, machineId) {
     await loadTree();
-    let orig = '';
+    let orig = '', legacy = '';
     if (machineId) {
       const r = await apiSilent('GET', '/inventory/machines');
       const m = r && r.find(x => x.id === machineId);
-      orig = m ? standsOnValue(m.stands_on) : '';
+      if (m) { orig = placeValue(m); if (!m.area && m.location) legacy = m.location; }
     }
     slot = { el, machineId, orig };
-    renderSlot(orig);
+    renderSlot(orig, legacy);
   }
-  const formAreaChanged = () => renderSlot('');
+  function formPlaceChanged() {
+    const sel = document.getElementById('inv-form-place'), loc = locField();
+    if (!sel || !loc) return;
+    const p = parsePlace(sel.value), a = areaById(p.area_id);
+    loc.value = a ? a.name : '';
+  }
   async function saveFormPlacement(machineId) {
     if (!slot || !slot.el.isConnected) return;
-    const sel = document.getElementById('inv-form-stand');
-    if (!sel || sel.disabled || sel.value === slot.orig) return;          // nichts geändert
-    if (await PATCH('/inventory/machines/' + machineId, parseStand(sel.value))) showToast('«Steht auf» gespeichert', 'success');
+    const sel = document.getElementById('inv-form-place');
+    if (!sel || sel.value === slot.orig) return;                         // nichts geändert
+    if (await PATCH('/inventory/machines/' + machineId, parsePlace(sel.value))) showToast('Lagerort gespeichert', 'success');
   }
 
   // Treffer von Maschinen oberhalb der Werkzeugliste
@@ -1219,7 +1211,7 @@
     openFurnModal, deleteFurn, addLevels, addPositions, renameLevel, renamePos, deleteLevel, deletePos,
     toggleOutdated, loadLabels, renderLabels, printLabels, printCalibration, setTemplate, offsetChanged, markPrinted, runImport,
     toggleLabel, setLabelCopies, toggleLevelsOf, selectBy, labelFor,
-    debouncedLoadMachines, loadMachines, setMachineArea, setMachineFurn, openMachines, formAreaChanged, saveFormPlacement,
+    debouncedLoadMachines, loadMachines, setMachinePlace, openMachines, formPlaceChanged, saveFormPlacement,
     setLabelMode, debouncedToolLoad, toggleTool, setCopies, toolSelectAll, toolSelectNone, toolCopiesQty,
   };
 

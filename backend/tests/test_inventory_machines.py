@@ -355,3 +355,68 @@ async def test_changing_the_location_in_the_machine_form_drops_a_foreign_stands_
     await client.patch(f"/api/machines/{mid}", headers=power, json={"location": "Holz"})        # altes Formular
     m = (await _machines(client, power))["Lasercutter"]
     assert m["area"]["name"] == "Holz" and m["stands_on"] is None                               # Tisch gehört zu Laser
+
+
+# ── Option B: Kategorie wird aus dem Bereich abgeleitet ──────────────────────
+async def _cats(db):
+    from app.models import MachineCategory
+    return {c.name for c in (await db.execute(select(MachineCategory))).scalars().all()}
+
+
+async def _category(client, hdr, name):
+    return (await _machines(client, hdr))[name]["category"]
+
+
+async def test_category_follows_the_area_on_first_call(client, enabled, power, db):
+    await _setup(db)                                         # «Plotter» hat unbekannten Text, «Nähmaschine» keinen
+    assert await _category(client, power, "Lasercutter") == "Laser"
+    assert await _category(client, power, "Tischkreissäge") == "Holz"
+    assert await _category(client, power, "Plotter") == "Sonstiges"
+    assert await _category(client, power, "Nähmaschine") == "Sonstiges"
+    assert {"Laser", "Holz", "Sonstiges"} <= await _cats(db)
+
+
+async def test_category_follows_machine_form_and_area_change(client, enabled, power, db):
+    await _setup(db)
+    ms = await _machines(client, power)
+    r = await client.post("/api/machines", headers=power, json={"name": "Fräse", "category": "CNC", "location": "Holz"})
+    assert r.status_code == 200, r.text
+    assert await _category(client, power, "Fräse") == "Holz"                     # Formularwert «CNC» wird überstimmt
+    mid = ms["Plotter"]["id"]
+    await client.patch(f"/api/machines/{mid}", headers=power, json={"location": "Laser", "category": "Egal"})
+    assert await _category(client, power, "Plotter") == "Laser"
+    holz = await _area_id(client, power, "Holz")
+    await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"area_id": holz})
+    assert await _category(client, power, "Plotter") == "Holz"
+    await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"area_id": None})
+    assert await _category(client, power, "Plotter") == "Sonstiges"
+
+
+async def test_category_follows_rename_and_delete_of_an_area(client, enabled, power, db):
+    await _setup(db)
+    laser = await _area_id(client, power, "Laser")
+    await _machines(client, power)
+    await client.patch(f"/api/locations/{laser}", headers=power, json={"name": "Lasergravur"})
+    assert await _category(client, power, "Lasercutter") == "Lasergravur"
+    cats = await _cats(db)
+    assert "Lasergravur" in cats and "Laser" not in cats
+    r = await client.delete(f"/api/locations/{laser}", headers=power)
+    assert r.status_code == 200, r.text
+    ms = await _machines(client, power)
+    assert ms["Lasercutter"]["category"] == "Sonstiges" and ms["Lasercutter"]["area"] is None
+    assert "Lasergravur" not in await _cats(db)
+
+
+async def test_new_area_creates_its_category(client, enabled, power, db):
+    await _setup(db)
+    r = await client.post("/api/inventory/areas", headers=power, json={"name": "Elektronik"})
+    assert r.status_code == 200, r.text
+    assert "Elektronik" in await _cats(db)
+
+
+async def test_categories_stay_untouched_while_inventory_is_off(client, power, db):
+    await _setup(db)                                         # kein «enabled»
+    r = await client.post("/api/machines", headers=power, json={"name": "Fräse", "category": "CNC", "location": "Holz"})
+    assert r.status_code == 200, r.text
+    ms = {m["name"]: m for m in (await client.get("/api/machines", headers=power)).json()}
+    assert ms["Fräse"]["category"] == "CNC" and ms["Plotter"]["category"] == "Sonstiges"
