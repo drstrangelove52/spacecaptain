@@ -195,7 +195,7 @@
 
     <div class="inv-page" id="inv-page-plan">
       <div class="inv-hint">
-        Der <b>Bauplan</b> zeigt Bereiche (gestrichelt), Möbel und Maschinen von oben, Masse in <b>cm</b>. Die Suche markiert, wo etwas steht.
+        Der <b>Bauplan</b> zeigt das Gebäude von oben, Masse in <b>cm</b>: Stockwerke (oben wählbar), Räume und Treppen, darin Bereiche (gestrichelt), Möbel und Maschinen. Die Suche markiert, wo etwas steht.
         <span id="inv-plan-help-edit">Zum Einzeichnen ziehst du Elemente aus der Liste «Noch nicht auf dem Plan» auf die Fläche (oder «＋» tippst), verschiebst sie mit der Maus
         und änderst die Grösse am Punkt unten rechts. Drehen und genaue Masse stehen rechts bei der Auswahl. Der Plan ist unabhängig von den Codes: nach einem Umzug zeichnest du nur neu.</span>
       </div>
@@ -1213,7 +1213,7 @@
     if (!d) return;
     planData = d;
     if (!planCtl || !$('plan-canvas').contains(planCtl.el)) {
-      planCtl = InvPlan.mount($('plan-canvas'), d, { editable: isPower(), onChange: planChanged, onSelect: () => renderPlanSide() });
+      planCtl = InvPlan.mount($('plan-canvas'), d, { editable: isPower(), onChange: planChanged, onSelect: () => renderPlanSide(), onFloor: () => renderPlanSide() });
     } else planCtl.setData(d);
     planZoom();
     renderPlanSide();
@@ -1221,13 +1221,21 @@
   }
   function planZoom() { if (planCtl) planCtl.el.style.width = $('plan-zoom').value + '%'; }
   async function planChanged(kind, id, rect) {
-    const body = rect ? { x: rect.x, y: rect.y, w: rect.w, h: rect.h, rot: rect.rot || 0 } : { remove: true };
-    const r = await PATCH(`/inventory/plan/${kind}/${id}`, body);
+    let r;
+    if (kind === 'room') {
+      r = rect ? await PATCH('/inventory/plan/rooms/' + id, { x: rect.x, y: rect.y, w: rect.w, h: rect.h, rot: rect.rot || 0 })
+               : await DELETE('/inventory/plan/rooms/' + id);
+      if (!rect) { await loadPlan(); return; }
+    } else {
+      const body = rect ? { x: rect.x, y: rect.y, w: rect.w, h: rect.h, rot: rect.rot || 0, floor_id: rect.floor_id } : { remove: true };
+      r = await PATCH(`/inventory/plan/${kind}/${id}`, body);
+    }
     if (!r) { await loadPlan(); return; }                 // Fehler: Stand vom Server zeigen
     renderPlanSide();
   }
-  const PLAN_KIND = { area: 'Bereich', furniture: 'Möbel', machine: 'Maschine' };
+  const PLAN_KIND = { area: 'Bereich', furniture: 'Möbel', machine: 'Maschine', room: 'Raum' };
   const planName = (k, o) => k === 'furniture' ? `${o.code} · ${o.title}` : k === 'area' ? ((o.code ? o.code + ' · ' : '') + o.name) : o.name;
+  const floorOpts = (sel, skip) => planData.floors.filter(f => f.id !== skip).map(f => `<option value="${f.id}" ${f.id === sel ? 'selected' : ''}>${esc(f.name)}</option>`).join('');
   function renderPlanSide() {
     const box = $('plan-side');
     if (!planData) { box.innerHTML = ''; return; }
@@ -1235,34 +1243,74 @@
     const placed = d.areas.filter(a => a.plan).length + d.furniture.filter(f => f.plan).length + d.machines.filter(m => m.plan).length;
     $('plan-count').textContent = `${placed} auf dem Plan`;
     if (!power) { box.innerHTML = ''; return; }
-    const r = d.room, sel = planCtl && planCtl.selected();
-    let html = `<div class="inv-plan-box"><h4>RAUM</h4>
+    const r = d.room, sel = planCtl && planCtl.selected(), cur = planCtl ? planCtl.floorId() : d.floors[0].id;
+    const curName = (d.floors.find(f => f.id === cur) || {}).name || '';
+    let html = `<div class="inv-plan-box"><h4>STOCKWERKE</h4>
+      ${d.floors.map(f => `<div class="inv-row" style="margin-bottom:6px;gap:6px">
+        <input class="form-input form-input-sm" value="${esc(f.name)}" maxlength="50" onchange="Inv.floorRename(${f.id}, this.value)" style="flex:1">
+        <button class="btn btn-ghost btn-sm" title="Stockwerk löschen (nur wenn leer)" onclick="Inv.floorDelete(${f.id})">✕</button></div>`).join('')}
+      <div class="inv-row" style="gap:6px"><input class="form-input form-input-sm" id="inv-floor-new" placeholder="z.B. OG" maxlength="50" style="flex:1">
+        <button class="btn btn-ghost btn-sm" onclick="Inv.floorAdd()">+ Stockwerk</button></div></div>
+      <div class="inv-plan-box"><h4>RÄUME UND TREPPEN · ${esc(curName)}</h4>
+        <div class="inv-row" style="gap:6px"><button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('raum')">+ Raum</button>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('treppe')">+ Treppe</button></div>
+        <div class="inv-dim inv-small" style="margin-top:6px">Räume sind Rechtecke; L-förmige Räume setzt du aus zwei zusammen. Eine Treppe erscheint auch auf ihrem Ziel-Stockwerk.</div></div>
+      <div class="inv-plan-box"><h4>GEBÄUDE (GRUNDFLÄCHE)</h4>
       <div class="form-group" style="margin-bottom:8px"><input class="form-input" id="inv-room-name" value="${esc(r.name)}" maxlength="100"></div>
       <div class="inv-plan-grid">
         <div><label class="form-label">Breite (m)</label><input class="form-input" id="inv-room-w" type="number" min="1" step="0.5" value="${r.width_cm / 100}"></div>
         <div><label class="form-label">Tiefe (m)</label><input class="form-input" id="inv-room-h" type="number" min="1" step="0.5" value="${r.height_cm / 100}"></div>
       </div>
-      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="Inv.saveRoom()">Raum speichern</button></div>`;
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="Inv.saveRoom()">Gebäude speichern</button></div>`;
     if (sel && sel.item && sel.item.plan) {
-      const p = sel.item.plan, k = sel.kind, ro = k === 'area' ? 'disabled' : '';
-      html += `<div class="inv-plan-box"><h4>${PLAN_KIND[k].toUpperCase()} AUSGEWÄHLT</h4>
-        <div style="font-weight:700;margin-bottom:8px">${esc(planName(k, sel.item))}</div>
+      const p = sel.item.plan, k = sel.kind, o = sel.item;
+      const noRot = k === 'area' || (k === 'room' && o.kind !== 'treppe');
+      const myFloor = k === 'room' ? o.floor_id : p.floor_id;
+      html += `<div class="inv-plan-box"><h4>${(k === 'room' && o.kind === 'treppe' ? 'TREPPE' : PLAN_KIND[k].toUpperCase())} AUSGEWÄHLT</h4>
+        ${k === 'room' ? `<div class="form-group" style="margin-bottom:8px"><input class="form-input" value="${esc(o.name)}" maxlength="100" onchange="Inv.roomRename(${o.id}, this.value)"></div>`
+          : `<div style="font-weight:700;margin-bottom:8px">${esc(planName(k, o))}</div>`}
+        <div class="form-group" style="margin-bottom:8px"><label class="form-label">Stockwerk</label>
+          <select class="form-input" onchange="Inv.planMoveFloor(+this.value)">${floorOpts(myFloor)}</select></div>
+        ${k === 'room' && o.kind === 'treppe' ? `<div class="form-group" style="margin-bottom:8px"><label class="form-label">Verbindet mit</label>
+          <select class="form-input" onchange="Inv.roomLink(${o.id}, this.value)"><option value="">— nicht verbunden —</option>${floorOpts(o.link_floor_id, o.floor_id)}</select></div>` : ''}
         <div class="inv-plan-grid">
           ${[['x', 'X (cm)', p.x], ['y', 'Y (cm)', p.y], ['w', 'Breite (cm)', p.w], ['h', 'Tiefe (cm)', p.h]].map(([f, l, v]) =>
             `<div><label class="form-label">${l}</label><input class="form-input" type="number" step="5" value="${Math.round(v)}" onchange="Inv.planField('${f}', this.value)"></div>`).join('')}
         </div>
         <div class="inv-row" style="margin-top:8px">
-          <button class="btn btn-ghost btn-sm" ${ro} onclick="Inv.planRotate()">↻ 90°</button>
-          <button class="btn btn-danger btn-sm" onclick="Inv.planRemove()">Vom Plan nehmen</button></div></div>`;
+          <button class="btn btn-ghost btn-sm" ${noRot ? 'disabled' : ''} onclick="Inv.planRotate()">↻ 90°</button>
+          <button class="btn btn-danger btn-sm" onclick="Inv.planRemove()">${k === 'room' ? 'Löschen' : 'Vom Plan nehmen'}</button></div></div>`;
     }
     const tray = (title, kind, list) => list.length ? `<div class="inv-plan-box"><h4>${title} (${list.length})</h4><div class="inv-plan-tray">${list.map(o =>
       `<div class="inv-plan-chip" draggable="true" ondragstart="Inv.planDrag(event,'${kind}',${o.id})">
         <span class="inv-sw" style="background:${esc(o.color || '#22d3ee')}"></span><span>${esc(planName(kind, o))}</span>
-        <button class="btn btn-ghost btn-sm" title="In die Mitte des Plans setzen" onclick="Inv.planAdd('${kind}',${o.id})">＋</button></div>`).join('')}</div></div>` : '';
+        <button class="btn btn-ghost btn-sm" title="Auf dieses Stockwerk setzen" onclick="Inv.planAdd('${kind}',${o.id})">＋</button></div>`).join('')}</div></div>` : '';
     const hasFurn = d.furniture.filter(f => !f.plan), hasM = d.machines.filter(m => !m.plan), hasA = d.areas.filter(a => !a.plan);
-    html += (hasA.length + hasFurn.length + hasM.length) ? `<div class="inv-dim inv-small" style="padding:0 2px">Noch nicht auf dem Plan: Element auf die Fläche ziehen.</div>` : '';
+    html += (hasA.length + hasFurn.length + hasM.length) ? `<div class="inv-dim inv-small" style="padding:0 2px">Noch nicht auf dem Plan: Element auf die Fläche ziehen (es landet auf «${esc(curName)}»).</div>` : '';
     html += tray('BEREICHE', 'area', hasA) + tray('MÖBEL', 'furniture', hasFurn) + tray('MASCHINEN', 'machine', hasM);
     box.innerHTML = html;
+  }
+  async function floorAdd() {
+    const name = ($('floor-new').value || '').trim();
+    if (!name) return;
+    if (await POST('/inventory/plan/floors', { name })) await loadPlan();
+  }
+  async function floorRename(id, name) { if (name.trim() && await PATCH('/inventory/plan/floors/' + id, { name: name.trim() })) await loadPlan(); else await loadPlan(); }
+  async function floorDelete(id) {
+    if (!confirm('Stockwerk wirklich löschen? Das geht nur, wenn es leer ist.')) return;
+    if (await DELETE('/inventory/plan/floors/' + id)) await loadPlan();
+  }
+  async function roomAdd(kind) {
+    const n = planData.rooms.filter(r => r.kind === kind).length + 1;
+    const r = await POST('/inventory/plan/rooms', { floor_id: planCtl.floorId(), kind, name: kind === 'treppe' ? 'Treppe ' + n : 'Raum ' + n, x: 100, y: 100 });
+    if (r) { await loadPlan(); planCtl.select('room', r.id); }
+  }
+  async function roomRename(id, name) { if (name.trim() && await PATCH('/inventory/plan/rooms/' + id, { name: name.trim() })) await loadPlan(); }
+  async function roomLink(id, v) { if (await PATCH('/inventory/plan/rooms/' + id, { link_floor_id: v ? +v : null })) { await loadPlan(); planCtl.select('room', id); } }
+  async function planMoveFloor(fid) {
+    const s = planCtl && planCtl.selected(); if (!s) return;
+    if (s.kind === 'room') { if (await PATCH('/inventory/plan/rooms/' + s.id, { floor_id: fid })) { await loadPlan(); planCtl.setFloor(fid); planCtl.select('room', s.id); } }
+    else { planCtl.update(s.kind, s.id, { floor_id: fid }); planCtl.setFloor(fid); planCtl.select(s.kind, s.id); }
   }
   function planDrag(ev, kind, id) { ev.dataTransfer.setData('text/plain', kind + ':' + id); ev.dataTransfer.effectAllowed = 'copy'; }
   function planDrop(ev) {
@@ -1274,11 +1322,11 @@
   function planAdd(kind, id) { if (planCtl) planCtl.place(kind, id, null); }
   function planField(f, v) { const s = planCtl && planCtl.selected(); if (s && v !== '' && !isNaN(+v)) planCtl.update(s.kind, s.id, { [f]: Math.max(f === 'w' || f === 'h' ? 5 : -50000, +v) }); }
   function planRotate() { const s = planCtl && planCtl.selected(); if (s) planCtl.update(s.kind, s.id, { rot: ((s.item.plan.rot || 0) + 90) % 360 }); }
-  function planRemove() { const s = planCtl && planCtl.selected(); if (s) planCtl.remove(s.kind, s.id); }
+  function planRemove() { const s = planCtl && planCtl.selected(); if (!s) return; if (s.kind === 'room' && !confirm('Raum bzw. Treppe wirklich löschen?')) return; planCtl.remove(s.kind, s.id); }
   async function saveRoom() {
     const body = { name: $('room-name').value.trim() || 'Makerspace', width_cm: Math.round(parseFloat($('room-w').value) * 100), height_cm: Math.round(parseFloat($('room-h').value) * 100) };
-    if (!(body.width_cm >= 100) || !(body.height_cm >= 100)) { showToast('Raum: mindestens 1 m × 1 m', 'error'); return; }
-    if (await PUT('/inventory/plan/room', body)) { showToast('Raum gespeichert', 'success'); await loadPlan(); }
+    if (!(body.width_cm >= 100) || !(body.height_cm >= 100)) { showToast('Gebäude: mindestens 1 m × 1 m', 'error'); return; }
+    if (await PUT('/inventory/plan/room', body)) { showToast('Gebäude gespeichert', 'success'); await loadPlan(); }
   }
   function planSearch() {
     clearTimeout(planSearchTimer);
@@ -1379,6 +1427,7 @@
     toggleLabel, setLabelCopies, toggleLevelsOf, selectBy, labelFor,
     debouncedLoadMachines, loadMachines, setMachinePlace, openMachines, formPlaceChanged, saveFormPlacement,
     planSearch, planZoom, planDrag, planDrop, planAdd, planField, planRotate, planRemove, saveRoom, loadPlan,
+    floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
     setLabelMode, debouncedToolLoad, toggleTool, setCopies, toolSelectAll, toolSelectNone, toolCopiesQty,
   };
 

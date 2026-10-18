@@ -47,6 +47,7 @@ class InvFurniture(Base):
     plan_w:    Mapped[Optional[float]] = mapped_column(Float, default=None)
     plan_h:    Mapped[Optional[float]] = mapped_column(Float, default=None)
     plan_rot:  Mapped[Optional[float]] = mapped_column(Float, default=None)
+    plan_floor_id: Mapped[Optional[int]] = mapped_column(Integer, default=None)     # Stockwerk auf dem Plan (ohne DB-FK)
     label_outdated: Mapped[bool]       = mapped_column(Boolean, default=False)
     note:      Mapped[Optional[str]]   = mapped_column(Text, default=None)
     created_at: Mapped[datetime]       = mapped_column(DateTime, default=datetime.utcnow)
@@ -112,6 +113,7 @@ class InvPlacement(Base):
     plan_w:       Mapped[Optional[float]] = mapped_column(Float, default=None)
     plan_h:       Mapped[Optional[float]] = mapped_column(Float, default=None)
     plan_rot:     Mapped[Optional[float]] = mapped_column(Float, default=None)
+    plan_floor_id: Mapped[Optional[int]]  = mapped_column(Integer, default=None)
 
 
 class InvPlan(Base):
@@ -121,3 +123,27 @@ class InvPlan(Base):
     name:      Mapped[str]   = mapped_column(String(100), default="Makerspace")
     width_cm:  Mapped[float] = mapped_column(Float, default=1500.0)
     height_cm: Mapped[float] = mapped_column(Float, default=1000.0)
+
+
+class InvFloor(Base):
+    """Stockwerk des Bauplans (z.B. «EG», «OG»). Mindestens eines; das erste entsteht automatisch."""
+    __tablename__ = "inv_floors"
+    id:         Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name:       Mapped[str] = mapped_column(String(50), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class InvRoom(Base):
+    """Raum oder Treppe als Rechteck auf einem Stockwerk (cm). Eine Treppe zeigt sich zusaetzlich auf `link_floor_id`.
+    Keine DB-Fremdschluessel (Integritaet im App-Code)."""
+    __tablename__ = "inv_rooms"
+    id:            Mapped[int]             = mapped_column(Integer, primary_key=True, autoincrement=True)
+    floor_id:      Mapped[int]             = mapped_column(Integer, nullable=False, index=True)
+    name:          Mapped[str]             = mapped_column(String(100), nullable=False)
+    kind:          Mapped[str]             = mapped_column(String(10), default="raum")      # raum | treppe
+    plan_x:        Mapped[float]           = mapped_column(Float, default=0.0)
+    plan_y:        Mapped[float]           = mapped_column(Float, default=0.0)
+    plan_w:        Mapped[float]           = mapped_column(Float, default=300.0)
+    plan_h:        Mapped[float]           = mapped_column(Float, default=300.0)
+    plan_rot:      Mapped[float]           = mapped_column(Float, default=0.0)
+    link_floor_id: Mapped[Optional[int]]   = mapped_column(Integer, default=None)

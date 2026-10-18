@@ -508,14 +508,21 @@ Verworfen: Maschinen ebenfalls mit Platz und Etikett auszustatten. Dann wären b
 
 ## 11f. Stand Etappe 4: Bauplan
 
-- **Darstellung:** Raum als Rechteck in **cm** (Standard 15 × 10 m, einstellbar), darin Bereiche (gestrichelte Zonen), Möbel und
-  Maschinen als Rechtecke (von unten nach oben gezeichnet). Möbel und Maschinen sind drehbar (0–359°, Beschriftung bleibt
+- **Darstellung:** Das **Gebäude** ist eine Grundfläche in **cm** (Standard 15 × 10 m, einstellbar). Darin liegen **Stockwerke**
+  (Reiter «EG», «OG» …), auf jedem **Räume** und **Treppen** als Rechtecke, dazu Bereiche (gestrichelte Zonen), Möbel und Maschinen
+  (von unten nach oben gezeichnet). Räume anderer Stockwerke erscheinen als schwache Umrisse zur Orientierung. Möbel und Maschinen sind drehbar (0–359°, Beschriftung bleibt
   waagrecht), Bereiche nicht. Raster 100 cm, Einrasten auf 5 cm. Kein Hintergrundbild, kein Massstab-Import (bleibt Etappe 5).
+- **Stockwerke, Räume, Treppen (Skizze vom 2026-10-19):** Der Makerspace ist nicht rechteckig und liegt auf zwei Stockwerken.
+  Entschieden: **Räume sind Rechtecke** (L-förmige Räume aus zwei Rechtecken), keine freien Umrisse. Tabellen `inv_floors` (Name,
+  Reihenfolge) und `inv_rooms` (Stockwerk, Name, `kind` = `raum`|`treppe`, Rechteck, Drehung, bei Treppen `link_floor_id` = Ziel-Stockwerk;
+  eine Treppe erscheint auf beiden Stockwerken, Beschriftung mit ↑/↓). Jedes eingezeichnete Element trägt `plan_floor_id`
+  (Bereich, Möbel, Maschine; fehlend = erstes Stockwerk). Migration v1.56. Stockwerke lassen sich nur löschen, wenn sie leer
+  sind, das letzte nie. Die Suche und die Gästeseite schalten automatisch auf das Stockwerk des Treffers.
 - **Speicherung:** in den vorhandenen Spalten `machine_locations.plan_*` (Bereich), `inv_furniture.plan_*` (Möbel),
   `inv_placements.plan_*` (Maschine, unabhängig von «steht auf») und neu `inv_plan` (eine Zeile: Name, Breite, Tiefe; Migration
   v1.55, Tabelle über `create_all`). «Auf dem Plan» heisst: `plan_x/y/w/h` gesetzt. Codes und Zuordnungen hängen nicht am Plan.
-- **API:** `GET /api/inventory/plan` (alle Lab Manager), `PUT /api/inventory/plan/room`, `PATCH /api/inventory/plan/{area|furniture|machine}/{id}`
-  mit `{x,y,w,h,rot}` oder `{remove:true}` (Power-Manager/Admin; `M00` hat keinen Platz; Werte werden geprüft). Verschieben wird
+- **API:** `GET /api/inventory/plan` (alle Lab Manager), `PUT /api/inventory/plan/room` (Gebäude), `POST|PATCH|DELETE /api/inventory/plan/floors[/{id}]`, `POST|PATCH|DELETE /api/inventory/plan/rooms[/{id}]`,
+  `PATCH /api/inventory/plan/{area|furniture|machine}/{id}` mit `{x,y,w,h,rot,floor_id}` oder `{remove:true}` (Power-Manager/Admin; `M00` hat keinen Platz; Werte werden geprüft). Verschieben wird
   **nicht** einzeln protokolliert (Alltag), nur Raumänderungen (`inventory_plan_updated`). Öffentlich:
   `GET /api/inventory-public/plan` (nur Elemente, die schon eingezeichnet sind).
 - **Oberfläche:** `frontend/inventory-plan.js` (gemeinsamer SVG-Renderer, bearbeitbar oder nur ansehen) wird vom Inventar-Reiter
@@ -524,9 +531,9 @@ Verworfen: Maschinen ebenfalls mit Platz und Etikett auszustatten. Dann wären b
 - **Gäste:** `inventar.html?plan=1` (ganzer Plan), `?plan=ELE-M01` (Möbel/Ebene/Werkzeug-Ort markiert), `?plan=ELE` (Bereich),
   `?machine=<ID>`. Auf dem Handy wird der Plan 2,3× gross gezeichnet und zum Treffer gescrollt. Karten «🗺️ Auf dem Plan zeigen»
   stehen bei Werkzeug und Möbel; Maschinen-Treffer führen auf den Plan. Nicht eingezeichnete Ziele zeigen einen Hinweis.
-- **Backup:** Sektion `inventory` enthält `room` und die Plan-Rechtecke von Bereichen, Möbeln und Maschinen (`placements`);
+- **Backup:** Sektion `inventory` enthält `room` (Gebäude), `floors`, `rooms` und die Plan-Rechtecke samt Stockwerkname von Bereichen, Möbeln und Maschinen (`placements`);
   fehlender Planplatz bestehender Möbel wird beim Import ohne «Überschreiben» ergänzt.
-- **Bewusst nicht:** Hintergrund-Grundriss, Wände/Türen, Mehrere Stockwerke, Undo. Wenn der neue Raum feststeht, reicht es,
+- **Bewusst nicht:** Hintergrund-Grundriss, Wände/Türen, freie Raumumrisse, Undo. Wenn der neue Raum feststeht, reicht es,
   den Raum einzustellen und die Elemente neu zu ziehen.
 
 ## 12. Offene Punkte

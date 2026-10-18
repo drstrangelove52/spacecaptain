@@ -423,6 +423,7 @@ class MachineLocation(Base):
     plan_y:     Mapped[Optional[float]] = mapped_column(Float, default=None)
     plan_w:     Mapped[Optional[float]] = mapped_column(Float, default=None)
     plan_h:     Mapped[Optional[float]] = mapped_column(Float, default=None)
+    plan_floor_id: Mapped[Optional[int]] = mapped_column(Integer, default=None)
 
 
 class MachineOwner(Base):

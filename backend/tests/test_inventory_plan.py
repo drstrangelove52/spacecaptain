@@ -26,7 +26,7 @@ async def test_plan_starts_empty_with_default_room(client, enabled, power, db):
 async def test_place_move_resize_and_remove(client, enabled, power, db):
     laser, t, mid = await _fill(client, power, db)
     r = await client.patch(f"/api/inventory/plan/area/{laser}", headers=power, json={"x": 100, "y": 50, "w": 400, "h": 300})
-    assert r.status_code == 200 and r.json()["plan"] == {"x": 100, "y": 50, "w": 400, "h": 300, "rot": 0.0}
+    assert r.status_code == 200 and {k: v for k, v in r.json()["plan"].items() if k != "floor_id"} == {"x": 100, "y": 50, "w": 400, "h": 300, "rot": 0.0}
     r = await client.patch(f"/api/inventory/plan/furniture/{t['id']}", headers=power,
                            json={"x": 120, "y": 60, "w": 160, "h": 80, "rot": 450})
     assert r.json()["plan"]["rot"] == 90.0                                  # auf 0–359° normalisiert
@@ -97,3 +97,67 @@ async def test_plan_survives_backup(client, enabled, power, admin, db):
     assert p["furniture"][0]["plan"]["rot"] == 90.0 and p["furniture"][0]["plan"]["w"] == 120
     assert [m["plan"]["w"] for m in p["machines"] if m["plan"]] == [70]
     assert [a["plan"]["w"] for a in p["areas"] if a["plan"]] == [300]
+
+
+# ── Stockwerke, Räume, Treppen ───────────────────────────────────────────────
+async def test_plan_has_a_default_floor_and_elements_land_on_it(client, enabled, power, db):
+    laser, t, mid = await _fill(client, power, db)
+    p = (await client.get("/api/inventory/plan", headers=power)).json()
+    assert [f["name"] for f in p["floors"]] == ["EG"] and p["rooms"] == []
+    eg = p["floors"][0]["id"]
+    r = await client.patch(f"/api/inventory/plan/furniture/{t['id']}", headers=power, json={"x": 10, "y": 10, "w": 100, "h": 50})
+    assert r.json()["plan"]["floor_id"] == eg
+
+
+async def test_floors_rooms_and_stairs(client, enabled, power, manager, db):
+    laser, t, mid = await _fill(client, power, db)
+    og = (await client.post("/api/inventory/plan/floors", headers=power, json={"name": "OG"})).json()
+    assert (await client.post("/api/inventory/plan/floors", headers=power, json={"name": "og"})).status_code == 409
+    eg = (await client.get("/api/inventory/plan", headers=power)).json()["floors"][0]["id"]
+    room = (await client.post("/api/inventory/plan/rooms", headers=power,
+                              json={"floor_id": eg, "name": "Werkstatt", "x": 0, "y": 0, "w": 800, "h": 600})).json()
+    stairs = (await client.post("/api/inventory/plan/rooms", headers=power,
+                                json={"floor_id": eg, "name": "Treppe Süd", "kind": "treppe", "x": 800, "y": 0,
+                                      "link_floor_id": og["id"]})).json()
+    assert stairs["plan"]["w"] == 100 and stairs["link_floor_id"] == og["id"]
+    # Möbel aufs OG stellen
+    r = await client.patch(f"/api/inventory/plan/furniture/{t['id']}", headers=power,
+                           json={"x": 10, "y": 10, "w": 100, "h": 50, "floor_id": og["id"]})
+    assert r.json()["plan"]["floor_id"] == og["id"]
+    pub = (await client.get("/api/inventory-public/plan")).json()
+    assert [r["name"] for r in pub["rooms"]] == ["Werkstatt", "Treppe Süd"] and pub["furniture"][0]["plan"]["floor_id"] == og["id"]
+    # Räume ändern und löschen
+    r = await client.patch(f"/api/inventory/plan/rooms/{room['id']}", headers=power, json={"w": 900, "name": "Grosse Werkstatt"})
+    assert r.json()["plan"]["w"] == 900 and r.json()["name"] == "Grosse Werkstatt"
+    assert (await client.patch(f"/api/inventory/plan/rooms/{room['id']}", headers=power, json={"w": 1})).status_code == 400
+    assert (await client.post("/api/inventory/plan/rooms", headers=power, json={"floor_id": 999, "name": "X"})).status_code == 404
+    assert (await client.post("/api/inventory/plan/rooms", headers=manager, json={"name": "X"})).status_code == 403
+    # Stockwerk mit Inhalt lässt sich nicht löschen
+    assert (await client.delete(f"/api/inventory/plan/floors/{og['id']}", headers=power)).status_code == 409
+    await client.patch(f"/api/inventory/plan/furniture/{t['id']}", headers=power, json={"remove": True})
+    assert (await client.delete(f"/api/inventory/plan/rooms/{stairs['id']}", headers=power)).status_code == 200
+    assert (await client.delete(f"/api/inventory/plan/floors/{og['id']}", headers=power)).status_code == 200
+    assert (await client.delete(f"/api/inventory/plan/floors/{eg}", headers=power)).status_code == 409   # letztes Stockwerk
+
+
+async def test_floors_and_rooms_survive_backup(client, enabled, power, admin, db):
+    from app.models_inventory import InvRoom, InvFloor
+    laser, t, mid = await _fill(client, power, db)
+    og = (await client.post("/api/inventory/plan/floors", headers=power, json={"name": "OG"})).json()
+    eg = (await client.get("/api/inventory/plan", headers=power)).json()["floors"][0]["id"]
+    await client.post("/api/inventory/plan/rooms", headers=power, json={"floor_id": og["id"], "name": "Atelier", "x": 5, "y": 6, "w": 400, "h": 300})
+    await client.post("/api/inventory/plan/rooms", headers=power, json={"floor_id": eg, "name": "Treppe", "kind": "treppe", "link_floor_id": og["id"]})
+    await client.patch(f"/api/inventory/plan/furniture/{t['id']}", headers=power, json={"x": 1, "y": 2, "w": 100, "h": 50, "floor_id": og["id"]})
+    data = (await client.get("/api/backup/export", headers=admin)).json()
+    assert [r["name"] for r in data["inventory"]["rooms"]] == ["Treppe", "Atelier"] or sorted(r["name"] for r in data["inventory"]["rooms"]) == ["Atelier", "Treppe"]
+    await db.execute(delete(InvRoom)); await db.execute(delete(InvFloor))
+    f = await db.get(InvFurniture, t["id"])
+    f.plan_x = f.plan_y = f.plan_w = f.plan_h = f.plan_rot = f.plan_floor_id = None
+    await db.commit()
+    assert (await client.post("/api/backup/import", headers=admin, json=data)).status_code == 200
+    p = (await client.get("/api/inventory/plan", headers=power)).json()
+    names = {f["id"]: f["name"] for f in p["floors"]}
+    assert sorted(names.values()) == ["EG", "OG"]
+    by = {r["name"]: r for r in p["rooms"]}
+    assert names[by["Atelier"]["floor_id"]] == "OG" and by["Treppe"]["kind"] == "treppe" and names[by["Treppe"]["link_floor_id"]] == "OG"
+    assert names[p["furniture"][0]["plan"]["floor_id"]] == "OG"

@@ -629,6 +629,11 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # ── v1.55: Inventar Etappe 4 — Bauplan (Tabelle inv_plan ueber create_all; Plan-Spalten gibt es seit v1.51) ──
         await _extend_enum_if_needed(conn, "activity_log", "type", ["inventory_plan_updated"])
 
+        # ── v1.56: Bauplan mit Stockwerken und Raeumen (inv_floors, inv_rooms ueber create_all); Elemente tragen ihr Stockwerk ──
+        await _add_column_if_missing(conn, "machine_locations", "plan_floor_id", "INT DEFAULT NULL")
+        await _add_column_if_missing(conn, "inv_furniture", "plan_floor_id", "INT DEFAULT NULL")
+        await _add_column_if_missing(conn, "inv_placements", "plan_floor_id", "INT DEFAULT NULL")
+
     log.info("Migrationen abgeschlossen")
 
 

@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import MachineLocation, Machine, MachineOwner
 from app.models_inventory import (InvFurniture, InvLevel, InvPosition, InvItem, InvPlacement,
-                                  FurnitureKind, InvItemStatus, InvPlan)
+                                  FurnitureKind, InvItemStatus, InvPlan, InvFloor, InvRoom)
 from app.services import inventory as inv
 
 _PLAN = ("plan_x", "plan_y", "plan_w", "plan_h")
@@ -59,6 +59,10 @@ async def export_inventory(db: AsyncSession) -> dict:
         if f and f.area_id in area_name:
             place_by_pos[p.id] = {"area": area_name[f.area_id], "furniture": f.number, "level": l.number, "position": p.number}
 
+    floors = (await db.execute(select(InvFloor).order_by(InvFloor.sort_order, InvFloor.id))).scalars().all()
+    floor_name = {f.id: f.name for f in floors}
+    rooms = (await db.execute(select(InvRoom).order_by(InvRoom.floor_id, InvRoom.id))).scalars().all()
+
     out_furn = []
     for f in furns:
         if f.number == 0 or f.area_id not in area_name:          # M00 entsteht automatisch
@@ -67,6 +71,7 @@ async def export_inventory(db: AsyncSession) -> dict:
             "area": area_name[f.area_id], "number": f.number, "kind": f.kind.value, "name": f.name, "note": f.note,
             "label_outdated": bool(f.label_outdated),
             "plan_x": f.plan_x, "plan_y": f.plan_y, "plan_w": f.plan_w, "plan_h": f.plan_h, "plan_rot": f.plan_rot,
+            "plan_floor": floor_name.get(f.plan_floor_id),
             "levels": [{
                 "number": l.number, "label": l.label,
                 "positions": [{"number": p.number, "label": p.label} for p in pos_by_lvl.get(l.id, []) if p.number > 0],
@@ -94,13 +99,19 @@ async def export_inventory(db: AsyncSession) -> dict:
             "furniture": {"area": area_name[f.area_id], "number": f.number} if f and f.area_id in area_name else None,
             "level": lv.number if lv and f and lv.furniture_id == f.id and lv.number > 0 else None,
             "plan_x": pl.plan_x, "plan_y": pl.plan_y, "plan_w": pl.plan_w, "plan_h": pl.plan_h, "plan_rot": pl.plan_rot,
+            "plan_floor": floor_name.get(pl.plan_floor_id),
         })
 
     room = await db.get(InvPlan, 1)
     return {
         "room": {"name": room.name, "width_cm": room.width_cm, "height_cm": room.height_cm} if room else None,
+        "floors": [{"name": f.name, "sort_order": f.sort_order} for f in floors],
+        "rooms": [{"floor": floor_name[r.floor_id], "name": r.name, "kind": r.kind, "x": r.plan_x, "y": r.plan_y,
+                   "w": r.plan_w, "h": r.plan_h, "rot": r.plan_rot, "link_floor": floor_name.get(r.link_floor_id)}
+                  for r in rooms if r.floor_id in floor_name],
         "areas": [{"name": a.name, "code": a.code, "color": a.color,
-                   "plan_x": a.plan_x, "plan_y": a.plan_y, "plan_w": a.plan_w, "plan_h": a.plan_h}
+                   "plan_x": a.plan_x, "plan_y": a.plan_y, "plan_w": a.plan_w, "plan_h": a.plan_h,
+                   "plan_floor": floor_name.get(a.plan_floor_id)}
                   for a in areas if a.code or a.color or any(getattr(a, k) is not None for k in _PLAN)],
         "furniture": out_furn,
         "items": out_items,
@@ -125,6 +136,32 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
         room.height_cm = float(r.get("height_cm") or 1000.0)
         db.add(room)
 
+    # Stockwerke und Raeume des Plans (ueber Namen); Elemente verweisen weiter unten darauf
+    floor_by_name = {f.name: f for f in (await db.execute(select(InvFloor))).scalars().all()}
+    for f in data.get("floors", []) or []:
+        if f.get("name") and f["name"] not in floor_by_name:
+            nf = InvFloor(name=str(f["name"])[:50], sort_order=int(f.get("sort_order") or 0))
+            db.add(nf)
+            await db.flush()
+            floor_by_name[nf.name] = nf
+    floor_id = lambda name: floor_by_name[name].id if name in floor_by_name else None
+    have_rooms = {(r.floor_id, r.name): r for r in (await db.execute(select(InvRoom))).scalars().all()}
+    for r in data.get("rooms", []) or []:
+        fid = floor_id(r.get("floor"))
+        if fid is None or not r.get("name"):
+            continue
+        row = have_rooms.get((fid, r["name"]))
+        if row is None:
+            row = InvRoom(floor_id=fid, name=str(r["name"])[:100])
+            db.add(row)
+            have_rooms[(fid, r["name"])] = row
+        elif not overwrite:
+            continue
+        row.kind = r.get("kind") if r.get("kind") in ("raum", "treppe") else "raum"
+        row.plan_x, row.plan_y = r.get("x") or 0.0, r.get("y") or 0.0
+        row.plan_w, row.plan_h, row.plan_rot = r.get("w") or 300.0, r.get("h") or 300.0, r.get("rot") or 0.0
+        row.link_floor_id = floor_id(r.get("link_floor"))
+
     areas = {a.name: a for a in (await db.execute(select(MachineLocation))).scalars().all()}
     used_codes = {a.code for a in areas.values() if a.code}
 
@@ -145,6 +182,8 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
         for k in _PLAN:
             if a.get(k) is not None and (overwrite or getattr(row, k) is None):
                 setattr(row, k, a[k])
+        if a.get("plan_floor") and (overwrite or row.plan_floor_id is None):
+            row.plan_floor_id = floor_id(a["plan_floor"])
     await db.flush()
     await inv.ensure_structure(db, commit=False)           # M00 je Bereich, Kuerzel-Umstellung, Maschinen → Bereich
 
@@ -161,7 +200,7 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
         fields = dict(kind=_kind(f.get("kind")), name=f.get("name"), note=f.get("note"),
                       label_outdated=bool(f.get("label_outdated", True)),
                       plan_x=f.get("plan_x"), plan_y=f.get("plan_y"), plan_w=f.get("plan_w"),
-                      plan_h=f.get("plan_h"), plan_rot=f.get("plan_rot"))
+                      plan_h=f.get("plan_h"), plan_rot=f.get("plan_rot"), plan_floor_id=floor_id(f.get("plan_floor")))
         if fo is None:
             fo = InvFurniture(area_id=area.id, number=f["number"], **fields)
             db.add(fo)
@@ -174,6 +213,7 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
         elif fo.plan_x is None and f.get("plan_x") is not None:        # ohne Überschreiben: nur fehlenden Planplatz ergänzen
             for k in ("plan_x", "plan_y", "plan_w", "plan_h", "plan_rot"):
                 setattr(fo, k, f.get(k))
+            fo.plan_floor_id = floor_id(f.get("plan_floor"))
         for lv in f.get("levels", []) or []:
             if not isinstance(lv.get("number"), int) or lv["number"] < 0:
                 continue
@@ -269,4 +309,5 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
         row.level_id = lvl_ids.get((fid, p.get("level"))) if fid and p.get("level") else None
         for k in ("plan_x", "plan_y", "plan_w", "plan_h", "plan_rot"):
             setattr(row, k, p.get(k))
+        row.plan_floor_id = floor_id(p.get("plan_floor"))
     await db.flush()

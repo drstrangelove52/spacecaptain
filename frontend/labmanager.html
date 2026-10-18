@@ -1883,14 +1883,15 @@ sudo ./install-service.sh</pre>
             <div class="help-article">
               <div class="help-article-title">Bauplan: Bereiche, Möbel und Maschinen einzeichnen</div>
               <div class="help-article-body">
-                Inventar → <strong>Plan</strong> zeigt den Raum von oben (Masse in cm). <em>Ansehen und Suchen</em> darf jeder Lab Manager, <em>Zeichnen</em> der Power-Manager und der Admin.
+                Inventar → <strong>Plan</strong> zeigt das Gebäude von oben (Masse in cm), Stockwerk für Stockwerk (Reiter «EG», «OG» …). <em>Ansehen und Suchen</em> darf jeder Lab Manager, <em>Zeichnen</em> der Power-Manager und der Admin.
                 <ol style="margin-top:8px">
-                  <li>Rechts unter <strong>Raum</strong> Name, Breite und Tiefe in Metern einstellen.</li>
-                  <li>Aus der Liste <strong>«Noch nicht auf dem Plan»</strong> ein Element auf die Fläche ziehen (oder «＋» für die Mitte). Reihenfolge von unten: Bereich, Möbel, Maschine.</li>
+                  <li>Rechts unter <strong>Gebäude</strong> die Grundfläche in Metern einstellen (die Fläche, die alle Stockwerke zusammen brauchen) und unter <strong>Stockwerke</strong> «EG», «OG» usw. anlegen.</li>
+                  <li>Pro Stockwerk mit <strong>«+ Raum»</strong> die Räume und mit <strong>«+ Treppe»</strong> die Treppen anlegen (Rechtecke; L-förmige Räume aus zwei Rechtecken). Eine Treppe wählst du mit «Verbindet mit» einem zweiten Stockwerk zu, dann erscheint sie auf beiden.</li>
+                  <li>Aus der Liste <strong>«Noch nicht auf dem Plan»</strong> ein Element auf die Fläche ziehen (oder «＋» für die Mitte); es landet auf dem gewählten Stockwerk, das du bei der Auswahl wechseln kannst. Reihenfolge von unten: Raum, Bereich, Möbel, Maschine.</li>
                   <li><strong>Verschieben:</strong> Element ziehen (rastet auf 5 cm). <strong>Grösse:</strong> Punkt unten rechts ziehen. <strong>Genau:</strong> Zahlenfelder rechts, «↻ 90°» zum Drehen, «Vom Plan nehmen» zum Entfernen.</li>
                   <li>Die <strong>Suche</strong> oben markiert, wo ein Werkzeug, Möbel oder eine Maschine steht (Treffer blinken, der Rest wird abgedunkelt).</li>
                 </ol>
-                Änderungen werden sofort gespeichert. Der Plan ist unabhängig von den Codes: nach einem Umzug stellst du den Raum neu ein und ziehst die Elemente an ihren neuen Platz, Codes und Etiketten bleiben gültig.
+                Änderungen werden sofort gespeichert. Der Plan ist unabhängig von den Codes: nach einem Umzug zeichnest du Gebäude, Stockwerke und Räume neu und ziehst die Elemente an ihren neuen Platz, Codes und Etiketten bleiben gültig. Ein Stockwerk lässt sich nur löschen, wenn es leer ist.
                 <div class="help-tip"><strong>Gäste</strong> sehen den Plan unter «🗺️ Plan ansehen» auf der «Wo ist …?»-Seite; bei Werkzeug und Möbeln gibt es «Auf dem Plan zeigen». Es erscheinen nur Elemente, die du eingezeichnet hast.</div>
               </div>
             </div>
@@ -1917,7 +1918,7 @@ sudo ./install-service.sh</pre>
             <div class="help-article">
               <div class="help-article-title">Backup</div>
               <div class="help-article-body">
-                Das Inventar ist im JSON-Backup enthalten (Sektion «inventory»): Bereichs-Kürzel und -Farben, Möbel, Ebenen, Plätze, Werkzeug (mit Buchhaltungsfeldern), die Standorte der Maschinen und der Bauplan (Raum und eingezeichnete Elemente). Verweise laufen über Namen und Nummern, deshalb funktioniert der Restore auch auf einer anderen Instanz. Ältere Backups ohne Inventar lassen sich weiterhin einspielen.
+                Das Inventar ist im JSON-Backup enthalten (Sektion «inventory»): Bereichs-Kürzel und -Farben, Möbel, Ebenen, Plätze, Werkzeug (mit Buchhaltungsfeldern), die Standorte der Maschinen und der Bauplan (Gebäude, Stockwerke, Räume und eingezeichnete Elemente). Verweise laufen über Namen und Nummern, deshalb funktioniert der Restore auch auf einer anderen Instanz. Ältere Backups ohne Inventar lassen sich weiterhin einspielen.
               </div>
             </div>
           </div>
@@ -2415,7 +2416,7 @@ sudo ./install-service.sh</pre>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">plug_created / plug_updated / plug_deleted / plug_assigned / plug_unassigned</td><td style="padding:4px 8px">Plug-Pool-Verwaltung (Anlegen, Bearbeiten, Löschen, Zuweisen zu/Entfernen von einer Maschine)</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">battery_created / battery_updated / battery_deleted</td><td style="padding:4px 8px">Akku-Verwaltung</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">category_* / location_* / owner_*</td><td style="padding:4px 8px">Kategorien/Standorte/Eigentümer angelegt, bearbeitet oder gelöscht</td></tr>
-                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">inventory_*</td><td style="padding:4px 8px">Inventar: Bereich, Möbel, Ebene bzw. Werkzeug angelegt, geändert, gelöscht, umgelagert oder importiert; <span style="font-family:var(--mono)">inventory_plan_updated</span> = Raum des Bauplans geändert</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">inventory_*</td><td style="padding:4px 8px">Inventar: Bereich, Möbel, Ebene bzw. Werkzeug angelegt, geändert, gelöscht, umgelagert oder importiert; <span style="font-family:var(--mono)">inventory_plan_updated</span> = Gebäude oder Stockwerke des Bauplans geändert</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">machine_area_changed</td><td style="padding:4px 8px">Maschine in einen anderen Bereich (Standort) verschoben</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">tailscale_updated</td><td style="padding:4px 8px">Tailscale-Fernzugriff aktiviert/deaktiviert</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">machine_qr_regenerated</td><td style="padding:4px 8px">QR-Code einer Maschine neu generiert (alter Code wird ungültig)</td></tr>

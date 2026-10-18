@@ -274,14 +274,15 @@ Bei aktivem Inventar ersetzt der **Bereich** die Kategorie:
 
 ### Bauplan
 
-Inventar → **Plan** zeigt den Raum von oben (Masse in cm) mit Bereichen (gestrichelt), Möbeln und Maschinen. Ansehen und Suchen darf jeder Lab Manager, **Zeichnen** der Power-Manager und der Admin.
+Inventar → **Plan** zeigt das Gebäude von oben (Masse in cm), Stockwerk für Stockwerk (Reiter «EG», «OG» …), mit Räumen, Treppen, Bereichen (gestrichelt), Möbeln und Maschinen. Ansehen und Suchen darf jeder Lab Manager, **Zeichnen** der Power-Manager und der Admin.
 
-1. Rechts unter **Raum** Name, Breite und Tiefe in Metern einstellen.
-2. Aus **«Noch nicht auf dem Plan»** ein Element auf die Fläche ziehen (oder **＋** für die Mitte).
-3. **Verschieben** durch Ziehen (rastet auf 5 cm), **Grösse** am Punkt unten rechts, **genaue Werte**, **↻ 90°** und **Vom Plan nehmen** rechts bei der Auswahl.
-4. Die **Suche** oben markiert Werkzeug, Möbel oder Maschinen auf dem Plan.
+1. Rechts unter **Gebäude** die Grundfläche in Metern einstellen und unter **Stockwerke** «EG», «OG» usw. anlegen.
+2. Pro Stockwerk mit **+ Raum** Räume und mit **+ Treppe** Treppen anlegen (Rechtecke; L-förmige Räume aus zwei Rechtecken). Eine Treppe wird über «Verbindet mit» einem zweiten Stockwerk zugeordnet und erscheint auf beiden.
+3. Aus **«Noch nicht auf dem Plan»** ein Element auf die Fläche ziehen (oder **＋** für die Mitte); es landet auf dem gewählten Stockwerk.
+4. **Verschieben** durch Ziehen (rastet auf 5 cm), **Grösse** am Punkt unten rechts, **genaue Werte**, **Stockwerk wechseln**, **↻ 90°** und **Vom Plan nehmen** rechts bei der Auswahl.
+5. Die **Suche** oben markiert Werkzeug, Möbel oder Maschinen auf dem Plan und schaltet auf das richtige Stockwerk.
 
-Änderungen werden sofort gespeichert. Der Plan ist unabhängig von den Codes; nach einem Umzug genügt es, den Raum neu einzustellen und die Elemente neu zu ziehen. Gäste sehen den Plan auf der Seite «Wo ist …?» (nur eingezeichnete Elemente).
+Änderungen werden sofort gespeichert. Der Plan ist unabhängig von den Codes; nach einem Umzug genügt es, Gebäude, Stockwerke und Räume neu zu zeichnen und die Elemente neu zu ziehen. Ein Stockwerk lässt sich nur löschen, wenn es leer ist. Gäste sehen den Plan auf der Seite «Wo ist …?» (nur eingezeichnete Elemente).
 
 ### Etiketten
 
@@ -415,7 +416,7 @@ Das Aktivitätslog ist das vollständige Protokoll aller Systemereignisse.
 | `maintenance_due` / `maintenance_done` | Wartung fällig / durchgeführt |
 | `inventory_*` | Inventar: Bereich, Möbel, Ebene bzw. Werkzeug angelegt, geändert, gelöscht, umgelagert oder importiert |
 | `machine_area_changed` | Maschine in einen anderen Bereich (Standort) verschoben |
-| `inventory_plan_updated` | Raum des Bauplans geändert |
+| `inventory_plan_updated` | Gebäude oder Stockwerke des Bauplans geändert |
 | `error` | Systemfehler |
 
 ---
