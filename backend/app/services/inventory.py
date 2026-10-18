@@ -218,7 +218,9 @@ async def create_furniture(db: AsyncSession, area: MachineLocation, kind: Furnit
         raise HTTPException(409, "Der Bereich braucht zuerst ein Kürzel (z.B. EL)")
     top = await db.scalar(select(func.max(InvFurniture.number)).where(InvFurniture.area_id == area.id))
     number = max(top or 0, 0) + 1
-    f = InvFurniture(area_id=area.id, number=number, kind=kind, name=(name or None), note=note)
+    # neu angelegt = Etikett noch nicht gedruckt (wird nach dem Druck zurückgesetzt)
+    f = InvFurniture(area_id=area.id, number=number, kind=kind, name=(name or None), note=note,
+                     label_outdated=True)
     f.levels.append(InvLevel(number=0, positions=[InvPosition(number=0)]))
     for n in range(1, levels + 1):
         lv = InvLevel(number=n, positions=[InvPosition(number=0)])

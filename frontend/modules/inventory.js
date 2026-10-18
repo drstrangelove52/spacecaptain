@@ -19,7 +19,8 @@
   let itemsPage = 0, itemsCache = {};
   let chips = { unplaced: false, level_open: false };
   let editingItemId = null, editingAreaId = null, editingFurnId = null;
-  let labelData = [], labelOutdatedOnly = false, labelWithLevels = true;
+  let labelData = [], labelOutdatedOnly = false;
+  let selected = new Set(), selInit = false, pendingSel = null, lastPrinted = [];
   let activeTab = 'items';
   const openAreas = new Set(), openFurn = new Set();
   let _deb = null;
@@ -84,6 +85,13 @@
   #page-inventory .inv-sheetwrap .inv-lbl{outline:.2mm dashed #c4c4c4}
   #page-inventory .inv-sheetwrap .inv-lbl.skip{outline:.2mm dashed #e0b4b4;background:repeating-linear-gradient(45deg,#fff,#fff 1mm,#f1e6e6 1mm,#f1e6e6 2mm)}
   #page-inventory .inv-freegrid{display:flex;flex-wrap:wrap;gap:2mm;margin-top:12px}
+  #page-inventory .inv-sel-box{border:1px solid var(--border);border-radius:6px;background:var(--surface);margin-bottom:12px}
+  #page-inventory .inv-sel-head{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border)}
+  #page-inventory .inv-sel-list{max-height:300px;overflow:auto}
+  #page-inventory .inv-sel-row{display:flex;align-items:center;gap:10px;padding:5px 12px;cursor:pointer;margin:0;font-size:15px}
+  #page-inventory .inv-sel-row.lvl{padding-left:44px}
+  #page-inventory .inv-sel-row:hover{background:var(--hover-subtle)}
+  #page-inventory .inv-sel-row input{width:auto;margin:0}
   ${LABEL_CSS}
 `;
 
@@ -143,10 +151,19 @@
     </div>
 
     <div class="inv-page" id="inv-page-labels">
-      <div class="inv-toolbar">
-        <select class="filter-input" id="inv-l-area" onchange="Inv.loadLabels()"></select>
-        <span class="inv-chip" id="inv-chip-outdated" onclick="Inv.toggleOutdated()">Nur veraltete</span>
-        <span class="inv-chip on" id="inv-chip-levels" onclick="Inv.toggleLevels()">Mit Ebenen</span>
+      <div class="inv-sel-box">
+        <div class="inv-sel-head">
+          <b id="inv-sel-count">0 gewählt</b>
+          <select class="filter-input" id="inv-l-area" onchange="Inv.loadLabels()" style="width:auto;min-width:150px"></select>
+          <span class="inv-chip" id="inv-chip-outdated" onclick="Inv.toggleOutdated()" title="Liste auf Möbel beschränken, deren Etikett neu oder veraltet ist">Liste: nur neue/veraltete</span>
+          <span class="inv-sp"></span>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.selectBy('all')">Alle</button>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.selectBy('none')">Keine</button>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.selectBy('outdated')" title="Neue Möbel und solche, deren Code sich geändert hat">Neue/veraltete</button>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.selectBy('furn')">Nur Möbel</button>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.selectBy('level')">Nur Ebenen</button>
+        </div>
+        <div class="inv-sel-list" id="inv-sel-list"></div>
       </div>
       <div class="inv-labelopts">
         <div class="form-group"><label class="form-label">Vorlage</label>
@@ -158,11 +175,11 @@
         <div class="form-group inv-sheet-only"><label class="form-label" title="+ = nach unten">Versatz Y (mm)</label>
           <input class="form-input" id="inv-l-offy" type="number" step="0.1" value="0" onchange="Inv.offsetChanged()"></div>
         <button class="btn btn-ghost inv-sheet-only" onclick="Inv.printCalibration()" title="Raster auf normales Papier drucken und gegen das Licht über einen Etikettenbogen halten">📐 Testbogen</button>
-        <button class="btn btn-primary" onclick="Inv.printLabels()">🖨️ Drucken</button>
+        <button class="btn btn-primary" id="inv-btn-print" onclick="Inv.printLabels()">🖨️ Auswahl drucken</button>
       </div>
       <div class="inv-hint" id="inv-l-hint"></div>
       <div class="inv-sheetrow" id="inv-labels-preview"></div>
-      <div style="margin-top:14px"><button class="btn btn-ghost" onclick="Inv.markPrinted()">✓ Angezeigte als gedruckt markieren</button></div>
+      <div style="margin-top:14px"><button class="btn btn-ghost" onclick="Inv.markPrinted()" title="Setzt bei den gewählten Möbeln das Kennzeichen «neu/veraltet» zurück">✓ Auswahl als gedruckt markieren</button></div>
     </div>
 
     <div class="inv-page" id="inv-page-import">
@@ -417,9 +434,10 @@
         <b>${title}</b>
         ${f.number > 0 ? `<span class="inv-dim inv-small">${KIND[f.kind] || ''}</span>` : ''}
         <span class="inv-dim inv-small">${f.item_count} Werkzeuge</span>
-        ${f.label_outdated ? '<span class="badge badge-orange" title="Code hat sich geändert">Etikett veraltet</span>' : ''}
+        ${f.label_outdated ? '<span class="badge badge-orange" title="Neu angelegt oder Code geändert: Etikett (neu) drucken">Etikett neu/veraltet</span>' : ''}
         <span class="inv-sp"></span>
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();Inv.gotoItems('${esc(f.code)}')">Werkzeug anzeigen</button>
+        ${f.number > 0 ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();Inv.labelFor('${esc(f.code)}')" title="Dieses Etikett drucken / nachdrucken">🏷️</button>` : ''}
         ${p && f.number > 0 ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();Inv.openFurnModal(${f.id})">✏️</button>
           <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();Inv.deleteFurn(${f.id},'${esc(f.code)}')">🗑</button>` : ''}
         <span>${open ? '▾' : '▸'}</span>
@@ -436,6 +454,7 @@
       <span>${l.number === 0 ? '<i class="inv-dim">Ebene offen / nicht unterteilt</i>' : esc(l.label || 'Ebene ' + l.number)}</span>
       <span class="inv-dim inv-small">${l.item_count} Werkzeuge</span>
       <span class="inv-sp"></span>
+      ${l.number > 0 ? `<button class="btn btn-ghost btn-sm" onclick="Inv.labelFor('${esc(l.code)}')" title="Dieses Etikett drucken / nachdrucken">🏷️</button>` : ''}
       ${p && l.number > 0 ? `<button class="btn btn-ghost btn-sm" onclick="Inv.renameLevel(${l.id})">Name</button>
         <button class="btn btn-ghost btn-sm" onclick="Inv.addPositions(${l.id})">+ Platz</button>
         <button class="btn btn-danger btn-sm" onclick="Inv.deleteLevel(${l.id},'${esc(l.code)}')">🗑</button>` : ''}
@@ -595,37 +614,87 @@
     root.querySelectorAll('.inv-sheet-only').forEach(e => { e.style.display = t.sheet ? '' : 'none'; });
     if (t.sheet) $('l-start').max = t.cols * t.rows;
     $('l-hint').innerHTML = t.sheet
-      ? `<b>Vorgeschnittene Bögen (A4, ${t.cols * t.rows} Etiketten).</b> Je Möbel ein Etikett (der QR-Code führt zum Inhalt), optional je Ebene ein kleines.
+      ? `<b>Vorgeschnittene Bögen (A4, ${t.cols * t.rows} Etiketten).</b> Gedruckt wird die <b>Auswahl</b> oben (Möbel und Ebenen einzeln wählbar, auch für Nachdrucke). Der QR-Code führt zum Inhalt.
          Druckdialog: Papier <b>A4</b>, Skalierung <b>100 % / «Tatsächliche Grösse»</b> (nicht «Anpassen»), Kopf- und Fusszeilen <b>aus</b>, Ränder <b>keine</b>.
          Typenschild-Etiketten L6009 sind für Laserdrucker gedacht. Vor dem ersten Druck den <b>Testbogen</b> auf normales Papier drucken und gegen das Licht über einen Etikettenbogen halten;
          sitzt das Raster nicht genau, den Versatz einstellen.`
-      : 'Einzeletiketten zum Ausschneiden (mit Rahmen). Nach dem Drucken «Als gedruckt markieren».';
+      : 'Einzeletiketten zum Ausschneiden (mit Rahmen). Gedruckt wird die Auswahl oben.';
   }
   function setTemplate() { tplKey = $('l-tpl').value; lsSet('inv_label_tpl', tplKey); applyTemplateUi(); renderLabels(); }
   function offsetChanged() { lsSet('inv_label_offx', $('l-offx').value); lsSet('inv_label_offy', $('l-offy').value); renderLabels(); }
   const num = (id, d = 0) => { const v = parseFloat($(id).value); return isNaN(v) ? d : v; };
 
   function toggleOutdated() { labelOutdatedOnly = !labelOutdatedOnly; $('chip-outdated').classList.toggle('on', labelOutdatedOnly); loadLabels(); }
-  function toggleLevels() { labelWithLevels = !labelWithLevels; $('chip-levels').classList.toggle('on', labelWithLevels); renderLabels(); }
   async function loadLabels() {
     const p = new URLSearchParams();
     const a = $('l-area').value; if (a) p.set('area_id', a);
     if (labelOutdatedOnly) p.set('outdated', 'true');
     const r = await GET('/inventory/labels?' + p);
-    if (r) { labelData = r; renderLabels(); }
+    if (!r) return;
+    labelData = r;
+    if (pendingSel) { selected = pendingSel; pendingSel = null; selInit = true; }
+    else if (!selInit) { selected = new Set(allLabels().filter(l => l.outdated).map(l => l.code)); selInit = true; }  // Erst-Auswahl: neue/veraltete
+    renderLabelList();
+    renderLabels();
   }
 
   function qrUrl(code) {
     const target = `${location.origin}/inventar.html?code=${encodeURIComponent(code)}`;
     return `${location.origin}/api/qr/url-png?u=${encodeURIComponent(target)}`;
   }
-  function labelItems() {
+  // Alle möglichen Etiketten (Möbel + Ebenen) der geladenen Daten
+  function allLabels() {
     const out = [];
     for (const f of labelData) {
-      out.push({ code: f.code, name: f.name, area: f.area, color: f.color, small: false });
-      if (labelWithLevels) for (const l of f.levels) out.push({ code: l.code, name: l.label || ('Ebene ' + l.number), area: f.area, color: f.color, small: true });
+      out.push({ code: f.code, name: f.name, area: f.area, color: f.color, small: false, kind: 'furn', fid: f.furniture_id, outdated: f.outdated });
+      for (const l of f.levels) out.push({ code: l.code, name: l.label || ('Ebene ' + l.number), area: f.area, color: f.color, small: true, kind: 'level', fid: f.furniture_id, outdated: f.outdated });
     }
     return out;
+  }
+  const labelItems = () => allLabels().filter(l => selected.has(l.code));
+
+  function renderLabelList() {
+    const rows = allLabels();
+    $('sel-list').innerHTML = rows.length ? rows.map(l => `
+      <label class="inv-sel-row ${l.kind === 'level' ? 'lvl' : ''}">
+        <input type="checkbox" ${selected.has(l.code) ? 'checked' : ''} onchange="Inv.toggleLabel('${esc(l.code)}', this.checked)">
+        <span class="inv-code" style="--cc:${esc(l.color || '#22d3ee')}">${esc(l.code)}</span>
+        <span>${esc(l.name)}</span>
+        ${l.kind === 'furn' && l.outdated ? '<span class="badge badge-orange" title="Neu angelegt oder Code geändert">neu/veraltet</span>' : ''}
+        ${l.kind === 'furn' ? `<a href="#" class="inv-dim inv-small" style="margin-left:auto" onclick="Inv.toggleLevelsOf(${l.fid});return false">Ebenen ✓/✗</a>` : ''}
+      </label>`).join('') : '<div class="inv-empty">Keine Möbel vorhanden.</div>';
+    updateSelCount();
+  }
+  function updateSelCount() {
+    const total = allLabels().length, n = labelItems().length;
+    $('sel-count').textContent = `${n} von ${total} gewählt`;
+    const t = tpl();
+    const per = t.sheet ? t.cols * t.rows : 0;
+    $('btn-print').textContent = n ? `🖨️ ${n} Etikett${n > 1 ? 'en' : ''} drucken` : '🖨️ Auswahl drucken';
+    $('btn-print').disabled = !n;
+    $('btn-print').title = per && n ? `${Math.ceil((n + Math.max(0, num('l-start', 1) - 1)) / per)} Bogen` : '';
+  }
+  function toggleLabel(code, on) {
+    if (on) selected.add(code); else selected.delete(code);
+    renderLabels(); updateSelCount();
+  }
+  function toggleLevelsOf(fid) {
+    const lv = allLabels().filter(l => l.kind === 'level' && l.fid === fid);
+    const allOn = lv.every(l => selected.has(l.code));
+    lv.forEach(l => allOn ? selected.delete(l.code) : selected.add(l.code));
+    renderLabelList(); renderLabels();
+  }
+  function selectBy(mode) {
+    const rows = allLabels();
+    const pick = { all: () => true, none: () => false, outdated: l => l.outdated, furn: l => l.kind === 'furn', level: l => l.kind === 'level' }[mode];
+    selected = new Set(rows.filter(pick).map(l => l.code));
+    renderLabelList(); renderLabels();
+  }
+  // Einzel-Nachdruck aus dem Strukturbaum: genau dieses Etikett vorwählen
+  async function labelFor(code) {
+    $('l-area').value = ''; labelOutdatedOnly = false; $('chip-outdated').classList.remove('on');
+    pendingSel = new Set([code]);
+    showTab('labels');
   }
   // Schriftgrösse (mm) so wählen, dass der Code neben dem QR-Code Platz hat
   function codeFontMm(code, t) {
@@ -674,7 +743,8 @@
 
   function renderLabels() {
     const t = tpl(), box = $('labels-preview'), items = labelItems();
-    if (!items.length) { box.innerHTML = '<div class="inv-empty" style="width:100%">Keine Etiketten (zuerst Möbel anlegen).</div>'; return; }
+    updateSelCount();
+    if (!items.length) { box.className = 'inv-sheetrow'; box.innerHTML = '<div class="inv-empty" style="width:100%">Nichts gewählt — oben Etiketten anhaken (oder «Alle» wählen).</div>'; return; }
     if (t.sheet) {
       const pages = sheetPages(items, t, true);
       const wmm = 210 * PREVIEW_SCALE, hmm = 297 * PREVIEW_SCALE;
@@ -702,13 +772,18 @@
     const timeout = (ms) => new Promise(r => setTimeout(r, ms));
     Promise.race([Promise.all([waitImgs, d.fonts ? d.fonts.ready : 0]), timeout(6000)]).then(() => {
       f.contentWindow.focus();
+      // Nach dem Druckdialog nachfragen, ob die Etiketten als gedruckt markiert werden sollen
+      f.contentWindow.addEventListener('afterprint', () => setTimeout(() => {
+        if (lastPrinted.length && confirm(`${lastPrinted.length} Etikett(en) als gedruckt markieren?\n\n«Abbrechen», falls nicht gedruckt wurde.`)) markPrinted(lastPrinted);
+      }, 300), { once: true });
       f.contentWindow.print();
       setTimeout(() => f.remove(), 120000);
     });
   }
   function printLabels() {
     const t = tpl(), items = labelItems();
-    if (!items.length) { showToast('Keine Etiketten zum Drucken', 'error'); return; }
+    if (!items.length) { showToast('Nichts gewählt', 'error'); return; }
+    lastPrinted = items.map(i => i.code);
     if (t.sheet) {
       const pages = sheetPages(items, t, false);
       printInFrame(pages.map(pg => sheetHtml(pg, t, false)).join(''), '@page{size:A4;margin:0}');
@@ -721,10 +796,24 @@
     if (!t.sheet) return;
     printInFrame(calibrationHtml(t), '@page{size:A4;margin:0}');
   }
-  async function markPrinted() {
-    const ids = labelData.map(f => f.furniture_id);
-    if (!ids.length) return;
-    if (await POST('/inventory/furniture/printed', { furniture_ids: ids })) { showToast('Als gedruckt markiert', 'success'); await refreshAll(); loadLabels(); }
+  // «Neu/veraltet» wird nur zurückgesetzt, wenn das Möbel-Etikett UND alle Ebenen-Etiketten gedruckt wurden
+  // (ändert sich ein Code, müssen alle Etiketten des Möbels neu gedruckt werden).
+  async function markPrinted(codes) {
+    const set = new Set(codes || labelItems().map(i => i.code));
+    if (!set.size) { showToast('Nichts gewählt', 'error'); return; }
+    const done = [], partial = [];
+    for (const f of labelData) {
+      const mine = [f.code, ...f.levels.map(l => l.code)];
+      const hit = mine.filter(c => set.has(c)).length;
+      if (hit === mine.length) done.push(f.furniture_id);
+      else if (hit && f.outdated) partial.push(f.code);
+    }
+    if (done.length && await POST('/inventory/furniture/printed', { furniture_ids: done })) {
+      showToast(`${done.length} Möbel als gedruckt markiert` + (partial.length ? ` · ${esc(partial.join(', '))}: nicht komplett gedruckt, bleiben markiert` : ''), partial.length ? 'warn' : 'success');
+      await refreshAll(); await loadLabels();
+    } else if (!done.length) {
+      showToast(partial.length ? `Nicht komplett gedruckt (${esc(partial.join(', '))}): Möbel- und alle Ebenen-Etiketten wählen` : 'Keine «neu/veraltet»-Möbel in der Auswahl', 'warn');
+    }
   }
 
   // ═══════════════════════════════════════════════════════
@@ -754,7 +843,8 @@
     locAreaChanged, locFurnChanged, locLvlChanged, syncCodeField, applyCodeField,
     toggleArea, toggleFurn, gotoItems, openAreaModal, suggestAreaCode, assignMissingCodes,
     openFurnModal, deleteFurn, addLevels, addPositions, renameLevel, renamePos, deleteLevel, deletePos,
-    toggleOutdated, toggleLevels, loadLabels, renderLabels, printLabels, printCalibration, setTemplate, offsetChanged, markPrinted, runImport,
+    toggleOutdated, loadLabels, renderLabels, printLabels, printCalibration, setTemplate, offsetChanged, markPrinted, runImport,
+    toggleLabel, toggleLevelsOf, selectBy, labelFor,
   };
 
   LabModules.register('inventory', { title: 'Inventar', mount, show });

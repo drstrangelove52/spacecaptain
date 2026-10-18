@@ -289,6 +289,15 @@ Standard sind **vorgeschnittene A4-Bögen** (Avery Zweckform Typenschild-Etikett
   Nummern 1–48 auf normales Papier drucken, gegen das Licht über den Bogen halten) und einen
   einstellbaren **Versatz X/Y** (wird im Browser gemerkt).
 - **Startposition:** «Beginnen bei Nr.» erlaubt, angebrochene Bögen weiterzuverwenden.
+- **Auswahl:** Gedruckt wird nur, was in der Liste angehakt ist (Möbel- und Ebenen-Etiketten einzeln).
+  Schnellwahl: Alle, Keine, Neue/veraltete, Nur Möbel, Nur Ebenen; je Möbel «Ebenen ✓/✗». Vorschau und
+  Druck zeigen genau die Auswahl. **Nachdruck:** im Strukturbaum öffnet 🏷️ beim Möbel oder der Ebene
+  den Reiter mit genau diesem Etikett vorgewählt.
+- **«Neu/veraltet»:** Ein neu angelegtes Möbel gilt als «Etikett noch nicht gedruckt»; ebenso, wenn sich
+  sein Code ändert (Kürzel oder Bereich). Nach dem Druck fragt das Modul, ob die Etiketten als gedruckt
+  markiert werden sollen. Zurückgesetzt wird das Kennzeichen nur, wenn das Möbel-Etikett **und alle**
+  Ebenen-Etiketten dieses Möbels gedruckt wurden (ändert sich ein Code, ändern sich alle). Ein später
+  hinzugefügte Ebene setzt das Kennzeichen nicht; ihr Etikett wählt man von Hand.
 - **Inhalt je Etikett:** QR-Code (führt zum Inhalt des Möbels/der Ebene), Code in Grossschrift
   (Schriftgrösse passt sich der Codelänge an), Name; Farbbalken des Bereichs.
 - **Druckdialog:** Papier A4, Skalierung 100 % («Tatsächliche Grösse»), Kopf-/Fusszeilen aus, Ränder keine.

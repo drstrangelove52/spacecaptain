@@ -233,7 +233,9 @@ async def test_area_code_change_marks_labels_outdated(client, enabled, power):
     area = await _area(client, power)
     f = (await client.post("/api/inventory/furniture", headers=power,
                            json={"area_id": area["id"], "levels": 1})).json()
-    assert f["label_outdated"] is False
+    assert f["label_outdated"] is True        # neu angelegt = Etikett noch nicht gedruckt
+    await client.post("/api/inventory/furniture/printed", headers=power, json={"furniture_ids": [f["id"]]})
+    assert (await client.get("/api/inventory/labels", params={"outdated": True}, headers=power)).json() == []
     r = await client.patch(f"/api/inventory/areas/{area['id']}", headers=power, json={"code": "ELE"})
     assert r.json()["code"] == "ELE"
     lab = (await client.get("/api/inventory/labels", params={"outdated": True}, headers=power)).json()
