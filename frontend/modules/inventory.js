@@ -1,0 +1,636 @@
+/*
+ * Modul «Inventar» für den LabManager (Lagerorte, Möbel, Werkzeug, Etiketten).
+ * Wird von labmanager.html beim ersten Öffnen nachgeladen (LabModules) und nutzt dessen
+ * Helfer: GET/POST/PATCH/DELETE, apiSilent, showToast, escHtml, openModal/closeModal,
+ * currentUser, _isPowerPlus(). Alle Namen liegen im Namensraum `Inv`.
+ * Konzept: docs/inventar-konzept.md
+ */
+(function () {
+  'use strict';
+
+  const KIND = { schrank: '🗄️ Schrank', regal: '📚 Regal', wand: '🔨 Werkzeugwand', tisch: '🪵 Tisch / Werkbank', bereich: 'Im Bereich' };
+  const PAGE = 100;
+  const $ = (id) => document.getElementById('inv-' + id);
+  const esc = (s) => escHtml(s);
+  const isPower = () => _isPowerPlus();
+
+  let root = null;
+  let tree = [];
+  let itemsPage = 0, itemsCache = {};
+  let chips = { unplaced: false, level_open: false };
+  let editingItemId = null, editingAreaId = null, editingFurnId = null;
+  let labelData = [], labelOutdatedOnly = false, labelWithLevels = true;
+  let activeTab = 'items';
+  const openAreas = new Set(), openFurn = new Set();
+  let _deb = null;
+
+  // ═══════════════════════════════════════════════════════
+  // Styles (alles mit Präfix inv-, damit nichts im LabManager kollidiert)
+  // ═══════════════════════════════════════════════════════
+  const CSS = `
+  #page-inventory .inv-tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:18px}
+  #page-inventory .inv-tab{padding:10px 18px;cursor:pointer;color:var(--text-mid);font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px}
+  #page-inventory .inv-tab:hover{color:var(--text);background:var(--hover-subtle)}
+  #page-inventory .inv-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  #page-inventory .inv-page{display:none}#page-inventory .inv-page.active{display:block}
+  #page-inventory .inv-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  #page-inventory .inv-toolbar .search-wrap{flex:2;min-width:220px}
+  #page-inventory .inv-toolbar select{flex:1;min-width:140px;width:auto}
+  #page-inventory .inv-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--border);border-radius:99px;cursor:pointer;font-size:15px;color:var(--text-mid);user-select:none}
+  #page-inventory .inv-chip.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+  #page-inventory .inv-code,.inv-code{display:inline-block;font-family:var(--mono);font-size:14px;padding:2px 8px;border-radius:4px;border:1px solid var(--cc,var(--border));background:color-mix(in srgb,var(--cc,var(--accent2)) 14%,transparent);color:var(--text);white-space:nowrap}
+  #page-inventory .inv-dim{color:var(--text-dim)}#page-inventory .inv-small{font-size:14px}
+  #page-inventory .inv-empty{text-align:center;color:var(--text-dim);padding:40px 10px}
+  #page-inventory .inv-hint{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:15px;color:var(--text-mid);margin-bottom:14px}
+  #page-inventory .inv-hint b{color:var(--text)}
+  #page-inventory .inv-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:12px}
+  #page-inventory .inv-card-h{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;flex-wrap:wrap}
+  #page-inventory .inv-card-h .inv-name{font-weight:700;font-size:18px}
+  #page-inventory .inv-card-b{padding:4px 14px 12px;border-top:1px solid var(--border)}
+  #page-inventory .inv-swatch{width:12px;height:12px;border-radius:3px;background:var(--cc,var(--accent2));flex:none}
+  #page-inventory .inv-furn{border-left:3px solid var(--cc,var(--border));margin:10px 0 0 4px;padding:2px 0 2px 12px}
+  #page-inventory .inv-furn-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0;cursor:pointer}
+  #page-inventory .inv-lvl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:3px 0 3px 18px;border-top:1px dashed var(--border)}
+  #page-inventory .inv-pos{display:inline-flex;align-items:center;gap:4px;margin:2px 4px 2px 0;padding:1px 6px;border:1px solid var(--border);border-radius:4px;font-size:13px;font-family:var(--mono)}
+  #page-inventory .inv-sp{flex:1}
+  #page-inventory .inv-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  #page-inventory .inv-pager{display:flex;gap:10px;align-items:center;margin-top:10px}
+  #page-inventory .inv-lbl-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .inv-loc-box{border:1px solid var(--border);border-radius:6px;padding:10px 12px;background:var(--surface2)}
+  .inv-loc-box .form-row{margin-top:8px}
+  .inv-lbl{width:var(--lw,60mm);height:var(--lh,30mm);border:1px solid #888;border-top:5px solid var(--cc,#888);display:flex;gap:2mm;align-items:center;padding:1.5mm 2mm;background:#fff;color:#000;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
+  .inv-lbl img{height:calc(var(--lh,30mm) - 6mm);width:calc(var(--lh,30mm) - 6mm);flex:none;image-rendering:pixelated}
+  .inv-lbl .t{min-width:0;display:flex;flex-direction:column;gap:.5mm}
+  .inv-lbl .c{font-family:'Share Tech Mono',monospace;font-weight:700;line-height:1.05;white-space:nowrap}
+  .inv-lbl .n{font-size:calc(var(--lh,30mm) * .15);line-height:1.15;overflow:hidden;max-height:calc(var(--lh,30mm) * .4)}
+  .inv-lbl .a{font-size:calc(var(--lh,30mm) * .12);color:#444}
+  #inv-print{display:none}
+  @media print{
+    body.inv-printing{background:#fff!important;color:#000!important}
+    body.inv-printing>*:not(#inv-print){display:none!important}
+    body.inv-printing #inv-print{display:block}
+    body.inv-printing .inv-lbl{border-color:#000}
+    @page{margin:8mm}
+  }`;
+
+  function ensureStyle() {
+    if (document.getElementById('inv-style')) return;
+    const st = document.createElement('style');
+    st.id = 'inv-style';
+    st.textContent = CSS;
+    document.head.appendChild(st);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Gerüst
+  // ═══════════════════════════════════════════════════════
+  function mount(el) {
+    root = el;
+    ensureStyle();
+    el.innerHTML = `
+    <div class="inv-tabs">
+      <div class="inv-tab active" data-tab="items" onclick="Inv.showTab('items')">🔧 Werkzeug</div>
+      <div class="inv-tab" data-tab="structure" onclick="Inv.showTab('structure')">🗄️ Struktur</div>
+      <div class="inv-tab" data-tab="labels" onclick="Inv.showTab('labels')">🏷️ Etiketten</div>
+      <div class="inv-tab" data-tab="import" onclick="Inv.showTab('import')">📥 Import</div>
+    </div>
+
+    <div class="inv-page active" id="inv-page-items">
+      <div id="inv-code-banner" class="inv-hint" style="display:none"></div>
+      <div class="inv-toolbar">
+        <div class="search-wrap"><span class="search-icon">🔍</span>
+          <input class="search-input" id="inv-f-q" placeholder="Name, Synonym oder Code (z.B. Akkuschrauber, EL-S2)…" oninput="Inv.debouncedLoadItems()"></div>
+        <select class="filter-input" id="inv-f-area" onchange="Inv.reloadItems()"></select>
+        <select class="filter-input" id="inv-f-status" onchange="Inv.reloadItems()">
+          <option value="">Alle Status</option><option value="aktiv">aktiv</option><option value="defekt">defekt</option><option value="ausgemustert">ausgemustert</option>
+        </select>
+        <span class="inv-chip" id="inv-chip-unplaced" onclick="Inv.toggleChip('unplaced')">Ohne Platz</span>
+        <span class="inv-chip" id="inv-chip-level_open" onclick="Inv.toggleChip('level_open')" title="Im Möbel, aber Ebene noch nicht festgelegt (E0)">Ebene offen</span>
+        <button class="btn btn-primary" onclick="Inv.openItemModal()">+ Werkzeug</button>
+      </div>
+      <div class="table-wrap" style="margin-bottom:0">
+        <table><thead><tr><th>Name</th><th>Menge</th><th>Lagerort</th><th>Status</th><th></th></tr></thead>
+        <tbody id="inv-items-body"></tbody></table>
+      </div>
+      <div class="inv-pager"><span class="inv-dim inv-small" id="inv-items-count"></span><span class="inv-sp"></span>
+        <button class="btn btn-ghost btn-sm" id="inv-btn-prev" onclick="Inv.pageItems(-1)">‹ zurück</button>
+        <button class="btn btn-ghost btn-sm" id="inv-btn-next" onclick="Inv.pageItems(1)">weiter ›</button></div>
+    </div>
+
+    <div class="inv-page" id="inv-page-structure">
+      <div class="inv-hint">
+        <b>Code:</b> Bereich, Schrank, Ebene, Position, z.B. <code>EL-S2-E3-P4</code> = Elektronik, Schrank 2, Ebene 3, Platz 4.
+        Ebenen zählen <b>von oben nach unten</b>, Positionen <b>von links nach rechts</b>.
+        Die <b>0</b> heisst «nicht unterteilt oder noch nicht festgelegt» (<code>S0</code> = im Bereich ohne Möbel,
+        <code>E0</code> = Ebene offen, <code>P0</code> = kein fester Platz). Auf Etiketten entfallen abschliessende Nullen.
+      </div>
+      <div class="inv-toolbar" id="inv-structure-tools"></div>
+      <div id="inv-structure-list"></div>
+    </div>
+
+    <div class="inv-page" id="inv-page-labels">
+      <div class="inv-toolbar">
+        <select class="filter-input" id="inv-l-area" onchange="Inv.loadLabels()"></select>
+        <span class="inv-chip" id="inv-chip-outdated" onclick="Inv.toggleOutdated()">Nur veraltete</span>
+        <select class="filter-input" id="inv-l-size" onchange="Inv.renderLabels()">
+          <option value="60,30">Klein 60 × 30 mm</option><option value="90,50">Mittel 90 × 50 mm</option><option value="100,60">Gross 100 × 60 mm</option>
+        </select>
+        <span class="inv-chip on" id="inv-chip-levels" onclick="Inv.toggleLevels()">Mit Ebenen</span>
+        <button class="btn btn-primary" onclick="Inv.printLabels()">🖨️ Drucken</button>
+      </div>
+      <div class="inv-hint">Je Möbel ein Etikett (der QR-Code führt zum Inhalt), optional je Ebene ein kleines. Nach dem Drucken «Als gedruckt markieren».</div>
+      <div class="inv-lbl-grid" id="inv-labels-preview"></div>
+      <div style="margin-top:14px"><button class="btn btn-ghost" onclick="Inv.markPrinted()">✓ Angezeigte als gedruckt markieren</button></div>
+    </div>
+
+    <div class="inv-page" id="inv-page-import">
+      <div class="inv-hint">
+        Eine Zeile pro Werkzeug: <code>Name ; Synonyme ; Code ; Menge</code> (Trennzeichen <code>;</code> oder Tab —
+        Zeilen aus Excel lassen sich direkt einfügen). Synonyme, Code und Menge sind optional.
+        Der Code darf gekürzt sein: <code>EL-S2</code> = Elektronik, Schrank 2, Ebene offen. Ohne Code wird das Werkzeug
+        «ohne Platz» angelegt und kann später zugeordnet werden.
+      </div>
+      <textarea class="form-input" id="inv-import-text" style="min-height:220px;font-family:var(--mono);font-size:14px"
+        placeholder="Akkuschrauber ; Bohrschrauber, Schrauber ; EL-S1-E2 ; 2&#10;Seitenschneider ; Zange ; EL-S2&#10;Hammer"></textarea>
+      <div class="inv-row" style="margin-top:10px">
+        <button class="btn btn-ghost" onclick="Inv.runImport(true)">Prüfen (nichts speichern)</button>
+        <button class="btn btn-primary" onclick="Inv.runImport(false)">Importieren</button>
+      </div>
+      <div id="inv-import-result" style="margin-top:14px"></div>
+    </div>`;
+    if (!document.getElementById('inv-print')) {
+      const pa = document.createElement('div'); pa.id = 'inv-print'; document.body.appendChild(pa);
+    }
+  }
+
+  async function show() {
+    await loadTree();
+    fillAreaSelect($('f-area'), 'Alle Bereiche');
+    fillAreaSelect($('l-area'), 'Alle Bereiche');
+    // Einsprung über QR-Code / Link: #inventory/EL-S1
+    const code = window._invCode;
+    if (code) {
+      window._invCode = null;
+      $('f-q').value = code;
+      itemsPage = 0;
+      showTab('items');
+      const b = $('code-banner');
+      b.style.display = 'block';
+      b.innerHTML = `Inhalt von <code>${esc(code)}</code> · <a href="#" onclick="Inv.clearBanner();return false">Filter aufheben</a>`;
+    } else {
+      showTab(activeTab);
+    }
+  }
+  function clearBanner() { $('code-banner').style.display = 'none'; $('f-q').value = ''; reloadItems(); }
+
+  function showTab(name) {
+    activeTab = name;
+    root.querySelectorAll('.inv-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    root.querySelectorAll('.inv-page').forEach(p => p.classList.toggle('active', p.id === 'inv-page-' + name));
+    if (name === 'items') loadItems();
+    if (name === 'structure') renderStructure();
+    if (name === 'labels') loadLabels();
+  }
+
+  async function loadTree() {
+    const t = await GET('/inventory/tree');
+    if (t) tree = t;
+    return tree;
+  }
+  function fillAreaSelect(sel, firstLabel) {
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">${esc(firstLabel)}</option>` +
+      tree.map(a => `<option value="${a.id}">${esc(a.name)}${a.code ? ` (${esc(a.code)})` : ''}</option>`).join('');
+    sel.value = cur;
+  }
+  async function refreshAll() {
+    await loadTree();
+    fillAreaSelect($('f-area'), 'Alle Bereiche');
+    fillAreaSelect($('l-area'), 'Alle Bereiche');
+    renderStructure();
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Werkzeug
+  // ═══════════════════════════════════════════════════════
+  function debouncedLoadItems() { clearTimeout(_deb); _deb = setTimeout(() => { itemsPage = 0; loadItems(); }, 250); }
+  function reloadItems() { itemsPage = 0; loadItems(); }
+  function toggleChip(k) { chips[k] = !chips[k]; $('chip-' + k).classList.toggle('on', chips[k]); reloadItems(); }
+  function pageItems(d) { itemsPage = Math.max(0, itemsPage + d); loadItems(); }
+
+  function codeChip(pos) {
+    if (!pos) return '<span class="badge badge-red">ohne Platz</span>';
+    return `<span class="inv-code" style="--cc:${esc(pos.color || '#22d3ee')}" title="${esc(pos.path)}">${esc(pos.code)}</span>
+            <div class="inv-dim inv-small">${esc(pos.path)}</div>`;
+  }
+
+  async function loadItems() {
+    const q = $('f-q').value.trim();
+    const p = new URLSearchParams({ limit: PAGE, offset: itemsPage * PAGE });
+    if (q) p.set('q', q);
+    const area = $('f-area').value; if (area) p.set('area_id', area);
+    const st = $('f-status').value; if (st) p.set('status', st);
+    if (chips.unplaced) p.set('unplaced', 'true');
+    if (chips.level_open) p.set('level_open', 'true');
+    const r = await GET('/inventory/items?' + p);
+    if (!r) return;
+    itemsCache = Object.fromEntries(r.items.map(i => [i.id, i]));
+    $('items-body').innerHTML = r.items.length ? r.items.map(i => `
+      <tr>
+        <td><b>${esc(i.name)}</b>${i.synonyms ? `<div class="inv-dim inv-small">${esc(i.synonyms)}</div>` : ''}</td>
+        <td class="inv-mono" style="font-family:var(--mono)">${i.quantity}</td>
+        <td>${codeChip(i.position)}</td>
+        <td>${i.status === 'aktiv' ? '<span class="inv-dim">aktiv</span>' : `<span class="badge badge-red">${esc(i.status)}</span>`}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-ghost btn-sm" onclick="Inv.openItemModal(${i.id})" title="Bearbeiten">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="Inv.deleteItem(${i.id})" title="Löschen">🗑</button>
+        </td>
+      </tr>`).join('') : `<tr><td colspan="5" class="inv-empty">Keine Werkzeuge gefunden.</td></tr>`;
+    const from = r.total ? itemsPage * PAGE + 1 : 0, to = Math.min(r.total, (itemsPage + 1) * PAGE);
+    $('items-count').textContent = `${from}–${to} von ${r.total}`;
+    $('btn-prev').disabled = itemsPage === 0;
+    $('btn-next').disabled = to >= r.total;
+  }
+
+  async function deleteItem(id) {
+    const name = itemsCache[id] ? itemsCache[id].name : 'Eintrag';
+    if (!confirm(`«${name}» wirklich löschen?`)) return;
+    if (await DELETE('/inventory/items/' + id)) { showToast('Gelöscht', 'success'); await loadTree(); loadItems(); }
+  }
+
+  // ── Lagerort-Auswahl (Bereich → Möbel → Ebene → Position) ──
+  const areaById = (id) => tree.find(a => a.id == id);
+  function furnLabel(f) {
+    if (f.number === 0) return 'Im Bereich, ohne Möbel (S0)';
+    return `${f.name || ((KIND[f.kind] || 'Möbel').replace(/^\S+\s/, '') + ' ' + f.number)} (S${f.number})`;
+  }
+  const lvlLabel = (l) => l.number === 0 ? 'Ebene offen / nicht unterteilt (E0)' : `${l.label || 'Ebene ' + l.number} (E${l.number})`;
+  const posLabel = (p) => p.number === 0 ? 'kein fester Platz (P0)' : `${p.label || 'Platz ' + p.number} (P${p.number})`;
+
+  function fillLocSelects(sel) {
+    const aSel = $('i-area');
+    aSel.innerHTML = '<option value="">— kein Platz —</option>' +
+      tree.map(a => `<option value="${a.id}" ${a.code ? '' : 'disabled'}>${esc(a.name)}${a.code ? ` (${esc(a.code)})` : ' — Kürzel fehlt'}</option>`).join('');
+    aSel.value = sel.area || '';
+    const a = areaById(aSel.value);
+    const fSel = $('i-furn'), lSel = $('i-lvl'), pSel = $('i-pos');
+    [fSel, lSel, pSel].forEach(s => { s.innerHTML = ''; s.disabled = !a; });
+    if (!a) { syncCodeField(); return; }
+    fSel.innerHTML = a.furniture.map(f => `<option value="${f.id}">${esc(furnLabel(f))}</option>`).join('');
+    fSel.value = sel.furn || (a.furniture.find(f => f.number > 0) || a.furniture[0]).id;
+    const f = a.furniture.find(x => x.id == fSel.value);
+    lSel.innerHTML = f.levels.map(l => `<option value="${l.id}">${esc(lvlLabel(l))}</option>`).join('');
+    lSel.value = sel.lvl || f.levels.find(l => l.number === 0).id;
+    const l = f.levels.find(x => x.id == lSel.value);
+    pSel.innerHTML = l.positions.map(p => `<option value="${p.id}">${esc(posLabel(p))}</option>`).join('');
+    pSel.value = sel.pos || l.positions.find(p => p.number === 0).id;
+    syncCodeField();
+  }
+  const locAreaChanged = () => fillLocSelects({ area: $('i-area').value });
+  const locFurnChanged = () => fillLocSelects({ area: $('i-area').value, furn: $('i-furn').value });
+  const locLvlChanged = () => fillLocSelects({ area: $('i-area').value, furn: $('i-furn').value, lvl: $('i-lvl').value });
+  function currentPositionNode() {
+    const a = areaById($('i-area').value); if (!a) return null;
+    const f = a.furniture.find(x => x.id == $('i-furn').value); if (!f) return null;
+    const l = f.levels.find(x => x.id == $('i-lvl').value); if (!l) return null;
+    return l.positions.find(x => x.id == $('i-pos').value) || null;
+  }
+  function syncCodeField() { const p = currentPositionNode(); $('i-code').value = p ? p.code : ''; }
+  function applyCodeField() {
+    const raw = $('i-code').value.trim().toUpperCase();
+    if (!raw) { fillLocSelects({}); return; }
+    const m = raw.match(/^([A-Z0-9]{2,4})(?:-S(\d+))?(?:-E(\d+))?(?:-P(\d+))?$/);
+    const fail = (msg) => { showToast(esc(msg), 'error'); syncCodeField(); };
+    if (!m) return fail('Ungültiger Code (Beispiel: EL-S2-E3-P4)');
+    const a = tree.find(x => x.code === m[1]); if (!a) return fail(`Bereich «${m[1]}» nicht gefunden`);
+    const f = a.furniture.find(x => x.number === +(m[2] || 0)); if (!f) return fail(`${m[1]}-S${m[2]} gibt es nicht`);
+    const l = f.levels.find(x => x.number === +(m[3] || 0)); if (!l) return fail(`Ebene E${m[3]} gibt es nicht`);
+    const p = l.positions.find(x => x.number === +(m[4] || 0)); if (!p) return fail(`Platz P${m[4]} gibt es nicht`);
+    fillLocSelects({ area: a.id, furn: f.id, lvl: l.id, pos: p.id });
+  }
+
+  function openItemModal(id) {
+    const item = id ? itemsCache[id] : null;
+    editingItemId = item ? item.id : null;
+    openModal(item ? 'Werkzeug bearbeiten' : 'Neues Werkzeug', `
+      <div class="form-group"><label class="form-label">Name *</label><input class="form-input" id="inv-i-name" maxlength="150"></div>
+      <div class="form-group"><label class="form-label">Synonyme (kommagetrennt)</label><input class="form-input" id="inv-i-syn" placeholder="Bohrschrauber, Schrauber, Drill"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Menge</label><input class="form-input" id="inv-i-qty" type="number" min="0" value="1"></div>
+        <div class="form-group"><label class="form-label">Status</label>
+          <select class="form-input" id="inv-i-status"><option value="aktiv">aktiv</option><option value="defekt">defekt</option><option value="ausgemustert">ausgemustert</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Lagerort</label>
+        <div class="inv-loc-box">
+          <input class="form-input" id="inv-i-code" placeholder="Code, z.B. EL-S2-E3" onchange="Inv.applyCodeField()" style="font-family:var(--mono)">
+          <div class="form-row"><select class="form-input" id="inv-i-area" onchange="Inv.locAreaChanged()"></select><select class="form-input" id="inv-i-furn" onchange="Inv.locFurnChanged()"></select></div>
+          <div class="form-row"><select class="form-input" id="inv-i-lvl" onchange="Inv.locLvlChanged()"></select><select class="form-input" id="inv-i-pos" onchange="Inv.syncCodeField()"></select></div>
+        </div></div>
+      <div class="form-group"><label class="form-label">Beschreibung</label><textarea class="form-input" id="inv-i-desc" style="min-height:70px"></textarea></div>`,
+      saveItem, 'Speichern', null, 'input', 600);
+    $('i-name').value = item ? item.name : '';
+    $('i-syn').value = item ? item.synonyms : '';
+    $('i-qty').value = item ? item.quantity : 1;
+    $('i-status').value = item ? item.status : 'aktiv';
+    $('i-desc').value = item ? item.description : '';
+    const pos = item && item.position;
+    fillLocSelects(pos ? { area: pos.area_id, furn: pos.furniture_id, lvl: pos.level_id, pos: pos.position_id } : {});
+    $('i-name').focus();
+  }
+
+  async function saveItem() {
+    const name = $('i-name').value.trim();
+    if (!name) { showToast('Name fehlt', 'error'); return; }
+    const p = currentPositionNode();
+    const body = { name, synonyms: $('i-syn').value, description: $('i-desc').value,
+      quantity: parseInt($('i-qty').value || '0', 10), status: $('i-status').value };
+    let r;
+    if (editingItemId) {
+      if (p) body.position_id = p.id; else body.unplace = true;
+      r = await PATCH('/inventory/items/' + editingItemId, body);
+    } else {
+      if (p) body.position_id = p.id;
+      r = await POST('/inventory/items', body);
+    }
+    if (r) { closeModal(); showToast('Gespeichert', 'success'); await loadTree(); loadItems(); }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Struktur
+  // ═══════════════════════════════════════════════════════
+  function renderStructure() {
+    const missing = tree.filter(a => !a.code).length;
+    $('structure-tools').innerHTML = isPower()
+      ? `<button class="btn btn-primary" onclick="Inv.openAreaModal()">+ Bereich</button>
+         <button class="btn btn-primary" onclick="Inv.openFurnModal()">+ Möbel</button>
+         ${missing ? `<button class="btn btn-ghost" onclick="Inv.assignMissingCodes()" title="Schlägt für alle Bereiche ohne Kürzel eines aus dem Namen vor">✨ Kürzel für ${missing} Bereich${missing > 1 ? 'e' : ''} vergeben</button>` : ''}`
+      : `<span class="inv-dim inv-small">Nur Power-Manager und Admins können die Struktur ändern.</span>`;
+    const list = $('structure-list');
+    if (!tree.length) { list.innerHTML = '<div class="inv-empty">Noch keine Bereiche.</div>'; return; }
+    list.innerHTML = tree.map(a => {
+      const open = openAreas.has(a.id);
+      const real = a.furniture.filter(f => f.number > 0);
+      return `<div class="inv-card" style="--cc:${esc(a.color || '#22d3ee')}">
+        <div class="inv-card-h" onclick="Inv.toggleArea(${a.id})">
+          <span class="inv-swatch"></span>
+          <span class="inv-name">${esc(a.name)}</span>
+          ${a.code ? `<span class="inv-code">${esc(a.code)}</span>` : '<span class="badge badge-red">Kürzel fehlt</span>'}
+          <span class="inv-dim inv-small">${real.length} Möbel · ${a.item_count} Werkzeuge</span>
+          <span class="inv-sp"></span>
+          ${isPower() ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();Inv.openAreaModal(${a.id})">✏️ Bereich</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();Inv.openFurnModal(null,${a.id})" ${a.code ? '' : 'disabled title="Zuerst ein Kürzel vergeben"'}>+ Möbel</button>` : ''}
+          <span>${open ? '▾' : '▸'}</span>
+        </div>
+        ${open ? `<div class="inv-card-b">${a.furniture.map(f => furnHtml(a, f)).join('') || '<div class="inv-dim inv-small" style="padding:8px 0">Keine Möbel.</div>'}</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+  function toggleArea(id) { openAreas.has(id) ? openAreas.delete(id) : openAreas.add(id); renderStructure(); }
+  function toggleFurn(id) { openFurn.has(id) ? openFurn.delete(id) : openFurn.add(id); renderStructure(); }
+
+  function furnHtml(a, f) {
+    const open = openFurn.has(f.id), p = isPower();
+    const title = f.number === 0 ? '<i>Im Bereich, ohne Möbel</i>' : esc(f.name || ((KIND[f.kind] || '').replace(/^\S+\s/, '') + ' ' + f.number));
+    return `<div class="inv-furn" style="--cc:${esc(a.color || '#888')}">
+      <div class="inv-furn-h" onclick="Inv.toggleFurn(${f.id})">
+        <span class="inv-code">${esc(f.code)}</span>
+        <b>${title}</b>
+        ${f.number > 0 ? `<span class="inv-dim inv-small">${KIND[f.kind] || ''}</span>` : ''}
+        <span class="inv-dim inv-small">${f.item_count} Werkzeuge</span>
+        ${f.label_outdated ? '<span class="badge badge-orange" title="Code hat sich geändert">Etikett veraltet</span>' : ''}
+        <span class="inv-sp"></span>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();Inv.gotoItems('${esc(f.code)}')">Werkzeug anzeigen</button>
+        ${p && f.number > 0 ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();Inv.openFurnModal(${f.id})">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();Inv.deleteFurn(${f.id},'${esc(f.code)}')">🗑</button>` : ''}
+        <span>${open ? '▾' : '▸'}</span>
+      </div>
+      ${open ? `${f.levels.map(l => levelHtml(a, f, l)).join('')}
+        ${p && f.number > 0 ? `<div style="padding:6px 0 4px 18px"><button class="btn btn-ghost btn-sm" onclick="Inv.addLevels(${f.id})">+ Ebene</button></div>` : ''}` : ''}
+    </div>`;
+  }
+  function levelHtml(a, f, l) {
+    const p = isPower();
+    const real = l.positions.filter(x => x.number > 0);
+    return `<div class="inv-lvl">
+      <span class="inv-code">${esc(l.code)}</span>
+      <span>${l.number === 0 ? '<i class="inv-dim">Ebene offen / nicht unterteilt</i>' : esc(l.label || 'Ebene ' + l.number)}</span>
+      <span class="inv-dim inv-small">${l.item_count} Werkzeuge</span>
+      <span class="inv-sp"></span>
+      ${p && l.number > 0 ? `<button class="btn btn-ghost btn-sm" onclick="Inv.renameLevel(${l.id})">Name</button>
+        <button class="btn btn-ghost btn-sm" onclick="Inv.addPositions(${l.id})">+ Platz</button>
+        <button class="btn btn-danger btn-sm" onclick="Inv.deleteLevel(${l.id},'${esc(l.code)}')">🗑</button>` : ''}
+      <div style="flex-basis:100%;padding-left:6px">${real.map(x => `
+        <span class="inv-pos" title="${esc(x.code)}">P${x.number}${x.label ? ' · ' + esc(x.label) : ''}${x.item_count ? ` <b>${x.item_count}</b>` : ''}
+          ${p ? `<a href="#" onclick="Inv.renamePos(${x.id});return false" title="Name">✎</a>
+          <a href="#" onclick="Inv.deletePos(${x.id},'${esc(x.code)}');return false" title="Löschen" style="color:var(--danger)">✕</a>` : ''}
+        </span>`).join('')}</div>
+    </div>`;
+  }
+  function gotoItems(code) { $('f-q').value = code; itemsPage = 0; $('code-banner').style.display = 'none'; showTab('items'); }
+
+  // ── Bereich ──
+  async function assignMissingCodes() {
+    const p = await POST('/inventory/areas/assign-missing-codes?dry_run=true');
+    if (!p || !p.areas.length) { showToast('Alle Bereiche haben schon ein Kürzel', 'success'); return; }
+    const lines = p.areas.map(a => `${a.name}  →  ${a.code}`).join('\n');
+    if (!confirm(`Diese Kürzel werden vergeben:\n\n${lines}\n\nSie lassen sich danach einzeln ändern (vor dem Etikettendruck).`)) return;
+    const r = await POST('/inventory/areas/assign-missing-codes?dry_run=false');
+    if (r) { showToast(`${r.areas.length} Kürzel vergeben`, 'success'); await refreshAll(); }
+  }
+  async function suggestAreaCode(force) {
+    const codeEl = $('a-code'), name = $('a-name') ? $('a-name').value.trim() : '';
+    if (!codeEl || !name || (codeEl.value.trim() && !force)) return;
+    const q = new URLSearchParams({ name }); if (editingAreaId) q.set('area_id', editingAreaId);
+    const r = await apiSilent('GET', '/inventory/areas/suggest-code?' + q);
+    if (r) codeEl.value = r.code;
+  }
+  function openAreaModal(id) {
+    editingAreaId = id || null;
+    const a = id ? areaById(id) : null;
+    openModal(a ? 'Bereich bearbeiten' : 'Neuer Bereich', `
+      <div class="form-group"><label class="form-label">Name *</label><input class="form-input" id="inv-a-name" maxlength="100" onblur="Inv.suggestAreaCode(false)"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Kürzel (2–4 Zeichen)</label>
+          <div style="display:flex;gap:6px"><input class="form-input" id="inv-a-code" maxlength="4" placeholder="auto" style="font-family:var(--mono);text-transform:uppercase">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="Inv.suggestAreaCode(true)" title="Vorschlag aus dem Namen">✨</button></div></div>
+        <div class="form-group"><label class="form-label">Farbe</label><input class="form-input" id="inv-a-color" type="color" style="padding:2px;height:40px"></div>
+      </div>
+      <div class="inv-hint">Das Kürzel ist der erste Teil jedes Lagerort-Codes. Wird es geändert, ändern sich die Codes aller Möbel dieses Bereichs, die Etiketten müssen neu gedruckt werden. Bereiche sind dieselben wie die <b>Standorte</b> bei den Maschinen.</div>`,
+      saveArea, 'Speichern', null, 'input', 520);
+    $('a-name').value = a ? a.name : '';
+    $('a-code').value = a ? (a.code || '') : '';
+    $('a-color').value = a && a.color ? a.color : '#22d3ee';
+    if (a && !a.code) suggestAreaCode(false);
+  }
+  async function saveArea() {
+    const body = { name: $('a-name').value.trim(), code: $('a-code').value.trim().toUpperCase(), color: $('a-color').value };
+    if (!body.name) { showToast('Name fehlt', 'error'); return; }
+    if (!body.code && !editingAreaId) body.code = null;      // neu ohne Kürzel: der Server schlägt eines vor
+    const r = editingAreaId ? await PATCH('/inventory/areas/' + editingAreaId, body) : await POST('/inventory/areas', body);
+    if (r) { closeModal(); showToast('Gespeichert', 'success'); await refreshAll(); }
+  }
+
+  // ── Möbel ──
+  function openFurnModal(id, areaId) {
+    editingFurnId = id || null;
+    let f = null, a = null;
+    if (id) for (const x of tree) { const m = x.furniture.find(y => y.id === id); if (m) { f = m; a = x; } }
+    const areaOpts = tree.map(x => `<option value="${x.id}" ${x.code ? '' : 'disabled'}>${esc(x.name)}${x.code ? ` (${esc(x.code)})` : ' — Kürzel fehlt'}</option>`).join('');
+    openModal(f ? 'Möbel bearbeiten' : 'Neues Möbel', `
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Bereich *</label><select class="form-input" id="inv-f-area-sel">${areaOpts}</select></div>
+        <div class="form-group"><label class="form-label">Art</label>
+          <select class="form-input" id="inv-f-kind"><option value="schrank">Schrank</option><option value="regal">Regal</option>
+            <option value="wand">Werkzeugwand</option><option value="tisch">Tisch / Werkbank</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Name (optional, z.B. «Hilti Schrank 1»)</label><input class="form-input" id="inv-f-name" maxlength="100"></div>
+      ${f ? '' : `<div class="form-row">
+        <div class="form-group"><label class="form-label">Ebenen (Fächer, Schubladen)</label><input class="form-input" id="inv-f-levels" type="number" min="0" max="40" value="3"></div>
+        <div class="form-group"><label class="form-label">Positionen je Ebene</label><input class="form-input" id="inv-f-positions" type="number" min="0" max="40" value="0"></div>
+      </div>
+      <div class="inv-hint">Ebenen und Positionen lassen sich später ergänzen. Ohne Ebenen bleibt nur <code>E0</code> (z.B. Tischplatte).</div>`}
+      <div class="form-group"><label class="form-label">Bemerkung</label><textarea class="form-input" id="inv-f-note" style="min-height:60px"></textarea></div>`,
+      saveFurn, 'Speichern', null, 'input', 560);
+    $('f-area-sel').value = a ? a.id : (areaId || (tree.find(x => x.code) || {}).id || '');
+    $('f-kind').value = f ? f.kind : 'schrank';
+    $('f-name').value = f ? (f.name || '') : '';
+    $('f-note').value = f ? (f.note || '') : '';
+  }
+  async function saveFurn() {
+    const body = { area_id: +$('f-area-sel').value, kind: $('f-kind').value, name: $('f-name').value, note: $('f-note').value };
+    if (!body.area_id) { showToast('Bereich wählen', 'error'); return; }
+    let r;
+    if (editingFurnId) {
+      r = await PATCH('/inventory/furniture/' + editingFurnId, body);
+    } else {
+      body.levels = parseInt($('f-levels').value || '0', 10);
+      body.positions = parseInt($('f-positions').value || '0', 10);
+      r = await POST('/inventory/furniture', body);
+      if (r) openAreas.add(body.area_id);
+    }
+    if (r) { closeModal(); showToast(editingFurnId ? 'Gespeichert' : `Angelegt: ${esc(r.code)}`, 'success'); await refreshAll(); }
+  }
+  async function deleteFurn(id, code) {
+    if (!confirm(`Möbel ${code} samt Ebenen und Positionen löschen? (Nur möglich, wenn kein Werkzeug darin liegt.)`)) return;
+    if (await DELETE('/inventory/furniture/' + id)) { showToast('Gelöscht', 'success'); await refreshAll(); }
+  }
+  async function addLevels(fid) {
+    const n = parseInt(prompt('Wie viele Ebenen ergänzen?', '1') || '0', 10); if (!n) return;
+    const pos = parseInt(prompt('Positionen je Ebene (0 = keine)', '0') || '0', 10);
+    if (await POST(`/inventory/furniture/${fid}/levels`, { count: n, positions: pos || 0 })) await refreshAll();
+  }
+  async function addPositions(lid) {
+    const n = parseInt(prompt('Wie viele Positionen ergänzen?', '1') || '0', 10); if (!n) return;
+    if (await POST(`/inventory/levels/${lid}/positions`, { count: n })) await refreshAll();
+  }
+  function findLevel(lid) { for (const a of tree) for (const f of a.furniture) for (const l of f.levels) if (l.id === lid) return l; return null; }
+  function findPos(pid) { for (const a of tree) for (const f of a.furniture) for (const l of f.levels) for (const p of l.positions) if (p.id === pid) return p; return null; }
+  async function renameLevel(lid) {
+    const v = prompt('Name der Ebene (leer = «Ebene n»)', (findLevel(lid) || {}).label || ''); if (v === null) return;
+    if (await PATCH('/inventory/levels/' + lid, { label: v })) await refreshAll();
+  }
+  async function renamePos(pid) {
+    const v = prompt('Name der Position (leer = «Platz n»)', (findPos(pid) || {}).label || ''); if (v === null) return;
+    if (await PATCH('/inventory/positions/' + pid, { label: v })) await refreshAll();
+  }
+  async function deleteLevel(lid, code) {
+    if (!confirm(`Ebene ${code} löschen? Die Nummern der übrigen Ebenen bleiben bestehen.`)) return;
+    if (await DELETE('/inventory/levels/' + lid)) await refreshAll();
+  }
+  async function deletePos(pid, code) {
+    if (!confirm(`Position ${code} löschen?`)) return;
+    if (await DELETE('/inventory/positions/' + pid)) await refreshAll();
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Etiketten
+  // ═══════════════════════════════════════════════════════
+  function toggleOutdated() { labelOutdatedOnly = !labelOutdatedOnly; $('chip-outdated').classList.toggle('on', labelOutdatedOnly); loadLabels(); }
+  function toggleLevels() { labelWithLevels = !labelWithLevels; $('chip-levels').classList.toggle('on', labelWithLevels); renderLabels(); }
+  async function loadLabels() {
+    const p = new URLSearchParams();
+    const a = $('l-area').value; if (a) p.set('area_id', a);
+    if (labelOutdatedOnly) p.set('outdated', 'true');
+    const r = await GET('/inventory/labels?' + p);
+    if (r) { labelData = r; renderLabels(); }
+  }
+  function qrUrl(code) {
+    const target = `${location.origin}/inventar.html?code=${encodeURIComponent(code)}`;
+    return `/api/qr/url-png?u=${encodeURIComponent(target)}`;
+  }
+  function codeFontMm(code) {
+    // Platz fuer den Text = Etikettbreite - QR - Raender; Monospace-Zeichen ~0.62 em breit
+    const [w, h] = $('l-size').value.split(',').map(Number);
+    const avail = w - (h - 6) - 8;
+    return Math.max(2.5, Math.min(h * 0.26, avail / (code.length * 0.62)));
+  }
+  function labelHtml(code, name, area, color, small) {
+    return `<div class="inv-lbl" style="--cc:${esc(color || '#888')}">
+      <img src="${qrUrl(code)}" alt="">
+      <div class="t"><div class="c" style="font-size:${codeFontMm(code).toFixed(2)}mm">${esc(code)}</div><div class="n">${esc(name)}</div>${small ? '' : `<div class="a">${esc(area)}</div>`}</div>
+    </div>`;
+  }
+  function labelsMarkup() {
+    const out = [];
+    for (const f of labelData) {
+      out.push(labelHtml(f.code, f.name, f.area, f.color));
+      if (labelWithLevels) for (const l of f.levels) out.push(labelHtml(l.code, l.label || ('Ebene ' + l.number), f.area, f.color, true));
+    }
+    return out.join('');
+  }
+  function renderLabels() {
+    const [w, h] = $('l-size').value.split(',');
+    const box = $('labels-preview');
+    box.style.setProperty('--lw', w + 'mm'); box.style.setProperty('--lh', h + 'mm');
+    document.getElementById('inv-print').style.cssText = `--lw:${w}mm;--lh:${h}mm`;
+    box.innerHTML = labelData.length ? labelsMarkup() : '<div class="inv-empty" style="width:100%">Keine Etiketten (zuerst Möbel anlegen).</div>';
+  }
+  function printLabels() {
+    if (!labelData.length) { showToast('Keine Etiketten zum Drucken', 'error'); return; }
+    const pa = document.getElementById('inv-print');
+    pa.innerHTML = `<div class="inv-lbl-grid">${labelsMarkup()}</div>`;
+    const imgs = [...pa.querySelectorAll('img')];
+    Promise.all(imgs.map(i => i.complete ? Promise.resolve() : new Promise(r => { i.onload = i.onerror = r; }))).then(() => {
+      document.body.classList.add('inv-printing');
+      window.addEventListener('afterprint', () => document.body.classList.remove('inv-printing'), { once: true });
+      window.print();
+    });
+  }
+  async function markPrinted() {
+    const ids = labelData.map(f => f.furniture_id);
+    if (!ids.length) return;
+    if (await POST('/inventory/furniture/printed', { furniture_ids: ids })) { showToast('Als gedruckt markiert', 'success'); await refreshAll(); loadLabels(); }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Import
+  // ═══════════════════════════════════════════════════════
+  function parseImport() {
+    return $('import-text').value.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(line => {
+      const c = (line.includes('\t') ? line.split('\t') : line.split(';')).map(x => x.trim());
+      return { name: c[0] || '', synonyms: c[1] || null, code: c[2] || null, quantity: parseInt(c[3] || '1', 10) || 1 };
+    });
+  }
+  async function runImport(dry) {
+    const rows = parseImport();
+    if (!rows.length) { showToast('Nichts zum Importieren', 'error'); return; }
+    const r = await POST('/inventory/items/import', { rows, dry_run: dry });
+    if (!r) return;
+    $('import-result').innerHTML = `<div class="inv-hint"><b>${dry ? 'Prüfung' : 'Importiert'}:</b> ${r.valid} von ${rows.length} Zeilen ${dry ? 'sind gültig' : 'angelegt'}${r.errors.length ? `, ${r.errors.length} mit Fehler` : ''}.</div>` +
+      (r.errors.length ? `<div class="table-wrap"><table><thead><tr><th>Zeile</th><th>Problem</th></tr></thead><tbody>${r.errors.map(e => `<tr><td style="font-family:var(--mono)">${e.line}</td><td>${esc(e.error)}</td></tr>`).join('')}</tbody></table></div>` : '');
+    if (!dry) { showToast(`${r.created} Werkzeuge importiert`, 'success'); await loadTree(); if (!r.errors.length) $('import-text').value = ''; }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Anmeldung am LabManager
+  // ═══════════════════════════════════════════════════════
+  window.Inv = {
+    showTab, debouncedLoadItems, reloadItems, toggleChip, pageItems, openItemModal, deleteItem, clearBanner,
+    locAreaChanged, locFurnChanged, locLvlChanged, syncCodeField, applyCodeField,
+    toggleArea, toggleFurn, gotoItems, openAreaModal, suggestAreaCode, assignMissingCodes,
+    openFurnModal, deleteFurn, addLevels, addPositions, renameLevel, renamePos, deleteLevel, deletePos,
+    toggleOutdated, toggleLevels, loadLabels, renderLabels, printLabels, markPrinted, runImport,
+  };
+
+  LabModules.register('inventory', { title: 'Inventar', mount, show });
+})();

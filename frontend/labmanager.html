@@ -305,7 +305,7 @@
     <div class="nav-item" data-page="machines" onclick="navigate(this)"><span class="nav-icon">🏭</span> Maschinen <span class="nav-badge" id="badge-machines">0</span></div>
     <div class="nav-item" data-page="plugs" onclick="navigate(this)"><span class="nav-icon">🔌</span> Plug-Pool <span class="nav-badge" id="badge-plugs">0</span></div>
     <div class="nav-item" data-page="batteries" onclick="navigate(this)"><span class="nav-icon">🔋</span> Akkus <span class="nav-badge" id="badge-batteries">0</span></div>
-    <a class="nav-item" id="nav-inventory" href="/inventar.html" style="display:none;text-decoration:none"><span class="nav-icon">🗄️</span> Inventar <span style="font-size:12px;color:var(--text-dim);margin-left:auto">↗</span></a>
+    <div class="nav-item" id="nav-inventory" data-page="inventory" data-module="inventory" onclick="navigate(this)" style="display:none"><span class="nav-icon">🗄️</span> Inventar</div>
     <div class="nav-item" data-page="automations" onclick="navigate(this)"><span class="nav-icon">⚡</span> Automationen <span class="nav-badge" id="badge-automations">0</span></div>
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
     <div class="nav-item" data-page="permissions" onclick="navigate(this)"><span class="nav-icon">🔑</span> Berechtigungen</div>
@@ -619,6 +619,7 @@
     <!-- BACKUP PAGE -->
 
     <!-- AUTOMATIONEN -->
+    <div class="page" id="page-inventory"></div>
     <div class="page" id="page-automations">
       <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" id="auto-search" placeholder="Regelname, Maschine suchen…" oninput="filterAutomations(this.value)"></div>
       <div id="automations-list"></div>
@@ -2820,7 +2821,7 @@ async function api(method, path, body=null) {
     if (r.status===401) { doLogout(); return null; }
     if (!r.ok) {
       const err = await r.json().catch(()=>({detail:r.statusText}));
-      showToast(typeof err.detail==='string'?err.detail:JSON.stringify(err.detail),'error');
+      showToast(escHtml(typeof err.detail==='string'?err.detail:JSON.stringify(err.detail)),'error');
       return null;
     }
     return await r.json();
@@ -2899,7 +2900,7 @@ _updateThemeToggleLabel();
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',plugs:'Plug-Pool',batteries:'Akkus',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Aushänge',notifications:'Push-Nachrichten',backup:'Backup & Restore',settings:'Einstellungen',automations:'Automationen',info:'Info',help:'Hilfe & Dokumentation'};
+const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',plugs:'Plug-Pool',batteries:'Akkus',inventory:'Inventar',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Aushänge',notifications:'Push-Nachrichten',backup:'Backup & Restore',settings:'Einstellungen',automations:'Automationen',info:'Info',help:'Hilfe & Dokumentation'};
 const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',machines:'machines',permissions:'permissions',maintenance:'maintenance',backup:'backup',settings:'settings'};
 const pageActions={
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
@@ -2918,6 +2919,44 @@ const pageActions={
   settings:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('settings')" title="Hilfe zu Einstellungen">? Hilfe</button>`,
   dashboard:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button> <button id="dash-refresh-countdown" class="btn btn-ghost btn-sm" onclick="dashboardRefreshNow()" style="font-family:var(--mono);font-size:13px">↻ …</button>`,
 };
+// ═══════════════════════════════════════════════════════
+// MODULE — Seiten, die beim ersten Öffnen nachgeladen werden (frontend/modules/<name>.js)
+// Ein Modul registriert sich mit LabModules.register(name, {mount(el), show(el), actions()}).
+// Nav-Eintrag: data-page="<name>" data-module="<name>", Container: <div class="page" id="page-<name>">.
+// ═══════════════════════════════════════════════════════
+const LabModules = (function () {
+  const defs = {}, loading = {};
+  function register(name, def) { defs[name] = def; }
+  function load(name) {
+    if (defs[name]) return Promise.resolve(defs[name]);
+    if (loading[name]) return loading[name];
+    loading[name] = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = `/modules/${name}.js?v=${encodeURIComponent(window._buildTag || '0')}`;   // Build-Nummer als Cache-Schlüssel
+      s.onload = () => defs[name] ? resolve(defs[name]) : reject(new Error('Modul hat sich nicht registriert: ' + name));
+      s.onerror = () => { delete loading[name]; reject(new Error('Modul nicht ladbar: ' + name)); };
+      document.head.appendChild(s);
+    });
+    return loading[name];
+  }
+  async function show(name) {
+    const page = document.getElementById('page-' + name);
+    if (!page) return;
+    if (!defs[name] && !page.dataset.mounted) page.innerHTML = '<div class="loading"><div class="spinner"></div>Laden…</div>';
+    try {
+      const def = await load(name);
+      if (!page.dataset.mounted) { page.innerHTML = ''; await def.mount(page); page.dataset.mounted = '1'; }
+      if (!page.classList.contains('active')) return;          // inzwischen woanders hin navigiert
+      document.getElementById('topbar-actions').innerHTML = def.actions ? def.actions() : '';
+      if (def.show) await def.show(page);
+    } catch (e) {
+      console.error(e);
+      page.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--text-dim)">Das Modul «${escHtml(name)}» konnte nicht geladen werden.<br><button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="LabModules.show('${escHtml(name)}')">Erneut versuchen</button></div>`;
+    }
+  }
+  return { register, load, show };
+})();
+
 function navigate(el) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   el.classList.add('active');
@@ -2948,6 +2987,7 @@ function navigate(el) {
   if (page==='dashboard') loadRoomStatus();
 
   if (page==='help') initHelp();
+  if (el.dataset.module) LabModules.show(page);
 }
 
 let _helpActiveCat = 'start';
@@ -3243,6 +3283,7 @@ function fmtLocalDate(isoStr) {
 }
 
 async function loadAll() {
+  _openInventoryFromHash();
   // Basis-Daten zuerst laden und sofort rendern (kein Plug-Status nötig)
   const [guests,users,machines,perms,stats,cats,locs,plugsData,owners,batteries] = await Promise.all([
     GET('/guests'),GET('/users'),GET('/machines'),GET('/permissions'),GET('/dashboard'),GET('/categories'),GET('/locations'),GET('/plugs'),GET('/owners'),GET('/batteries')
@@ -5461,6 +5502,7 @@ function filterTable(input,tableId) {
 // ═══════════════════════════════════════════════════════
 fetch('/api/version').then(r=>r.json()).then(d=>{
   const build = d.build ? ` · Build ${d.build}` : '';
+  window._buildTag = d.build || d.version || '0';
   const s = document.getElementById('app-version-sidebar');
   const l = document.getElementById('app-version-login');
   if (s) s.textContent = `v${d.version}${build}`;
@@ -6272,8 +6314,17 @@ let _roomStatus = {room_open: false, room_open_since: null, room_open_auto: true
 let _spaceName = 'Raum';
 let _currency = 'CHF';
 // Inventar-Modul: Menuepunkt nur zeigen, wenn es in den Einstellungen aktiviert ist
-let _inventoryOn = false;
-function _applyInventoryNav(on){ _inventoryOn = !!on; const el=document.getElementById('nav-inventory'); if(el) el.style.display = on ? '' : 'none'; }
+let _inventoryOn = false, _hashHandled = false;
+function _applyInventoryNav(on){ _inventoryOn = !!on; const el=document.getElementById('nav-inventory'); if(el) el.style.display = on ? '' : 'none'; _openInventoryFromHash(); }
+// QR-Codes zeigen auf /inventar.html?code=EL-S1 → leitet nach /labmanager.html#inventory/EL-S1 weiter
+function _openInventoryFromHash(){
+  if (_hashHandled || !token || !currentUser || !_inventoryOn) return;
+  const m = location.hash.match(/^#inventory(?:\/(.+))?$/);
+  if (!m) return;
+  _hashHandled = true;
+  window._invCode = m[1] ? decodeURIComponent(m[1]) : null;
+  navigateTo('inventory');
+}
 function _applyCurrencyLabels(){
   const el=document.getElementById('battery-price-label');
   if(el) el.textContent=`Neuwert (${_currency})`;

@@ -2,7 +2,7 @@
 
 Status: **Etappe 1 umgesetzt** (2026-10-18, Branch `feature/inventar-modul`, noch nicht auf Dev
 ausgerollt). Etappen 2–5 offen. Backend: `models_inventory.py`, `services/inventory.py`,
-`routers/inventory.py`; Oberfläche: `frontend/inventar.html`; Tests: `backend/tests` (`cd backend && pytest`).
+`routers/inventory.py`; Oberfläche: `frontend/modules/inventory.js` (Modul im LabManager); Tests: `backend/tests` (`cd backend && pytest`).
 
 Planungsebene im Second Brain: `03 Bereiche/SpaceCaptain/Inventar-Modul.md`.
 
@@ -48,7 +48,7 @@ die Struktur kann sauber aufgebaut werden.
 
 | # | Entscheidung |
 |---|---|
-| 1 | Modul in SpaceCaptain, mit **eigener Oberfläche** (`inventar.html`), gleiches Backend, gleiche Anmeldung, gleiche Rollen |
+| 1 | Modul in SpaceCaptain: **eigene Dateien, aber als Seite im LabManager** (`modules/inventory.js`), gleiches Backend, gleiche Anmeldung, gleiche Rollen |
 | 2 | **Zwei Objektarten, ein gemeinsamer Plan und eine gemeinsame Suche:** Maschinen bleiben in `machines`, Werkzeug/Kleingerät kommt in eine neue Tabelle |
 | 3 | `machine_locations` wird zur **Bereichs-Tabelle** erweitert (keine zweite Standortliste) |
 | 4 | Maschinen tragen **keinen aufgedruckten Lagerort-Code**, sondern Bereich + Platz auf dem Plan. Sie können den Bereich wechseln |
@@ -231,10 +231,20 @@ Display und Gast-Dashboard zählt hier der Inventargedanke.
 
 ## 7. Oberfläche
 
-- **`frontend/inventar.html`**: eigene Seite, gleiche Struktur wie `labmanager.html`
-  (kein Build, kein Framework, die Hilfsfunktionen `api()`/`GET()`/`POST()` nach
-  Vorbild). Anmeldung über denselben Token (gleiche Origin). In `labmanager.html`
-  kommt nur ein Menüpunkt «Inventar» (nur sichtbar, wenn `inventory_enabled`).
+- **Admin-Oberfläche als nachladbares Modul** (`frontend/modules/inventory.js`): Eine eigene Seite
+  wirkte wie ein Fremdkörper (keine Seitenleiste, eigener Kopf, eigener Login-Zustand). Darum ist das
+  Inventar eine normale Seite des LabManagers, deren Code beim ersten Öffnen nachgeladen wird:
+  - `labmanager.html` enthält nur den Lader `LabModules`, den Menüpunkt (`data-module="inventory"`,
+    sichtbar nur bei `inventory_enabled`) und den leeren Container `page-inventory`.
+  - Das Modul nutzt die Helfer des LabManagers (`GET/POST/PATCH/DELETE`, `showToast`, `openModal`,
+    `escHtml`, `currentUser`, `_isPowerPlus()`), also gleiches Aussehen, gleiche Anmeldung, gleiches
+    Hell/Dunkel. Alle Namen liegen im Namensraum `Inv`, alle CSS-Klassen tragen das Präfix `inv-`.
+  - Cache: Das Skript wird mit `?v=<Build-Nummer>` geladen.
+  - **Druck:** Etiketten werden nur gedruckt, wenn `body.inv-printing` gesetzt ist; die Druck-CSS
+    verändert das Drucken anderer Seiten nicht.
+- **`frontend/inventar.html`** ist nur noch ein Einsprung: QR-Codes auf Schränken zeigen auf
+  `/inventar.html?code=EL-S1`, das nach `/labmanager.html#inventory/EL-S1` weiterleitet (Inhalt des
+  Schranks gefiltert). In Etappe 3 wird daraus die schlanke Gäste-Seite ohne Sidebar.
 - Bereiche der Seite:
   1. **Struktur:** Baumansicht, Schrank mit Ebenen und Positionen in einem Dialog anlegen.
   2. **Werkzeug:** Tabelle mit Suche und Filter, Anlegen/Bearbeiten, Umlagern, «Ohne Platz».
@@ -244,6 +254,26 @@ Display und Gast-Dashboard zählt hier der Inventargedanke.
 - **Gäste:** Suchfeld in `index.html` («Wo ist …?»). QR-Codes auf Schränken führen auf
   den Inhalt dieses Schranks (`/inventar.html?code=EL-S2` bzw. Gast-Variante).
 - Sprache: Du-Form, deutsche Begriffe wie bisher («Aushänge», «Push-Nachrichten»).
+
+## 7a. Weitere Auslagerungs-Kandidaten im LabManager (nicht Teil dieses Moduls)
+
+`labmanager.html` hat über 8000 Zeilen (5500 Skript, 307 globale Funktionen). Mit dem Lader lassen sich
+selten genutzte oder abgeschlossene Bereiche auslagern. Vermessung (Zeilen, grob):
+
+| Bereich | Umfang | Kopplung | Priorität |
+|---|---|---|---|
+| Hilfe + Info (fast nur statisches HTML) | ~1500 | keine | 1 — grösster Gewinn, kleinstes Risiko |
+| Plug-Pool + Geräte-/NFC-Discovery | ~920 | gering | 2 |
+| Einstellungen (+ Backup, Update, Tailscale, MCP) | ~1200 | mittel | 3 (nur Admins) |
+| Berechtigungen | ~420 | mittel | bei Bedarf |
+| Automationen (+ Bedingungen-Editor) | ~250 | gering | bei Bedarf |
+| Akkus | ~175 | gering | später evtl. ins Inventar-Modul (Lagerort) |
+| Dashboard, Gäste, Maschinen | — | hoch | im Kern lassen |
+
+Regel: nur auslagern, wenn man dort ohnehin etwas ändert; je Bereich ein eigener Branch. Bei «alten»
+Bereichen genügt es, den Code unverändert zu verschieben (Funktionen bleiben global, `onclick`
+funktioniert weiter); zu prüfen sind Funktionen, die der Kern vor dem Nachladen aufruft (z.B.
+`loadPlugs()` beim Start).
 
 ## 8. Backup
 
@@ -333,8 +363,7 @@ Freigabe von Martin.
    sie nicht; es braucht ein separates Sicherungs- und Restore-Verfahren oder den
    Verzicht in Etappe 1.
 2. ~~Positionen ohne Fachteiler~~ → entschieden: 0-Regel (`P0`), siehe Abschnitt 3.
-3. **Token-Teilung** zwischen `labmanager.html` und `inventar.html`: Speicherort und
-   Ablauf des Tokens vor Etappe 1 prüfen (gleiche Origin über nginx sollte genügen).
+3. ~~Token-Teilung~~ → erledigt: Das Modul läuft im LabManager und teilt dessen Anmeldung.
 4. **Etiketten:** Format und Grösse (Brother/Dymo, A4-Bogen)? Bestimmt das Druck-CSS.
 5. **Verbrauchsmaterial und Akkus:** Die vorhandene Akku-Verwaltung (`batteries`, eigene
    Seite unter AUSSTATTUNG) bleibt getrennt. Sollen Akkus später auch einen Lagerort
