@@ -708,10 +708,10 @@
   const codeUrl = (code) => `${location.origin}/inventar.html?code=${encodeURIComponent(code)}`;
   const itemUrl = (id) => `${location.origin}/inventar.html?item=${id}`;     // bleibt nach einem Umlagern gültig
 
-  // «Lineal 30 cm ×12, Zollstock ×5, … +3»
-  function contentsText(items, count, max) {
+  // «Lineal 30 cm ×12, Zollstock ×5, … +3» — auf dem Etikett ohne Mengen (withQty = false): «Lineal 30 cm, Zollstock, … +3»
+  function contentsText(items, count, max, withQty = true) {
     if (!items || !items.length) return '';
-    const shown = items.slice(0, max).map(i => i.name + (i.quantity > 1 ? ' ×' + i.quantity : ''));
+    const shown = items.slice(0, max).map(i => i.name + (withQty && i.quantity > 1 ? ' ×' + i.quantity : ''));
     const more = (count || items.length) - shown.length;
     return shown.join(', ') + (more > 0 ? ` … +${more}` : '');
   }
@@ -917,7 +917,7 @@
       let ct = '', own = it.kind === 'furn' ? it.name : (it.own || '');
       if (it.kind !== 'furn' && it.items && it.items.length) {
         for (let k = Math.min(t.sheet ? 4 : 8, it.items.length); k >= 1; k--) {
-          ct = contentsText(it.items, it.count, k);
+          ct = contentsText(it.items, it.count, k, false);     // Etikett: nur Namen, keine Mengen
           if (fitFor((own ? own + ' ' : '') + ct) >= 2.8) break;     // so viele Werkzeuge, wie bei lesbarer Schrift (≥ 2.8 mm) passen
         }
       }

@@ -306,7 +306,7 @@ Standard sind **vorgeschnittene A4-Bögen** (Avery Zweckform Typenschild-Etikett
   der Tooltip die Bogenzahl. Schnellwahl: Alle, Keine, Neue/veraltete, Nur Möbel, Nur Ebenen, Nur Positionen;
   je Möbel «Ebenen ✓/✗». Vorschau und Druck zeigen genau die Auswahl.
 - **Inhalt auf dem Etikett:** Die Liste zeigt je Ebene und Position, **was dort liegt** («Lineal 30 cm ×12, Zollstock ×5»;
-  leere Plätze sind als «leer» markiert). Ebenen- und Positions-Etiketten drucken **nur Code und Inhalt** («WER-M01-E02 · Lineal 30 cm ×5, Zollstock ×3»);
+  leere Plätze sind als «leer» markiert). Ebenen- und Positions-Etiketten drucken **nur Code und Inhalt** («WER-M01-E02 · Lineal 30 cm, Zollstock»), **ohne Mengen** (die Menge steht nur in der Auswahlliste);
   der Standardname «Ebene 2»/«Platz 1» entfällt. Ein selbst vergebener Name («Obere Schublade») erscheint weiterhin, und bei
   einer leeren Ebene oder Position dient der Standardname als Rückfall. Es werden so viele
   Werkzeuge ausgeschrieben, wie bei lesbarer Schrift (mindestens 2,8 mm) passen, der Rest als «… +n».
