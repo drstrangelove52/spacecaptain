@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import MachineLocation, Machine, MachineOwner
 from app.models_inventory import (InvFurniture, InvLevel, InvPosition, InvItem, InvPlacement,
-                                  FurnitureKind, InvItemStatus)
+                                  FurnitureKind, InvItemStatus, InvPlan)
 from app.services import inventory as inv
 
 _PLAN = ("plan_x", "plan_y", "plan_w", "plan_h")
@@ -96,7 +96,9 @@ async def export_inventory(db: AsyncSession) -> dict:
             "plan_x": pl.plan_x, "plan_y": pl.plan_y, "plan_w": pl.plan_w, "plan_h": pl.plan_h, "plan_rot": pl.plan_rot,
         })
 
+    room = await db.get(InvPlan, 1)
     return {
+        "room": {"name": room.name, "width_cm": room.width_cm, "height_cm": room.height_cm} if room else None,
         "areas": [{"name": a.name, "code": a.code, "color": a.color,
                    "plan_x": a.plan_x, "plan_y": a.plan_y, "plan_w": a.plan_w, "plan_h": a.plan_h}
                   for a in areas if a.code or a.color or any(getattr(a, k) is not None for k in _PLAN)],
@@ -114,6 +116,14 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
         return
     for key in ("inventory_areas", "inventory_furniture", "inventory_levels", "inventory_items", "inventory_placements"):
         stats.setdefault(key, 0)
+
+    r = data.get("room")
+    if r and (overwrite or await db.get(InvPlan, 1) is None):
+        room = await db.get(InvPlan, 1) or InvPlan(id=1)
+        room.name = (r.get("name") or "Makerspace")[:100]
+        room.width_cm = float(r.get("width_cm") or 1500.0)
+        room.height_cm = float(r.get("height_cm") or 1000.0)
+        db.add(room)
 
     areas = {a.name: a for a in (await db.execute(select(MachineLocation))).scalars().all()}
     used_codes = {a.code for a in areas.values() if a.code}
@@ -161,6 +171,9 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
         elif overwrite:
             for k, v in fields.items():
                 setattr(fo, k, v)
+        elif fo.plan_x is None and f.get("plan_x") is not None:        # ohne Überschreiben: nur fehlenden Planplatz ergänzen
+            for k in ("plan_x", "plan_y", "plan_w", "plan_h", "plan_rot"):
+                setattr(fo, k, f.get(k))
         for lv in f.get("levels", []) or []:
             if not isinstance(lv.get("number"), int) or lv["number"] < 0:
                 continue

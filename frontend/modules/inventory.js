@@ -64,6 +64,17 @@
   #page-inventory .inv-code,.inv-code{display:inline-block;font-family:var(--mono);font-size:14px;padding:2px 8px;border-radius:4px;border:1px solid var(--cc,var(--border));background:color-mix(in srgb,var(--cc,var(--accent2)) 14%,transparent);color:var(--text);white-space:nowrap}
   #page-inventory .inv-dim{color:var(--text-dim)}#page-inventory .inv-small{font-size:14px}
   #page-inventory .inv-empty{text-align:center;color:var(--text-dim);padding:40px 10px}
+  #page-inventory .inv-plan-layout{display:flex;gap:14px;align-items:flex-start}
+  #page-inventory .inv-plan-main{flex:1;min-width:0}
+  #page-inventory .inv-plan-side{width:290px;flex-shrink:0;display:flex;flex-direction:column;gap:12px}
+  #page-inventory .inv-plan-box{border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--surface)}
+  #page-inventory .inv-plan-box h4{font-size:13px;letter-spacing:1px;color:var(--text-dim);margin:0 0 8px;font-family:var(--mono);font-weight:400}
+  #page-inventory .inv-plan-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #page-inventory .inv-plan-tray{max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+  #page-inventory .inv-plan-chip{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:14px;cursor:grab;background:var(--surface2)}
+  #page-inventory .inv-plan-chip .inv-sw{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+  #page-inventory .inv-plan-chip button{margin-left:auto}
+  @media (max-width:900px){#page-inventory .inv-plan-layout{flex-direction:column}#page-inventory .inv-plan-side{width:100%}}
   .inv-acc{margin-top:6px;border:1px solid var(--border);border-radius:8px;padding:8px 12px}
   .inv-acc>summary{cursor:pointer;font-weight:600;font-size:15px}
   .inv-acc .inv-hint{font-size:14px;color:var(--text-dim)}
@@ -134,6 +145,7 @@
     <div class="inv-tabs">
       <div class="inv-tab active" data-tab="items" onclick="Inv.showTab('items')">🔧 Werkzeug</div>
       <div class="inv-tab" data-tab="machines" onclick="Inv.showTab('machines')">🏭 Maschinen</div>
+      <div class="inv-tab" data-tab="plan" onclick="Inv.showTab('plan')">🗺️ Plan</div>
       <div class="inv-tab" data-tab="structure" onclick="Inv.showTab('structure')">🗄️ Struktur</div>
       <div class="inv-tab" data-tab="labels" onclick="Inv.showTab('labels')">🏷️ Etiketten</div>
       <div class="inv-tab" data-tab="import" onclick="Inv.showTab('import')">📥 Import</div>
@@ -178,6 +190,25 @@
       <div class="table-wrap" style="margin-bottom:0">
         <table><thead><tr><th>Maschine</th><th>Standort</th><th>Status</th></tr></thead>
         <tbody id="inv-machines-body"></tbody></table>
+      </div>
+    </div>
+
+    <div class="inv-page" id="inv-page-plan">
+      <div class="inv-hint">
+        Der <b>Bauplan</b> zeigt Bereiche (gestrichelt), Möbel und Maschinen von oben, Masse in <b>cm</b>. Die Suche markiert, wo etwas steht.
+        <span id="inv-plan-help-edit">Zum Einzeichnen ziehst du Elemente aus der Liste «Noch nicht auf dem Plan» auf die Fläche (oder «＋» tippst), verschiebst sie mit der Maus
+        und änderst die Grösse am Punkt unten rechts. Drehen und genaue Masse stehen rechts bei der Auswahl. Der Plan ist unabhängig von den Codes: nach einem Umzug zeichnest du nur neu.</span>
+      </div>
+      <div class="inv-toolbar">
+        <div class="search-wrap"><span class="search-icon">🔍</span>
+          <input class="search-input" id="inv-plan-q" placeholder="Wo ist …? Werkzeug, Möbel oder Maschine markieren" oninput="Inv.planSearch()"></div>
+        <select class="filter-input" id="inv-plan-zoom" onchange="Inv.planZoom()" title="Zoom">
+          <option value="100">Zoom 100 %</option><option value="150">150 %</option><option value="200">200 %</option><option value="300">300 %</option></select>
+        <span class="inv-dim inv-small" id="inv-plan-count"></span>
+      </div>
+      <div class="inv-plan-layout">
+        <div class="inv-plan-main" id="inv-plan-canvas" ondragover="event.preventDefault()" ondrop="Inv.planDrop(event)"></div>
+        <div class="inv-plan-side" id="inv-plan-side"></div>
       </div>
     </div>
 
@@ -314,6 +345,7 @@
     if (name === 'machines') loadMachines();
     if (name === 'structure') renderStructure();
     if (name === 'labels') loadLabels();
+    if (name === 'plan') loadPlan();
   }
 
   async function loadTree() {
@@ -1162,6 +1194,112 @@
     if (r) { showToast('Standort gespeichert', 'success'); await loadTree(); }
     await loadMachines();                                  // bei Fehler: Auswahl zurücksetzen
   }
+  // ── Bauplan (Etappe 4): Darstellung und Bearbeiten in /inventory-plan.js ──
+  let planCtl = null, planData = null, planLib = null, planSearchTimer = null;
+  function loadPlanLib() {
+    if (window.InvPlan) return Promise.resolve();
+    if (!planLib) planLib = new Promise((resolve, reject) => {
+      const sc = document.createElement('script');
+      sc.src = '/inventory-plan.js?v=' + encodeURIComponent(window._buildTag || '0');
+      sc.onload = resolve; sc.onerror = () => { planLib = null; reject(new Error('Plan nicht ladbar')); };
+      document.head.appendChild(sc);
+    });
+    return planLib;
+  }
+  async function loadPlan() {
+    $('plan-help-edit').style.display = isPower() ? '' : 'none';
+    try { await loadPlanLib(); } catch (e) { $('plan-canvas').innerHTML = '<div class="inv-empty">Der Plan konnte nicht geladen werden.</div>'; return; }
+    const d = await GET('/inventory/plan');
+    if (!d) return;
+    planData = d;
+    if (!planCtl || !$('plan-canvas').contains(planCtl.el)) {
+      planCtl = InvPlan.mount($('plan-canvas'), d, { editable: isPower(), onChange: planChanged, onSelect: () => renderPlanSide() });
+    } else planCtl.setData(d);
+    planZoom();
+    renderPlanSide();
+    if ($('plan-q').value.trim()) planSearch();
+  }
+  function planZoom() { if (planCtl) planCtl.el.style.width = $('plan-zoom').value + '%'; }
+  async function planChanged(kind, id, rect) {
+    const body = rect ? { x: rect.x, y: rect.y, w: rect.w, h: rect.h, rot: rect.rot || 0 } : { remove: true };
+    const r = await PATCH(`/inventory/plan/${kind}/${id}`, body);
+    if (!r) { await loadPlan(); return; }                 // Fehler: Stand vom Server zeigen
+    renderPlanSide();
+  }
+  const PLAN_KIND = { area: 'Bereich', furniture: 'Möbel', machine: 'Maschine' };
+  const planName = (k, o) => k === 'furniture' ? `${o.code} · ${o.title}` : k === 'area' ? ((o.code ? o.code + ' · ' : '') + o.name) : o.name;
+  function renderPlanSide() {
+    const box = $('plan-side');
+    if (!planData) { box.innerHTML = ''; return; }
+    const d = planData, power = isPower();
+    const placed = d.areas.filter(a => a.plan).length + d.furniture.filter(f => f.plan).length + d.machines.filter(m => m.plan).length;
+    $('plan-count').textContent = `${placed} auf dem Plan`;
+    if (!power) { box.innerHTML = ''; return; }
+    const r = d.room, sel = planCtl && planCtl.selected();
+    let html = `<div class="inv-plan-box"><h4>RAUM</h4>
+      <div class="form-group" style="margin-bottom:8px"><input class="form-input" id="inv-room-name" value="${esc(r.name)}" maxlength="100"></div>
+      <div class="inv-plan-grid">
+        <div><label class="form-label">Breite (m)</label><input class="form-input" id="inv-room-w" type="number" min="1" step="0.5" value="${r.width_cm / 100}"></div>
+        <div><label class="form-label">Tiefe (m)</label><input class="form-input" id="inv-room-h" type="number" min="1" step="0.5" value="${r.height_cm / 100}"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="Inv.saveRoom()">Raum speichern</button></div>`;
+    if (sel && sel.item && sel.item.plan) {
+      const p = sel.item.plan, k = sel.kind, ro = k === 'area' ? 'disabled' : '';
+      html += `<div class="inv-plan-box"><h4>${PLAN_KIND[k].toUpperCase()} AUSGEWÄHLT</h4>
+        <div style="font-weight:700;margin-bottom:8px">${esc(planName(k, sel.item))}</div>
+        <div class="inv-plan-grid">
+          ${[['x', 'X (cm)', p.x], ['y', 'Y (cm)', p.y], ['w', 'Breite (cm)', p.w], ['h', 'Tiefe (cm)', p.h]].map(([f, l, v]) =>
+            `<div><label class="form-label">${l}</label><input class="form-input" type="number" step="5" value="${Math.round(v)}" onchange="Inv.planField('${f}', this.value)"></div>`).join('')}
+        </div>
+        <div class="inv-row" style="margin-top:8px">
+          <button class="btn btn-ghost btn-sm" ${ro} onclick="Inv.planRotate()">↻ 90°</button>
+          <button class="btn btn-danger btn-sm" onclick="Inv.planRemove()">Vom Plan nehmen</button></div></div>`;
+    }
+    const tray = (title, kind, list) => list.length ? `<div class="inv-plan-box"><h4>${title} (${list.length})</h4><div class="inv-plan-tray">${list.map(o =>
+      `<div class="inv-plan-chip" draggable="true" ondragstart="Inv.planDrag(event,'${kind}',${o.id})">
+        <span class="inv-sw" style="background:${esc(o.color || '#22d3ee')}"></span><span>${esc(planName(kind, o))}</span>
+        <button class="btn btn-ghost btn-sm" title="In die Mitte des Plans setzen" onclick="Inv.planAdd('${kind}',${o.id})">＋</button></div>`).join('')}</div></div>` : '';
+    const hasFurn = d.furniture.filter(f => !f.plan), hasM = d.machines.filter(m => !m.plan), hasA = d.areas.filter(a => !a.plan);
+    html += (hasA.length + hasFurn.length + hasM.length) ? `<div class="inv-dim inv-small" style="padding:0 2px">Noch nicht auf dem Plan: Element auf die Fläche ziehen.</div>` : '';
+    html += tray('BEREICHE', 'area', hasA) + tray('MÖBEL', 'furniture', hasFurn) + tray('MASCHINEN', 'machine', hasM);
+    box.innerHTML = html;
+  }
+  function planDrag(ev, kind, id) { ev.dataTransfer.setData('text/plain', kind + ':' + id); ev.dataTransfer.effectAllowed = 'copy'; }
+  function planDrop(ev) {
+    ev.preventDefault();
+    const [kind, id] = (ev.dataTransfer.getData('text/plain') || '').split(':');
+    if (!planCtl || !PLAN_KIND[kind]) return;
+    planCtl.place(kind, +id, planCtl.clientToCm(ev));
+  }
+  function planAdd(kind, id) { if (planCtl) planCtl.place(kind, id, null); }
+  function planField(f, v) { const s = planCtl && planCtl.selected(); if (s && v !== '' && !isNaN(+v)) planCtl.update(s.kind, s.id, { [f]: Math.max(f === 'w' || f === 'h' ? 5 : -50000, +v) }); }
+  function planRotate() { const s = planCtl && planCtl.selected(); if (s) planCtl.update(s.kind, s.id, { rot: ((s.item.plan.rot || 0) + 90) % 360 }); }
+  function planRemove() { const s = planCtl && planCtl.selected(); if (s) planCtl.remove(s.kind, s.id); }
+  async function saveRoom() {
+    const body = { name: $('room-name').value.trim() || 'Makerspace', width_cm: Math.round(parseFloat($('room-w').value) * 100), height_cm: Math.round(parseFloat($('room-h').value) * 100) };
+    if (!(body.width_cm >= 100) || !(body.height_cm >= 100)) { showToast('Raum: mindestens 1 m × 1 m', 'error'); return; }
+    if (await PUT('/inventory/plan/room', body)) { showToast('Raum gespeichert', 'success'); await loadPlan(); }
+  }
+  function planSearch() {
+    clearTimeout(planSearchTimer);
+    planSearchTimer = setTimeout(async () => {
+      if (!planCtl) return;
+      const q = $('plan-q').value.trim();
+      if (!q) { planCtl.setHighlight(null); return; }
+      const h = { codes: [], machineIds: [], areaCodes: [] };
+      if (/^[A-Za-z0-9]{3}$/.test(q)) h.areaCodes.push(q.toUpperCase());
+      const res = await GET('/inventory/search?q=' + encodeURIComponent(q));
+      (res || []).forEach(r => {
+        if (r.type === 'tool' && r.position) h.codes.push(r.position.code);
+        else if (r.type === 'furniture') h.codes.push(r.code);
+        else if (r.type === 'machine') { h.machineIds.push(r.id); if (r.stands_on) h.codes.push(r.stands_on.code); }
+      });
+      planCtl.setHighlight(h);
+      const hit = h.codes.length + h.machineIds.length + h.areaCodes.length;
+      $('plan-count').textContent = hit ? `${hit} Treffer markiert` : 'Kein Treffer';
+    }, 250);
+  }
+
   // ── Maschinenformular (labmanager.html): ein Feld «Standort» (Bereich, Möbel, Ebene) ──
   // Der Bereichsname wandert in das versteckte Feld mc-loc/e-loc; der Server leitet daraus Bereich und Kategorie ab.
   let slot = null;                                   // { el, machineId, orig }
@@ -1240,6 +1378,7 @@
     toggleOutdated, loadLabels, renderLabels, printLabels, printCalibration, setTemplate, offsetChanged, markPrinted, runImport,
     toggleLabel, setLabelCopies, toggleLevelsOf, selectBy, labelFor,
     debouncedLoadMachines, loadMachines, setMachinePlace, openMachines, formPlaceChanged, saveFormPlacement,
+    planSearch, planZoom, planDrag, planDrop, planAdd, planField, planRotate, planRemove, saveRoom, loadPlan,
     setLabelMode, debouncedToolLoad, toggleTool, setCopies, toolSelectAll, toolSelectNone, toolCopiesQty,
   };
 

@@ -119,6 +119,7 @@ class LogType(str, enum.Enum):
     inventory_item_moved = "inventory_item_moved"
     inventory_items_imported = "inventory_items_imported"
     machine_area_changed = "machine_area_changed"
+    inventory_plan_updated = "inventory_plan_updated"
 
 class SessionEndedBy(str, enum.Enum):
     guest = "guest"

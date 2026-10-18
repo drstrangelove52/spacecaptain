@@ -14,6 +14,7 @@ from app.models import MachineLocation
 from app.models_inventory import InvFurniture, InvLevel, InvItem, InvItemStatus
 from app.routers import inventory as admin
 from app.services import inventory as inv
+from app.services import inventory_plan as plan_svc
 from app.services.system_settings import get_system_settings
 
 
@@ -63,7 +64,7 @@ async def search(q: str = Query("", max_length=100), db: AsyncSession = Depends(
         elif r["type"] == "furniture":
             out.append({"type": "furniture", "name": r["name"], "code": r["code"], "path": r["path"], "color": r["color"]})
         else:
-            out.append({"type": "machine", "name": r["name"], "path": r["path"], "color": r["color"],
+            out.append({"type": "machine", "id": r["id"], "name": r["name"], "path": r["path"], "color": r["color"],
                         "code": (r.get("stands_on") or {}).get("code")})
     return out
 
@@ -84,7 +85,7 @@ async def by_code(code: str, db: AsyncSession = Depends(get_db)):
                   or (res["scope"] == "furniture" and so and so["code"] == res["code"])
                   or (res["scope"] == "level" and lvl_code == res["code"]))
             if ok:
-                machines.append({"name": d["name"], "path": d["path"], "category": d["category"]})
+                machines.append({"id": d["id"], "name": d["name"], "path": d["path"], "category": d["category"]})
     return {"code": res["code"], "scope": res["scope"], "area": res["area"], "color": res["color"],
             "items": [_guest_item(i) for i in res["items"] if _visible(i)], "machines": machines}
 
@@ -95,3 +96,11 @@ async def item(item_id: int, db: AsyncSession = Depends(get_db)):
     if not _visible(d):
         raise HTTPException(404, "Werkzeug nicht gefunden")
     return _guest_item(d)
+
+
+@router.get("/plan")
+async def plan(db: AsyncSession = Depends(get_db)):
+    """Bauplan fuer Gaeste: Raum und nur die Elemente, die schon auf dem Plan stehen."""
+    data = await plan_svc.build_plan(db, only_placed=True)
+    await db.commit()
+    return data

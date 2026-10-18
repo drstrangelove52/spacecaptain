@@ -76,6 +76,7 @@
 </div>
 <div class="wrap" id="app"></div>
 
+<script src="/inventory-plan.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -95,9 +96,9 @@ const toolCard = (t) => `<a class="card" href="?item=${t.id}" ${color(t.place &&
 const furnCard = (f) => `<a class="card" href="?code=${encodeURIComponent(f.code)}" ${color(f.color)}>
     <div class="card-name">${esc(f.name)}<span class="tag">MÖBEL</span></div>
     <div class="card-meta"><span class="code">${esc(f.code)}</span> · ${esc(f.path)}</div></a>`;
-const machineCard = (m) => `<div class="card" ${color(m.color)}>
+const machineCard = (m) => `<${m.id ? `a href="?machine=${m.id}"` : 'div'} class="card" ${color(m.color)}>
     <div class="card-name">${esc(m.name)}<span class="tag">MASCHINE</span></div>
-    <div class="card-meta">${m.path ? esc(m.path) : 'Standort noch nicht erfasst'}</div></div>`;
+    <div class="card-meta">${m.path ? esc(m.path) : 'Standort noch nicht erfasst'}${m.id ? ' · 🗺️ Plan' : ''}</div></${m.id ? 'a' : 'div'}>`;
 const resultCard = (r) => r.type === 'tool' ? toolCard(r) : r.type === 'furniture' ? furnCard(r) : machineCard(r);
 
 function shell(inner, withSearch) {
@@ -115,7 +116,8 @@ async function viewItem(id) {
                 : '<div class="hero-path">Dieses Werkzeug hat keinen festen Platz.</div>'}
       ${t.description ? `<div class="hint" style="margin-top:12px">${esc(t.description)}</div>` : ''}
     </div>
-    ${t.place ? `<a class="card" href="?code=${encodeURIComponent(t.place.code)}"><div class="card-name">Alles an diesem Ort ansehen ›</div></a>` : ''}
+    ${t.place ? `<a class="card" href="?code=${encodeURIComponent(t.place.code)}"><div class="card-name">Alles an diesem Ort ansehen ›</div></a>
+    <a class="card" href="?plan=${encodeURIComponent(t.place.code)}"><div class="card-name">🗺️ Auf dem Plan zeigen ›</div></a>` : ''}
     <a class="card" href="inventar.html"><div class="card-name">Etwas anderes suchen ›</div></a>`, false);
 }
 
@@ -128,7 +130,34 @@ async function viewCode(code) {
     ${d.machines.length ? `<div class="section">MASCHINEN (${d.machines.length})</div>${d.machines.map(m => machineCard(m)).join('')}` : ''}
     <div class="section">WERKZEUG (${d.items.length})</div>
     ${d.items.length ? d.items.map(toolCard).join('') : '<div class="empty">Hier ist kein Werkzeug erfasst.</div>'}
+    <a class="card" href="?plan=${encodeURIComponent(d.code)}"><div class="card-name">🗺️ Auf dem Plan zeigen ›</div></a>
     <a class="card" href="inventar.html"><div class="card-name">Etwas anderes suchen ›</div></a>`, false);
+}
+
+// ── Ansicht: Bauplan, optional mit markiertem Ort (?plan=ELE-M01), Maschine (?machine=ID) oder alles (?plan=1) ──
+async function viewPlan(code, machineId) {
+  const d = await get('/plan');
+  const hl = { codes: [], machineIds: [], areaCodes: [] };
+  let target = '', onPlan = true;
+  if (machineId) {
+    const m = d.machines.find(x => x.id === +machineId);
+    target = m ? m.name : 'Maschine'; onPlan = !!m;
+    hl.machineIds.push(+machineId);
+  } else if (code && code !== '1') {
+    const fc = InvPlan.furnitureCode(code);
+    target = code;
+    if (fc) { hl.codes.push(fc); onPlan = d.furniture.some(f => f.code === fc); }
+    else { hl.areaCodes.push(code.toUpperCase()); onPlan = d.areas.some(a => a.code === code.toUpperCase()); }
+  }
+  shell(`<div class="hero"><div class="hero-label">BAUPLAN</div>
+      <div class="hero-name" style="margin-bottom:0">${target ? esc(target) : esc(d.room.name)}</div>
+      ${target && !onPlan ? '<div class="hero-path" style="margin-top:8px">Dieser Ort ist noch nicht auf dem Plan eingezeichnet.</div>' : ''}</div>
+    <div id="plan"></div>
+    <a class="card" href="inventar.html"><div class="card-name">Zur Suche ›</div></a>`, false);
+  const ctl = InvPlan.mount($('plan'), d, { editable: false });
+  ctl.el.style.width = window.innerWidth < 700 ? '230%' : '100%';        // auf dem Handy grösser zeichnen, Ausschnitt scrollt
+  ctl.setHighlight(hl);
+  if (ctl.scrollToHighlight) ctl.scrollToHighlight();
 }
 
 // ── Ansicht: Suche und Übersicht ──
@@ -147,7 +176,7 @@ async function runSearch(q) {
 let overviewHtml = '';
 async function viewSearch() {
   const areas = await get('/overview');
-  overviewHtml = `<div class="section">ÜBERSICHT</div>` + (areas.length ? areas.map(a => `<details class="area">
+  overviewHtml = `<a class="card" href="?plan=1"><div class="card-name">🗺️ Plan ansehen ›</div></a><div class="section">ÜBERSICHT</div>` + (areas.length ? areas.map(a => `<details class="area">
       <summary><span class="dot" style="background:${esc(a.color || 'var(--accent2)')}"></span>${esc(a.name)} <span class="code" style="margin-left:auto">${esc(a.code)}</span></summary>
       <a href="?code=${encodeURIComponent(a.code)}"><span>Alles im Bereich ${esc(a.name)}</span></a>
       ${a.furniture.map(f => `<a href="?code=${encodeURIComponent(f.code)}"><span class="code">${esc(f.code)}</span><span>${esc(f.title)}</span></a>`).join('')}
@@ -162,8 +191,9 @@ async function viewSearch() {
 (async function init() {
   fetch('/api/settings/public').then(r => r.json()).then(s => { $('space').textContent = s.space_name || ''; }).catch(() => {});
   try {
-    const item = P.get('item'), code = P.get('code');
-    if (item && /^\d+$/.test(item)) await viewItem(item);
+    const item = P.get('item'), code = P.get('code'), plan = P.get('plan'), machine = P.get('machine');
+    if (plan || machine) await viewPlan(plan, /^\d+$/.test(machine || '') ? machine : null);
+    else if (item && /^\d+$/.test(item)) await viewItem(item);
     else if (code) await viewCode(code);
     else await viewSearch();
   } catch (e) {

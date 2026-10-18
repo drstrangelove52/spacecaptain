@@ -626,6 +626,9 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "inv_items", "value_new", "DOUBLE DEFAULT NULL")
         await _add_column_if_missing(conn, "inv_items", "owner_id", "INT DEFAULT NULL")
 
+        # ── v1.55: Inventar Etappe 4 — Bauplan (Tabelle inv_plan ueber create_all; Plan-Spalten gibt es seit v1.51) ──
+        await _extend_enum_if_needed(conn, "activity_log", "type", ["inventory_plan_updated"])
+
     log.info("Migrationen abgeschlossen")
 
 

@@ -1,0 +1,81 @@
+"""
+Inventar-Modul, Etappe 4: Bauplan (Raum, Bereiche, Moebel, Maschinen als Rechtecke in cm).
+
+Der Plan liegt in vorhandenen Spalten: `machine_locations.plan_*` (Bereich), `inv_furniture.plan_*` (Moebel),
+`inv_placements.plan_*` (Maschine); der Raum selbst in `inv_plan` (eine Zeile). Ein Element ist «auf dem Plan», sobald
+plan_x/plan_y/plan_w/plan_h gesetzt sind. Codes und Zuordnungen haengen nicht am Plan: zieht der Makerspace um,
+wird nur neu gezeichnet.
+"""
+import math
+from typing import Optional
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import MachineLocation, Machine
+from app.models_inventory import InvFurniture, InvPlacement, InvPlan
+from app.services import inventory as inv
+
+DEFAULT_ROOM = {"name": "Makerspace", "width_cm": 1500.0, "height_cm": 1000.0}
+MIN_SIZE, MAX_SIZE, MAX_POS = 5.0, 20000.0, 50000.0
+DEFAULT_COLOR = "#22d3ee"
+
+
+async def get_room(db: AsyncSession) -> InvPlan:
+    row = await db.get(InvPlan, 1)
+    if row is None:
+        row = InvPlan(id=1, **DEFAULT_ROOM)
+        db.add(row)
+        await db.flush()
+    return row
+
+
+def room_dict(r: InvPlan) -> dict:
+    return {"name": r.name, "width_cm": r.width_cm, "height_cm": r.height_cm}
+
+
+def rect(x, y, w, h, rot=None) -> Optional[dict]:
+    if None in (x, y, w, h):
+        return None
+    return {"x": x, "y": y, "w": w, "h": h, "rot": rot or 0.0}
+
+
+def valid_rect(x, y, w, h, rot) -> bool:
+    vals = (x, y, w, h, rot or 0.0)
+    if not all(isinstance(v, (int, float)) and math.isfinite(v) for v in vals):
+        return False
+    return MIN_SIZE <= w <= MAX_SIZE and MIN_SIZE <= h <= MAX_SIZE and abs(x) <= MAX_POS and abs(y) <= MAX_POS
+
+
+async def build_plan(db: AsyncSession, only_placed: bool = False) -> dict:
+    """Alles, was der Plan zeichnet. `only_placed` (Gaeste): nur Elemente, die schon auf dem Plan stehen."""
+    room = await get_room(db)
+    areas = (await db.execute(select(MachineLocation).order_by(MachineLocation.sort_order, MachineLocation.name))).scalars().all()
+    area_by_id = {a.id: a for a in areas}
+    furns = (await db.execute(select(InvFurniture).where(InvFurniture.number > 0)
+                              .order_by(InvFurniture.area_id, InvFurniture.number))).scalars().all()
+    machines = (await db.execute(select(Machine).order_by(Machine.name))).scalars().all()
+    placements = {p.machine_id: p for p in (await db.execute(select(InvPlacement))).scalars().all()}
+
+    out_areas = [{"id": a.id, "name": a.name, "code": a.code, "color": a.color or DEFAULT_COLOR,
+                  "plan": rect(a.plan_x, a.plan_y, a.plan_w, a.plan_h)} for a in areas]
+    out_furn = []
+    for f in furns:
+        a = area_by_id.get(f.area_id)
+        if a is None:
+            continue
+        out_furn.append({"id": f.id, "code": inv.short_code(a.code, f.number), "title": inv.furniture_title(f),
+                         "kind": f.kind.value, "area_id": a.id, "area": a.name, "color": a.color or DEFAULT_COLOR,
+                         "plan": rect(f.plan_x, f.plan_y, f.plan_w, f.plan_h, f.plan_rot)})
+    out_mach = []
+    for m in machines:
+        a = area_by_id.get(m.area_id) if m.area_id else None
+        pl = placements.get(m.id)
+        out_mach.append({"id": m.id, "name": m.name, "category": m.category, "area_id": a.id if a else None,
+                         "area": a.name if a else None, "color": (a.color if a else None) or DEFAULT_COLOR,
+                         "plan": rect(pl.plan_x, pl.plan_y, pl.plan_w, pl.plan_h, pl.plan_rot) if pl else None})
+    if only_placed:
+        out_areas = [x for x in out_areas if x["plan"]]
+        out_furn = [x for x in out_furn if x["plan"]]
+        out_mach = [x for x in out_mach if x["plan"]]
+    return {"room": room_dict(room), "areas": out_areas, "furniture": out_furn, "machines": out_mach}

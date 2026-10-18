@@ -23,6 +23,7 @@ from app.routers import tailscale as tailscale_router
 from app.routers import data_management as data_management_router
 from app.routers import inventory as inventory_router
 from app.routers import inventory_public as inventory_public_router
+from app.routers import inventory_plan as inventory_plan_router
 import app.models_inventory  # noqa: F401  (Tabellen fuer create_all registrieren)
 from app.services.session import idle_watcher, plug_watcher, queue_watcher
 from app.services.backup_service import backup_watcher
@@ -133,4 +134,5 @@ app.include_router(mcp_router.router,           prefix="/api")
 app.include_router(tailscale_router.router,     prefix="/api")
 app.include_router(data_management_router.router, prefix="/api")
 app.include_router(inventory_router.router,       prefix="/api")
+app.include_router(inventory_plan_router.router,   prefix="/api")
 app.include_router(inventory_public_router.router, prefix="/api")

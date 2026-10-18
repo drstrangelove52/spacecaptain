@@ -272,6 +272,17 @@ Bei aktivem Inventar ersetzt der **Bereich** die Kategorie:
 - Inventar → **Maschinen** zeigt alle Maschinen mit Standort und erlaubt das schnelle Umstellen (auch «Ohne Bereich»).
 - Beim Ausschalten des Moduls erscheinen Kategorie und einfaches Standort-Dropdown wieder; die zuletzt abgeleiteten Kategorien bleiben bestehen.
 
+### Bauplan
+
+Inventar → **Plan** zeigt den Raum von oben (Masse in cm) mit Bereichen (gestrichelt), Möbeln und Maschinen. Ansehen und Suchen darf jeder Lab Manager, **Zeichnen** der Power-Manager und der Admin.
+
+1. Rechts unter **Raum** Name, Breite und Tiefe in Metern einstellen.
+2. Aus **«Noch nicht auf dem Plan»** ein Element auf die Fläche ziehen (oder **＋** für die Mitte).
+3. **Verschieben** durch Ziehen (rastet auf 5 cm), **Grösse** am Punkt unten rechts, **genaue Werte**, **↻ 90°** und **Vom Plan nehmen** rechts bei der Auswahl.
+4. Die **Suche** oben markiert Werkzeug, Möbel oder Maschinen auf dem Plan.
+
+Änderungen werden sofort gespeichert. Der Plan ist unabhängig von den Codes; nach einem Umzug genügt es, den Raum neu einzustellen und die Elemente neu zu ziehen. Gäste sehen den Plan auf der Seite «Wo ist …?» (nur eingezeichnete Elemente).
+
 ### Etiketten
 
 Inventar → **Etiketten**: links die Auswahl (Möbel und Ebenen oder Werkzeug) mit **Anzahl**, rechts Vorlage und Vorschau. Vorbereitet ist der **Avery Zweckform L6009-20** (45,7 × 21,2 mm, 48 pro A4-Bogen, Laserdrucker); über die Startposition lassen sich angefangene Bögen weiterverwenden. Drucken in A4 mit 100 % Skalierung, ohne Kopf-/Fusszeilen und Ränder. Vor dem ersten Druck den **Testbogen** auf normales Papier drucken, gegen das Licht über einen Etikettenbogen halten und bei Bedarf den **Versatz X/Y** einstellen. Neue oder geänderte Möbel sind als «Etikett neu/veraltet» markiert.
@@ -288,7 +299,7 @@ Der QR-Code führt Gäste zur Seite des Ortes bzw. des Werkzeugs («gehört nach
 |---|:---:|:---:|:---:|
 | Suchen, ansehen | ✅ | ✅ | ✅ |
 | Werkzeug anlegen, bearbeiten, umlagern, importieren | ✅ | ✅ | ✅ |
-| Bereiche, Möbel, Ebenen, Plätze; Maschinen einem Standort zuweisen | ❌ | ✅ | ✅ |
+| Bereiche, Möbel, Ebenen, Plätze; Plan zeichnen; Maschinen einem Standort zuweisen | ❌ | ✅ | ✅ |
 | Modul ein-/ausschalten | ❌ | ❌ | ✅ |
 
 ---
@@ -404,6 +415,7 @@ Das Aktivitätslog ist das vollständige Protokoll aller Systemereignisse.
 | `maintenance_due` / `maintenance_done` | Wartung fällig / durchgeführt |
 | `inventory_*` | Inventar: Bereich, Möbel, Ebene bzw. Werkzeug angelegt, geändert, gelöscht, umgelagert oder importiert |
 | `machine_area_changed` | Maschine in einen anderen Bereich (Standort) verschoben |
+| `inventory_plan_updated` | Raum des Bauplans geändert |
 | `error` | Systemfehler |
 
 ---

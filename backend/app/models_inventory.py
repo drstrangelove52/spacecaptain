@@ -112,3 +112,12 @@ class InvPlacement(Base):
     plan_w:       Mapped[Optional[float]] = mapped_column(Float, default=None)
     plan_h:       Mapped[Optional[float]] = mapped_column(Float, default=None)
     plan_rot:     Mapped[Optional[float]] = mapped_column(Float, default=None)
+
+
+class InvPlan(Base):
+    """Der Raum des Bauplans (eine Zeile, id=1): Name und Grundflaeche in cm."""
+    __tablename__ = "inv_plan"
+    id:        Mapped[int]   = mapped_column(Integer, primary_key=True, autoincrement=False)
+    name:      Mapped[str]   = mapped_column(String(100), default="Makerspace")
+    width_cm:  Mapped[float] = mapped_column(Float, default=1500.0)
+    height_cm: Mapped[float] = mapped_column(Float, default=1000.0)

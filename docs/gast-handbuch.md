@@ -126,6 +126,7 @@ Du weisst nicht, wo ein Werkzeug oder eine Maschine ist? Tippe auf **🔎 Wo ist
 
 - **Suchen:** Gib einen Begriff ein, z. B. «Akkuschrauber» oder «Lötkolben». Auch andere Namen funktionieren («Bohrschrauber»). Jeder Treffer zeigt den **Code** und den Weg zum Ort, z. B. `ELE-M01-E02`: Bereich Elektronik, Möbel 1, Ebene 2.
 - **Stöbern:** Ohne Suchbegriff siehst du die Bereiche und Möbel zum Durchklicken.
+- **Plan:** Tippe auf **🗺️ Plan ansehen** oder bei einem Treffer auf **Auf dem Plan zeigen**. Der Ort ist markiert und blinkt; auf dem Handy kannst du den Plan verschieben.
 - **QR-Codes an Schränken und Regalen:** Scannen zeigt, was dort liegt und welche Maschinen dort stehen.
 - **QR-Code am Werkzeug:** Scannen zeigt, **wohin es gehört**. So räumst du es an den richtigen Platz zurück.
 

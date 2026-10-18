@@ -374,7 +374,7 @@ Idempotent, rein additiv, bei jedem Start:
 | **1** ✅ | Migration, Modelle, Router (Struktur, Werkzeug, Suche), `inventar.html` (Struktur, Werkzeug, Import, Etiketten) auf der **Dev-Instanz** | Nutzbar fürs Einpacken und Inventarisieren beim Umzug |
 | **2** ✅ | `machines.area_id`, Backfill, Bereichswechsel, «steht auf», Anzeige in der Suche, Backup-Sektion und Restore-Test | Maschinen und Werkzeug in einer Suche |
 | **3** ✅ | Gästesuche («Wo ist …?»), QR-Ziele für Möbel, Ebenen und Werkzeug, ohne Anmeldung | Neue Gäste finden Dinge selbst |
-| **4** | Bauplan (Zeichnen, Verschieben, Suchtreffer-Markierung, Maschinen platzieren) | nach dem Umzug, sobald das Layout feststeht |
+| **4** ✅ | Bauplan (Zeichnen, Verschieben, Suchtreffer-Markierung, Maschinen platzieren) | nach dem Umzug, sobald das Layout feststeht |
 | **5** | Optional: Fotos, Foto-Inventur per KI, Lesezugriff über den MCP-Server | |
 
 ### Rollout und Betrieb
@@ -505,6 +505,29 @@ bleiben importierbar. Auf der öffentlichen Gäste-Seite sind sie nie sichtbar.
 
 Verworfen: Maschinen ebenfalls mit Platz und Etikett auszustatten. Dann wären beide Arten praktisch gleich und die Trennung
 überflüssig.
+
+## 11f. Stand Etappe 4: Bauplan
+
+- **Darstellung:** Raum als Rechteck in **cm** (Standard 15 × 10 m, einstellbar), darin Bereiche (gestrichelte Zonen), Möbel und
+  Maschinen als Rechtecke (von unten nach oben gezeichnet). Möbel und Maschinen sind drehbar (0–359°, Beschriftung bleibt
+  waagrecht), Bereiche nicht. Raster 100 cm, Einrasten auf 5 cm. Kein Hintergrundbild, kein Massstab-Import (bleibt Etappe 5).
+- **Speicherung:** in den vorhandenen Spalten `machine_locations.plan_*` (Bereich), `inv_furniture.plan_*` (Möbel),
+  `inv_placements.plan_*` (Maschine, unabhängig von «steht auf») und neu `inv_plan` (eine Zeile: Name, Breite, Tiefe; Migration
+  v1.55, Tabelle über `create_all`). «Auf dem Plan» heisst: `plan_x/y/w/h` gesetzt. Codes und Zuordnungen hängen nicht am Plan.
+- **API:** `GET /api/inventory/plan` (alle Lab Manager), `PUT /api/inventory/plan/room`, `PATCH /api/inventory/plan/{area|furniture|machine}/{id}`
+  mit `{x,y,w,h,rot}` oder `{remove:true}` (Power-Manager/Admin; `M00` hat keinen Platz; Werte werden geprüft). Verschieben wird
+  **nicht** einzeln protokolliert (Alltag), nur Raumänderungen (`inventory_plan_updated`). Öffentlich:
+  `GET /api/inventory-public/plan` (nur Elemente, die schon eingezeichnet sind).
+- **Oberfläche:** `frontend/inventory-plan.js` (gemeinsamer SVG-Renderer, bearbeitbar oder nur ansehen) wird vom Inventar-Reiter
+  «🗺️ Plan» (Ziehen, Grösse am Punkt unten rechts, Zahlenfelder, ↻ 90°, «Vom Plan nehmen», Liste «Noch nicht auf dem Plan»
+  mit Ziehen oder «＋», Zoom, Suche mit Markierung) und von `inventar.html` geladen. Manager sehen den Plan, ändern darf ihn der Power-Manager.
+- **Gäste:** `inventar.html?plan=1` (ganzer Plan), `?plan=ELE-M01` (Möbel/Ebene/Werkzeug-Ort markiert), `?plan=ELE` (Bereich),
+  `?machine=<ID>`. Auf dem Handy wird der Plan 2,3× gross gezeichnet und zum Treffer gescrollt. Karten «🗺️ Auf dem Plan zeigen»
+  stehen bei Werkzeug und Möbel; Maschinen-Treffer führen auf den Plan. Nicht eingezeichnete Ziele zeigen einen Hinweis.
+- **Backup:** Sektion `inventory` enthält `room` und die Plan-Rechtecke von Bereichen, Möbeln und Maschinen (`placements`);
+  fehlender Planplatz bestehender Möbel wird beim Import ohne «Überschreiben» ergänzt.
+- **Bewusst nicht:** Hintergrund-Grundriss, Wände/Türen, Mehrere Stockwerke, Undo. Wenn der neue Raum feststeht, reicht es,
+  den Raum einzustellen und die Elemente neu zu ziehen.
 
 ## 12. Offene Punkte
 
