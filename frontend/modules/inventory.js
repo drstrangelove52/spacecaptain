@@ -1,5 +1,5 @@
 /*
- * Modul «Inventar» für den LabManager (Lagerorte, Möbel, Werkzeug, Etiketten).
+ * Modul «Inventar» für den LabManager (Standorte, Möbel, Werkzeug, Etiketten).
  * Wird von labmanager.html beim ersten Öffnen nachgeladen (LabModules) und nutzt dessen
  * Helfer: GET/POST/PATCH/DELETE, apiSilent, showToast, escHtml, openModal/closeModal,
  * currentUser, _isPowerPlus(). Alle Namen liegen im Namensraum `Inv`.
@@ -151,7 +151,7 @@
       </div>
       <div id="inv-machine-hits" class="inv-hint" style="display:none"></div>
       <div class="table-wrap" style="margin-bottom:0">
-        <table><thead><tr><th>Name</th><th>Menge</th><th>Lagerort</th><th>Status</th><th></th></tr></thead>
+        <table><thead><tr><th>Name</th><th>Menge</th><th>Standort</th><th>Status</th><th></th></tr></thead>
         <tbody id="inv-items-body"></tbody></table>
       </div>
       <div class="inv-pager"><span class="inv-dim inv-small" id="inv-items-count"></span><span class="inv-sp"></span>
@@ -161,8 +161,8 @@
 
     <div class="inv-page" id="inv-page-machines">
       <div class="inv-hint">
-        Die Maschinen selbst pflegst du unter <b>Maschinen</b>; dort steht dieselbe Angabe als Feld «Lagerort» im Formular.
-        Der <b>Lagerort</b> ist wie bei Werkzeug der Code: Bereich, Möbel und Ebene, z.B. <code>ELE-M02-E03</code> = Elektronik, Regal 2, Ebene 3.
+        Die Maschinen selbst pflegst du unter <b>Maschinen</b>; dort steht dieselbe Angabe als Feld «Standort» im Formular.
+        Der <b>Standort</b> ist wie bei Werkzeug der Code: Bereich, Möbel und Ebene, z.B. <code>ELE-M02-E03</code> = Elektronik, Regal 2, Ebene 3.
         Ein Bereich allein (<code>ELE</code>) heisst «irgendwo im Bereich». Maschinen tragen keinen Etikett-Code; sie sind über die Suche
         und später im Bauplan auffindbar. Die <b>Kategorie</b> einer Maschine ergibt sich aus ihrem Bereich (ohne Bereich: «Sonstiges»).
       </div>
@@ -173,7 +173,7 @@
         <span class="inv-dim inv-small" id="inv-m-count"></span>
       </div>
       <div class="table-wrap" style="margin-bottom:0">
-        <table><thead><tr><th>Maschine</th><th>Lagerort</th><th>Status</th></tr></thead>
+        <table><thead><tr><th>Maschine</th><th>Standort</th><th>Status</th></tr></thead>
         <tbody id="inv-machines-body"></tbody></table>
       </div>
     </div>
@@ -284,7 +284,7 @@
         b.style.display = 'block';
         b.innerHTML = it.position
           ? `<b>${esc(it.name)}</b> gehört nach <span class="inv-code" style="--cc:${esc(it.position.color || '#22d3ee')}">${esc(it.position.code)}</span> · ${esc(it.position.path)} · <a href="#" onclick="Inv.clearBanner();return false">Filter aufheben</a>`
-          : `<b>${esc(it.name)}</b> hat noch keinen Lagerort · <a href="#" onclick="Inv.clearBanner();return false">Filter aufheben</a>`;
+          : `<b>${esc(it.name)}</b> hat noch keinen Standort · <a href="#" onclick="Inv.clearBanner();return false">Filter aufheben</a>`;
         return;
       }
     }
@@ -381,7 +381,7 @@
     if (await DELETE('/inventory/items/' + id)) { showToast('Gelöscht', 'success'); await loadTree(); loadItems(); }
   }
 
-  // ── Lagerort-Auswahl (Bereich → Möbel → Ebene → Position) ──
+  // ── Standort-Auswahl (Bereich → Möbel → Ebene → Position) ──
   const areaById = (id) => tree.find(a => a.id == id);
   function furnLabel(f) {
     if (f.number === 0) return 'Im Bereich, ohne Möbel (M00)';
@@ -443,7 +443,7 @@
         <div class="form-group"><label class="form-label">Status</label>
           <select class="form-input" id="inv-i-status"><option value="aktiv">aktiv</option><option value="defekt">defekt</option><option value="ausgemustert">ausgemustert</option></select></div>
       </div>
-      <div class="form-group"><label class="form-label">Lagerort</label>
+      <div class="form-group"><label class="form-label">Standort</label>
         <div class="inv-loc-box">
           <input class="form-input" id="inv-i-code" placeholder="Code, z.B. ELE-M02-E03" onchange="Inv.applyCodeField()" style="font-family:var(--mono)">
           <div class="form-row"><select class="form-input" id="inv-i-area" onchange="Inv.locAreaChanged()"></select><select class="form-input" id="inv-i-furn" onchange="Inv.locFurnChanged()"></select></div>
@@ -580,7 +580,7 @@
           <button type="button" class="btn btn-ghost btn-sm" onclick="Inv.suggestAreaCode(true)" title="Vorschlag aus dem Namen">✨</button></div></div>
         <div class="form-group"><label class="form-label">Farbe</label><input class="form-input" id="inv-a-color" type="color" style="padding:2px;height:40px"></div>
       </div>
-      <div class="inv-hint">Das Kürzel ist der erste Teil jedes Lagerort-Codes. Wird es geändert, ändern sich die Codes aller Möbel dieses Bereichs, die Etiketten müssen neu gedruckt werden. Bereiche sind dieselben wie die <b>Standorte</b> bei den Maschinen.</div>`,
+      <div class="inv-hint">Das Kürzel ist der erste Teil jedes Standort-Codes. Wird es geändert, ändern sich die Codes aller Möbel dieses Bereichs, die Etiketten müssen neu gedruckt werden. Bereiche sind dieselben wie die <b>Standorte</b> bei den Maschinen.</div>`,
       saveArea, 'Speichern', null, 'input', 520);
     $('a-name').value = a ? a.name : '';
     $('a-code').value = a ? (a.code || '') : '';
@@ -1090,7 +1090,7 @@
     machines = r;
     renderMachines();
   }
-  // «Lagerort» einer Maschine: Bereich, Möbel und Ebene in EINER Auswahl, jeweils mit Code.
+  // «Standort» einer Maschine: Bereich, Möbel und Ebene in EINER Auswahl, jeweils mit Code.
   // Wert: a:<Bereich> | f:<Bereich>:<Möbel> | l:<Bereich>:<Möbel>:<Ebene>
   const furnTitle = (f) => f.name || ((KIND[f.kind] || 'Möbel').replace(/^\S+\s/, '') + ' ' + f.number);
   function placeOptions(sel) {
@@ -1119,7 +1119,7 @@
     $('machines-body').innerHTML = machines.length ? machines.map(m => {
       const cell = power
         ? `<select class="filter-input" style="width:auto;min-width:240px" onchange="Inv.setMachinePlace(${m.id}, this.value)">
-             <option value="">— kein Lagerort —</option>${placeOptions(placeValue(m))}</select>`
+             <option value="">— kein Standort —</option>${placeOptions(placeValue(m))}</select>`
         : (m.area ? `<span class="inv-code">${esc(placeCode(m))}</span> ${esc(m.path)}` : '<span class="inv-dim">—</span>');
       const noMatch = !m.area && m.location
         ? `<div class="inv-dim inv-small" title="Dieser Text entspricht keinem Bereich">«${esc(m.location)}» ist kein Bereich</div>` : '';
@@ -1131,18 +1131,18 @@
   }
   async function setMachinePlace(id, v) {
     const r = await PATCH('/inventory/machines/' + id, parsePlace(v));
-    if (r) { showToast('Lagerort gespeichert', 'success'); await loadTree(); }
+    if (r) { showToast('Standort gespeichert', 'success'); await loadTree(); }
     await loadMachines();                                  // bei Fehler: Auswahl zurücksetzen
   }
-  // ── Maschinenformular (labmanager.html): ein Feld «Lagerort» (Bereich, Möbel, Ebene) ──
+  // ── Maschinenformular (labmanager.html): ein Feld «Standort» (Bereich, Möbel, Ebene) ──
   // Der Bereichsname wandert in das versteckte Feld mc-loc/e-loc; der Server leitet daraus Bereich und Kategorie ab.
   let slot = null;                                   // { el, machineId, orig }
   const locField = () => document.getElementById('e-loc') || document.getElementById('mc-loc');
   function renderSlot(selValue, legacyText) {
     if (!slot || !slot.el.isConnected) return;
-    slot.el.innerHTML = `<label class="form-label" title="Bereich, Möbel und Ebene, z.B. ELE-M02-E03 — Tippen springt zum Code">Lagerort</label>
+    slot.el.innerHTML = `<label class="form-label" title="Bereich, Möbel und Ebene, z.B. ELE-M02-E03 — Tippen springt zum Code">Standort</label>
       <select class="form-input" id="inv-form-place" onchange="Inv.formPlaceChanged()">
-        <option value="">— kein Lagerort${legacyText ? ' (bisher: «' + esc(legacyText) + '»)' : ''} —</option>${placeOptions(selValue || '')}</select>
+        <option value="">— kein Standort${legacyText ? ' (bisher: «' + esc(legacyText) + '»)' : ''} —</option>${placeOptions(selValue || '')}</select>
       <div style="font-size:14px;color:var(--text-dim);margin-top:4px">Wo die Maschine steht: im Bereich, auf einem Tisch oder in einem Regal (und Ebene). Die Kategorie ergibt sich aus dem Bereich.</div>`;
   }
   async function mountMachineSlot(el, machineId) {
@@ -1166,7 +1166,7 @@
     if (!slot || !slot.el.isConnected) return;
     const sel = document.getElementById('inv-form-place');
     if (!sel || sel.value === slot.orig) return;                         // nichts geändert
-    if (await PATCH('/inventory/machines/' + machineId, parsePlace(sel.value))) showToast('Lagerort gespeichert', 'success');
+    if (await PATCH('/inventory/machines/' + machineId, parsePlace(sel.value))) showToast('Standort gespeichert', 'success');
   }
 
   // Treffer von Maschinen oberhalb der Werkzeugliste

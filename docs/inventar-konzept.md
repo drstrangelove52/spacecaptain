@@ -1,4 +1,4 @@
-# Konzept: Modul «Inventar & Lagerorte»
+# Konzept: Modul «Inventar & Standorte»
 
 Status: **Etappen 1 und 2 umgesetzt** (2026-10-19, Branch `feature/inventar-modul`; Dev-Test läuft). Etappen 3–5 offen. Backend: `models_inventory.py`, `services/inventory.py`,
 `routers/inventory.py`; Oberfläche: `frontend/modules/inventory.js` (Modul im LabManager); Tests: `backend/tests` (`cd backend && pytest`).
@@ -12,7 +12,7 @@ Zwei Probleme im Makerspace lösen:
 1. **Neue Gäste finden Werkzeug und Maschinen nicht.**
 2. **Werkzeug landet im falschen Schrank.**
 
-Dazu bekommt jedes Ding einen **eindeutigen, aufgedruckten Lagerort-Code**, es gibt eine
+Dazu bekommt jedes Ding einen **eindeutigen, aufgedruckten Standort-Code**, es gibt eine
 **Suche** («Wo ist der Akkuschrauber?») und einen **Bauplan** mit Bereichen, Schränken
 und Maschinen. Gegen Unordnung helfen vor allem Schattenbretter und Soll-Listen pro Fach;
 das Modul liefert dafür die Listen und Etiketten.
@@ -50,7 +50,7 @@ die Struktur kann sauber aufgebaut werden.
 | 1 | Modul in SpaceCaptain: **eigene Dateien, aber als Seite im LabManager** (`modules/inventory.js`), gleiches Backend, gleiche Anmeldung, gleiche Rollen |
 | 2 | **Zwei Objektarten, ein gemeinsamer Plan und eine gemeinsame Suche:** Maschinen bleiben in `machines`, Werkzeug/Kleingerät kommt in eine neue Tabelle |
 | 3 | `machine_locations` wird zur **Bereichs-Tabelle** erweitert (keine zweite Standortliste) |
-| 4 | Maschinen tragen **keinen aufgedruckten Lagerort-Code**, sondern Bereich + Platz auf dem Plan. Sie können den Bereich wechseln |
+| 4 | Maschinen tragen **keinen aufgedruckten Standort-Code**, sondern Bereich + Platz auf dem Plan. Sie können den Bereich wechseln |
 | 5 | **Die 0 bedeutet «nicht unterteilt oder noch nicht festgelegt»** auf jeder Stufe (`M00`, `E00`, `P00`). Jeder Code hat dieselbe Form, es gibt keine `NULL`-Plätze |
 | 6 | **Tische und Werkbänke** sind normale Möbel (`kind = tisch`), Maschinen können optional «auf» einem Möbel stehen |
 
@@ -273,7 +273,7 @@ selten genutzte oder abgeschlossene Bereiche auslagern. Vermessung (Zeilen, grob
 | Einstellungen (+ Backup, Update, Tailscale, MCP) | ~1200 | mittel | 3 (nur Admins) |
 | Berechtigungen | ~420 | mittel | bei Bedarf |
 | Automationen (+ Bedingungen-Editor) | ~250 | gering | bei Bedarf |
-| Akkus | ~175 | gering | später evtl. ins Inventar-Modul (Lagerort) |
+| Akkus | ~175 | gering | später evtl. ins Inventar-Modul (Standort) |
 | Dashboard, Gäste, Maschinen | — | hoch | im Kern lassen |
 
 Regel: nur auslagern, wenn man dort ohnehin etwas ändert; je Bereich ein eigener Branch. Bei «alten»
@@ -450,9 +450,9 @@ Freigabe von Martin.
   Ebenen und wird mit dem Formular gespeichert (das Feld kommt aus dem Inventar-Modul, das dafür nachgeladen wird). Beim Anlegen einer
   Maschine wird der **Bereich mit demselben Namen wie die Kategorie vorgewählt** (nur wenn noch keiner gewählt ist).
 - **Kategorie und Bereich** sind zwei Angaben: Die Kategorie sagt, *was* die Maschine ist (Filter, Symbole, Statistik, MCP), der Bereich,
-  *wo* sie steht (Lagerort-Code, Suche, Plan). Sie decken sich oft («3D-Druck»), müssen es aber nicht (z.B. CNC-Fräse im Bereich «Holz»).
+  *wo* sie steht (Standort-Code, Suche, Plan). Sie decken sich oft («3D-Druck»), müssen es aber nicht (z.B. CNC-Fräse im Bereich «Holz»).
 
-## 11c. Kategorie aus dem Bereich, Feld «Lagerort»
+## 11c. Kategorie aus dem Bereich, Feld «Standort»
 
 Bereich und Kategorie sagten bei den Maschinen dasselbe. Bei **aktivem Inventar** ist deshalb der Bereich das einzige
 Ordnungsmerkmal:
@@ -463,10 +463,11 @@ Ordnungsmerkmal:
   auf «Sonstiges» (ohne Bereich) und entfernt die unbenutzte Kategorie. Ausgerichtet wird beim Anlegen/Bearbeiten, beim
   Bereichswechsel, nach dem CSV-Import und beim ersten Aufruf des Moduls (`align_categories`).
 - **Standort-Text ohne passenden Bereich** zählt als «ohne Bereich» (Text bleibt stehen, Kategorie «Sonstiges»).
-- **Oberfläche:** Im Maschinenformular entfallen «Kategorie» und das Bereichs-Dropdown; es gibt ein einziges Feld **«Lagerort»**
+- **Oberfläche:** Im Maschinenformular entfallen «Kategorie» und das Bereichs-Dropdown; es gibt ein einziges Feld **«Standort»**
   (Bereich, Möbel oder Ebene, jeweils mit Code, z.B. `LAS · Laser`, `LAS-M01 · Regal 1`). «⚙ Kategorien» und der
-  Kategorie-Filter sind ausgeblendet. Der frühere Begriff «Steht auf» heisst überall «Lagerort».
-- Bei ausgeschaltetem Inventar bleibt alles wie bisher (Kategorien frei wählbar).
+  Kategorie-Filter sind ausgeblendet. Der frühere Begriff «Steht auf» heisst überall «Standort».
+- Bei ausgeschaltetem Inventar bleibt alles wie bisher: Kategorie und «Standort» (einfache Auswahl der Standortliste) sind
+  im Formular sichtbar und frei wählbar; nur Möbel/Ebene gibt es dann nicht. Die zuletzt abgeleiteten Kategorien bleiben stehen.
 
 ## 12. Offene Punkte
 
@@ -478,7 +479,7 @@ Ordnungsmerkmal:
 4. ~~Etiketten: Format und Grösse~~ → entschieden: vorgeschnittene A4-Bögen (Avery L6009-20), siehe 7b.
    Offen: Raster am echten Bogen bestätigen.
 5. **Verbrauchsmaterial und Akkus:** Die vorhandene Akku-Verwaltung (`batteries`, eigene
-   Seite unter AUSSTATTUNG) bleibt getrennt. Sollen Akkus später auch einen Lagerort
+   Seite unter AUSSTATTUNG) bleibt getrennt. Sollen Akkus später auch einen Standort
    bekommen (`position_id` an `batteries`)? Da Akkus als loser Pool gelten,
    wäre das eine nullable Ergänzung ohne Umbau.
 6. **Mehrfachstandorte** (Werkzeug in mehreren Schränken): bewusst nicht vorgesehen.

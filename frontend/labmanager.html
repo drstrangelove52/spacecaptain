@@ -743,7 +743,7 @@
                 <div class="form-group" style="margin:0">
                   <label class="form-label">Inventar-Modul</label>
                   <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:16px">
-                    <input type="checkbox" id="cfg-inventory-enabled" style="width:auto"> Lagerorte &amp; Werkzeug aktivieren
+                    <input type="checkbox" id="cfg-inventory-enabled" style="width:auto"> Standorte &amp; Werkzeug aktivieren
                   </label>
                   <div style="font-size:14px;color:var(--text-dim);margin-top:4px">Zeigt den Menüpunkt «Inventar» (Schränke, Ebenen, Werkzeug, Etiketten). Ausgeschaltet bleibt alles unsichtbar.</div>
                 </div>
@@ -3870,7 +3870,7 @@ function _renderLocList(){
   return cache.locations.map(l=>`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <input class="form-input form-input-sm" id="loc-name-${l.id}" value="${escHtml(l.name)}" placeholder="Name" style="flex:1;min-width:0">
-      ${_inventoryOn?`<input class="form-input form-input-sm" id="loc-code-${l.id}" value="${escHtml(l.code||'')}" maxlength="3" placeholder="—" title="Kürzel für den Lagerort-Code im Inventar (z.B. EL)" style="width:62px;flex-shrink:0;text-transform:uppercase;font-family:var(--mono)">
+      ${_inventoryOn?`<input class="form-input form-input-sm" id="loc-code-${l.id}" value="${escHtml(l.code||'')}" maxlength="3" placeholder="—" title="Kürzel für den Standort-Code im Inventar (z.B. EL)" style="width:62px;flex-shrink:0;text-transform:uppercase;font-family:var(--mono)">
       <input type="color" id="loc-color-${l.id}" value="${escHtml(l.color||'#22d3ee')}" data-orig="${escHtml(l.color||'')}" title="Farbe im Inventar" style="width:38px;height:32px;padding:1px;flex-shrink:0;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer">`:''}
       <input class="form-input form-input-sm" id="loc-order-${l.id}" type="number" value="${l.sort_order}" title="Reihenfolge" style="width:52px;flex-shrink:0">
       <button class="btn btn-ghost btn-sm" onclick="saveLocation(${l.id})" title="Speichern">💾</button>
@@ -3882,7 +3882,7 @@ async function showLocationsModal(){
   openModal(_locWord(true)+' verwalten',`
     <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);display:flex;gap:8px;margin-bottom:6px;padding:0 2px">
       <span style="flex:1">NAME</span>
-      ${_inventoryOn?'<span style="width:62px;text-align:center" title="Kürzel für den Lagerort-Code im Inventar">KÜRZEL</span><span style="width:38px;text-align:center">FARBE</span>':''}
+      ${_inventoryOn?'<span style="width:62px;text-align:center" title="Kürzel für den Standort-Code im Inventar">KÜRZEL</span><span style="width:38px;text-align:center">FARBE</span>':''}
       <span style="width:52px;text-align:center">POS</span>
       <span style="width:66px"></span>
     </div>
@@ -6353,7 +6353,7 @@ function _applyInventoryNav(on){
   try { _refreshLocFilter(); if (typeof renderMachines === 'function' && document.getElementById('page-machines')?.classList.contains('active')) { renderMachines(); document.getElementById('topbar-actions').innerHTML = pageActions.machines(); } } catch(e) {}
   _openInventoryFromHash();
 }
-// Maschinenformular: «Lagerort» (Bereich/Möbel/Ebene) kommt aus dem nachladbaren Inventar-Modul
+// Maschinenformular: «Standort» (Bereich/Möbel/Ebene) kommt aus dem nachladbaren Inventar-Modul
 function _mountInvSlot(machineId){
   if (!_inventoryOn) return;
   const el=document.getElementById('inv-form-slot'); if (!el) return;
