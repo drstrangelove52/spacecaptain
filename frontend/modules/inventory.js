@@ -722,9 +722,9 @@
     for (const f of labelData) {
       out.push({ code: f.code, name: f.name, area: f.area, color: f.color, kind: 'furn', fid: f.furniture_id, outdated: f.outdated, items: f.items, count: f.item_count });
       for (const l of f.levels) {
-        out.push({ code: l.code, name: l.label || ('Ebene ' + l.number), area: f.area, color: f.color, kind: 'level', fid: f.furniture_id, outdated: f.outdated, items: l.items, count: l.item_count });
+        out.push({ code: l.code, name: l.label || ('Ebene ' + l.number), own: l.label || '', area: f.area, color: f.color, kind: 'level', fid: f.furniture_id, outdated: f.outdated, items: l.items, count: l.item_count });
         for (const p of (l.positions || [])) {
-          out.push({ code: p.code, name: p.label || ('Platz ' + p.number), area: f.area, color: f.color, kind: 'pos', fid: f.furniture_id, outdated: f.outdated, items: p.items, count: p.item_count });
+          out.push({ code: p.code, name: p.label || ('Platz ' + p.number), own: p.label || '', area: f.area, color: f.color, kind: 'pos', fid: f.furniture_id, outdated: f.outdated, items: p.items, count: p.item_count });
         }
       }
     }
@@ -912,17 +912,19 @@
       const showArea = !t.sheet && it.kind === 'furn';
       const codeFs = codeFontMm(it.code, t);
       const fitFor = (txt) => fitFontMm(txt, t, codeFs * 1.1, 0.54, Math.min(t.h * 0.17, 4.2), showArea ? t.h * 0.12 * 1.3 : 0);
-      // Inhalt: so viele Werkzeuge ausschreiben, wie bei lesbarer Schrift (≥ 2.8 mm) auf das Etikett passen, Rest als «+n»
-      let ct = '', fs = fitFor(it.name);
+      // Möbel: Name. Ebene/Position: Code + Werkzeug (der Standardname «Ebene 2» ist überflüssig; nur ein eigener
+      // Name erscheint, und bei leerer Ebene dient der Standardname als Rückfall).
+      let ct = '', own = it.kind === 'furn' ? it.name : (it.own || '');
       if (it.kind !== 'furn' && it.items && it.items.length) {
         for (let k = Math.min(t.sheet ? 4 : 8, it.items.length); k >= 1; k--) {
           ct = contentsText(it.items, it.count, k);
-          fs = fitFor(it.name + ' ' + ct);
-          if (fs >= 2.8) break;
+          if (fitFor((own ? own + ' ' : '') + ct) >= 2.8) break;     // so viele Werkzeuge, wie bei lesbarer Schrift (≥ 2.8 mm) passen
         }
       }
+      if (!own && !ct) own = it.name;
+      const fs = fitFor((own ? own + ' ' : '') + ct);
       body = `<div class="c" style="font-size:${codeFs.toFixed(2)}mm">${esc(it.code)}</div>
-              <div class="n" style="font-size:${fs.toFixed(2)}mm"><b>${esc(it.name)}</b>${ct ? ` <span class="ct">${esc(ct)}</span>` : ''}</div>
+              <div class="n" style="font-size:${fs.toFixed(2)}mm">${own ? `<b>${esc(own)}</b>` : ''}${ct ? `${own ? ' ' : ''}<span class="ct">${esc(ct)}</span>` : ''}</div>
               ${showArea ? `<div class="a">${esc(it.area)}</div>` : ''}`;
     }
     return `<div class="inv-lbl ${cls}${tool ? ' tool' : ''}" style="--cc:${esc(it.color || '#888')};--lw:${t.w}mm;--lh:${t.h}mm;${extraStyle || ''}">
