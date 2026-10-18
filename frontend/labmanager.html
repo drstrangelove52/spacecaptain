@@ -6322,7 +6322,10 @@ function _openInventoryFromHash(){
   const m = location.hash.match(/^#inventory(?:\/(.+))?$/);
   if (!m) return;
   _hashHandled = true;
-  window._invCode = m[1] ? decodeURIComponent(m[1]) : null;
+  const rest = m[1] ? decodeURIComponent(m[1]) : '';
+  const im = rest.match(/^item\/(\d+)$/);            // #inventory/item/<ID> = QR-Code eines Werkzeug-Etiketts
+  window._invItem = im ? +im[1] : null;
+  window._invCode = (!im && rest) ? rest : null;
   navigateTo('inventory');
 }
 function _applyCurrencyLabels(){

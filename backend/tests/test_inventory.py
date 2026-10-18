@@ -408,3 +408,18 @@ async def test_assign_missing_codes_requires_power_manager(client, enabled, mana
 async def test_suggest_code_endpoint(client, enabled, manager):
     r = await client.get("/api/inventory/areas/suggest-code", params={"name": "Precious Plastic"}, headers=manager)
     assert r.json() == {"code": "PP"}
+
+
+async def test_get_single_item_for_qr_landing(client, enabled, power):
+    area = await _area(client, power)
+    await client.post("/api/inventory/furniture", headers=power, json={"area_id": area["id"], "levels": 2})
+    item = (await client.post("/api/inventory/items", headers=power,
+                              json={"name": "Lineal 30 cm", "quantity": 12, "code": "EL-S1-E2"})).json()
+    r = await client.get(f"/api/inventory/items/{item['id']}", headers=power)
+    assert r.status_code == 200
+    assert r.json()["name"] == "Lineal 30 cm" and r.json()["quantity"] == 12
+    assert r.json()["position"]["code"] == "EL-S1-E2"
+    # nach dem Umlagern bleibt derselbe Link gueltig und zeigt den neuen Ort
+    await client.patch(f"/api/inventory/items/{item['id']}", headers=power, json={"code": "EL-S1-E1"})
+    assert (await client.get(f"/api/inventory/items/{item['id']}", headers=power)).json()["position"]["code"] == "EL-S1-E1"
+    assert (await client.get("/api/inventory/items/99999", headers=power)).status_code == 404

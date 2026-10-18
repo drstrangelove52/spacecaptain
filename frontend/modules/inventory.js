@@ -21,6 +21,7 @@
   let editingItemId = null, editingAreaId = null, editingFurnId = null;
   let labelData = [], labelOutdatedOnly = false;
   let selected = new Set(), selInit = false, pendingSel = null, lastPrinted = [];
+  let labelMode = 'furn', toolList = [], toolSel = new Map();   // Etikettenart; Werkzeug: id → Kopien
   let activeTab = 'items';
   const openAreas = new Set(), openFurn = new Set();
   let _deb = null;
@@ -40,6 +41,8 @@
   .inv-lbl .c{font-family:'Share Tech Mono','Consolas','Courier New',monospace;font-weight:700;line-height:1.05;white-space:nowrap}
   .inv-lbl .n{font-size:calc(var(--lh) * .15);line-height:1.15;overflow:hidden;max-height:calc(var(--lh) * .36)}
   .inv-lbl .a{font-size:calc(var(--lh) * .12);color:#444}
+  .inv-lbl.tool .n{font-weight:700;line-height:1.1;overflow:hidden;overflow-wrap:anywhere;max-height:none;flex:0 1 auto}
+  .inv-lbl.tool .c{font-weight:400;color:#222}
   .inv-sheet{position:relative;width:210mm;height:297mm;background:#fff;overflow:hidden;break-after:page;page-break-after:always}
   .inv-cal{position:absolute;box-sizing:border-box;border:.2mm solid #000;font:2.6mm Arial,sans-serif;color:#000;padding:.6mm 1mm}
   .inv-cal b{display:block;font-size:3.6mm}
@@ -151,7 +154,11 @@
     </div>
 
     <div class="inv-page" id="inv-page-labels">
-      <div class="inv-sel-box">
+      <div class="inv-toolbar">
+        <span class="inv-chip on" id="inv-mode-furn" onclick="Inv.setLabelMode('furn')">🗄️ Möbel &amp; Ebenen</span>
+        <span class="inv-chip" id="inv-mode-tool" onclick="Inv.setLabelMode('tool')" title="Ein Etikett pro Stück, z.B. für jedes Lineal">🔧 Werkzeug</span>
+      </div>
+      <div class="inv-sel-box" id="inv-furn-box">
         <div class="inv-sel-head">
           <b id="inv-sel-count">0 gewählt</b>
           <select class="filter-input" id="inv-l-area" onchange="Inv.loadLabels()" style="width:auto;min-width:150px"></select>
@@ -164,6 +171,20 @@
           <button class="btn btn-ghost btn-sm" onclick="Inv.selectBy('level')">Nur Ebenen</button>
         </div>
         <div class="inv-sel-list" id="inv-sel-list"></div>
+      </div>
+      <div class="inv-sel-box" id="inv-tool-box" style="display:none">
+        <div class="inv-sel-head">
+          <b id="inv-tl-count">0 gewählt</b>
+          <div class="search-wrap" style="flex:1;min-width:180px"><span class="search-icon">🔍</span>
+            <input class="search-input" id="inv-tl-q" placeholder="Werkzeug suchen…" oninput="Inv.debouncedToolLoad()" style="width:100%;min-width:0"></div>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.toolSelectAll()">Alle angezeigten</button>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.toolSelectNone()">Keine</button>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.toolCopiesQty()" title="Kopien der gewählten auf die erfasste Menge setzen">Kopien = Menge</button>
+        </div>
+        <div class="inv-hint" style="margin:0;border:0;border-bottom:1px solid var(--border);border-radius:0">
+          Ein Etikett <b>pro Stück</b>: «Lineal 30 cm», Menge 12 → 12 Kopien. Auf dem Etikett stehen Name und Heimatort; der QR-Code zeigt, <b>wohin das Werkzeug gehört</b> (bleibt gültig, auch wenn es umgelagert wird).
+        </div>
+        <div class="inv-sel-list" id="inv-tl-list"></div>
       </div>
       <div class="inv-labelopts">
         <div class="form-group"><label class="form-label">Vorlage</label>
@@ -179,7 +200,7 @@
       </div>
       <div class="inv-hint" id="inv-l-hint"></div>
       <div class="inv-sheetrow" id="inv-labels-preview"></div>
-      <div style="margin-top:14px"><button class="btn btn-ghost" onclick="Inv.markPrinted()" title="Setzt bei den gewählten Möbeln das Kennzeichen «neu/veraltet» zurück">✓ Auswahl als gedruckt markieren</button></div>
+      <div style="margin-top:14px" id="inv-mark-wrap"><button class="btn btn-ghost" onclick="Inv.markPrinted()" title="Setzt bei den gewählten Möbeln das Kennzeichen «neu/veraltet» zurück">✓ Auswahl als gedruckt markieren</button></div>
     </div>
 
     <div class="inv-page" id="inv-page-import">
@@ -205,6 +226,22 @@
     fillAreaSelect($('f-area'), 'Alle Bereiche');
     fillAreaSelect($('l-area'), 'Alle Bereiche');
     // Einsprung über QR-Code / Link: #inventory/EL-S1
+    const iid = window._invItem;
+    if (iid) {                                   // QR-Code eines Werkzeug-Etiketts: «gehört nach …»
+      window._invItem = null;
+      const it = await GET('/inventory/items/' + iid);
+      if (it) {
+        $('f-q').value = it.position ? it.position.code : it.name;
+        itemsPage = 0;
+        showTab('items');
+        const b = $('code-banner');
+        b.style.display = 'block';
+        b.innerHTML = it.position
+          ? `<b>${esc(it.name)}</b> gehört nach <span class="inv-code" style="--cc:${esc(it.position.color || '#22d3ee')}">${esc(it.position.code)}</span> · ${esc(it.position.path)} · <a href="#" onclick="Inv.clearBanner();return false">Filter aufheben</a>`
+          : `<b>${esc(it.name)}</b> hat noch keinen Lagerort · <a href="#" onclick="Inv.clearBanner();return false">Filter aufheben</a>`;
+        return;
+      }
+    }
     const code = window._invCode;
     if (code) {
       window._invCode = null;
@@ -638,10 +675,9 @@
     renderLabels();
   }
 
-  function qrUrl(code) {
-    const target = `${location.origin}/inventar.html?code=${encodeURIComponent(code)}`;
-    return `${location.origin}/api/qr/url-png?u=${encodeURIComponent(target)}`;
-  }
+  const qrFor = (target) => `${location.origin}/api/qr/url-png?u=${encodeURIComponent(target)}`;
+  const codeUrl = (code) => `${location.origin}/inventar.html?code=${encodeURIComponent(code)}`;
+  const itemUrl = (id) => `${location.origin}/inventar.html?item=${id}`;     // bleibt nach einem Umlagern gültig
   // Alle möglichen Etiketten (Möbel + Ebenen) der geladenen Daten
   function allLabels() {
     const out = [];
@@ -651,7 +687,20 @@
     }
     return out;
   }
-  const labelItems = () => allLabels().filter(l => selected.has(l.code));
+  const furnItems = () => allLabels().filter(l => selected.has(l.code));
+  // Werkzeug: je Stück ein Etikett (Kopien)
+  function toolItems() {
+    const out = [];
+    for (const [id, copies] of toolSel) {
+      const it = toolList.find(x => x.id === id);
+      if (!it) continue;
+      for (let i = 0; i < copies; i++) {
+        out.push({ kind: 'tool', id, code: it.position ? it.position.code : '', name: it.name, color: it.position && it.position.color, small: false });
+      }
+    }
+    return out;
+  }
+  const labelItems = () => (labelMode === 'tool' ? toolItems() : furnItems());
 
   function renderLabelList() {
     const rows = allLabels();
@@ -666,10 +715,14 @@
     updateSelCount();
   }
   function updateSelCount() {
-    const total = allLabels().length, n = labelItems().length;
-    $('sel-count').textContent = `${n} von ${total} gewählt`;
-    const t = tpl();
-    const per = t.sheet ? t.cols * t.rows : 0;
+    const items = labelItems(), n = items.length;
+    if (labelMode === 'furn') {
+      $('sel-count').textContent = `${n} von ${allLabels().length} gewählt`;
+    } else {
+      const kinds = new Set(items.map(i => i.id)).size;
+      $('tl-count').textContent = `${kinds} Werkzeug${kinds === 1 ? '' : 'e'} · ${n} Etikett${n === 1 ? '' : 'en'}`;
+    }
+    const t = tpl(), per = t.sheet ? t.cols * t.rows : 0;
     $('btn-print').textContent = n ? `🖨️ ${n} Etikett${n > 1 ? 'en' : ''} drucken` : '🖨️ Auswahl drucken';
     $('btn-print').disabled = !n;
     $('btn-print').title = per && n ? `${Math.ceil((n + Math.max(0, num('l-start', 1) - 1)) / per)} Bogen` : '';
@@ -696,16 +749,83 @@
     pendingSel = new Set([code]);
     showTab('labels');
   }
+  // ── Etikettenart: Möbel & Ebenen oder Werkzeug ──
+  function setLabelMode(mode) {
+    labelMode = mode;
+    $('mode-furn').classList.toggle('on', mode === 'furn');
+    $('mode-tool').classList.toggle('on', mode === 'tool');
+    $('furn-box').style.display = mode === 'furn' ? '' : 'none';
+    $('tool-box').style.display = mode === 'tool' ? '' : 'none';
+    $('mark-wrap').style.display = mode === 'furn' ? '' : 'none';
+    if (mode === 'tool') loadToolList(); else { renderLabelList(); renderLabels(); }
+  }
+  let _tdeb = null;
+  function debouncedToolLoad() { clearTimeout(_tdeb); _tdeb = setTimeout(loadToolList, 250); }
+  async function loadToolList() {
+    const p = new URLSearchParams({ limit: 500 });
+    const q = $('tl-q').value.trim(); if (q) p.set('q', q);
+    const r = await GET('/inventory/items?' + p);
+    if (!r) return;
+    toolList = r.items;
+    renderToolList(); renderLabels();
+  }
+  const clampCopies = (v) => Math.min(200, Math.max(1, parseInt(v, 10) || 1));
+  function renderToolList() {
+    $('tl-list').innerHTML = toolList.length ? toolList.map(i => `
+      <label class="inv-sel-row">
+        <input type="checkbox" ${toolSel.has(i.id) ? 'checked' : ''} onchange="Inv.toggleTool(${i.id}, this.checked)">
+        <b>${esc(i.name)}</b>
+        ${i.position ? `<span class="inv-code" style="--cc:${esc(i.position.color || '#22d3ee')}">${esc(i.position.code)}</span>` : '<span class="badge badge-red">ohne Platz</span>'}
+        <span class="inv-dim inv-small">Menge ${i.quantity}</span>
+        <span class="inv-sp"></span>
+        <span class="inv-dim inv-small">Kopien</span>
+        <input type="number" min="1" max="200" value="${toolSel.get(i.id) || clampCopies(i.quantity)}" style="width:76px" onclick="event.stopPropagation()" onchange="Inv.setCopies(${i.id}, this.value)">
+      </label>`).join('') : '<div class="inv-empty">Keine Werkzeuge gefunden.</div>';
+    updateSelCount();
+  }
+  function toggleTool(id, on) {
+    if (on) { const it = toolList.find(x => x.id === id); toolSel.set(id, clampCopies(it ? it.quantity : 1)); } else toolSel.delete(id);
+    renderToolList(); renderLabels();
+  }
+  function setCopies(id, v) { toolSel.set(id, clampCopies(v)); renderToolList(); renderLabels(); }
+  function toolSelectAll() { toolList.forEach(i => toolSel.set(i.id, toolSel.get(i.id) || clampCopies(i.quantity))); renderToolList(); renderLabels(); }
+  function toolSelectNone() { toolSel.clear(); renderToolList(); renderLabels(); }
+  function toolCopiesQty() { toolList.forEach(i => { if (toolSel.has(i.id)) toolSel.set(i.id, clampCopies(i.quantity)); }); renderToolList(); renderLabels(); }
+
   // Schriftgrösse (mm) so wählen, dass der Code neben dem QR-Code Platz hat
   function codeFontMm(code, t) {
     const qr = t.sheet ? t.h - 3.2 : t.h - 6;
     const avail = t.w - qr - (t.sheet ? 3 : 4) - 1.5;
     return Math.max(2.4, Math.min(t.h * 0.26, avail / (code.length * 0.62)));
   }
+  // Werkzeugname: grösste Schrift (mm), bei der der ganze Name an Wortgrenzen umgebrochen auf das Etikett passt
+  function nameFontMm(name, t) {
+    const qr = t.sheet ? t.h - 3.2 : t.h - 6;
+    const availW = t.w - qr - (t.sheet ? 3 : 4) - 1.5;
+    const codeH = Math.min(t.h * 0.15, 3.4) * 1.15;
+    const availH = t.h - (t.sheet ? 2.3 : 6) - codeH - 0.6;
+    const words = String(name).split(/\s+/).filter(Boolean);
+    for (let fs = Math.min(t.h * 0.19, 5); fs >= 2.3; fs -= 0.1) {
+      const perLine = Math.floor(availW / (fs * 0.56));          // fette Proportionalschrift ≈ 0.56 em je Zeichen
+      if (words.some(w => w.length > perLine)) continue;
+      let lines = 1, cur = 0;
+      for (const w of words) {
+        const need = cur ? cur + 1 + w.length : w.length;
+        if (need > perLine) { lines++; cur = w.length; } else cur = need;
+      }
+      if (lines * fs * 1.12 <= availH) return fs;
+    }
+    return 2.3;
+  }
   function labelHtml(it, t, extraStyle, cls) {
-    return `<div class="inv-lbl ${cls}" style="--cc:${esc(it.color || '#888')};--lw:${t.w}mm;--lh:${t.h}mm;${extraStyle || ''}">
-      <img src="${qrUrl(it.code)}" alt="">
-      <div class="t"><div class="c" style="font-size:${codeFontMm(it.code, t).toFixed(2)}mm">${esc(it.code)}</div><div class="n">${esc(it.name)}</div>${it.small || t.sheet ? '' : `<div class="a">${esc(it.area)}</div>`}</div>
+    const tool = it.kind === 'tool';
+    const target = tool ? itemUrl(it.id) : codeUrl(it.code);
+    const body = tool
+      ? `<div class="n" style="font-size:${nameFontMm(it.name, t).toFixed(2)}mm">${esc(it.name)}</div><div class="c" style="font-size:${Math.min(t.h * 0.15, 3.4).toFixed(2)}mm">${it.code ? '→ ' + esc(it.code) : 'ohne Platz'}</div>`
+      : `<div class="c" style="font-size:${codeFontMm(it.code, t).toFixed(2)}mm">${esc(it.code)}</div><div class="n">${esc(it.name)}</div>${it.small || t.sheet ? '' : `<div class="a">${esc(it.area)}</div>`}`;
+    return `<div class="inv-lbl ${cls}${tool ? ' tool' : ''}" style="--cc:${esc(it.color || '#888')};--lw:${t.w}mm;--lh:${t.h}mm;${extraStyle || ''}">
+      <img src="${qrFor(target)}" alt="">
+      <div class="t">${body}</div>
     </div>`;
   }
   // Bögen: Etiketten auf Seiten verteilen; auf der ersten Seite ab der gewählten Startposition
@@ -783,7 +903,8 @@
   function printLabels() {
     const t = tpl(), items = labelItems();
     if (!items.length) { showToast('Nichts gewählt', 'error'); return; }
-    lastPrinted = items.map(i => i.code);
+    lastPrinted = labelMode === 'furn' ? items.map(i => i.code) : [];     // Werkzeug-Etiketten haben kein «gedruckt»-Kennzeichen
+    if (items.length > 480 && !confirm(`${items.length} Etiketten (${Math.ceil(items.length / 48)} Bögen) drucken?`)) return;
     if (t.sheet) {
       const pages = sheetPages(items, t, false);
       printInFrame(pages.map(pg => sheetHtml(pg, t, false)).join(''), '@page{size:A4;margin:0}');
@@ -845,6 +966,7 @@
     openFurnModal, deleteFurn, addLevels, addPositions, renameLevel, renamePos, deleteLevel, deletePos,
     toggleOutdated, loadLabels, renderLabels, printLabels, printCalibration, setTemplate, offsetChanged, markPrinted, runImport,
     toggleLabel, toggleLevelsOf, selectBy, labelFor,
+    setLabelMode, debouncedToolLoad, toggleTool, setCopies, toolSelectAll, toolSelectNone, toolCopiesQty,
   };
 
   LabModules.register('inventory', { title: 'Inventar', mount, show });

@@ -537,6 +537,15 @@ async def list_items(
     return {"total": total, "items": [_row_to_item(r) for r in rows]}
 
 
+@router.get("/items/{item_id}")
+async def get_item(item_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+    """Ein Werkzeug mit Lagerort — Ziel der QR-Codes auf Werkzeug-Etiketten («gehört nach …»)."""
+    row = (await db.execute(_ITEM_JOIN.where(InvItem.id == item_id))).first()
+    if not row:
+        raise HTTPException(404, "Werkzeug nicht gefunden")
+    return _row_to_item(row)
+
+
 @router.post("/items")
 async def create_item(payload: ItemCreate, db: AsyncSession = Depends(get_db),
                       current: User = Depends(get_current_user)):

@@ -7,8 +7,8 @@
 <script>
   // Ziel der QR-Codes auf Schränken (/inventar.html?code=EL-S1). Aktuell nur für Lab Manager:
   // weiter in den LabManager. Eine Gäste-Ansicht ohne Login folgt (docs/inventar-konzept.md, Etappe 3).
-  var code = new URLSearchParams(location.search).get('code');
-  location.replace('/labmanager.html#inventory' + (code ? '/' + encodeURIComponent(code) : ''));
+  var q = new URLSearchParams(location.search), code = q.get('code'), item = q.get('item');
+  location.replace('/labmanager.html#inventory' + (item && /^\d+$/.test(item) ? '/item/' + item : (code ? '/' + encodeURIComponent(code) : '')));
 </script>
 </head>
 <body style="font-family:sans-serif;background:#0d0f12;color:#e2e8f0;padding:24px">

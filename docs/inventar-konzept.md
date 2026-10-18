@@ -298,8 +298,22 @@ Standard sind **vorgeschnittene A4-Bögen** (Avery Zweckform Typenschild-Etikett
   markiert werden sollen. Zurückgesetzt wird das Kennzeichen nur, wenn das Möbel-Etikett **und alle**
   Ebenen-Etiketten dieses Möbels gedruckt wurden (ändert sich ein Code, ändern sich alle). Ein später
   hinzugefügte Ebene setzt das Kennzeichen nicht; ihr Etikett wählt man von Hand.
-- **Inhalt je Etikett:** QR-Code (führt zum Inhalt des Möbels/der Ebene), Code in Grossschrift
-  (Schriftgrösse passt sich der Codelänge an), Name; Farbbalken des Bereichs.
+- **Inhalt je Etikett (Möbel/Ebene):** QR-Code (führt zum Inhalt des Möbels/der Ebene), Code in
+  Grossschrift (Schriftgrösse passt sich der Codelänge an), Name; Farbbalken des Bereichs.
+- **Werkzeug-Etiketten** (Etikettenart «Werkzeug»): **ein Etikett pro Stück**, z.B. «Lineal 30 cm», Menge 12 →
+  12 Etiketten. Es wird nur **ein** Eintrag mit Menge geführt, nicht jedes Lineal einzeln. Kopien = Menge
+  (je Werkzeug anpassbar, max. 200). Auf dem Etikett stehen der **Name** (die Schrift wird so berechnet, dass
+  auch lange Namen vollständig passen) und der **Heimatort** («→ HO-S1-E2»). Sie haben kein
+  «gedruckt»-Kennzeichen; die Auswahl bestimmt, was gedruckt wird.
+- **QR-Ziele:**
+  | Etikett | Ziel des QR-Codes | Bleibt gültig bei … |
+  |---|---|---|
+  | Möbel / Ebene | `/inventar.html?code=EL-S1` → Inhalt dieses Möbels | Änderung des Codes nicht (Etikett wird «veraltet» und neu gedruckt) |
+  | Werkzeug | `/inventar.html?item=<ID>` → «**gehört nach** HO-S1-E2 · Holz › Regal 1 › Ebene 2» | Umlagern (der Link zeigt immer den aktuellen Ort) |
+
+  Beide führen heute in den LabManager (Anmeldung nötig, `#inventory/…`). In **Etappe 3** werden sie auf eine
+  schlanke Gäste-Seite ohne Anmeldung geleitet (nur Lesen). Das Werkzeug-Etikett beantwortet damit auch
+  «wohin gehört das?» für Werkzeug, das im falschen Schrank gelandet ist.
 - **Druckdialog:** Papier A4, Skalierung 100 % («Tatsächliche Grösse»), Kopf-/Fusszeilen aus, Ränder keine.
   L6009 ist für Laserdrucker gedacht.
 
