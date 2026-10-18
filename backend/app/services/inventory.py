@@ -14,8 +14,8 @@ from fastapi import HTTPException
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import MachineLocation
-from app.models_inventory import InvFurniture, InvLevel, InvPosition, InvItem, FurnitureKind
+from app.models import MachineLocation, Machine
+from app.models_inventory import InvFurniture, InvLevel, InvPosition, InvItem, InvPlacement, FurnitureKind
 
 AREA_LEN = 3
 AREA_CODE_RE = re.compile(r"^[A-Z0-9]{3}$")
@@ -106,7 +106,7 @@ async def suggest_area_code(db: AsyncSession, name: str, exclude_id: Optional[in
     raise HTTPException(409, "Kein freies Kürzel gefunden — bitte von Hand vergeben")
 
 
-async def upgrade_legacy_codes(db: AsyncSession) -> int:
+async def upgrade_legacy_codes(db: AsyncSession, commit: bool = True) -> int:
     """Kürzel aus früheren Fassungen (2 oder 4 Zeichen) werden auf 3 Zeichen umgestellt. Die Etiketten der
     betroffenen Möbel gelten danach als «neu/veraltet». Idempotent; gibt die Anzahl der Umstellungen zurück."""
     areas = (await db.execute(select(MachineLocation).where(
@@ -119,7 +119,7 @@ async def upgrade_legacy_codes(db: AsyncSession) -> int:
                 InvFurniture.area_id == a.id, InvFurniture.number > 0))).scalars():
             f.label_outdated = True
     if areas:
-        await db.commit()
+        await (db.commit() if commit else db.flush())
     return len(areas)
 
 
@@ -173,10 +173,10 @@ async def assign_missing_codes(db: AsyncSession, dry_run: bool) -> list[dict]:
 
 
 # ── Nullplaetze ──────────────────────────────────────────────────────────────
-async def ensure_structure(db: AsyncSession) -> int:
+async def ensure_structure(db: AsyncSession, commit: bool = True) -> int:
     """Legt fehlende Nullplaetze an: M00 je Bereich, E00 je Moebel, P00 je Ebene.
     Idempotent, gibt die Anzahl neu angelegter Zeilen zurueck."""
-    created = await upgrade_legacy_codes(db)
+    created = await upgrade_legacy_codes(db, commit)
 
     area_ids = (await db.execute(select(MachineLocation.id))).scalars().all()
     have = set((await db.execute(
@@ -207,7 +207,8 @@ async def ensure_structure(db: AsyncSession) -> int:
         if lid not in have:
             db.add(InvPosition(level_id=lid, number=0))
             created += 1
-    await db.commit()
+    created += await sync_machine_areas(db)
+    await (db.commit() if commit else db.flush())
     return created
 
 
@@ -218,7 +219,7 @@ async def ensure_structure_if_needed(db: AsyncSession) -> None:
     zero = await db.scalar(select(func.count(InvFurniture.id)).where(InvFurniture.number == 0)) or 0
     legacy = await db.scalar(select(func.count(MachineLocation.id)).where(
         MachineLocation.code.is_not(None), func.length(MachineLocation.code) != AREA_LEN)) or 0
-    if zero < areas or legacy:
+    if zero < areas or legacy or await machines_need_sync(db):
         await ensure_structure(db)
 
 
@@ -277,6 +278,63 @@ async def add_positions(db: AsyncSession, level: InvLevel, count: int) -> list[I
     db.add_all(created)
     await db.commit()
     return created
+
+
+# ── Maschinen ↔ Bereich ──────────────────────────────────────────────────────
+# `machines.location` (Text) bleibt fuer die bisherigen Ansichten erhalten, `machines.area_id` ist der massgebliche
+# Bereich des Inventar-Moduls. Die Formulare der Maschinen schreiben nur den Text — er wird hier nachgezogen.
+def _machine_text_conds():
+    return (Machine.location.is_not(None), Machine.location != "")
+
+
+async def machines_need_sync(db: AsyncSession) -> bool:
+    no_area = await db.scalar(select(func.count(Machine.id)).where(
+        Machine.area_id.is_(None), *_machine_text_conds())) or 0
+    empty_text = await db.scalar(select(func.count(Machine.id)).where(
+        Machine.area_id.is_not(None), or_(Machine.location.is_(None), Machine.location == ""))) or 0
+    mismatch = await db.scalar(select(func.count(Machine.id))
+                               .join(MachineLocation, MachineLocation.id == Machine.area_id)
+                               .where(*_machine_text_conds(), MachineLocation.name != Machine.location)) or 0
+    return bool(no_area or empty_text or mismatch)
+
+
+async def sync_machine_areas(db: AsyncSession) -> int:
+    """Zieht `area_id` aus dem Standort-Text nach: Text → Bereich (ohne Gross-/Kleinschreibung), leerer Text →
+    kein Bereich. Texte, die keinem Bereich entsprechen, bleiben unberuehrt. Gibt die Anzahl Aenderungen zurueck."""
+    by_name = {a.name.lower(): a.id for a in (await db.execute(select(MachineLocation))).scalars().all()}
+    changed = 0
+    for m in (await db.execute(select(Machine))).scalars().all():
+        txt = (m.location or "").strip()
+        if not txt:
+            if m.area_id is not None:
+                m.area_id = None
+                changed += 1
+            continue
+        aid = by_name.get(txt.lower())
+        if aid is not None and m.area_id != aid:
+            m.area_id = aid
+            changed += 1
+    if changed:
+        await db.flush()
+    return changed
+
+
+async def sync_machine_area_from_text(db: AsyncSession, machine: Machine) -> None:
+    """Fuer einzelne Maschine nach Anlegen/Bearbeiten ueber das Maschinenformular."""
+    txt = (machine.location or "").strip()
+    if not txt:
+        machine.area_id = None
+    else:
+        area = await db.scalar(select(MachineLocation).where(func.lower(MachineLocation.name) == txt.lower()))
+        if area:
+            machine.area_id = area.id
+    await db.commit()
+
+
+async def delete_placement(db: AsyncSession, machine_id: int) -> None:
+    pl = await db.get(InvPlacement, machine_id)
+    if pl:
+        await db.delete(pl)
 
 
 # ── Aufloesung & Beschreibung ────────────────────────────────────────────────

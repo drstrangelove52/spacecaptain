@@ -118,6 +118,7 @@ class LogType(str, enum.Enum):
     inventory_item_deleted = "inventory_item_deleted"
     inventory_item_moved = "inventory_item_moved"
     inventory_items_imported = "inventory_items_imported"
+    machine_area_changed = "machine_area_changed"
 
 class SessionEndedBy(str, enum.Enum):
     guest = "guest"
@@ -176,6 +177,9 @@ class Machine(Base):
     model:              Mapped[Optional[str]]   = mapped_column(String(100))
     serial_number:      Mapped[Optional[str]]   = mapped_column(String(100))
     location:           Mapped[Optional[str]]   = mapped_column(String(200))
+    # Inventar-Modul: massgeblicher Bereich (= machine_locations.id). Bewusst ohne DB-Fremdschluessel (Typ der
+    # Zielspalte ist je Installation signed/unsigned); `location` bleibt als Text fuer die bisherigen Ansichten erhalten.
+    area_id:            Mapped[Optional[int]]   = mapped_column(UINT(unsigned=True), default=None, index=True)
     status:             Mapped[MachineStatus]   = mapped_column(Enum(MachineStatus), default=MachineStatus.online)
     plug_type:          Mapped[PlugType]        = mapped_column(Enum(PlugType), default=PlugType.none)
     plug_ip:            Mapped[Optional[str]]   = mapped_column(String(50))

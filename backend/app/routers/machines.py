@@ -21,6 +21,7 @@ from app.models import Plug as PlugModel
 from app.schemas import MachineCreate, MachineUpdate, MachineOut
 from app.services.auth import get_current_user
 from app.services import logger as log_svc
+from app.services import inventory as inv_svc
 from app.services.plug import get_plug_status, switch_plug, switch_all_machine_plugs
 from app.config import APP_TIMEZONE
 
@@ -242,6 +243,7 @@ async def create_machine(
     db.add(machine)
     await db.commit()
     await db.refresh(machine)
+    await inv_svc.sync_machine_area_from_text(db, machine)      # Inventar: Bereich aus dem Standort-Text
     await log_svc.log(
         db, LogType.machine_created,
         f"Maschine {machine.name} ({machine.category}) hinzugefügt",
@@ -283,6 +285,8 @@ async def update_machine(
         setattr(machine, field, value)
     await db.commit()
     await db.refresh(machine)
+    if "location" in changes:
+        await inv_svc.sync_machine_area_from_text(db, machine)  # Inventar: Bereich nachziehen
     await log_svc.log(db, LogType.machine_updated,
                       f"Maschine {machine.name} bearbeitet",
                       machine_id=machine.id, user_id=current.id,
@@ -301,6 +305,7 @@ async def delete_machine(
     if not machine:
         raise HTTPException(404, "Nicht gefunden")
     await log_svc.log(db, LogType.machine_deleted, f"Maschine {machine.name} gelöscht", user_id=current.id)
+    await inv_svc.delete_placement(db, machine.id)              # Inventar: Platzierung mit aufräumen
     await db.delete(machine)
     await db.commit()
     return {"ok": True}

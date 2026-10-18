@@ -91,3 +91,17 @@ class InvItem(Base):
     created_at:  Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
     updated_at:  Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     position:    Mapped[Optional["InvPosition"]] = relationship("InvPosition")
+
+
+class InvPlacement(Base):
+    """Maschine im Raum: optional «steht auf» einem Moebel, spaeter Platz im Bauplan (Etappe 4).
+    Keine DB-Fremdschluessel auf machines (Typ je Installation signed/unsigned); beim Loeschen einer Maschine
+    raeumt der machines-Router auf, verwaiste Zeilen werden ignoriert."""
+    __tablename__ = "inv_placements"
+    machine_id:   Mapped[int]             = mapped_column(UINT(unsigned=True), primary_key=True, autoincrement=False)
+    furniture_id: Mapped[Optional[int]]   = mapped_column(UINT(unsigned=True), ForeignKey("inv_furniture.id", ondelete="SET NULL"), default=None)
+    plan_x:       Mapped[Optional[float]] = mapped_column(Float, default=None)
+    plan_y:       Mapped[Optional[float]] = mapped_column(Float, default=None)
+    plan_w:       Mapped[Optional[float]] = mapped_column(Float, default=None)
+    plan_h:       Mapped[Optional[float]] = mapped_column(Float, default=None)
+    plan_rot:     Mapped[Optional[float]] = mapped_column(Float, default=None)

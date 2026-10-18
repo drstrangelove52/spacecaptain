@@ -14,8 +14,8 @@ from sqlalchemy import select, func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MachineLocation, User, LogType
-from app.models_inventory import (InvFurniture, InvLevel, InvPosition, InvItem,
+from app.models import MachineLocation, Machine, User, LogType
+from app.models_inventory import (InvFurniture, InvLevel, InvPosition, InvItem, InvPlacement,
                                   FurnitureKind, InvItemStatus)
 from app.services import inventory as inv
 from app.services import logger as log_svc
@@ -120,9 +120,10 @@ def _clean(s: Optional[str]) -> Optional[str]:
     return s or None
 
 
-def _area_out(a: MachineLocation, furniture_count: int = 0, item_count: int = 0) -> dict:
+def _area_out(a: MachineLocation, furniture_count: int = 0, item_count: int = 0, machine_count: int = 0) -> dict:
     return {"id": a.id, "name": a.name, "code": a.code, "color": a.color,
-            "sort_order": a.sort_order, "furniture_count": furniture_count, "item_count": item_count}
+            "sort_order": a.sort_order, "furniture_count": furniture_count, "item_count": item_count,
+            "machine_count": machine_count}
 
 
 def _furniture_out(a: MachineLocation, f: InvFurniture) -> dict:
@@ -235,7 +236,10 @@ async def list_areas(db: AsyncSession = Depends(get_db), _: User = Depends(get_c
         .join(InvLevel, InvLevel.id == InvPosition.level_id)
         .join(InvFurniture, InvFurniture.id == InvLevel.furniture_id)
         .group_by(InvFurniture.area_id))).all())
-    return [_area_out(a, fcount.get(a.id, 0), icount.get(a.id, 0)) for a in areas]
+    mcount = dict((await db.execute(
+        select(Machine.area_id, func.count(Machine.id)).where(Machine.area_id.is_not(None))
+        .group_by(Machine.area_id))).all())
+    return [_area_out(a, fcount.get(a.id, 0), icount.get(a.id, 0), mcount.get(a.id, 0)) for a in areas]
 
 
 @router.post("/areas")
@@ -652,6 +656,100 @@ async def import_items(payload: ImportPayload, db: AsyncSession = Depends(get_db
     return {"created": created, "valid": len(to_add), "errors": errors, "dry_run": payload.dry_run}
 
 
+# ── Maschinen ────────────────────────────────────────────────────────────────
+_MACHINE_JOIN = (
+    select(Machine, MachineLocation, InvPlacement, InvFurniture)
+    .outerjoin(MachineLocation, MachineLocation.id == Machine.area_id)
+    .outerjoin(InvPlacement, InvPlacement.machine_id == Machine.id)
+    .outerjoin(InvFurniture, InvFurniture.id == InvPlacement.furniture_id)
+)
+
+
+def _machine_dict(row) -> dict:
+    m, area, _pl, furn = row
+    stands_on = None
+    if furn is not None and area is not None:
+        stands_on = {"furniture_id": furn.id, "code": inv.short_code(area.code, furn.number),
+                     "title": inv.furniture_title(furn)}
+    path = area.name if area else (m.location or "")
+    if stands_on:
+        path += " › " + stands_on["title"]
+    status = m.status.value if hasattr(m.status, "value") else m.status
+    return {
+        "id": m.id, "name": m.name, "category": m.category, "manufacturer": m.manufacturer, "model": m.model,
+        "status": status, "location": m.location,
+        "area": {"id": area.id, "name": area.name, "code": area.code, "color": area.color} if area else None,
+        "stands_on": stands_on, "path": path,
+    }
+
+
+class MachineAssign(BaseModel):
+    area_id: Optional[int] = None          # None = kein Bereich
+    furniture_id: Optional[int] = None     # None = steht auf keinem Möbel
+
+
+@router.get("/machines")
+async def list_machines(q: str = "", area_id: Optional[int] = None, unassigned: bool = False,
+                        db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+    """Alle Maschinen mit Bereich und «steht auf» — gemeinsame Sicht für Suche, Plan und Zuordnung."""
+    stmt = _MACHINE_JOIN
+    for w in [w for w in q.split() if w]:
+        stmt = stmt.where(or_(Machine.name.ilike(f"%{w}%"), Machine.category.ilike(f"%{w}%"),
+                              Machine.manufacturer.ilike(f"%{w}%"), Machine.model.ilike(f"%{w}%"),
+                              MachineLocation.name.ilike(f"%{w}%")))
+    if area_id is not None:
+        stmt = stmt.where(Machine.area_id == area_id)
+    if unassigned:
+        stmt = stmt.where(Machine.area_id.is_(None))
+    rows = (await db.execute(stmt.order_by(Machine.name))).all()
+    return [_machine_dict(r) for r in rows]
+
+
+@router.patch("/machines/{machine_id}")
+async def assign_machine(machine_id: int, payload: MachineAssign, db: AsyncSession = Depends(get_db),
+                         current: User = Depends(require_power_manager)):
+    """Bereich wechseln und/oder festlegen, auf welchem Möbel die Maschine steht. Der Standort-Text der Maschine wird
+    mitgeführt, damit Maschinenliste, CSV-Export und Display weiter stimmen."""
+    m = await db.get(Machine, machine_id)
+    if not m:
+        raise HTTPException(404, "Maschine nicht gefunden")
+    given = payload.model_fields_set
+    old_area = await db.get(MachineLocation, m.area_id) if m.area_id else None
+    moved = False
+    if "area_id" in given:
+        new_area = await _get_area(db, payload.area_id) if payload.area_id is not None else None
+        if (new_area.id if new_area else None) != m.area_id:
+            m.area_id = new_area.id if new_area else None
+            m.location = new_area.name if new_area else None
+            moved = True
+    pl = await db.get(InvPlacement, m.id)
+    if "furniture_id" in given:
+        fid = payload.furniture_id
+        if fid is not None:
+            f = await _get_furniture(db, fid)
+            if f.number == 0:
+                raise HTTPException(400, "«Im Bereich, ohne Möbel» lässt sich nicht als Standfläche wählen")
+            if f.area_id != m.area_id:
+                raise HTTPException(409, "Das Möbel gehört zu einem anderen Bereich als die Maschine")
+        if pl is None:
+            pl = InvPlacement(machine_id=m.id)
+            db.add(pl)
+        pl.furniture_id = fid
+    elif moved and pl and pl.furniture_id:
+        f = await db.get(InvFurniture, pl.furniture_id)         # «steht auf» passt nur im selben Bereich
+        if not f or f.area_id != m.area_id:
+            pl.furniture_id = None
+    await db.commit()
+    if moved:
+        new_name = m.location or "kein Bereich"
+        await log_svc.log(db, LogType.machine_area_changed,
+                          f"Maschine {m.name}: Bereich {old_area.name if old_area else 'kein Bereich'} → {new_name}",
+                          machine_id=m.id, user_id=current.id,
+                          meta={"from": old_area.name if old_area else None, "to": m.location})
+    row = (await db.execute(_MACHINE_JOIN.where(Machine.id == m.id))).first()
+    return _machine_dict(row)
+
+
 # ── Suche & Code ─────────────────────────────────────────────────────────────
 @router.get("/search")
 async def search(q: str = Query("", max_length=100), limit: int = Query(30, ge=1, le=100),
@@ -675,6 +773,15 @@ async def search(q: str = Query("", max_length=100), limit: int = Query(30, ge=1
         results.append({"type": "furniture", "id": f.id, "name": inv.furniture_title(f),
                         "code": inv.short_code(a.code, f.number), "path": f"{a.name} › {inv.furniture_title(f)}",
                         "color": a.color})
+    # Maschinen (Name, Kategorie, Hersteller, Modell oder Bereich)
+    mconds = [or_(Machine.name.ilike(f"%{w}%"), Machine.category.ilike(f"%{w}%"), Machine.manufacturer.ilike(f"%{w}%"),
+                  Machine.model.ilike(f"%{w}%"), MachineLocation.name.ilike(f"%{w}%")) for w in words]
+    mrows = (await db.execute(_MACHINE_JOIN.where(and_(*mconds)).order_by(Machine.name).limit(10))).all()
+    for r in mrows:
+        d = _machine_dict(r)
+        results.append({"type": "machine", "id": d["id"], "name": d["name"], "category": d["category"],
+                        "path": d["path"], "area": d["area"] and d["area"]["name"], "code": None,
+                        "color": d["area"] and d["area"]["color"], "stands_on": d["stands_on"]})
     return results
 
 

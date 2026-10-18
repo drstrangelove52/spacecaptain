@@ -20,6 +20,7 @@ from app.models import (
 )
 from app.services.auth import require_admin
 from app.services.system_settings import get_system_settings
+from app.services import inventory_backup as inv_backup_svc
 from app.services.backup_service import BACKUP_DIR, _list_backup_files
 from app.services.logger import log as activity_log
 from app.config import APP_VERSION
@@ -39,6 +40,7 @@ def _iso(dt):
 async def _build_export_data(db: AsyncSession) -> dict:
     """Erstellt die Export-Datenstruktur (wird von Export-Endpoint und Auto-Backup genutzt)."""
     cfg        = await get_system_settings(db)
+    inventory_data = await inv_backup_svc.export_inventory(db)       # Lagerorte, Werkzeug, Platzierung
     users      = (await db.execute(select(User))).scalars().all()
     guests     = (await db.execute(select(Guest))).scalars().all()
     machines   = (await db.execute(select(Machine))).scalars().all()
@@ -233,6 +235,7 @@ async def _build_export_data(db: AsyncSession) -> dict:
                 "time_off":          c.time_off.strftime("%H:%M") if c.time_off else None,
             } for c in conds_by_rule.get(r.id, [])],
         } for r in auto_rules],
+        "inventory": inventory_data,
         "activity_log": [{
             "type":             l.type,
             "message":          l.message,
@@ -906,6 +909,11 @@ async def _do_import(payload: dict, db: AsyncSession, overwrite: bool = False, s
             title=t["title"], description=t.get("description"),
         ))
         stats["ntfy_topics"] += 1
+
+    # ── Inventar (Lagerorte, Werkzeug, Platzierung) ───────
+    # Neue Sektion → fehlt sie in älteren Backups, wird sie übersprungen (Kompatibilitätsregel).
+    await db.flush()
+    await inv_backup_svc.import_inventory(payload.get("inventory"), db, overwrite, stats)
 
     # ── Activity Log ──────────────────────────────────────
     existing_logs = {

@@ -612,6 +612,11 @@ async def run_migrations(engine: AsyncEngine) -> None:
             "inventory_item_moved", "inventory_items_imported",
         ])
 
+        # ── v1.52: Inventar Etappe 2 — Maschine → Bereich (area_id; wird aus dem Standort-Text befuellt,
+        # siehe services/inventory.sync_machine_areas), Platzierung inv_placements ueber create_all ──
+        await _add_column_if_missing(conn, "machines", "area_id", "INT UNSIGNED DEFAULT NULL")
+        await _extend_enum_if_needed(conn, "activity_log", "type", ["machine_area_changed"])
+
     log.info("Migrationen abgeschlossen")
 
 

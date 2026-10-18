@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MachineLocation, User, LogType
+from app.models import MachineLocation, Machine, User, LogType
 from app.schemas import MachineLocationCreate, MachineLocationOut, MachineLocationUpdate
 from app.services.auth import get_current_user, require_power_manager
 from app.services import logger as log_svc
@@ -60,11 +60,17 @@ async def update_location(
     if not loc:
         raise HTTPException(status_code=404, detail="Nicht gefunden")
     changes = payload.model_dump(exclude_unset=True)
+    old_name = loc.name
     code = changes.pop("code", None)
     if "color" in changes:
         changes["color"] = (changes["color"] or "").strip() or None
     for k, v in changes.items():
         setattr(loc, k, v)
+    if "name" in changes and changes["name"] != old_name:
+        # Umbenennen: Maschinen dieses Standorts (feste Zuordnung oder gleicher Text) ziehen mit
+        await db.execute(update(Machine)
+                         .where(or_(Machine.area_id == loc.id, func.lower(Machine.location) == old_name.lower()))
+                         .values(location=changes["name"], area_id=loc.id))
     if (code or "").strip():                     # leeres Kuerzel = unveraendert (Entfernen nur im Inventar)
         await inv_svc.set_area_code(db, loc, code)
         changes["code"] = code
