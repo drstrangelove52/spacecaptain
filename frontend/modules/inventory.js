@@ -1094,13 +1094,15 @@
   // Wert: a:<Bereich> | f:<Bereich>:<Möbel> | l:<Bereich>:<Möbel>:<Ebene>
   const furnTitle = (f) => f.name || ((KIND[f.kind] || 'Möbel').replace(/^\S+\s/, '') + ' ' + f.number);
   function placeOptions(sel) {
+    const opt = (v, text) => `<option value="${v}" ${sel === v ? 'selected' : ''}>${esc(text)}</option>`;
     return tree.map(a => {
-      const head = (a.code ? a.code + ' · ' : '') + a.name;
-      return `<option value="a:${a.id}" ${sel === 'a:' + a.id ? 'selected' : ''}>${esc(head)}</option>` +
-        a.furniture.filter(f => f.number > 0).map(f =>
-          `<option value="f:${a.id}:${f.id}" ${sel === `f:${a.id}:${f.id}` ? 'selected' : ''}>&nbsp;&nbsp;${esc(f.code)} · ${esc(furnTitle(f))}</option>` +
-          f.levels.filter(l => l.number > 0).map(l =>
-            `<option value="l:${a.id}:${f.id}:${l.id}" ${sel === `l:${a.id}:${f.id}:${l.id}` ? 'selected' : ''}>&nbsp;&nbsp;&nbsp;&nbsp;↳ ${esc(l.code)} · ${esc(l.label || 'Ebene ' + l.number)}</option>`).join('')).join('');
+      const rows = [opt('a:' + a.id, 'Ganzer Bereich' + (a.code ? ' (' + a.code + ')' : ''))];
+      a.furniture.filter(f => f.number > 0).forEach(f => {
+        rows.push(opt(`f:${a.id}:${f.id}`, `${furnTitle(f)} (${f.code})`));
+        f.levels.filter(l => l.number > 0).forEach(l =>
+          rows.push(opt(`l:${a.id}:${f.id}:${l.id}`, `${furnTitle(f)} › ${l.label || 'Ebene ' + l.number} (${l.code})`)));
+      });
+      return `<optgroup label="${esc((a.code ? a.code + ' · ' : '') + a.name)}">${rows.join('')}</optgroup>`;
     }).join('');
   }
   const placeValue = (m) => !m.area ? '' : !m.stands_on ? 'a:' + m.area.id
