@@ -3870,7 +3870,7 @@ function _renderLocList(){
   return cache.locations.map(l=>`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <input class="form-input form-input-sm" id="loc-name-${l.id}" value="${escHtml(l.name)}" placeholder="Name" style="flex:1;min-width:0">
-      ${_inventoryOn?`<input class="form-input form-input-sm" id="loc-code-${l.id}" value="${escHtml(l.code||'')}" maxlength="4" placeholder="—" title="Kürzel für den Lagerort-Code im Inventar (z.B. EL)" style="width:62px;flex-shrink:0;text-transform:uppercase;font-family:var(--mono)">
+      ${_inventoryOn?`<input class="form-input form-input-sm" id="loc-code-${l.id}" value="${escHtml(l.code||'')}" maxlength="3" placeholder="—" title="Kürzel für den Lagerort-Code im Inventar (z.B. EL)" style="width:62px;flex-shrink:0;text-transform:uppercase;font-family:var(--mono)">
       <input type="color" id="loc-color-${l.id}" value="${escHtml(l.color||'#22d3ee')}" data-orig="${escHtml(l.color||'')}" title="Farbe im Inventar" style="width:38px;height:32px;padding:1px;flex-shrink:0;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer">`:''}
       <input class="form-input form-input-sm" id="loc-order-${l.id}" type="number" value="${l.sort_order}" title="Reihenfolge" style="width:52px;flex-shrink:0">
       <button class="btn btn-ghost btn-sm" onclick="saveLocation(${l.id})" title="Speichern">💾</button>
@@ -3891,7 +3891,7 @@ async function showLocationsModal(){
       <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-bottom:8px">NEUER STANDORT</div>
       <div style="display:flex;gap:8px;align-items:center">
         <input class="form-input form-input-sm" id="new-loc-name" placeholder="Name" style="flex:1;min-width:0">
-        ${_inventoryOn?'<input class="form-input form-input-sm" id="new-loc-code" maxlength="4" placeholder="Kürzel (auto)" title="Leer lassen: es wird ein Kürzel aus dem Namen vorgeschlagen" style="width:110px;flex-shrink:0;text-transform:uppercase;font-family:var(--mono)">':''}
+        ${_inventoryOn?'<input class="form-input form-input-sm" id="new-loc-code" maxlength="3" placeholder="Kürzel (auto)" title="Leer lassen: es wird ein Kürzel aus dem Namen vorgeschlagen" style="width:110px;flex-shrink:0;text-transform:uppercase;font-family:var(--mono)">':''}
         <button class="btn btn-primary btn-sm" onclick="addLocation()" style="flex-shrink:0">+ Hinzufügen</button>
       </div>
     </div>
@@ -6316,7 +6316,7 @@ let _currency = 'CHF';
 // Inventar-Modul: Menuepunkt nur zeigen, wenn es in den Einstellungen aktiviert ist
 let _inventoryOn = false, _hashHandled = false;
 function _applyInventoryNav(on){ _inventoryOn = !!on; const el=document.getElementById('nav-inventory'); if(el) el.style.display = on ? '' : 'none'; _openInventoryFromHash(); }
-// QR-Codes zeigen auf /inventar.html?code=EL-S1 → leitet nach /labmanager.html#inventory/EL-S1 weiter
+// QR-Codes zeigen auf /inventar.html?code=ELE-M01 → leitet nach /labmanager.html#inventory/ELE-M01 weiter
 function _openInventoryFromHash(){
   if (_hashHandled || !token || !currentUser || !_inventoryOn) return;
   const m = location.hash.match(/^#inventory(?:\/(.+))?$/);

@@ -1,8 +1,9 @@
 """
-Inventar-Modul: Lagerort-Codes, Nullplaetze (S0/E0/P0) und Code-Aufloesung.
+Inventar-Modul: Lagerort-Codes, Nullplaetze (M00/E00/P00) und Code-Aufloesung.
 
-Code-Schema:  <Bereich>-S<Schrank>-E<Ebene>-P<Position>   z.B. EL-S2-E3-P4
-Die 0 bedeutet auf jeder Stufe «nicht unterteilt oder noch nicht festgelegt».
+Code-Schema:  <Bereich>-M<Möbel>-E<Ebene>-P<Position>   z.B. ELE-M02-E03-P04
+  Bereich = genau 3 Zeichen; Möbel = Schrank, Regal, Wand oder Tisch; Nummern zweistellig mit führender Null.
+Die 00 bedeutet auf jeder Stufe «nicht unterteilt oder noch nicht festgelegt».
 Siehe docs/inventar-konzept.md.
 """
 import re
@@ -16,39 +17,41 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import MachineLocation
 from app.models_inventory import InvFurniture, InvLevel, InvPosition, InvItem, FurnitureKind
 
-AREA_CODE_RE = re.compile(r"^[A-Z0-9]{2,4}$")
-_CODE_RE = re.compile(r"^([A-Z0-9]{2,4})(?:-S(\d+))?(?:-E(\d+))?(?:-P(\d+))?$")
+AREA_LEN = 3
+AREA_CODE_RE = re.compile(r"^[A-Z0-9]{3}$")
+# Eingabe tolerant (M1 = M01), Ausgabe immer zweistellig
+_CODE_RE = re.compile(r"^([A-Z0-9]{3})(?:-M(\d{1,3}))?(?:-E(\d{1,3}))?(?:-P(\d{1,3}))?$")
 
 
 # ── Codes ────────────────────────────────────────────────────────────────────
 def normalize_area_code(raw: str) -> str:
     code = (raw or "").strip().upper()
     if not AREA_CODE_RE.match(code):
-        raise HTTPException(400, "Kürzel: 2–4 Zeichen, nur Buchstaben und Ziffern (z.B. EL)")
+        raise HTTPException(400, "Kürzel: genau 3 Zeichen, nur Buchstaben und Ziffern (z.B. ELE)")
     return code
 
 
-def full_code(area_code: Optional[str], s: int, e: int, p: int) -> str:
-    return f"{area_code or '??'}-S{s}-E{e}-P{p}"
+def full_code(area_code: Optional[str], m: int, e: int, p: int) -> str:
+    return f"{area_code or '???'}-M{m:02d}-E{e:02d}-P{p:02d}"
 
 
-def short_code(area_code: Optional[str], s: int, e: int = 0, p: int = 0) -> str:
-    """Code ohne abschliessende Nullen: HO-S1-E2 statt HO-S1-E2-P0."""
-    parts = [area_code or "??", f"S{s}"]
+def short_code(area_code: Optional[str], m: int, e: int = 0, p: int = 0) -> str:
+    """Code ohne abschliessende Nullen: HOL-M01-E02 statt HOL-M01-E02-P00."""
+    parts = [area_code or "???", f"M{m:02d}"]
     if e or p:
-        parts.append(f"E{e}")
+        parts.append(f"E{e:02d}")
     if p:
-        parts.append(f"P{p}")
+        parts.append(f"P{p:02d}")
     return "-".join(parts)
 
 
 def parse_code(text: str) -> tuple[str, int, int, int]:
-    """Zerlegt einen Code. Fehlende Stufen werden 0 (z.B. «EL-S2» = EL-S2-E0-P0)."""
+    """Zerlegt einen Code. Fehlende Stufen werden 0 (z.B. «ELE-M02» = ELE-M02-E00-P00)."""
     m = _CODE_RE.match((text or "").strip().upper())
     if not m:
-        raise HTTPException(400, f"Ungültiger Code: {text!r} (Beispiel: EL-S2-E3-P4)")
-    area, s, e, p = m.groups()
-    return area, int(s or 0), int(e or 0), int(p or 0)
+        raise HTTPException(400, f"Ungültiger Code: {text!r} (Beispiel: ELE-M02-E03-P04)")
+    area, mm, e, p = m.groups()
+    return area, int(mm or 0), int(e or 0), int(p or 0)
 
 
 _PALETTE = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed",
@@ -78,18 +81,21 @@ def _ascii_upper(text: str) -> str:
 
 
 async def suggest_area_code(db: AsyncSession, name: str, exclude_id: Optional[int] = None) -> str:
-    """Schlaegt ein freies Kuerzel aus dem Namen vor:
-    Initialen bei mehreren Woertern («Precious Plastic» → PP, «3D-Druck» → 3D),
-    sonst die ersten 2, 3, 4 Buchstaben; als letzte Rueckfalloption mit Ziffer."""
+    """Schlägt ein freies 3-Zeichen-Kürzel aus dem Namen vor: bei mehreren Wörtern die Initialen,
+    aufgefüllt mit den folgenden Buchstaben des letzten Wortes («Precious Plastic» → PPL, «3D-Druck» → 3DR),
+    sonst die ersten drei Buchstaben («Elektronik» → ELE); als Rückfalloption zwei Buchstaben plus Ziffer."""
     words = [re.sub(r"[^A-Z0-9]", "", w) for w in re.split(r"[\s\-_/]+", _ascii_upper(name))]
     words = [w for w in words if w]
     flat = "".join(words)
     cands: list[str] = []
     if len(words) >= 2:
-        cands.append("".join(w[0] for w in words)[:4])
-    cands += [flat[:n] for n in (2, 3, 4)]
+        ini = "".join(w[0] for w in words)
+        cands.append((ini + words[-1][1:])[:AREA_LEN] if len(ini) < AREA_LEN else ini[:AREA_LEN])
+    cands.append(flat[:AREA_LEN])
+    if len(flat) >= 4:
+        cands.append(flat[:2] + flat[3])              # HOLZ → HOZ, falls HOL vergeben
     base = (flat[:2] or "XX").ljust(2, "X")
-    cands += [f"{base}{i}" for i in range(2, 10)]
+    cands += [f"{base}{i}" for i in range(2, 10)]      # HO2 … HO9
     q = select(MachineLocation.code).where(MachineLocation.code.is_not(None))
     if exclude_id is not None:
         q = q.where(MachineLocation.id != exclude_id)
@@ -98,6 +104,23 @@ async def suggest_area_code(db: AsyncSession, name: str, exclude_id: Optional[in
         if AREA_CODE_RE.match(c) and c not in used:
             return c
     raise HTTPException(409, "Kein freies Kürzel gefunden — bitte von Hand vergeben")
+
+
+async def upgrade_legacy_codes(db: AsyncSession) -> int:
+    """Kürzel aus früheren Fassungen (2 oder 4 Zeichen) werden auf 3 Zeichen umgestellt. Die Etiketten der
+    betroffenen Möbel gelten danach als «neu/veraltet». Idempotent; gibt die Anzahl der Umstellungen zurück."""
+    areas = (await db.execute(select(MachineLocation).where(
+        MachineLocation.code.is_not(None), func.length(MachineLocation.code) != AREA_LEN)
+        .order_by(MachineLocation.id))).scalars().all()
+    for a in areas:
+        a.code = await suggest_area_code(db, a.name, exclude_id=a.id)
+        await db.flush()
+        for f in (await db.execute(select(InvFurniture).where(
+                InvFurniture.area_id == a.id, InvFurniture.number > 0))).scalars():
+            f.label_outdated = True
+    if areas:
+        await db.commit()
+    return len(areas)
 
 
 async def set_area_code(db: AsyncSession, area: MachineLocation, raw: Optional[str]) -> bool:
@@ -151,9 +174,9 @@ async def assign_missing_codes(db: AsyncSession, dry_run: bool) -> list[dict]:
 
 # ── Nullplaetze ──────────────────────────────────────────────────────────────
 async def ensure_structure(db: AsyncSession) -> int:
-    """Legt fehlende Nullplaetze an: S0 je Bereich, E0 je Moebel, P0 je Ebene.
+    """Legt fehlende Nullplaetze an: M00 je Bereich, E00 je Moebel, P00 je Ebene.
     Idempotent, gibt die Anzahl neu angelegter Zeilen zurueck."""
-    created = 0
+    created = await upgrade_legacy_codes(db)
 
     area_ids = (await db.execute(select(MachineLocation.id))).scalars().all()
     have = set((await db.execute(
@@ -193,7 +216,9 @@ async def ensure_structure_if_needed(db: AsyncSession) -> None:
     Noetig, weil Standorte auch ueber CSV-Import oder Backup-Restore entstehen."""
     areas = await db.scalar(select(func.count(MachineLocation.id))) or 0
     zero = await db.scalar(select(func.count(InvFurniture.id)).where(InvFurniture.number == 0)) or 0
-    if zero < areas:
+    legacy = await db.scalar(select(func.count(MachineLocation.id)).where(
+        MachineLocation.code.is_not(None), func.length(MachineLocation.code) != AREA_LEN)) or 0
+    if zero < areas or legacy:
         await ensure_structure(db)
 
 
@@ -275,12 +300,12 @@ async def resolve_position(db: AsyncSession, text: str) -> InvPosition:
     furn = await db.scalar(select(InvFurniture).where(
         InvFurniture.area_id == area.id, InvFurniture.number == s))
     if not furn:
-        raise HTTPException(404, f"{area_code}-S{s} gibt es nicht")
+        raise HTTPException(404, f"{area_code}-M{s:02d} gibt es nicht")
     lvl = await db.scalar(select(InvLevel).where(
         InvLevel.furniture_id == furn.id, InvLevel.number == e))
     if not lvl:
-        raise HTTPException(404, f"{area_code}-S{s}-E{e} gibt es nicht")
-    raise HTTPException(404, f"{area_code}-S{s}-E{e}-P{p} gibt es nicht")
+        raise HTTPException(404, f"{area_code}-M{s:02d}-E{e:02d} gibt es nicht")
+    raise HTTPException(404, f"{area_code}-M{s:02d}-E{e:02d}-P{p:02d} gibt es nicht")
 
 
 async def position_info(db: AsyncSession, position_id: int) -> Optional[dict]:

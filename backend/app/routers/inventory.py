@@ -88,7 +88,7 @@ class ItemCreate(BaseModel):
     quantity: int = Field(default=1, ge=0, le=100000)
     status: InvItemStatus = InvItemStatus.aktiv
     position_id: Optional[int] = None
-    code: Optional[str] = None          # Alternative zu position_id, z.B. "EL-S2-E3"
+    code: Optional[str] = None          # Alternative zu position_id, z.B. "ELE-M02-E03"
 
 
 class ItemUpdate(BaseModel):

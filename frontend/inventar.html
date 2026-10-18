@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SpaceCaptain — Inventar</title>
 <script>
-  // Ziel der QR-Codes auf Schränken (/inventar.html?code=EL-S1). Aktuell nur für Lab Manager:
+  // Ziel der QR-Codes auf Schränken (/inventar.html?code=ELE-M01). Aktuell nur für Lab Manager:
   // weiter in den LabManager. Eine Gäste-Ansicht ohne Login folgt (docs/inventar-konzept.md, Etappe 3).
   var q = new URLSearchParams(location.search), code = q.get('code'), item = q.get('item');
   location.replace('/labmanager.html#inventory' + (item && /^\d+$/.test(item) ? '/item/' + item : (code ? '/' + encodeURIComponent(code) : '')));

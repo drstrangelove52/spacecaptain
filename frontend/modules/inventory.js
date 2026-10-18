@@ -12,6 +12,7 @@
   const PAGE = 100;
   const $ = (id) => document.getElementById('inv-' + id);
   const esc = (s) => escHtml(s);
+  const pad2 = (n) => String(n).padStart(2, '0');          // Nummern im Code sind immer zweistellig
   const isPower = () => _isPowerPlus();
 
   let root = null;
@@ -128,13 +129,13 @@
       <div id="inv-code-banner" class="inv-hint" style="display:none"></div>
       <div class="inv-toolbar">
         <div class="search-wrap"><span class="search-icon">🔍</span>
-          <input class="search-input" id="inv-f-q" placeholder="Name, Synonym oder Code (z.B. Akkuschrauber, EL-S2)…" oninput="Inv.debouncedLoadItems()"></div>
+          <input class="search-input" id="inv-f-q" placeholder="Name, Synonym oder Code (z.B. Akkuschrauber, ELE-M02)…" oninput="Inv.debouncedLoadItems()"></div>
         <select class="filter-input" id="inv-f-area" onchange="Inv.reloadItems()"></select>
         <select class="filter-input" id="inv-f-status" onchange="Inv.reloadItems()">
           <option value="">Alle Status</option><option value="aktiv">aktiv</option><option value="defekt">defekt</option><option value="ausgemustert">ausgemustert</option>
         </select>
         <span class="inv-chip" id="inv-chip-unplaced" onclick="Inv.toggleChip('unplaced')">Ohne Platz</span>
-        <span class="inv-chip" id="inv-chip-level_open" onclick="Inv.toggleChip('level_open')" title="Im Möbel, aber Ebene noch nicht festgelegt (E0)">Ebene offen</span>
+        <span class="inv-chip" id="inv-chip-level_open" onclick="Inv.toggleChip('level_open')" title="Im Möbel, aber Ebene noch nicht festgelegt (E00)">Ebene offen</span>
         <button class="btn btn-primary" onclick="Inv.openItemModal()">+ Werkzeug</button>
       </div>
       <div class="table-wrap" style="margin-bottom:0">
@@ -148,10 +149,11 @@
 
     <div class="inv-page" id="inv-page-structure">
       <div class="inv-hint">
-        <b>Code:</b> Bereich, Schrank, Ebene, Position, z.B. <code>EL-S2-E3-P4</code> = Elektronik, Schrank 2, Ebene 3, Platz 4.
+        <b>Code:</b> Bereich, Möbel, Ebene, Position, z.B. <code>ELE-M02-E03-P04</code> = Elektronik, Möbel 2, Ebene 3, Platz 4.
+        «Möbel» ist ein Schrank, Regal, eine Werkzeugwand oder ein Tisch. Das Kürzel des Bereichs hat <b>genau 3 Zeichen</b>, alle Nummern sind <b>zweistellig</b>.
         Ebenen zählen <b>von oben nach unten</b>, Positionen <b>von links nach rechts</b>.
-        Die <b>0</b> heisst «nicht unterteilt oder noch nicht festgelegt» (<code>S0</code> = im Bereich ohne Möbel,
-        <code>E0</code> = Ebene offen, <code>P0</code> = kein fester Platz). Auf Etiketten entfallen abschliessende Nullen.
+        Die <b>00</b> heisst «nicht unterteilt oder noch nicht festgelegt» (<code>M00</code> = im Bereich ohne Möbel,
+        <code>E00</code> = Ebene offen, <code>P00</code> = kein fester Platz). Auf Etiketten entfallen abschliessende Nullen.
       </div>
       <div class="inv-toolbar" id="inv-structure-tools"></div>
       <div id="inv-structure-list"></div>
@@ -212,11 +214,11 @@
       <div class="inv-hint">
         Eine Zeile pro Werkzeug: <code>Name ; Synonyme ; Code ; Menge</code> (Trennzeichen <code>;</code> oder Tab —
         Zeilen aus Excel lassen sich direkt einfügen). Synonyme, Code und Menge sind optional.
-        Der Code darf gekürzt sein: <code>EL-S2</code> = Elektronik, Schrank 2, Ebene offen. Ohne Code wird das Werkzeug
+        Der Code darf gekürzt sein: <code>ELE-M02</code> = Elektronik, Möbel 2, Ebene offen. Ohne Code wird das Werkzeug
         «ohne Platz» angelegt und kann später zugeordnet werden.
       </div>
       <textarea class="form-input" id="inv-import-text" style="min-height:220px;font-family:var(--mono);font-size:14px"
-        placeholder="Akkuschrauber ; Bohrschrauber, Schrauber ; EL-S1-E2 ; 2&#10;Seitenschneider ; Zange ; EL-S2&#10;Hammer"></textarea>
+        placeholder="Akkuschrauber ; Bohrschrauber, Schrauber ; ELE-M01-E02 ; 2&#10;Seitenschneider ; Zange ; ELE-M02&#10;Hammer"></textarea>
       <div class="inv-row" style="margin-top:10px">
         <button class="btn btn-ghost" onclick="Inv.runImport(true)">Prüfen (nichts speichern)</button>
         <button class="btn btn-primary" onclick="Inv.runImport(false)">Importieren</button>
@@ -230,7 +232,7 @@
     await loadTree();
     fillAreaSelect($('f-area'), 'Alle Bereiche');
     fillAreaSelect($('l-area'), 'Alle Bereiche');
-    // Einsprung über QR-Code / Link: #inventory/EL-S1
+    // Einsprung über QR-Code / Link: #inventory/ELE-M01
     const iid = window._invItem;
     if (iid) {                                   // QR-Code eines Werkzeug-Etiketts: «gehört nach …»
       window._invItem = null;
@@ -340,11 +342,11 @@
   // ── Lagerort-Auswahl (Bereich → Möbel → Ebene → Position) ──
   const areaById = (id) => tree.find(a => a.id == id);
   function furnLabel(f) {
-    if (f.number === 0) return 'Im Bereich, ohne Möbel (S0)';
-    return `${f.name || ((KIND[f.kind] || 'Möbel').replace(/^\S+\s/, '') + ' ' + f.number)} (S${f.number})`;
+    if (f.number === 0) return 'Im Bereich, ohne Möbel (M00)';
+    return `${f.name || ((KIND[f.kind] || 'Möbel').replace(/^\S+\s/, '') + ' ' + f.number)} (M${pad2(f.number)})`;
   }
-  const lvlLabel = (l) => l.number === 0 ? 'Ebene offen / nicht unterteilt (E0)' : `${l.label || 'Ebene ' + l.number} (E${l.number})`;
-  const posLabel = (p) => p.number === 0 ? 'kein fester Platz (P0)' : `${p.label || 'Platz ' + p.number} (P${p.number})`;
+  const lvlLabel = (l) => l.number === 0 ? 'Ebene offen / nicht unterteilt (E00)' : `${l.label || 'Ebene ' + l.number} (E${pad2(l.number)})`;
+  const posLabel = (p) => p.number === 0 ? 'kein fester Platz (P00)' : `${p.label || 'Platz ' + p.number} (P${pad2(p.number)})`;
 
   function fillLocSelects(sel) {
     const aSel = $('i-area');
@@ -378,13 +380,13 @@
   function applyCodeField() {
     const raw = $('i-code').value.trim().toUpperCase();
     if (!raw) { fillLocSelects({}); return; }
-    const m = raw.match(/^([A-Z0-9]{2,4})(?:-S(\d+))?(?:-E(\d+))?(?:-P(\d+))?$/);
+    const m = raw.match(/^([A-Z0-9]{3})(?:-M(\d{1,3}))?(?:-E(\d{1,3}))?(?:-P(\d{1,3}))?$/);
     const fail = (msg) => { showToast(esc(msg), 'error'); syncCodeField(); };
-    if (!m) return fail('Ungültiger Code (Beispiel: EL-S2-E3-P4)');
+    if (!m) return fail('Ungültiger Code (Beispiel: ELE-M02-E03-P04)');
     const a = tree.find(x => x.code === m[1]); if (!a) return fail(`Bereich «${m[1]}» nicht gefunden`);
-    const f = a.furniture.find(x => x.number === +(m[2] || 0)); if (!f) return fail(`${m[1]}-S${m[2]} gibt es nicht`);
-    const l = f.levels.find(x => x.number === +(m[3] || 0)); if (!l) return fail(`Ebene E${m[3]} gibt es nicht`);
-    const p = l.positions.find(x => x.number === +(m[4] || 0)); if (!p) return fail(`Platz P${m[4]} gibt es nicht`);
+    const f = a.furniture.find(x => x.number === +(m[2] || 0)); if (!f) return fail(`${m[1]}-M${pad2(+m[2])} gibt es nicht`);
+    const l = f.levels.find(x => x.number === +(m[3] || 0)); if (!l) return fail(`Ebene E${pad2(+m[3])} gibt es nicht`);
+    const p = l.positions.find(x => x.number === +(m[4] || 0)); if (!p) return fail(`Platz P${pad2(+m[4])} gibt es nicht`);
     fillLocSelects({ area: a.id, furn: f.id, lvl: l.id, pos: p.id });
   }
 
@@ -401,7 +403,7 @@
       </div>
       <div class="form-group"><label class="form-label">Lagerort</label>
         <div class="inv-loc-box">
-          <input class="form-input" id="inv-i-code" placeholder="Code, z.B. EL-S2-E3" onchange="Inv.applyCodeField()" style="font-family:var(--mono)">
+          <input class="form-input" id="inv-i-code" placeholder="Code, z.B. ELE-M02-E03" onchange="Inv.applyCodeField()" style="font-family:var(--mono)">
           <div class="form-row"><select class="form-input" id="inv-i-area" onchange="Inv.locAreaChanged()"></select><select class="form-input" id="inv-i-furn" onchange="Inv.locFurnChanged()"></select></div>
           <div class="form-row"><select class="form-input" id="inv-i-lvl" onchange="Inv.locLvlChanged()"></select><select class="form-input" id="inv-i-pos" onchange="Inv.syncCodeField()"></select></div>
         </div></div>
@@ -501,7 +503,7 @@
         <button class="btn btn-ghost btn-sm" onclick="Inv.addPositions(${l.id})">+ Platz</button>
         <button class="btn btn-danger btn-sm" onclick="Inv.deleteLevel(${l.id},'${esc(l.code)}')">🗑</button>` : ''}
       <div style="flex-basis:100%;padding-left:6px">${real.map(x => `
-        <span class="inv-pos" title="${esc(x.code)}">P${x.number}${x.label ? ' · ' + esc(x.label) : ''}${x.item_count ? ` <b>${x.item_count}</b>` : ''}
+        <span class="inv-pos" title="${esc(x.code)}">P${pad2(x.number)}${x.label ? ' · ' + esc(x.label) : ''}${x.item_count ? ` <b>${x.item_count}</b>` : ''}
           ${p ? `<a href="#" onclick="Inv.renamePos(${x.id});return false" title="Name">✎</a>
           <a href="#" onclick="Inv.deletePos(${x.id},'${esc(x.code)}');return false" title="Löschen" style="color:var(--danger)">✕</a>` : ''}
         </span>`).join('')}</div>
@@ -531,8 +533,8 @@
     openModal(a ? 'Bereich bearbeiten' : 'Neuer Bereich', `
       <div class="form-group"><label class="form-label">Name *</label><input class="form-input" id="inv-a-name" maxlength="100" onblur="Inv.suggestAreaCode(false)"></div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Kürzel (2–4 Zeichen)</label>
-          <div style="display:flex;gap:6px"><input class="form-input" id="inv-a-code" maxlength="4" placeholder="auto" style="font-family:var(--mono);text-transform:uppercase">
+        <div class="form-group"><label class="form-label">Kürzel (genau 3 Zeichen)</label>
+          <div style="display:flex;gap:6px"><input class="form-input" id="inv-a-code" maxlength="3" placeholder="auto" style="font-family:var(--mono);text-transform:uppercase">
           <button type="button" class="btn btn-ghost btn-sm" onclick="Inv.suggestAreaCode(true)" title="Vorschlag aus dem Namen">✨</button></div></div>
         <div class="form-group"><label class="form-label">Farbe</label><input class="form-input" id="inv-a-color" type="color" style="padding:2px;height:40px"></div>
       </div>
@@ -569,7 +571,7 @@
         <div class="form-group"><label class="form-label">Ebenen (Fächer, Schubladen)</label><input class="form-input" id="inv-f-levels" type="number" min="0" max="40" value="3"></div>
         <div class="form-group"><label class="form-label">Positionen je Ebene</label><input class="form-input" id="inv-f-positions" type="number" min="0" max="40" value="0"></div>
       </div>
-      <div class="inv-hint">Ebenen und Positionen lassen sich später ergänzen. Ohne Ebenen bleibt nur <code>E0</code> (z.B. Tischplatte).</div>`}
+      <div class="inv-hint">Ebenen und Positionen lassen sich später ergänzen. Ohne Ebenen bleibt nur <code>E00</code> (z.B. Tischplatte).</div>`}
       <div class="form-group"><label class="form-label">Bemerkung</label><textarea class="form-input" id="inv-f-note" style="min-height:60px"></textarea></div>`,
       saveFurn, 'Speichern', null, 'input', 560);
     $('f-area-sel').value = a ? a.id : (areaId || (tree.find(x => x.code) || {}).id || '');

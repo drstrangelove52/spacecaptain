@@ -52,41 +52,48 @@ die Struktur kann sauber aufgebaut werden.
 | 2 | **Zwei Objektarten, ein gemeinsamer Plan und eine gemeinsame Suche:** Maschinen bleiben in `machines`, Werkzeug/Kleingerät kommt in eine neue Tabelle |
 | 3 | `machine_locations` wird zur **Bereichs-Tabelle** erweitert (keine zweite Standortliste) |
 | 4 | Maschinen tragen **keinen aufgedruckten Lagerort-Code**, sondern Bereich + Platz auf dem Plan. Sie können den Bereich wechseln |
-| 5 | **Die 0 bedeutet «nicht unterteilt oder noch nicht festgelegt»** auf jeder Stufe (`S0`, `E0`, `P0`). Jeder Code hat dieselbe Form, es gibt keine `NULL`-Plätze |
+| 5 | **Die 0 bedeutet «nicht unterteilt oder noch nicht festgelegt»** auf jeder Stufe (`M00`, `E00`, `P00`). Jeder Code hat dieselbe Form, es gibt keine `NULL`-Plätze |
 | 6 | **Tische und Werkbänke** sind normale Möbel (`kind = tisch`), Maschinen können optional «auf» einem Möbel stehen |
 
 ## 3. Begriffe und Code-Schema
 
 ```
-<Bereich>-S<Schrank>-E<Ebene>-P<Position>      Beispiel: EL-S2-E3-P4
+<Bereich>-M<Möbel>-E<Ebene>-P<Position>      Beispiel: ELE-M02-E03-P04
 ```
 
 | Stufe | Bedeutung | Zählregel |
 |---|---|---|
-| **Bereich** | Fachgebiet (Holz, Elektronik, Laser …), 2–3 Zeichen Kürzel | frei vergeben |
-| **Schrank** (`S`) | Schrank, Regal, Werkzeugwand, Tisch oder Werkbank | pro Bereich ab 1 |
+| **Bereich** | Fachgebiet (Holz, Elektronik, Laser …); **genau 3 Zeichen** Kürzel (`ELE`, `HOL`, `LAS`) | frei vergeben, eindeutig |
+| **Möbel** (`M`) | Schrank, Regal, Werkzeugwand, Tisch oder Werkbank | pro Bereich ab 01 |
 | **Ebene** (`E`) | Fach, Schublade oder Tischplatte | **von oben nach unten** |
 | **Position** (`P`) | Platz in der Ebene (Schattenbrett-Feld, Fachteiler) | **von links nach rechts**, bei Frontansicht |
 
+- **Alle Nummern sind zweistellig mit führender Null** (`M01`, `E02`, `P03`). Beim Eingeben genügt `M1`, die Anzeige
+  ist immer zweistellig. (Frühere Fassung: `EL-S1-E2-P3` — der Buchstabe `S` für «Schrank» passte nicht für Tische
+  und Wandregale, das Kürzel hatte 2–4 Zeichen.)
+- **Kürzel mit 3 Zeichen:** Zwei Zeichen kollidieren schnell (Holz und Hobby), drei bleiben gut lesbar. Der Vorschlag
+  kommt aus dem Namen: «Elektronik» → `ELE`, «Precious Plastic» → `PPL`, «3D-Druck» → `3DR`. Kürzel aus früheren Fassungen
+  (2 oder 4 Zeichen) werden beim nächsten Aufruf des Moduls automatisch auf 3 Zeichen umgestellt; die Etiketten der
+  betroffenen Möbel gelten dann als «neu/veraltet».
 - Werkzeugwand: Ebene = Reihe, Position = Spalte.
-- **Die 0-Regel:** `0` heisst auf jeder Stufe «nicht unterteilt oder noch nicht
-  festgelegt». Echte Schränke, Ebenen und Positionen starten bei 1.
-  - `S0` = liegt im Bereich, aber in keinem Möbel (Kisten, Boden). Pro Bereich fest vorhanden.
-  - `E0` = im Möbel, Ebene unbestimmt (Regal ohne Fachböden, Tischplatte, beim Umzug «Ebene noch offen»). Entsteht automatisch mit jedem Möbel.
-  - `P0` = auf der Ebene, ohne feste Position (keine Fachteiler). Entsteht automatisch mit jeder Ebene.
-  - Beispiel: `HO-S3-E0-P0` = irgendwo auf Werkbank 3 im Holzbereich.
+- **Die 0-Regel:** `00` heisst auf jeder Stufe «nicht unterteilt oder noch nicht
+  festgelegt». Echte Möbel, Ebenen und Positionen starten bei 01.
+  - `M00` = liegt im Bereich, aber in keinem Möbel (Kisten, Boden). Pro Bereich fest vorhanden.
+  - `E00` = im Möbel, Ebene unbestimmt (Regal ohne Fachböden, Tischplatte, beim Umzug «Ebene noch offen»). Entsteht automatisch mit jedem Möbel.
+  - `P00` = auf der Ebene, ohne feste Position (keine Fachteiler). Entsteht automatisch mit jeder Ebene.
+  - Beispiel: `HOL-M03-E00-P00` = irgendwo auf Werkbank 3 im Holzbereich.
 - **Anzeige gekürzt:** Auf Etiketten und in Listen entfallen abschliessende Nullen
-  (`HO-S1-E2` statt `HO-S1-E2-P0`). Suche und QR-Ziele akzeptieren beide Schreibweisen.
+  (`HOL-M01-E02` statt `HOL-M01-E02-P00`). Suche und QR-Ziele akzeptieren beide Schreibweisen.
 - Ein Werkzeug mit **gar keinem Bereich** («noch nirgends erfasst») ist weiterhin möglich;
-  das ist etwas anderes als `S0-E0-P0`.
-- Wird ein Möbel nachträglich unterteilt, bleiben die Dinge auf `E0` und erscheinen als
+  das ist etwas anderes als `M00-E00-P00`.
+- Wird ein Möbel nachträglich unterteilt, bleiben die Dinge auf `E00` und erscheinen als
   «noch nicht zugeordnet»; man zieht sie auf die neuen Ebenen.
 - Der Code wird **immer aus der Struktur berechnet**, nie von Hand getippt.
-- **Bereich = Fachgebiet, nicht Raumzone.** Ein Elektronikschrank bleibt `EL`, auch wenn
+- **Bereich = Fachgebiet, nicht Raumzone.** Ein Elektronikschrank bleibt `ELE`, auch wenn
   er im neuen Raum woanders steht. Der Raumbezug lebt nur im Plan.
-- **Wechselt ein Schrank den Bereich**, ändert sich sein Code. Das Modul markiert ihn als
-  «Etikett veraltet» und führt ihn in der Liste «Etiketten neu drucken».
-- Die Einträge «Hilti Schrank 1/2» sind in Wahrheit Schränke und werden von Hand
+- **Wechselt ein Möbel den Bereich**, ändert sich sein Code. Das Modul markiert es als
+  «Etikett neu/veraltet» und führt es in der Liste der neu zu druckenden Etiketten.
+- Die Einträge «Hilti Schrank 1/2» sind in Wahrheit Möbel und werden von Hand
   einem Bereich zugeordnet (siehe Migration).
 
 ## 4. Datenmodell
@@ -131,7 +138,7 @@ Deshalb:
 |---|---|---|
 | `id` | PK | |
 | `area_id` | FK → `machine_locations`, `RESTRICT` | |
-| `number` | `INT` | eindeutig pro Bereich (`area_id`, `number`); **0 = «kein Möbel»**, pro Bereich genau eine Zeile `S0`, entsteht automatisch, nicht löschbar |
+| `number` | `INT` | eindeutig pro Bereich (`area_id`, `number`); **0 = «kein Möbel»**, pro Bereich genau eine Zeile `M00`, entsteht automatisch, nicht löschbar |
 | `kind` | ENUM `schrank`/`regal`/`wand`/`tisch` | nur Anzeige und Symbol (`tisch` gilt auch für Werkbänke) |
 | `name` | `VARCHAR(100)` nullable | Alltagsname («Hilti Schrank 1») |
 | `plan_x`, `plan_y`, `plan_w`, `plan_h`, `plan_rot` | `FLOAT` nullable | Platz im Plan (cm, Grad) |
@@ -141,12 +148,12 @@ Deshalb:
 ### 4.4 `inv_levels` (Ebene)
 
 `id`, `furniture_id` (FK, `CASCADE`), `number` (eindeutig pro Schrank), `label` (optional).
-`number = 0` (`E0`) wird mit jedem Möbel automatisch angelegt und ist nicht löschbar.
+`number = 0` (`E00`) wird mit jedem Möbel automatisch angelegt und ist nicht löschbar.
 
 ### 4.5 `inv_positions` (Position)
 
 `id`, `level_id` (FK, `CASCADE`), `number` (eindeutig pro Ebene), `label` (optional).
-`number = 0` (`P0`) wird mit jeder Ebene automatisch angelegt und ist nicht löschbar.
+`number = 0` (`P00`) wird mit jeder Ebene automatisch angelegt und ist nicht löschbar.
 
 ### 4.6 `inv_items` (Werkzeug und Kleingerät)
 
@@ -164,7 +171,7 @@ Deshalb:
 
 - **Genau ein Heimatplatz** pro Eintrag. Mehrere Exemplare: `quantity` oder eigene Zeile.
 - Ohne Platz (`position_id = NULL`) ist erlaubt; solche Einträge stehen in einer
-  eigenen Liste. Mit den Nullplätzen (`S0`, `E0`, `P0`) lässt sich beim Umzug schrittweise
+  eigenen Liste. Mit den Nullplätzen (`M00`, `E00`, `P00`) lässt sich beim Umzug schrittweise
   verfeinern; «Ebene noch offen» ist ein Filter.
 - Kaufdatum, Neuwert und Eigentümer sind **bewusst nicht** enthalten; sie bleiben bei
   den Maschinen. Bei Bedarf später nullable ergänzen.
@@ -209,7 +216,7 @@ Neuer Router `routers/inventory.py`, Präfix `/api/inventory`. Alle schreibenden
 mit `log_svc.log()` und `user_id`.
 
 ```
-GET    /inventory/tree                 Bereich → Schrank → Ebene → Position, mit Codes
+GET    /inventory/tree                 Bereich → Möbel → Ebene → Position, mit Codes
 GET    /inventory/search?q=            Maschinen + Werkzeug, mit Code, Ort und Plan-Ziel
 GET    /inventory/code/{code}          Inhalt eines Schranks/einer Ebene (Ziel der QR-Codes)
 GET    /inventory/plan                 Plan inkl. Bereiche, Schränke, Maschinen
@@ -225,7 +232,7 @@ GET    /guest/inventory/search?q=      Lesezugriff für angemeldete Gäste
 
 **Suche:** Treffer in Name, Synonymen, Beschreibung, Code und Bereichsname, ohne Beachtung
 von Gross-/Kleinschreibung. Ergebnis enthält `type` (`tool`/`machine`), `code` bzw.
-`area`, `path` (Klartext, z. B. «Elektronik › Schrank 2 › Ebene 3 › Platz 4») und
+`area`, `path` (Klartext, z. B. «Elektronik › Schrank 2 › Ebene 3 › Platz 4» (Möbelart und -nummer oder eigener Name)) und
 `plan_target`. Maschinen werden nicht auf Basis von `plug_id` gefiltert; im Gegensatz zu
 Display und Gast-Dashboard zählt hier der Inventargedanke.
 
@@ -243,7 +250,7 @@ Display und Gast-Dashboard zählt hier der Inventargedanke.
   - **Etikettendruck:** Gedruckt wird in einem unsichtbaren `iframe` mit eigenen Seitenregeln
     (`@page`); das Drucken anderer LabManager-Seiten bleibt unberührt.
 - **`frontend/inventar.html`** ist nur noch ein Einsprung: QR-Codes auf Schränken zeigen auf
-  `/inventar.html?code=EL-S1`, das nach `/labmanager.html#inventory/EL-S1` weiterleitet (Inhalt des
+  `/inventar.html?code=ELE-M01`, das nach `/labmanager.html#inventory/ELE-M01` weiterleitet (Inhalt des
   Schranks gefiltert). In Etappe 3 wird daraus die schlanke Gäste-Seite ohne Sidebar.
 - Bereiche der Seite:
   1. **Struktur:** Baumansicht, Schrank mit Ebenen und Positionen in einem Dialog anlegen.
@@ -252,7 +259,7 @@ Display und Gast-Dashboard zählt hier der Inventargedanke.
   4. **Etiketten und Listen:** Druckansicht pro Bereich/Schrank, QR-Codes, «Etikett veraltet».
   5. **Plan** (Etappe 4): Zeichnen, Verschieben, Suchtreffer hervorheben.
 - **Gäste:** Suchfeld in `index.html` («Wo ist …?»). QR-Codes auf Schränken führen auf
-  den Inhalt dieses Schranks (`/inventar.html?code=EL-S2` bzw. Gast-Variante).
+  den Inhalt dieses Schranks (`/inventar.html?code=ELE-M02` bzw. Gast-Variante).
 - Sprache: Du-Form, deutsche Begriffe wie bisher («Aushänge», «Push-Nachrichten»).
 
 ## 7a. Weitere Auslagerungs-Kandidaten im LabManager (nicht Teil dieses Moduls)
@@ -309,13 +316,13 @@ Standard sind **vorgeschnittene A4-Bögen** (Avery Zweckform Typenschild-Etikett
 - **Werkzeug-Etiketten** (Etikettenart «Werkzeug»): **ein Etikett pro Stück**, z.B. «Lineal 30 cm», Menge 12 →
   12 Etiketten. Es wird nur **ein** Eintrag mit Menge geführt, nicht jedes Lineal einzeln. Kopien = Menge
   (je Werkzeug anpassbar, max. 200). Auf dem Etikett stehen der **Name** (die Schrift wird so berechnet, dass
-  auch lange Namen vollständig passen) und der **Heimatort** («→ HO-S1-E2»). Sie haben kein
+  auch lange Namen vollständig passen) und der **Heimatort** («→ HOL-M01-E02»). Sie haben kein
   «gedruckt»-Kennzeichen; die Auswahl bestimmt, was gedruckt wird.
 - **QR-Ziele:**
   | Etikett | Ziel des QR-Codes | Bleibt gültig bei … |
   |---|---|---|
-  | Möbel / Ebene | `/inventar.html?code=EL-S1` → Inhalt dieses Möbels | Änderung des Codes nicht (Etikett wird «veraltet» und neu gedruckt) |
-  | Werkzeug | `/inventar.html?item=<ID>` → «**gehört nach** HO-S1-E2 · Holz › Regal 1 › Ebene 2» | Umlagern (der Link zeigt immer den aktuellen Ort) |
+  | Möbel / Ebene | `/inventar.html?code=ELE-M01` → Inhalt dieses Möbels | Änderung des Codes nicht (Etikett wird «veraltet» und neu gedruckt) |
+  | Werkzeug | `/inventar.html?item=<ID>` → «**gehört nach** HOL-M01-E02 · Holz › Regal 1 › Ebene 2» | Umlagern (der Link zeigt immer den aktuellen Ort) |
 
   Beide führen heute in den LabManager (Anmeldung nötig, `#inventory/…`). In **Etappe 3** werden sie auf eine
   schlanke Gäste-Seite ohne Anmeldung geleitet (nur Lesen). Das Werkzeug-Etikett beantwortet damit auch
@@ -397,7 +404,7 @@ Freigabe von Martin.
   Start mit `errno 150` scheitern (Vorfall `b24a3e9`). Die Integrität sichert die Anwendung:
   Bereiche mit Möbeln oder Werkzeug lassen sich nicht löschen (409).
 - **Nullplätze entstehen auch nachträglich:** Standorte, die per CSV-Import oder Backup-Restore
-  angelegt werden, bekommen `S0/E0/P0` beim nächsten Aufruf des Moduls.
+  angelegt werden, bekommen `M00/E00/P00` beim nächsten Aufruf des Moduls.
 - **Noch nicht im Backup** (Etappe 2): Kürzel, Farben, Möbel und Werkzeug sind in der
   JSON-Sicherung noch nicht enthalten. Bis dahin gilt die DB-Sicherung der Maschine.
 - **Nummern bleiben stabil:** Wird eine Ebene oder Position gelöscht, rücken die übrigen nicht
@@ -410,7 +417,7 @@ Freigabe von Martin.
 1. **Fotos:** Wo liegen die Bilder (eigenes Volume `inventory_media`)? JSON-Backup enthält
    sie nicht; es braucht ein separates Sicherungs- und Restore-Verfahren oder den
    Verzicht in Etappe 1.
-2. ~~Positionen ohne Fachteiler~~ → entschieden: 0-Regel (`P0`), siehe Abschnitt 3.
+2. ~~Positionen ohne Fachteiler~~ → entschieden: 0-Regel (`P00`), siehe Abschnitt 3.
 3. ~~Token-Teilung~~ → erledigt: Das Modul läuft im LabManager und teilt dessen Anmeldung.
 4. ~~Etiketten: Format und Grösse~~ → entschieden: vorgeschnittene A4-Bögen (Avery L6009-20), siehe 7b.
    Offen: Raster am echten Bogen bestätigen.
