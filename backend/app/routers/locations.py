@@ -7,6 +7,7 @@ from app.models import MachineLocation, User, LogType
 from app.schemas import MachineLocationCreate, MachineLocationOut, MachineLocationUpdate
 from app.services.auth import get_current_user, require_power_manager
 from app.services import logger as log_svc
+from app.services import inventory as inv_svc
 
 router = APIRouter(prefix="/locations", tags=["locations"])
 
@@ -32,6 +33,7 @@ async def create_location(
     db.add(loc)
     await db.commit()
     await db.refresh(loc)
+    await inv_svc.ensure_area_structure(db, loc.id)
     await log_svc.log(db, LogType.location_created, f"Standort {loc.name} hinzugefügt", user_id=current.id)
     return loc
 
@@ -65,6 +67,7 @@ async def delete_location(
     loc = await db.get(MachineLocation, loc_id)
     if not loc:
         raise HTTPException(status_code=404, detail="Nicht gefunden")
+    await inv_svc.remove_empty_area_structure(db, loc)   # 409, wenn noch Moebel/Werkzeug zugeordnet sind
     await log_svc.log(db, LogType.location_deleted, f"Standort {loc.name} gelöscht", user_id=current.id)
     await db.delete(loc)
     await db.commit()

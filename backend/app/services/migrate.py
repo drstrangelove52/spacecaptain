@@ -594,6 +594,24 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # bei manuell angelegten Plugs optional nachtragbar) ──
         await _add_column_if_missing(conn, "plugs", "mac", "VARCHAR(20) DEFAULT NULL")
 
+        # ── v1.51: Inventar-Modul (Lagerorte & Werkzeug) — Bereiche erweitern, Modul-Schalter.
+        # Die inv_*-Tabellen entstehen ueber Base.metadata.create_all(); S0/E0/P0 legt
+        # services/inventory.ensure_structure() nach den Migrationen an. ──
+        await _add_column_if_missing(conn, "machine_locations", "code", "VARCHAR(4) DEFAULT NULL")
+        await _add_column_if_missing(conn, "machine_locations", "color", "VARCHAR(9) DEFAULT NULL")
+        await _add_column_if_missing(conn, "machine_locations", "plan_x", "FLOAT DEFAULT NULL")
+        await _add_column_if_missing(conn, "machine_locations", "plan_y", "FLOAT DEFAULT NULL")
+        await _add_column_if_missing(conn, "machine_locations", "plan_w", "FLOAT DEFAULT NULL")
+        await _add_column_if_missing(conn, "machine_locations", "plan_h", "FLOAT DEFAULT NULL")
+        await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_machine_locations_code ON machine_locations (code)"))
+        await _add_column_if_missing(conn, "system_settings", "inventory_enabled", "TINYINT(1) NOT NULL DEFAULT 0")
+        await _extend_enum_if_needed(conn, "activity_log", "type", [
+            "inventory_area_updated",
+            "inventory_furniture_created", "inventory_furniture_updated", "inventory_furniture_deleted",
+            "inventory_item_created", "inventory_item_updated", "inventory_item_deleted",
+            "inventory_item_moved", "inventory_items_imported",
+        ])
+
     log.info("Migrationen abgeschlossen")
 
 
