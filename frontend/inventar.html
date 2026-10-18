@@ -3,15 +3,174 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SpaceCaptain — Inventar</title>
+<meta name="theme-color" content="#0d0f12">
+<title>SpaceCaptain — Wo ist …?</title>
 <script>
-  // Ziel der QR-Codes auf Schränken (/inventar.html?code=ELE-M01). Aktuell nur für Lab Manager:
-  // weiter in den LabManager. Eine Gäste-Ansicht ohne Login folgt (docs/inventar-konzept.md, Etappe 3).
-  var q = new URLSearchParams(location.search), code = q.get('code'), item = q.get('item');
-  location.replace('/labmanager.html#inventory' + (item && /^\d+$/.test(item) ? '/item/' + item : (code ? '/' + encodeURIComponent(code) : '')));
+  // Hell-/Dunkelmodus der Seiten ohne Login (zentral in den Einstellungen), synchron gegen Flackern
+  try {
+    var x = new XMLHttpRequest();
+    x.open('GET', '/api/settings/public', false);
+    x.send(null);
+    if (x.status === 200) {
+      var st = JSON.parse(x.responseText);
+      document.documentElement.setAttribute('data-theme', st.public_pages_theme === 'light' ? 'light' : 'dark');
+    }
+  } catch (e) {}
 </script>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0f12;--surface:#151820;--surface2:#1c2030;--border:#2a2f3e;
+    --accent:#f4a622;--accent2:#22d3ee;--danger:#ef4444;--success:#22c55e;
+    --text:#e2e8f0;--text-dim:#a8bece;--text-mid:#c8d8e5;
+    --mono:'Share Tech Mono',monospace;--body:'Barlow',sans-serif;--display:'Barlow Condensed',sans-serif;
+  }
+  :root[data-theme="light"] {
+    --bg:#f4f6f8;--surface:#ffffff;--surface2:#eef1f5;--border:#d8dee6;
+    --accent:#b45309;--accent2:#0e7490;--danger:#dc2626;--success:#16a34a;
+    --text:#0f172a;--text-dim:#475569;--text-mid:#334155;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100dvh;display:flex;flex-direction:column;align-items:center}
+  a{color:inherit;text-decoration:none}
+  .header{width:100%;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:12px}
+  .header img{height:34px;width:auto}
+  .header-title{font-family:var(--display);font-size:18px;font-weight:900;color:var(--accent);letter-spacing:2px;line-height:1}
+  .header-sub{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px}
+  .header-back{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--text-dim);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
+  .wrap{width:100%;max-width:560px;padding:18px 16px 40px;display:flex;flex-direction:column;gap:14px}
+  h1{font-family:var(--display);font-size:26px;font-weight:900;letter-spacing:1px}
+  .search{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0 14px}
+  .search:focus-within{border-color:var(--accent2)}
+  .search input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--text);font-family:var(--body);font-size:18px;padding:14px 0}
+  .hint{font-size:14px;color:var(--text-dim)}
+  .card{display:block;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:10px;padding:12px 14px}
+  a.card:active{background:var(--surface2)}
+  .card-name{font-size:18px;font-weight:700}
+  .card-meta{font-family:var(--mono);font-size:13px;color:var(--text-dim);margin-top:3px;word-break:break-word}
+  .code{font-family:var(--mono);color:var(--accent);letter-spacing:1px}
+  .tag{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--accent2);border:1px solid color-mix(in srgb,var(--accent2) 40%,transparent);border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+  .tag.warn{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,transparent)}
+  .section{font-family:var(--mono);font-size:12px;letter-spacing:2px;color:var(--text-dim);margin-top:6px}
+  .hero{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;position:relative;overflow:hidden}
+  .hero::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(to right,var(--accent),var(--accent2))}
+  .hero-label{font-family:var(--mono);font-size:12px;letter-spacing:3px;color:var(--text-dim)}
+  .hero-name{font-family:var(--display);font-size:32px;font-weight:900;letter-spacing:1px;margin:4px 0 10px}
+  .hero-code{font-family:var(--mono);font-size:30px;color:var(--accent);letter-spacing:2px}
+  .hero-path{font-size:17px;color:var(--text-mid);margin-top:4px}
+  .area{background:var(--surface);border:1px solid var(--border);border-radius:10px}
+  .area summary{cursor:pointer;padding:12px 14px;font-weight:700;display:flex;gap:10px;align-items:center;list-style:none}
+  .area summary::-webkit-details-marker{display:none}
+  .area[open] summary{border-bottom:1px solid var(--border)}
+  .area a{display:flex;gap:10px;padding:10px 14px;border-top:1px solid var(--border);font-size:16px}
+  .area a:first-of-type{border-top:none}
+  .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .empty{padding:24px 8px;text-align:center;color:var(--text-dim)}
+</style>
 </head>
-<body style="font-family:sans-serif;background:#0d0f12;color:#e2e8f0;padding:24px">
-  Weiter zum <a href="/labmanager.html#inventory" style="color:#22d3ee">LabManager</a> …
+<body>
+<div class="header">
+  <img src="/SpaceCaptain.svg" alt="SpaceCaptain">
+  <div><div class="header-title">SpaceCaptain</div><div class="header-sub" id="space"></div></div>
+  <a class="header-back" href="/">← Gast-App</a>
+</div>
+<div class="wrap" id="app"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const P = new URLSearchParams(location.search);
+const API = '/api/inventory-public';
+
+async function get(path) {
+  const r = await fetch(API + path);
+  if (r.status === 404) { const d = await r.json().catch(() => ({})); const e = new Error(d.detail || 'Nicht gefunden'); e.notFound = true; throw e; }
+  if (!r.ok) throw new Error('Fehler ' + r.status);
+  return r.json();
+}
+const color = (c) => c ? `style="border-left-color:${esc(c)}"` : '';
+const toolCard = (t) => `<a class="card" href="?item=${t.id}" ${color(t.place && t.place.color)}>
+    <div class="card-name">${esc(t.name)}${t.status === 'defekt' ? '<span class="tag warn">DEFEKT</span>' : ''}</div>
+    <div class="card-meta">${t.place ? `<span class="code">${esc(t.place.code)}</span> · ${esc(t.place.path)}` : 'Kein fester Platz'}</div></a>`;
+const furnCard = (f) => `<a class="card" href="?code=${encodeURIComponent(f.code)}" ${color(f.color)}>
+    <div class="card-name">${esc(f.name)}<span class="tag">MÖBEL</span></div>
+    <div class="card-meta"><span class="code">${esc(f.code)}</span> · ${esc(f.path)}</div></a>`;
+const machineCard = (m) => `<div class="card" ${color(m.color)}>
+    <div class="card-name">${esc(m.name)}<span class="tag">MASCHINE</span></div>
+    <div class="card-meta">${m.path ? esc(m.path) : 'Standort noch nicht erfasst'}</div></div>`;
+const resultCard = (r) => r.type === 'tool' ? toolCard(r) : r.type === 'furniture' ? furnCard(r) : machineCard(r);
+
+function shell(inner, withSearch) {
+  $('app').innerHTML = (withSearch ? `<div class="search"><span>🔍</span>
+    <input id="q" type="search" placeholder="Was suchst du? z.B. Akkuschrauber" autocomplete="off" value="${esc(P.get('q') || '')}"></div>` : '') + inner;
+}
+
+// ── Ansicht: ein Werkzeug («gehört nach …») ──
+async function viewItem(id) {
+  const t = await get('/items/' + encodeURIComponent(id));
+  shell(`<div class="hero">
+      <div class="hero-label">${t.status === 'defekt' ? 'DEFEKT · ' : ''}GEHÖRT NACH</div>
+      <div class="hero-name">${esc(t.name)}</div>
+      ${t.place ? `<div class="hero-code">${esc(t.place.code)}</div><div class="hero-path">${esc(t.place.path)}</div>`
+                : '<div class="hero-path">Dieses Werkzeug hat keinen festen Platz.</div>'}
+      ${t.description ? `<div class="hint" style="margin-top:12px">${esc(t.description)}</div>` : ''}
+    </div>
+    ${t.place ? `<a class="card" href="?code=${encodeURIComponent(t.place.code)}"><div class="card-name">Alles an diesem Ort ansehen ›</div></a>` : ''}
+    <a class="card" href="inventar.html"><div class="card-name">Etwas anderes suchen ›</div></a>`, false);
+}
+
+// ── Ansicht: Inhalt eines Bereichs, Möbels oder einer Ebene ──
+async function viewCode(code) {
+  const d = await get('/code/' + encodeURIComponent(code));
+  const what = {area: 'BEREICH', furniture: 'MÖBEL', level: 'EBENE', position: 'PLATZ'}[d.scope] || '';
+  shell(`<div class="hero"><div class="hero-label">${what} · ${esc(d.area)}</div>
+      <div class="hero-code">${esc(d.code)}</div></div>
+    ${d.machines.length ? `<div class="section">MASCHINEN (${d.machines.length})</div>${d.machines.map(m => machineCard(m)).join('')}` : ''}
+    <div class="section">WERKZEUG (${d.items.length})</div>
+    ${d.items.length ? d.items.map(toolCard).join('') : '<div class="empty">Hier ist kein Werkzeug erfasst.</div>'}
+    <a class="card" href="inventar.html"><div class="card-name">Etwas anderes suchen ›</div></a>`, false);
+}
+
+// ── Ansicht: Suche und Übersicht ──
+let timer = null, seq = 0;
+async function runSearch(q) {
+  const out = $('out'), my = ++seq;
+  q = q.trim();
+  history.replaceState(null, '', q ? '?q=' + encodeURIComponent(q) : location.pathname);
+  if (!q) { out.innerHTML = overviewHtml; return; }
+  try {
+    const res = await get('/search?q=' + encodeURIComponent(q));
+    if (my !== seq) return;
+    out.innerHTML = res.length ? res.map(resultCard).join('') : `<div class="empty">Nichts gefunden für «${esc(q)}».<br>Frag eine Person im Makerspace.</div>`;
+  } catch (e) { if (my === seq) out.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+let overviewHtml = '';
+async function viewSearch() {
+  const areas = await get('/overview');
+  overviewHtml = `<div class="section">ÜBERSICHT</div>` + (areas.length ? areas.map(a => `<details class="area">
+      <summary><span class="dot" style="background:${esc(a.color || 'var(--accent2)')}"></span>${esc(a.name)} <span class="code" style="margin-left:auto">${esc(a.code)}</span></summary>
+      <a href="?code=${encodeURIComponent(a.code)}"><span>Alles im Bereich ${esc(a.name)}</span></a>
+      ${a.furniture.map(f => `<a href="?code=${encodeURIComponent(f.code)}"><span class="code">${esc(f.code)}</span><span>${esc(f.title)}</span></a>`).join('')}
+    </details>`).join('') : '<div class="empty">Noch keine Bereiche erfasst.</div>');
+  shell('<div id="out"></div>', true);
+  const q = $('q');
+  q.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => runSearch(q.value), 250); });
+  runSearch(q.value);
+  if (!q.value) q.focus();
+}
+
+(async function init() {
+  fetch('/api/settings/public').then(r => r.json()).then(s => { $('space').textContent = s.space_name || ''; }).catch(() => {});
+  try {
+    const item = P.get('item'), code = P.get('code');
+    if (item && /^\d+$/.test(item)) await viewItem(item);
+    else if (code) await viewCode(code);
+    else await viewSearch();
+  } catch (e) {
+    shell(`<div class="empty">${esc(e.notFound ? e.message : 'Das hat nicht geklappt. Bitte versuche es später noch einmal.')}</div>
+      <a class="card" href="inventar.html"><div class="card-name">Zur Suche ›</div></a>`, false);
+  }
+})();
+</script>
 </body>
 </html>

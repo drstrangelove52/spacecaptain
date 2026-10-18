@@ -329,8 +329,7 @@ Standard sind **vorgeschnittene A4-Bögen** (Avery Zweckform Typenschild-Etikett
   | Möbel / Ebene | `/inventar.html?code=ELE-M01` → Inhalt dieses Möbels | Änderung des Codes nicht (Etikett wird «veraltet» und neu gedruckt) |
   | Werkzeug | `/inventar.html?item=<ID>` → «**gehört nach** HOL-M01-E02 · Holz › Regal 1 › Ebene 2» | Umlagern (der Link zeigt immer den aktuellen Ort) |
 
-  Beide führen heute in den LabManager (Anmeldung nötig, `#inventory/…`). In **Etappe 3** werden sie auf eine
-  schlanke Gäste-Seite ohne Anmeldung geleitet (nur Lesen). Das Werkzeug-Etikett beantwortet damit auch
+  Beide führen auf die schlanke Gäste-Seite `/inventar.html` ohne Anmeldung (nur Lesen, seit Etappe 3, siehe 11d). Das Werkzeug-Etikett beantwortet damit auch
   «wohin gehört das?» für Werkzeug, das im falschen Schrank gelandet ist.
 - **Druckdialog:** Papier A4, Skalierung 100 % («Tatsächliche Grösse»), Kopf-/Fusszeilen aus, Ränder keine.
   L6009 ist für Laserdrucker gedacht.
@@ -374,7 +373,7 @@ Idempotent, rein additiv, bei jedem Start:
 | **0** | Dieses Konzept abstimmen | Freigabe durch Martin |
 | **1** ✅ | Migration, Modelle, Router (Struktur, Werkzeug, Suche), `inventar.html` (Struktur, Werkzeug, Import, Etiketten) auf der **Dev-Instanz** | Nutzbar fürs Einpacken und Inventarisieren beim Umzug |
 | **2** ✅ | `machines.area_id`, Backfill, Bereichswechsel, «steht auf», Anzeige in der Suche, Backup-Sektion und Restore-Test | Maschinen und Werkzeug in einer Suche |
-| **3** | Gästesuche in `index.html`, QR-Ziele für Schränke | Neue Gäste finden Dinge selbst |
+| **3** ✅ | Gästesuche («Wo ist …?»), QR-Ziele für Möbel, Ebenen und Werkzeug, ohne Anmeldung | Neue Gäste finden Dinge selbst |
 | **4** | Bauplan (Zeichnen, Verschieben, Suchtreffer-Markierung, Maschinen platzieren) | nach dem Umzug, sobald das Layout feststeht |
 | **5** | Optional: Fotos, Foto-Inventur per KI, Lesezugriff über den MCP-Server | |
 
@@ -468,6 +467,26 @@ Ordnungsmerkmal:
   Kategorie-Filter sind ausgeblendet. Der frühere Begriff «Steht auf» heisst überall «Standort».
 - Bei ausgeschaltetem Inventar bleibt alles wie bisher: Kategorie und «Standort» (einfache Auswahl der Standortliste) sind
   im Formular sichtbar und frei wählbar; nur Möbel/Ebene gibt es dann nicht. Die zuletzt abgeleiteten Kategorien bleiben stehen.
+
+## 11d. Stand Etappe 3: Gästesicht ohne Anmeldung
+
+- **Seite:** `frontend/inventar.html` ist jetzt eine eigenständige, schlanke Seite im Stil der Gast-App (Hell/Dunkel wie
+  die übrigen Seiten ohne Login, Handy zuerst, keine Sidebar). Sie ersetzt die frühere Weiterleitung in den LabManager.
+  Drei Ansichten, alle über die URL: `?q=…` bzw. leer = Suche mit Übersicht der Bereiche und Möbel, `?code=ELE-M01` = Inhalt
+  eines Bereichs, Möbels oder einer Ebene (Werkzeug und darauf stehende Maschinen), `?item=<ID>` = «**gehört nach** …» mit
+  grossem Code und Pfad. Damit zeigen die gedruckten QR-Codes (Möbel, Ebenen, Werkzeug) ohne Änderung an den Etiketten auf
+  die neue Seite.
+- **Schnittstelle:** neuer Router `routers/inventory_public.py`, Präfix `/api/inventory-public`, **nur GET und ohne Anmeldung**:
+  `overview`, `search?q=`, `code/{code}`, `items/{id}`. Er nutzt dieselbe Such- und Auflösungslogik wie der interne Router, gibt
+  aber nur das Nötige heraus (Name, Beschreibung, Menge, Status, Standort mit Code und Pfad). **Ausgemustertes Werkzeug**
+  bleibt verborgen, defektes wird mit «DEFEKT» gezeigt. Maschinen erscheinen mit Name, Kategorie und Pfad, nie mit Status,
+  Plug oder Seriennummer. Ist das Modul ausgeschaltet, antworten alle vier Endpunkte mit 404.
+- **Gast-App (`index.html`):** Auf Anmelde- und Scan-Bildschirm erscheint «🔎 Wo ist …?» (nur bei aktivem Inventar,
+  gesteuert über `inventory_enabled` aus `/api/settings/public`).
+- **Bewusst:** Der Standort von Werkzeug und Maschinen ist keine vertrauliche Information; deshalb braucht die Seite weder
+  Gast- noch Manager-Token. Wer sie nicht öffentlich haben will, schaltet das Inventar ab oder sperrt den Pfad im Proxy.
+- **Tests:** `tests/test_inventory_public.py` (Suche ohne Login, Code-Ansicht mit Maschinen, Verbergen von Ausgemustertem,
+  404 bei ausgeschaltetem Modul).
 
 ## 12. Offene Punkte
 
