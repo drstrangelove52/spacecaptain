@@ -64,6 +64,9 @@
   #page-inventory .inv-code,.inv-code{display:inline-block;font-family:var(--mono);font-size:14px;padding:2px 8px;border-radius:4px;border:1px solid var(--cc,var(--border));background:color-mix(in srgb,var(--cc,var(--accent2)) 14%,transparent);color:var(--text);white-space:nowrap}
   #page-inventory .inv-dim{color:var(--text-dim)}#page-inventory .inv-small{font-size:14px}
   #page-inventory .inv-empty{text-align:center;color:var(--text-dim);padding:40px 10px}
+  .inv-acc{margin-top:6px;border:1px solid var(--border);border-radius:8px;padding:8px 12px}
+  .inv-acc>summary{cursor:pointer;font-weight:600;font-size:15px}
+  .inv-acc .inv-hint{font-size:14px;color:var(--text-dim)}
   #page-inventory .inv-hint{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:15px;color:var(--text-mid);margin-bottom:14px}
   #page-inventory .inv-hint b{color:var(--text)}
   #page-inventory .inv-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:12px}
@@ -449,8 +452,28 @@
           <div class="form-row"><select class="form-input" id="inv-i-area" onchange="Inv.locAreaChanged()"></select><select class="form-input" id="inv-i-furn" onchange="Inv.locFurnChanged()"></select></div>
           <div class="form-row"><select class="form-input" id="inv-i-lvl" onchange="Inv.locLvlChanged()"></select><select class="form-input" id="inv-i-pos" onchange="Inv.syncCodeField()"></select></div>
         </div></div>
-      <div class="form-group"><label class="form-label">Beschreibung</label><textarea class="form-input" id="inv-i-desc" style="min-height:70px"></textarea></div>`,
+      <div class="form-group"><label class="form-label">Beschreibung</label><textarea class="form-input" id="inv-i-desc" style="min-height:70px"></textarea></div>
+      <details class="inv-acc" id="inv-i-acc">
+        <summary>Buchhaltung / Versicherung (optional)</summary>
+        <div class="inv-hint" style="margin:8px 0">Nur für Geräte, die du <b>einzeln</b> führst (z.B. ein versicherter Akkuschrauber), nicht für Sammelmengen wie Lineale.
+          Der Neuwert gilt <b>je Stück</b>; solche Geräte erscheinen in der «📋 Inventarliste» unter Maschinen.</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="inv-i-serial" maxlength="100"></div>
+          <div class="form-group"><label class="form-label">Kaufdatum</label><input class="form-input" id="inv-i-pdate" type="date"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Neuwert je Stück (${esc(typeof _currency !== 'undefined' ? _currency : 'CHF')})</label><input class="form-input" id="inv-i-value" type="number" min="0" step="0.01"></div>
+          <div class="form-group"><label class="form-label">Eigentümer</label><select class="form-input" id="inv-i-owner"></select></div>
+        </div>
+      </details>`,
       saveItem, 'Speichern', null, 'input', 600);
+    $('i-serial').value = item ? item.serial_number || '' : '';
+    $('i-pdate').value = item ? item.purchase_date || '' : '';
+    $('i-value').value = item && item.value_new != null ? item.value_new : '';
+    $('i-owner').innerHTML = '<option value="">— kein Eigentümer —</option>' +
+      ((typeof cache !== 'undefined' && cache.owners) || []).map(o => `<option value="${o.id}">${esc(o.name)}</option>`).join('');
+    $('i-owner').value = item && item.owner_id ? item.owner_id : '';
+    if (item && (item.serial_number || item.purchase_date || item.value_new != null || item.owner_id)) $('i-acc').open = true;
     $('i-name').value = item ? item.name : '';
     $('i-syn').value = item ? item.synonyms : '';
     $('i-qty').value = item ? item.quantity : 1;
@@ -466,7 +489,10 @@
     if (!name) { showToast('Name fehlt', 'error'); return; }
     const p = currentPositionNode();
     const body = { name, synonyms: $('i-syn').value, description: $('i-desc').value,
-      quantity: parseInt($('i-qty').value || '0', 10), status: $('i-status').value };
+      quantity: parseInt($('i-qty').value || '0', 10), status: $('i-status').value,
+      serial_number: $('i-serial').value.trim() || null, purchase_date: $('i-pdate').value || null,
+      value_new: $('i-value').value === '' ? null : parseFloat($('i-value').value),
+      owner_id: $('i-owner').value ? parseInt($('i-owner').value, 10) : null };
     let r;
     if (editingItemId) {
       if (p) body.position_id = p.id; else body.unplace = true;

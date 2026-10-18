@@ -6,6 +6,7 @@ Rechte: lesen = jeder Lab-Manager, Werkzeug schreiben = jeder Lab-Manager,
 Struktur schreiben = Power-Manager/Admin. Das ganze Modul ist per Einstellung
 `inventory_enabled` ein-/ausschaltbar (aus = 404).
 """
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -14,7 +15,7 @@ from sqlalchemy import select, func, or_, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import MachineLocation, Machine, User, LogType
+from app.models import MachineLocation, Machine, MachineOwner, User, LogType
 from app.models_inventory import (InvFurniture, InvLevel, InvPosition, InvItem, InvPlacement,
                                   FurnitureKind, InvItemStatus)
 from app.services import inventory as inv
@@ -89,6 +90,10 @@ class ItemCreate(BaseModel):
     status: InvItemStatus = InvItemStatus.aktiv
     position_id: Optional[int] = None
     code: Optional[str] = None          # Alternative zu position_id, z.B. "ELE-M02-E03"
+    serial_number: Optional[str] = Field(default=None, max_length=100)
+    purchase_date: Optional[date] = None
+    value_new: Optional[float] = Field(default=None, ge=0)      # Neuwert je Stück
+    owner_id: Optional[int] = None
 
 
 class ItemUpdate(BaseModel):
@@ -100,6 +105,10 @@ class ItemUpdate(BaseModel):
     position_id: Optional[int] = None
     code: Optional[str] = None
     unplace: bool = False               # True = Platz entfernen
+    serial_number: Optional[str] = Field(default=None, max_length=100)
+    purchase_date: Optional[date] = None
+    value_new: Optional[float] = Field(default=None, ge=0)
+    owner_id: Optional[int] = None
 
 
 class ImportRow(BaseModel):
@@ -139,7 +148,15 @@ def _item_out(item: InvItem, info: Optional[dict]) -> dict:
         "id": item.id, "name": item.name, "synonyms": item.synonyms or "",
         "description": item.description or "", "quantity": item.quantity,
         "status": item.status.value, "position": info,
+        "serial_number": item.serial_number or "",
+        "purchase_date": item.purchase_date.isoformat() if item.purchase_date else None,
+        "value_new": item.value_new, "owner_id": item.owner_id,
     }
+
+
+async def _check_owner(db: AsyncSession, owner_id: Optional[int]) -> None:
+    if owner_id is not None and not await db.scalar(select(MachineOwner.id).where(MachineOwner.id == owner_id)):
+        raise HTTPException(400, "Eigentümer nicht gefunden")
 
 
 _ITEM_JOIN = (
@@ -517,7 +534,7 @@ async def delete_position(pid: int, db: AsyncSession = Depends(get_db),
 async def list_items(
     q: str = "", area_id: Optional[int] = None, furniture_id: Optional[int] = None,
     status: Optional[InvItemStatus] = None,
-    unplaced: bool = False, level_open: bool = False,
+    unplaced: bool = False, level_open: bool = False, valued: bool = False,
     limit: int = Query(200, ge=1, le=1000), offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user),
 ):
@@ -536,6 +553,8 @@ async def list_items(
         conds.append(InvItem.position_id.is_(None))
     if level_open:
         conds.append(and_(InvLevel.number == 0, InvFurniture.number > 0))
+    if valued:                                     # nur Werkzeug mit Neuwert (Inventarliste für Buchhaltung/Versicherung)
+        conds.append(InvItem.value_new.is_not(None))
 
     total_q = (select(func.count(InvItem.id))
                .outerjoin(InvPosition, InvPosition.id == InvItem.position_id)
@@ -564,9 +583,12 @@ async def get_item(item_id: int, db: AsyncSession = Depends(get_db), _: User = D
 async def create_item(payload: ItemCreate, db: AsyncSession = Depends(get_db),
                       current: User = Depends(get_current_user)):
     pos = await _resolve_target(db, payload.position_id, payload.code)
+    await _check_owner(db, payload.owner_id)
     item = InvItem(name=payload.name.strip(), synonyms=_clean(payload.synonyms),
                    description=_clean(payload.description), quantity=payload.quantity,
-                   status=payload.status, position_id=pos.id if pos else None)
+                   status=payload.status, position_id=pos.id if pos else None,
+                   serial_number=_clean(payload.serial_number), purchase_date=payload.purchase_date,
+                   value_new=payload.value_new, owner_id=payload.owner_id)
     db.add(item)
     await db.commit()
     await db.refresh(item)
@@ -595,6 +617,14 @@ async def update_item(item_id: int, payload: ItemUpdate, db: AsyncSession = Depe
         item.quantity = changes["quantity"]
     if "status" in changes and changes["status"] is not None:
         item.status = changes["status"]
+    if "serial_number" in changes:
+        item.serial_number = _clean(changes["serial_number"])
+    for field in ("purchase_date", "value_new"):               # null = Wert entfernen
+        if field in changes:
+            setattr(item, field, changes[field])
+    if "owner_id" in changes:
+        await _check_owner(db, changes["owner_id"])
+        item.owner_id = changes["owner_id"]
     moved = False
     if changes.get("unplace"):
         item.position_id = None

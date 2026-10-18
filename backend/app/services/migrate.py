@@ -620,6 +620,12 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # ── v1.53: Maschine steht auf einer bestimmten Ebene eines Moebels (z.B. Regal 1 › Ebene 3) ──
         await _add_column_if_missing(conn, "inv_placements", "level_id", "INT UNSIGNED DEFAULT NULL")
 
+        # ── v1.54: Werkzeug mit optionalen Buchhaltungsfeldern (versicherte Handgeraete, z.B. Akkuschrauber) ──
+        await _add_column_if_missing(conn, "inv_items", "serial_number", "VARCHAR(100) DEFAULT NULL")
+        await _add_column_if_missing(conn, "inv_items", "purchase_date", "DATE DEFAULT NULL")
+        await _add_column_if_missing(conn, "inv_items", "value_new", "DOUBLE DEFAULT NULL")
+        await _add_column_if_missing(conn, "inv_items", "owner_id", "INT DEFAULT NULL")
+
     log.info("Migrationen abgeschlossen")
 
 

@@ -6,11 +6,11 @@ Base.metadata.create_all() beim Start; das Modul muss dafuer vor dem Start impor
 (siehe main.py).
 """
 import enum
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 
 from sqlalchemy import (Integer, String, Boolean, DateTime, Text, Enum, ForeignKey,
-                        UniqueConstraint, Float)
+                        UniqueConstraint, Float, Date)
 from sqlalchemy.dialects.mysql import INTEGER as UINT
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -88,6 +88,11 @@ class InvItem(Base):
     quantity:    Mapped[int]           = mapped_column(Integer, default=1)
     position_id: Mapped[Optional[int]] = mapped_column(UINT(unsigned=True), ForeignKey("inv_positions.id", ondelete="SET NULL"), default=None)
     status:      Mapped[InvItemStatus] = mapped_column(Enum(InvItemStatus), default=InvItemStatus.aktiv)
+    # Optionale Buchhaltungs-/Versicherungsfelder wie bei Maschinen (Neuwert je Stueck). owner_id ohne DB-FK (Typ je Installation)
+    serial_number: Mapped[Optional[str]]   = mapped_column(String(100), default=None)
+    purchase_date: Mapped[Optional[date]]  = mapped_column(Date, default=None)
+    value_new:     Mapped[Optional[float]] = mapped_column(Float, default=None)
+    owner_id:      Mapped[Optional[int]]   = mapped_column(Integer, default=None)
     created_at:  Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
     updated_at:  Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     position:    Mapped[Optional["InvPosition"]] = relationship("InvPosition")

@@ -484,3 +484,44 @@ async def test_labels_cap_contents(client, enabled, power):
         await client.post("/api/inventory/items", headers=power, json={"name": f"Teil {i:02d}", "code": "ELE-M01-E01"})
     lvl = (await client.get("/api/inventory/labels", headers=power)).json()[0]["levels"][0]
     assert lvl["item_count"] == 20 and len(lvl["items"]) == 12
+
+
+# ── Buchhaltungsfelder bei Werkzeug (versicherte Handgeräte) ─────────────────
+async def test_item_accounting_fields_roundtrip(client, enabled, power, db):
+    from app.models import MachineLocation, MachineOwner
+    db.add_all([MachineLocation(name="Elektronik", code="ELE"), MachineOwner(name="Verein")])
+    await db.commit()
+    owner = (await db.execute(__import__("sqlalchemy").select(MachineOwner))).scalars().first()
+    r = await client.post("/api/inventory/items", headers=power, json={
+        "name": "Akkuschrauber", "code": "ELE", "serial_number": "SN-1", "purchase_date": "2025-03-01",
+        "value_new": 249.9, "owner_id": owner.id})
+    assert r.status_code == 200, r.text
+    it = r.json()
+    assert (it["serial_number"], it["purchase_date"], it["value_new"], it["owner_id"]) == ("SN-1", "2025-03-01", 249.9, owner.id)
+    await client.post("/api/inventory/items", headers=power, json={"name": "Lineal", "code": "ELE"})
+    valued = (await client.get("/api/inventory/items", params={"valued": True}, headers=power)).json()
+    assert [i["name"] for i in valued["items"]] == ["Akkuschrauber"]
+    r = await client.patch(f"/api/inventory/items/{it['id']}", headers=power, json={"value_new": None, "owner_id": None})
+    assert r.json()["value_new"] is None and r.json()["owner_id"] is None and r.json()["serial_number"] == "SN-1"
+    bad = await client.patch(f"/api/inventory/items/{it['id']}", headers=power, json={"owner_id": 9999})
+    assert bad.status_code == 400
+
+
+async def test_item_accounting_fields_survive_backup(client, enabled, power, admin, db):
+    from sqlalchemy import select, delete
+    from app.models import MachineLocation, MachineOwner
+    from app.models_inventory import InvItem
+    db.add_all([MachineLocation(name="Elektronik", code="ELE"), MachineOwner(name="Verein")])
+    await db.commit()
+    owner = (await db.execute(select(MachineOwner))).scalars().first()
+    await client.post("/api/inventory/items", headers=power, json={
+        "name": "Akkuschrauber", "code": "ELE", "value_new": 100.0, "purchase_date": "2025-03-01", "owner_id": owner.id})
+    data = (await client.get("/api/backup/export", headers=admin)).json()
+    exp = [i for i in data["inventory"]["items"] if i["name"] == "Akkuschrauber"][0]
+    assert exp["value_new"] == 100.0 and exp["owner"] == "Verein" and exp["purchase_date"] == "2025-03-01"
+    await db.execute(delete(InvItem))
+    await db.commit()
+    r = await client.post("/api/backup/import", headers=admin, json=data)
+    assert r.status_code == 200, r.text
+    back = (await client.get("/api/inventory/items", headers=power)).json()["items"][0]
+    assert back["value_new"] == 100.0 and back["purchase_date"] == "2025-03-01" and back["owner_id"] == owner.id

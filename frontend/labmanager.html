@@ -4174,7 +4174,7 @@ function _inventoryCols(){return ['Name','Kategorie','Hersteller','Modell','Seri
 
 function showInventoryExportModal(){
   openModal('Inventarliste exportieren',`
-    <p style="color:var(--text-dim);font-size:15px;margin-bottom:16px;line-height:1.5">Für Buchhaltung/Versicherung — enthält nur ${cache.machines.length} Maschinen mit Name, Kategorie, Hersteller, Modell, Seriennummer, Standort, Kaufdatum, Neuwert und Eigentümer. Keine Kommentare, Sicherheitshinweise oder Smart-Plug-Daten.</p>
+    <p style="color:var(--text-dim);font-size:15px;margin-bottom:16px;line-height:1.5">Für Buchhaltung/Versicherung — enthält ${cache.machines.length} Maschinen${_inventoryOn?' sowie Werkzeug, bei dem ein Neuwert erfasst ist':''} mit Name, Kategorie, Hersteller, Modell, Seriennummer, Standort, Kaufdatum, Neuwert und Eigentümer. Keine Kommentare, Sicherheitshinweise oder Smart-Plug-Daten.</p>
     <div style="display:flex;gap:12px">
       <button class="btn btn-primary" style="flex:1" onclick="exportInventoryCsv()">📊 Als CSV</button>
       <button class="btn btn-primary" style="flex:1" onclick="exportInventoryPdf()">🖨️ Als PDF drucken</button>
@@ -4183,9 +4183,23 @@ function showInventoryExportModal(){
   document.getElementById('modal-footer').innerHTML='<button class="btn btn-ghost" onclick="closeModal()">Schließen</button>';
 }
 
-function exportInventoryCsv(){
+// Zeilen der Inventarliste: Maschinen, bei aktivem Inventar zusätzlich Werkzeug mit Neuwert (Wert = Neuwert je Stück × Menge)
+async function _inventoryRows(){
+  const rows=cache.machines.map(m=>({name:m.name,category:m.category,manufacturer:m.manufacturer,model:m.model,serial_number:m.serial_number,location:m.location,purchase_date:m.purchase_date,value_new:m.value_new,owner_name:m.owner_name}));
+  if(_inventoryOn){
+    const r=await GET('/inventory/items?valued=true&limit=1000');
+    (r&&r.items||[]).forEach(t=>{
+      const owner=(cache.owners||[]).find(o=>o.id===t.owner_id);
+      rows.push({name:t.name+(t.quantity>1?` (×${t.quantity})`:''),category:'Werkzeug',manufacturer:'',model:'',serial_number:t.serial_number,
+        location:t.position?t.position.path:'',purchase_date:t.purchase_date,value_new:t.value_new*Math.max(t.quantity,1),owner_name:owner?owner.name:''});
+    });
+  }
+  return rows;
+}
+
+async function exportInventoryCsv(){
   const esc=v=>v==null?'':'"'+String(v).replace(/"/g,'""')+'"';
-  const rows=[...cache.machines].sort((a,b)=>a.name.localeCompare(b.name,'de')).map(m=>[
+  const rows=(await _inventoryRows()).sort((a,b)=>a.name.localeCompare(b.name,'de')).map(m=>[
     esc(m.name), esc(m.category), esc(m.manufacturer), esc(m.model),
     esc(m.serial_number), esc(m.location), esc(m.purchase_date), m.value_new??'', esc(m.owner_name)
   ].join(';'));
@@ -4198,8 +4212,8 @@ function exportInventoryCsv(){
   closeModal();
 }
 
-function exportInventoryPdf(){
-  const rows=[...cache.machines].sort((a,b)=>(a.category||'').localeCompare(b.category||'','de')||a.name.localeCompare(b.name,'de'));
+async function exportInventoryPdf(){
+  const rows=(await _inventoryRows()).sort((a,b)=>(a.category||'').localeCompare(b.category||'','de')||a.name.localeCompare(b.name,'de'));
   const totalValue=rows.reduce((sum,m)=>sum+(m.value_new||0),0);
   const win=window.open('','_blank');
   if(!win){showToast('Popup wurde blockiert — bitte Popups für diese Seite erlauben','error');return;}
@@ -4215,7 +4229,7 @@ function exportInventoryPdf(){
       td.num,th.num{text-align:right}
     </style></head><body>
     <h1>${escHtml(_spaceName)} — Inventarliste</h1>
-    <div class="meta">Erstellt am ${new Date().toLocaleDateString('de-CH')} · ${rows.length} Maschinen</div>
+    <div class="meta">Erstellt am ${new Date().toLocaleDateString('de-CH')} · ${rows.length} Einträge</div>
     <table>
       <thead><tr>${_inventoryCols().map((c,i)=>`<th${i===7?' class="num"':''}>${escHtml(c)}</th>`).join('')}</tr></thead>
       <tbody>

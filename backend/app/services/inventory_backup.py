@@ -6,12 +6,13 @@ Alle Verweise laufen ueber natuerliche Schluessel statt DB-IDs, damit ein Restor
 Kompatibilitaet (siehe CLAUDE.md «Backup-Kompatibilitaetsregeln»): fehlt die Sektion oder ein Feld, wird sie bzw. es
 uebersprungen (`.get()` mit Vorgabewert); aeltere Backups bleiben importierbar.
 """
+from datetime import date
 from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import MachineLocation, Machine
+from app.models import MachineLocation, Machine, MachineOwner
 from app.models_inventory import (InvFurniture, InvLevel, InvPosition, InvItem, InvPlacement,
                                   FurnitureKind, InvItemStatus)
 from app.services import inventory as inv
@@ -73,9 +74,12 @@ async def export_inventory(db: AsyncSession) -> dict:
         })
 
     items = (await db.execute(select(InvItem).order_by(InvItem.id))).scalars().all()
+    owner_name = {o.id: o.name for o in (await db.execute(select(MachineOwner))).scalars().all()}
     out_items = [{
         "name": i.name, "synonyms": i.synonyms, "description": i.description, "quantity": i.quantity,
         "status": i.status.value, "place": place_by_pos.get(i.position_id) if i.position_id else None,
+        "serial_number": i.serial_number, "purchase_date": i.purchase_date.isoformat() if i.purchase_date else None,
+        "value_new": i.value_new, "owner": owner_name.get(i.owner_id) if i.owner_id else None,
     } for i in items]
 
     machine_name = {m.id: m.name for m in (await db.execute(select(Machine))).scalars().all()}
@@ -194,6 +198,16 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
         if f and f.area_id in area_by_id:
             pos_ids[(area_by_id[f.area_id], f.number, l.number, p.number)] = p.id
 
+    owner_id = {o.name: o.id for o in (await db.execute(select(MachineOwner))).scalars().all()}
+
+    def accounting(it: dict) -> dict:
+        try:
+            pd = date.fromisoformat(it["purchase_date"]) if it.get("purchase_date") else None
+        except (TypeError, ValueError):
+            pd = None
+        return dict(serial_number=it.get("serial_number"), purchase_date=pd, value_new=it.get("value_new"),
+                    owner_id=owner_id.get(it.get("owner")) if it.get("owner") else None)
+
     existing = {}
     for it in (await db.execute(select(InvItem))).scalars().all():
         existing[((it.name or "").lower(), it.position_id)] = it
@@ -208,9 +222,12 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
             if overwrite:
                 row.synonyms, row.description = it.get("synonyms"), it.get("description")
                 row.quantity, row.status = it.get("quantity", 1), _status(it.get("status"))
+                for k, v in accounting(it).items():
+                    setattr(row, k, v)
             continue
         new = InvItem(name=name[:150], synonyms=it.get("synonyms"), description=it.get("description"),
-                      quantity=it.get("quantity", 1), status=_status(it.get("status")), position_id=pid)
+                      quantity=it.get("quantity", 1), status=_status(it.get("status")), position_id=pid,
+                      **accounting(it))
         db.add(new)
         existing[(name.lower(), pid)] = new
         stats["inventory_items"] += 1
