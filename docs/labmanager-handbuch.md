@@ -279,7 +279,7 @@ Inventar → **Plan** zeigt das Gebäude von oben (Masse in cm), Stockwerk für 
 1. Rechts unter **Gebäude** die Grundfläche in Metern einstellen und unter **Stockwerke** «EG», «OG» usw. anlegen.
 2. Pro Stockwerk mit **+ Raum** Räume und mit **+ Treppe** Treppen anlegen (Rechtecke; L-förmige Räume aus zwei Rechtecken). Eine Treppe wird über «Verbindet mit» einem zweiten Stockwerk zugeordnet und erscheint auf beiden.
 3. Aus **«Noch nicht auf dem Plan»** ein Element auf die Fläche ziehen (oder **＋** für die Mitte); es landet auf dem gewählten Stockwerk.
-4. **Verschieben** durch Ziehen (rastet auf 5 cm), **Grösse** am Punkt unten rechts, **genaue Werte**, **Stockwerk wechseln**, **↻ 90°** und **Vom Plan nehmen** rechts bei der Auswahl.
+4. **Verschieben** durch Ziehen (rastet auf 5 cm), **Grösse** an Ecken und Kanten, **genaue Werte**, **Stockwerk wechseln**, **↻ 90°** und **Vom Plan nehmen** rechts bei der Auswahl.
 5. Die **Suche** oben markiert Werkzeug, Möbel oder Maschinen auf dem Plan und schaltet auf das richtige Stockwerk.
 6. **Zoom:** «Einpassen» zeigt den ganzen Plan auf einen Blick, 25–300 % vergrössern oder verkleinern ihn.
 

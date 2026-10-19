@@ -526,7 +526,7 @@ Verworfen: Maschinen ebenfalls mit Platz und Etikett auszustatten. Dann wären b
   **nicht** einzeln protokolliert (Alltag), nur Raumänderungen (`inventory_plan_updated`). Öffentlich:
   `GET /api/inventory-public/plan` (nur Elemente, die schon eingezeichnet sind).
 - **Oberfläche:** `frontend/inventory-plan.js` (gemeinsamer SVG-Renderer, bearbeitbar oder nur ansehen) wird vom Inventar-Reiter
-  «🗺️ Plan» (Ziehen, Grösse am Punkt unten rechts, Zahlenfelder, ↻ 90°, «Vom Plan nehmen», Liste «Noch nicht auf dem Plan»
+  «🗺️ Plan» (Ziehen, Grösse an allen vier Ecken und Kanten, Zahlenfelder, ↻ 90°, «Vom Plan nehmen», Liste «Noch nicht auf dem Plan»
   mit Ziehen oder «＋», Zoom, Suche mit Markierung) und von `inventar.html` geladen. Manager sehen den Plan, ändern darf ihn der Power-Manager.
 - **Gäste:** `inventar.html?plan=1` (ganzer Plan), `?plan=ELE-M01` (Möbel/Ebene/Werkzeug-Ort markiert), `?plan=ELE` (Bereich),
   `?machine=<ID>`. Auf dem Handy wird der Plan 2,3× gross gezeichnet und zum Treffer gescrollt. Karten «🗺️ Auf dem Plan zeigen»

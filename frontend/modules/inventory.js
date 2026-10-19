@@ -197,7 +197,7 @@
       <div class="inv-hint">
         Der <b>Bauplan</b> zeigt das Gebäude von oben, Masse in <b>cm</b>: Stockwerke (oben wählbar), Räume und Treppen, darin Bereiche (gestrichelt), Möbel und Maschinen. Die Suche markiert, wo etwas steht.
         <span id="inv-plan-help-edit">Zum Einzeichnen ziehst du Elemente aus der Liste «Noch nicht auf dem Plan» auf die Fläche (oder «＋» tippst), verschiebst sie mit der Maus
-        und änderst die Grösse am Punkt unten rechts. Drehen und genaue Masse stehen rechts bei der Auswahl. Der Plan ist unabhängig von den Codes: nach einem Umzug zeichnest du nur neu.</span>
+        und änderst die Grösse an den Ecken und Kanten. Drehen und genaue Masse stehen rechts bei der Auswahl. Der Plan ist unabhängig von den Codes: nach einem Umzug zeichnest du nur neu.</span>
       </div>
       <div class="inv-toolbar">
         <div class="search-wrap"><span class="search-icon">🔍</span>

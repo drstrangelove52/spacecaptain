@@ -181,12 +181,21 @@
       }
     }
 
+    // Grösse ändern an allen vier Kanten (Streifen entlang der Linie) und vier Ecken; die gegenüberliegende Kante bleibt stehen
+    const CURSOR = { n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize', nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize' };
     function drawHandle() {
       const o = find(sel.kind, sel.id);
       if (!o || !o.plan || !visible(sel.kind, o)) return;
-      const p = o.plan, cx = p.x + p.w / 2, cy = p.y + p.h / 2;
+      const p = o.plan, cx = p.x + p.w / 2, cy = p.y + p.h / 2, T = 16;
       const g = svgEl('g', { transform: `rotate(${p.rot || 0} ${cx} ${cy})` }, svg);
-      svgEl('circle', { class: 'invplan-handle', cx: p.x + p.w, cy: p.y + p.h, r: 11, 'data-handle': 1 }, g);
+      const inH = Math.min(T / 2, p.h * 0.25), inW = Math.min(T / 2, p.w * 0.25);      // nach innen nur wenig, damit Verschieben möglich bleibt
+      const strip = (h, x, y, w, ht) => svgEl('rect', { x, y, width: w, height: ht, fill: 'transparent', 'data-handle': h, style: `cursor:${CURSOR[h]}` }, g);
+      strip('n', p.x, p.y - T / 2, p.w, T / 2 + inH);
+      strip('s', p.x, p.y + p.h - inH, p.w, T / 2 + inH);
+      strip('w', p.x - T / 2, p.y, T / 2 + inW, p.h);
+      strip('e', p.x + p.w - inW, p.y, T / 2 + inW, p.h);
+      const dot = (h, x, y) => svgEl('circle', { class: 'invplan-handle', cx: x, cy: y, r: 9, 'data-handle': h, style: `cursor:${CURSOR[h]}` }, g);
+      dot('nw', p.x, p.y); dot('ne', p.x + p.w, p.y); dot('sw', p.x, p.y + p.h); dot('se', p.x + p.w, p.y + p.h);
     }
 
     // ── Zeigerlogik (nur bearbeitbar) ──
@@ -213,7 +222,7 @@
         const pt = toCm(ev);
         if (ev.target.getAttribute && ev.target.getAttribute('data-handle') && sel) {
           const o = find(sel.kind, sel.id);
-          drag = { mode: 'resize', kind: sel.kind, id: sel.id, orig: Object.assign({}, o.plan) };
+          drag = { mode: 'resize', handle: ev.target.getAttribute('data-handle'), kind: sel.kind, id: sel.id, orig: Object.assign({}, o.plan) };
           svg.setPointerCapture(ev.pointerId);
           return;
         }
@@ -233,12 +242,20 @@
           drag.moved = true;
           o.plan.x = snap(drag.orig.x + dx);
           o.plan.y = snap(drag.orig.y + dy);
-        } else {                                             // Grösse: symmetrisch um die Mitte, im Eigensystem des Elements
-          const c = { x: drag.orig.x + drag.orig.w / 2, y: drag.orig.y + drag.orig.h / 2 };
-          const loc = rotateBack(pt, { plan: drag.orig });
-          const w = Math.max(10, snap(Math.abs(loc.x - c.x) * 2)), h = Math.max(10, snap(Math.abs(loc.y - c.y) * 2));
-          o.plan.w = w; o.plan.h = h;
-          o.plan.x = c.x - w / 2; o.plan.y = c.y - h / 2;
+        } else {                                             // Grösse: im Eigensystem des (gedrehten) Elements, Gegenkante bleibt stehen
+          const og = drag.orig, h = drag.handle;
+          const c0 = { x: og.x + og.w / 2, y: og.y + og.h / 2 };
+          const loc = rotateBack(pt, { plan: og });
+          let L = og.x, Tp = og.y, R = og.x + og.w, B = og.y + og.h;
+          if (h.includes('w')) L = Math.min(snap(loc.x), R - 10);
+          if (h.includes('e')) R = Math.max(snap(loc.x), L + 10);
+          if (h.includes('n')) Tp = Math.min(snap(loc.y), B - 10);
+          if (h.includes('s')) B = Math.max(snap(loc.y), Tp + 10);
+          const w = R - L, hh = B - Tp, a = (og.rot || 0) * Math.PI / 180;
+          const dx = (L + w / 2) - c0.x, dy = (Tp + hh / 2) - c0.y;      // neue Mitte, in die Welt zurückgedreht
+          const cw = { x: c0.x + dx * Math.cos(a) - dy * Math.sin(a), y: c0.y + dx * Math.sin(a) + dy * Math.cos(a) };
+          o.plan.w = w; o.plan.h = hh;
+          o.plan.x = cw.x - w / 2; o.plan.y = cw.y - hh / 2;
         }
         render();
       });
