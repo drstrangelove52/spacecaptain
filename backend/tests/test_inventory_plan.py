@@ -293,7 +293,11 @@ async def test_floor_background_upload_adjust_download_delete(client, enabled, p
     assert (await client.patch(f"/api/inventory/plan/floors/{eg}/background", headers=power, json={"opacity": 5})).status_code == 422
     plan = (await client.get("/api/inventory/plan", headers=power)).json()
     assert plan["floors"][0]["background"]["x"] == 20
-    assert "background" not in (await client.get("/api/inventory-public/plan")).json()["floors"][0]       # Gäste sehen das Bild nicht
+    pub = (await client.get("/api/inventory-public/plan")).json()["floors"][0]
+    assert pub["background"]["version"] == 1 and pub["background"]["crop"]["l"] == 0.1               # Gäste sehen den Grundriss ebenfalls
+    img = await client.get(f"/api/inventory-public/plan/floors/{eg}/background")                      # ohne Anmeldung
+    assert img.status_code == 200 and img.headers["content-type"] == "image/jpeg"
+    assert (await client.get("/api/inventory-public/plan/floors/9999/background")).status_code == 404
     assert (await client.put(f"/api/inventory/plan/floors/{eg}/background", headers=manager,
                              files={"file": ("x.jpg", _jpeg(), "image/jpeg")})).status_code == 403
     assert (await client.put(f"/api/inventory/plan/floors/{eg}/background", headers=power,

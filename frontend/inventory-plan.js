@@ -41,10 +41,10 @@
       .invplan-floor.on{border-color:var(--accent);color:var(--accent)}
       .invplan-el{cursor:default}.invplan-edit .invplan-el{cursor:move}
       .invplan-dim{opacity:.28}
-      .invplan-hit .invplan-shape{stroke:var(--accent,#f4a622)!important;stroke-width:5!important}
+      .invplan-hit .invplan-shape{stroke:var(--accent,#f4a622)!important;stroke-width:4px!important;vector-effect:non-scaling-stroke}
       .invplan-hit .invplan-pulse{animation:invplan-pulse 1.3s ease-in-out infinite}
       @keyframes invplan-pulse{0%,100%{opacity:.15}50%{opacity:.75}}
-      .invplan-sel .invplan-shape{stroke:var(--text,#fff)!important;stroke-width:4!important;stroke-dasharray:14 8}
+      .invplan-sel .invplan-shape{stroke:var(--text,#fff)!important;stroke-width:3px!important;stroke-dasharray:10 6;vector-effect:non-scaling-stroke}
       .invplan-handle{fill:var(--accent,#f4a622);stroke:#000;stroke-width:2;cursor:nwse-resize}`;
     document.head.appendChild(st);
   }
@@ -70,6 +70,7 @@
     let drag = null;                                         // { mode: 'move'|'resize', kind, id, start, orig }
     let mods = { shift: false, ctrl: false, alt: false };      // gedrückte Umschalttasten (Winkel einrasten)
     let mode = null;                                         // null | 'bg' (Grundriss verschieben) | 'pick' (Punkte wählen) | 'draw' (Raum zeichnen)
+    let span = 1500;                                         // grösste Seite der Ansicht (cm): Schriftgrössen wachsen mit
     let tmp = [], tmpMax = 0, tmpCb = null, hover = null, hoverRaw = null, defsEl = null, cropPrev = null, cropCb = null;
 
     const floors = () => data.floors && data.floors.length ? data.floors : [{ id: 0, name: '' }];
@@ -113,14 +114,24 @@
       ensureFloor();
       renderBar();
       const r = data.room, W = r.width_cm, H = r.height_cm;
-      let x0 = 0, y0 = 0, x1 = W, y1 = H;                      // Ansicht: Gebäude plus alles, was darüber hinausragt
+      // Ansicht: bei einem Grundriss-Bild dessen sichtbarer Ausschnitt, sonst das Gebäude; dazu alles, was darüber hinausragt
+      const fl0 = floors().find(f => f.id === floor) || {}, bgv = fl0.background && fl0.bgUrl ? fl0.background : null;
+      let x0 = 0, y0 = 0, x1 = W, y1 = H;
+      if (bgv) {
+        const c = bgv.crop || { l: 0, t: 0, r: 0, b: 0 }, a = (bgv.rot || 0) * Math.PI / 180, bx = bgv.x + bgv.w / 2, by = bgv.y + bgv.h / 2;
+        const corners = [[bgv.x + c.l * bgv.w, bgv.y + c.t * bgv.h], [bgv.x + bgv.w * (1 - c.r), bgv.y + c.t * bgv.h], [bgv.x + bgv.w * (1 - c.r), bgv.y + bgv.h * (1 - c.b)], [bgv.x + c.l * bgv.w, bgv.y + bgv.h * (1 - c.b)]]
+          .map(([px, py]) => [bx + (px - bx) * Math.cos(a) - (py - by) * Math.sin(a), by + (px - bx) * Math.sin(a) + (py - by) * Math.cos(a)]);
+        x0 = Math.min(...corners.map(q => q[0])); x1 = Math.max(...corners.map(q => q[0])); y0 = Math.min(...corners.map(q => q[1])); y1 = Math.max(...corners.map(q => q[1]));
+      }
       for (const kind of KIND_ORDER) for (const o of list(kind)) {
         if (!visible(kind, o)) continue;
         const p = o.plan, a = (p.rot || 0) * Math.PI / 180, cx = p.x + p.w / 2, cy = p.y + p.h / 2;
         const ex = (Math.abs(p.w * Math.cos(a)) + Math.abs(p.h * Math.sin(a))) / 2, ey = (Math.abs(p.w * Math.sin(a)) + Math.abs(p.h * Math.cos(a))) / 2;
         x0 = Math.min(x0, cx - ex); x1 = Math.max(x1, cx + ex); y0 = Math.min(y0, cy - ey); y1 = Math.max(y1, cy + ey);
       }
-      svg.setAttribute('viewBox', `${x0 - 20} ${y0 - 20} ${x1 - x0 + 40} ${y1 - y0 + 40}`);
+      span = Math.max(x1 - x0, y1 - y0);
+      const mg = Math.max(20, span * 0.015);
+      svg.setAttribute('viewBox', `${x0 - mg} ${y0 - mg} ${x1 - x0 + 2 * mg} ${y1 - y0 + 2 * mg}`);
       svg.innerHTML = '';
       const defs = svgEl('defs', {}, svg);
       defsEl = defs;
@@ -192,9 +203,10 @@
           svgEl('path', { d: 'M -1000000 -1000000 H 1000000 V 1000000 H -1000000 Z ' + d, 'clip-rule': 'evenodd' }, cp);
           const tracing = !!(curFloorOf() && curFloorOf().background && curFloorOf().bgUrl);      // Grundriss darunter: nichts verdecken
           const wall = o.wall_cm != null ? o.wall_cm : (data.room.wall_cm || 0);                  // eigene Dicke, sonst Standard; 0 = nur Umriss
-          if (wall > 0) svgEl('path', { d, fill: 'none', stroke: tracing ? 'var(--accent)' : 'var(--text)', 'stroke-opacity': tracing ? .4 : .8, 'stroke-width': wall * 2, 'stroke-linejoin': 'miter', 'clip-path': `url(#${cid})` }, g);
-          svgEl('path', { class: 'invplan-shape', d, fill: tracing ? 'var(--accent)' : 'var(--surface)', 'fill-opacity': tracing ? .07 : .35, stroke: 'none' }, g);
-          svgEl('path', { d, fill: 'none', stroke: tracing || wall > 0 ? 'var(--accent)' : 'var(--text)', 'stroke-opacity': wall > 0 && !tracing ? .9 : .85, 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke', 'pointer-events': 'none' }, g);   // feine Innenkante / Umriss
+          const quiet = tracing && !opts.editable;                                              // Gäste: der Grundriss zeigt die Wände, die Räume nur dezent
+          if (wall > 0 && !quiet) svgEl('path', { d, fill: 'none', stroke: tracing ? 'var(--accent)' : 'var(--text)', 'stroke-opacity': tracing ? .4 : .8, 'stroke-width': wall * 2, 'stroke-linejoin': 'miter', 'clip-path': `url(#${cid})` }, g);
+          svgEl('path', { class: 'invplan-shape', d, fill: tracing ? 'var(--accent)' : 'var(--surface)', 'fill-opacity': quiet ? .03 : tracing ? .07 : .35, stroke: 'none' }, g);
+          svgEl('path', { d, fill: 'none', stroke: tracing || wall > 0 ? 'var(--accent)' : 'var(--text)', 'stroke-opacity': quiet ? .45 : wall > 0 && !tracing ? .9 : .85, 'stroke-width': quiet ? 1.5 : 2, 'vector-effect': 'non-scaling-stroke', 'pointer-events': 'none' }, g);   // feine Innenkante / Umriss
         }
         if (stairs) svgEl('rect', { x: p.x, y: p.y, width: p.w, height: p.h, fill: 'url(#invplan-stairs)', style: 'color:var(--text)', 'pointer-events': 'none' }, g);
         let txt = o.name;
@@ -203,7 +215,7 @@
           const ti = floors().findIndex(f => f.id === target), ci = floors().findIndex(f => f.id === floor);
           txt += ` ${ti > ci ? '↑' : '↓'} ${(floors()[ti] || {}).name || ''}`;
         }
-        const size = Math.max(10, Math.min(22, vh * 0.5, vw * 1.7 / Math.max(txt.length, 3)));
+        const fmax = Math.max(22, span / 40), size = Math.max(fmax * 0.45, Math.min(fmax, vh * 0.5, vw * 1.7 / Math.max(txt.length, 3)));
         const tx = svgEl('text', stairs ? { x: cx, y: cy + size * 0.35, 'text-anchor': 'middle', 'font-size': size, 'font-weight': 700, fill: 'var(--text)',
           transform: `rotate(${-(p.rot || 0)} ${cx} ${cy})`, 'pointer-events': 'none', stroke: 'var(--surface)', 'stroke-width': 4, 'paint-order': 'stroke' }
           : { x: p.x + 10, y: p.y + size + 6, 'font-size': size, 'font-weight': 700, fill: 'var(--text)', 'fill-opacity': .7, 'pointer-events': 'none' }, g);
@@ -215,10 +227,10 @@
       const fill = kind === 'area' ? { 'fill-opacity': .16 } : kind === 'furniture' ? { 'fill-opacity': .5 } : { 'fill-opacity': .95 };
       svgEl('rect', Object.assign({ class: 'invplan-shape', x: p.x, y: p.y, width: p.w, height: p.h, rx: kind === 'machine' ? 8 : 2, fill: color,
         stroke: color, 'stroke-width': kind === 'area' ? 3 : 2, 'stroke-dasharray': kind === 'area' ? '10 6' : null }, fill), g);
-      if (hit) svgEl('rect', { class: 'invplan-pulse', x: p.x - 8, y: p.y - 8, width: p.w + 16, height: p.h + 16, rx: 10, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 6, 'pointer-events': 'none' }, g);
+      if (hit) svgEl('rect', { class: 'invplan-pulse', x: p.x - span / 150, y: p.y - span / 150, width: p.w + span / 75, height: p.h + span / 75, rx: 10, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 4, 'vector-effect': 'non-scaling-stroke', 'pointer-events': 'none' }, g);
       // Beschriftung bleibt waagrecht (gegen die Drehung des Elements gedreht) und passt in die sichtbare Breite
       const txt = labelFor(kind, o);
-      const size = Math.max(9, Math.min(22, vh * 0.6, vw * 1.7 / Math.max(txt.length, 3)));
+      const fmax = Math.max(22, span / 40), size = Math.max(fmax * 0.42, Math.min(fmax, vh * 0.6, vw * 1.7 / Math.max(txt.length, 3)));
       if (kind === 'area') {                                 // Bereichsname oben links, ungedreht
         const a = svgEl('text', { x: p.x + 8, y: p.y + size + 4, 'font-size': size, 'font-weight': 700, fill: 'var(--text)', 'fill-opacity': .8, 'pointer-events': 'none' }, g);
         a.textContent = txt;

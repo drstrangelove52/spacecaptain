@@ -1402,7 +1402,7 @@
 
     // 3) Grundriss-Bild
     html += acc('bg', `GRUNDRISS ZUM ABPAUSEN · ${esc(curName)}`, `
-      <div class="inv-dim inv-small" style="margin-bottom:8px">JPG oder PNG deines Plans als Vorlage. Du stellst den Massstab ein und zeichnest die Räume darüber; das Bild sieht nur, wer den Plan bearbeitet.</div>
+      <div class="inv-dim inv-small" style="margin-bottom:8px">JPG oder PNG deines Plans als Vorlage. Du stellst den Massstab ein und zeichnest die Räume darüber; das Bild sehen auch die Gäste im Plan (mit dem gewählten Ausschnitt, also ohne Bemassung am Rand).</div>
       <input type="file" id="inv-bg-file" accept="image/jpeg,image/png" style="display:none" onchange="Inv.bgUpload(this)">
       <div class="inv-row" style="gap:6px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('inv-bg-file').click()">${bgf ? 'Bild ersetzen' : 'Grundriss hochladen'}</button>

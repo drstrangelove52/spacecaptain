@@ -142,5 +142,5 @@ async def build_plan(db: AsyncSession, only_placed: bool = False) -> dict:
         out_areas = [x for x in out_areas if x["plan"]]
         out_furn = [x for x in out_furn if x["plan"]]
         out_mach = [x for x in out_mach if x["plan"]]
-    return {"room": room_dict(room), "floors": [floor_out(f, with_background=not only_placed) for f in floors],
+    return {"room": room_dict(room), "floors": [floor_out(f) for f in floors],
             "rooms": [room_out(r) for r in rooms], "areas": out_areas, "furniture": out_furn, "machines": out_mach}

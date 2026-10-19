@@ -6,12 +6,13 @@ Es gibt hier nur GET-Endpunkte; ausgemustertes Werkzeug wird nicht gezeigt. Wie 
 mit der Einstellung `inventory_enabled` ein-/ausschaltbar (aus = 404). Sie ist bewusst schlanker als `/api/inventory`.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import MachineLocation
-from app.models_inventory import InvFurniture, InvLevel, InvItem, InvItemStatus
+from app.models_inventory import InvFurniture, InvLevel, InvItem, InvItemStatus, InvFloorImage
 from app.routers import inventory as admin
 from app.services import inventory as inv
 from app.services import inventory_plan as plan_svc
@@ -105,3 +106,12 @@ async def plan(db: AsyncSession = Depends(get_db)):
     data = await plan_svc.build_plan(db, only_placed=True)
     await db.commit()
     return data
+
+
+@router.get("/plan/floors/{floor_id}/background")
+async def plan_background(floor_id: int, db: AsyncSession = Depends(get_db)):
+    """Grundriss-Bild eines Stockwerks für die Gäste-Ansicht (derselbe Plan, den sie auch sehen)."""
+    img = await db.get(InvFloorImage, floor_id)
+    if img is None:
+        raise HTTPException(404, "Kein Grundriss hinterlegt")
+    return Response(content=img.data, media_type=img.content_type, headers={"Cache-Control": "public, max-age=86400"})
