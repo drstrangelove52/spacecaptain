@@ -25,6 +25,7 @@
     return e;
   }
   const snap = (v) => Math.round(v / SNAP) * SNAP;
+  const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
   const furnitureCode = (code) => { const m = /^([A-Z0-9]{3}-M\d{2})/.exec(code || ''); return m ? m[1] : null; };
 
   function ensureStyle() {
@@ -106,7 +107,14 @@
       ensureFloor();
       renderBar();
       const r = data.room, W = r.width_cm, H = r.height_cm;
-      svg.setAttribute('viewBox', `${-20} ${-20} ${W + 40} ${H + 40}`);
+      let x0 = 0, y0 = 0, x1 = W, y1 = H;                      // Ansicht: Gebäude plus alles, was darüber hinausragt
+      for (const kind of KIND_ORDER) for (const o of list(kind)) {
+        if (!visible(kind, o)) continue;
+        const p = o.plan, a = (p.rot || 0) * Math.PI / 180, cx = p.x + p.w / 2, cy = p.y + p.h / 2;
+        const ex = (Math.abs(p.w * Math.cos(a)) + Math.abs(p.h * Math.sin(a))) / 2, ey = (Math.abs(p.w * Math.sin(a)) + Math.abs(p.h * Math.cos(a))) / 2;
+        x0 = Math.min(x0, cx - ex); x1 = Math.max(x1, cx + ex); y0 = Math.min(y0, cy - ey); y1 = Math.max(y1, cy + ey);
+      }
+      svg.setAttribute('viewBox', `${x0 - 20} ${y0 - 20} ${x1 - x0 + 40} ${y1 - y0 + 40}`);
       svg.innerHTML = '';
       const defs = svgEl('defs', {}, svg);
       const pat = svgEl('pattern', { id: 'invplan-grid', width: 100, height: 100, patternUnits: 'userSpaceOnUse' }, defs);
@@ -240,8 +248,9 @@
           const dx = pt.x - drag.start.x, dy = pt.y - drag.start.y;
           if (!drag.moved && Math.hypot(dx, dy) < 3) return;
           drag.moved = true;
-          o.plan.x = snap(drag.orig.x + dx);
-          o.plan.y = snap(drag.orig.y + dy);
+          const R = data.room;                               // der Mittelpunkt bleibt im Gebäude, sonst gehen Elemente «verloren»
+          o.plan.x = clamp(snap(drag.orig.x + dx), -o.plan.w / 2, R.width_cm - o.plan.w / 2);
+          o.plan.y = clamp(snap(drag.orig.y + dy), -o.plan.h / 2, R.height_cm - o.plan.h / 2);
         } else {                                             // Grösse: im Eigensystem des (gedrehten) Elements, Gegenkante bleibt stehen
           const og = drag.orig, h = drag.handle;
           const c0 = { x: og.x + og.w / 2, y: og.y + og.h / 2 };
@@ -310,12 +319,16 @@
         const sz = kind === 'furniture' ? (DEFAULT_SIZE.furniture[o.kind] || [100, 50]) : DEFAULT_SIZE[kind];
         const c = at || { x: data.room.width_cm / 2, y: data.room.height_cm / 2 };
         ensureFloor();
-        o.plan = { x: snap(c.x - sz[0] / 2), y: snap(c.y - sz[1] / 2), w: sz[0], h: sz[1], rot: 0, floor_id: floor };
+        o.plan = { x: clamp(snap(c.x - sz[0] / 2), -sz[0] / 2, data.room.width_cm - sz[0] / 2), y: clamp(snap(c.y - sz[1] / 2), -sz[1] / 2, data.room.height_cm - sz[1] / 2),
+          w: sz[0], h: sz[1], rot: 0, floor_id: floor };
         emit(kind, o); setSelection({ kind, id });
       },
       update(kind, id, patch) {
         const o = find(kind, id); if (!o || !o.plan) return;
         Object.assign(o.plan, patch);
+        const R = data.room;
+        o.plan.x = clamp(o.plan.x, -o.plan.w / 2, R.width_cm - o.plan.w / 2);
+        o.plan.y = clamp(o.plan.y, -o.plan.h / 2, R.height_cm - o.plan.h / 2);
         if (kind !== 'room' && patch.floor_id != null && patch.floor_id !== floor) sel = null;      // auf anderes Stockwerk verschoben
         render(); emit(kind, o);
         if (opts.onSelect) opts.onSelect(selInfo());
