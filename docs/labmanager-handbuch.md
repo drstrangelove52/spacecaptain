@@ -235,7 +235,7 @@ Jedes Gerät steht entweder als **Maschine** oder als **Werkzeug** im System, ni
 | Typisch | Einweisung, Smart Plug, Wartungsintervall | keine Einweisung, oft mehrere Stück |
 | Erfasst unter | Sidebar → Maschinen | Inventar → Werkzeug |
 
-**Versichern ist ein eigenes Thema:** Kaufdatum, Neuwert, Seriennummer und Eigentümer lassen sich bei beiden erfassen. Beim Werkzeug sind sie optional (Formularabschnitt «Buchhaltung / Versicherung»), z. B. für einen versicherten Akkuschrauber. Der Neuwert gilt **je Stück**; solche Geräte werden einzeln geführt, nicht als Sammelmenge. Die **📋 Inventarliste** (Maschinen-Seite) enthält Maschinen **und** Werkzeug mit Neuwert, mit Summe.
+**Versichern ist ein eigenes Thema:** Kaufdatum, Neuwert, Seriennummer und Eigentümer lassen sich bei beiden erfassen. Beim Werkzeug sind sie optional (Formularabschnitt «Buchhaltung / Versicherung»), z. B. für einen versicherten Akkuschrauber. Der Neuwert gilt **je Stück**; solche Geräte werden einzeln geführt, nicht als Sammelmenge. Die **📋 Inventarliste** (Maschinen-Seite) fragt im Dialog, was hinein soll: **Maschinen** und/oder **Werkzeug**, bei Werkzeug «nur mit erfasstem Neuwert» (Versicherung) oder «alle Werkzeuge» (Bestandsliste); Ausgabe als CSV oder Druck, mit Summe.
 
 **Faustregel für Handgeräte** (Akkuschrauber, Stichsäge, Lötstation): ohne Einweisung und mit festem Schrankplatz ist es Werkzeug; braucht es Einweisung, Plug oder Wartungsintervall, ist es eine Maschine.
 

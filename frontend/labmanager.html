@@ -1832,7 +1832,7 @@ sudo ./install-service.sh</pre>
                     <tr><td style="padding:6px 8px">Erfasst unter</td><td style="padding:6px 8px">Sidebar → Maschinen</td><td style="padding:6px 8px">Inventar → Werkzeug</td></tr>
                   </tbody>
                 </table>
-                <strong>Versichern ist ein eigenes Thema:</strong> Kaufdatum, Neuwert, Seriennummer und Eigentümer kannst du bei beiden erfassen. Beim Werkzeug sind sie optional («Buchhaltung / Versicherung» im Formular), z.B. für einen versicherten Akkuschrauber. Der Neuwert gilt <strong>je Stück</strong>; führe solche Geräte einzeln, nicht als Sammelmenge. Die «📋 Inventarliste» unter Maschinen enthält Maschinen <strong>und</strong> Werkzeug mit Neuwert.
+                <strong>Versichern ist ein eigenes Thema:</strong> Kaufdatum, Neuwert, Seriennummer und Eigentümer kannst du bei beiden erfassen. Beim Werkzeug sind sie optional («Buchhaltung / Versicherung» im Formular), z.B. für einen versicherten Akkuschrauber. Der Neuwert gilt <strong>je Stück</strong>; führe solche Geräte einzeln, nicht als Sammelmenge. Die «📋 Inventarliste» unter Maschinen lässt dich im Dialog wählen: <strong>Maschinen</strong> und/oder <strong>Werkzeug</strong>, bei Werkzeug «nur mit erfasstem Neuwert» (Versicherung) oder «alle» (Bestandsliste). So druckst du beide Listen getrennt oder zusammen.
                 <div class="help-tip"><strong>Faustregel für Handgeräte</strong> (Akkuschrauber, Stichsäge, Lötstation): ohne Einweisung und mit festem Schrankplatz ist es Werkzeug; braucht es Einweisung, Plug oder Wartungsintervall, ist es eine Maschine.</div>
               </div>
             </div>
@@ -4305,7 +4305,15 @@ function _inventoryCols(){return ['Name','Kategorie','Hersteller','Modell','Seri
 
 function showInventoryExportModal(){
   openModal('Inventarliste exportieren',`
-    <p style="color:var(--text-dim);font-size:15px;margin-bottom:16px;line-height:1.5">Für Buchhaltung/Versicherung — enthält ${cache.machines.length} Maschinen${_inventoryOn?' sowie Werkzeug, bei dem ein Neuwert erfasst ist':''} mit Name, Kategorie, Hersteller, Modell, Seriennummer, Standort, Kaufdatum, Neuwert und Eigentümer. Keine Kommentare, Sicherheitshinweise oder Smart-Plug-Daten.</p>
+    <p style="color:var(--text-dim);font-size:15px;margin-bottom:16px;line-height:1.5">Für Buchhaltung/Versicherung — enthält ${_inventoryOn?'die gewählten Geräte':cache.machines.length+' Maschinen'} mit Name, Kategorie, Hersteller, Modell, Seriennummer, Standort, Kaufdatum, Neuwert und Eigentümer. Keine Kommentare, Sicherheitshinweise oder Smart-Plug-Daten.</p>
+    ${_inventoryOn?`<div class="form-group" style="margin-bottom:16px">
+      <label class="form-label">Was soll in die Liste?</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:16px;margin-bottom:6px"><input type="checkbox" id="invx-machines" checked style="width:auto"> Maschinen (${cache.machines.length})</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:16px;margin-bottom:8px"><input type="checkbox" id="invx-tools" checked style="width:auto" onchange="document.getElementById('invx-scope').disabled=!this.checked"> Werkzeug</label>
+      <select class="form-input" id="invx-scope" style="margin-left:26px;width:calc(100% - 26px)">
+        <option value="valued">nur Werkzeug mit erfasstem Neuwert (Versicherung)</option>
+        <option value="all">alle Werkzeuge (Bestandsliste, auch ohne Neuwert)</option>
+      </select></div>`:''}
     <div style="display:flex;gap:12px">
       <button class="btn btn-primary" style="flex:1" onclick="exportInventoryCsv()">📊 Als CSV</button>
       <button class="btn btn-primary" style="flex:1" onclick="exportInventoryPdf()">🖨️ Als PDF drucken</button>
@@ -4314,16 +4322,27 @@ function showInventoryExportModal(){
   document.getElementById('modal-footer').innerHTML='<button class="btn btn-ghost" onclick="closeModal()">Schließen</button>';
 }
 
-// Zeilen der Inventarliste: Maschinen, bei aktivem Inventar zusätzlich Werkzeug mit Neuwert (Wert = Neuwert je Stück × Menge)
+// Zeilen der Inventarliste nach Auswahl im Dialog: Maschinen und/oder Werkzeug (nur mit Neuwert oder alle).
+// Wert eines Werkzeugs = Neuwert je Stück × Menge; ohne Neuwert bleibt er leer.
 async function _inventoryRows(){
-  const rows=cache.machines.map(m=>({name:m.name,category:m.category,manufacturer:m.manufacturer,model:m.model,serial_number:m.serial_number,location:m.location,purchase_date:m.purchase_date,value_new:m.value_new,owner_name:m.owner_name}));
-  if(_inventoryOn){
-    const r=await GET('/inventory/items?valued=true&limit=1000');
-    (r&&r.items||[]).forEach(t=>{
-      const owner=(cache.owners||[]).find(o=>o.id===t.owner_id);
-      rows.push({name:t.name+(t.quantity>1?` (×${t.quantity})`:''),category:'Werkzeug',manufacturer:'',model:'',serial_number:t.serial_number,
-        location:t.position?t.position.path:'',purchase_date:t.purchase_date,value_new:t.value_new*Math.max(t.quantity,1),owner_name:owner?owner.name:''});
-    });
+  const el=id=>document.getElementById(id);
+  const withMachines=!_inventoryOn||!el('invx-machines')||el('invx-machines').checked;
+  const withTools=_inventoryOn&&el('invx-tools')&&el('invx-tools').checked;
+  const allTools=withTools&&el('invx-scope').value==='all';
+  const rows=withMachines?cache.machines.map(m=>({name:m.name,category:m.category,manufacturer:m.manufacturer,model:m.model,serial_number:m.serial_number,location:m.location,purchase_date:m.purchase_date,value_new:m.value_new,owner_name:m.owner_name})):[];
+  if(withTools){
+    let offset=0,total=1;
+    while(offset<total){
+      const r=await GET(`/inventory/items?${allTools?'':'valued=true&'}limit=1000&offset=${offset}`);
+      if(!r)break;
+      total=r.total;offset+=1000;
+      r.items.forEach(t=>{
+        if(t.status==='ausgemustert')return;
+        const owner=(cache.owners||[]).find(o=>o.id===t.owner_id);
+        rows.push({name:t.name+(t.quantity>1?` (×${t.quantity})`:''),category:'Werkzeug',manufacturer:'',model:'',serial_number:t.serial_number,
+          location:t.position?t.position.path:'',purchase_date:t.purchase_date,value_new:t.value_new!=null?t.value_new*Math.max(t.quantity,1):null,owner_name:owner?owner.name:''});
+      });
+    }
   }
   return rows;
 }

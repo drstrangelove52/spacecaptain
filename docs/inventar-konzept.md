@@ -499,7 +499,7 @@ mit festem Schrankplatz bleibt Werkzeug.
 Dafür tragen Werkzeuge dieselben **optionalen Buchhaltungsfelder** wie Maschinen (Migration v1.54, `inv_items`):
 `serial_number`, `purchase_date`, `value_new` (Neuwert **je Stück**), `owner_id` (→ `machine_owners`, ohne DB-FK, wie alle
 Verweise im Modul). API: `ItemCreate`/`ItemUpdate`, Filter `GET /inventory/items?valued=true` (nur mit Neuwert). Die
-**Inventarliste** (Maschinen-Seite, CSV und Druck) enthält Maschinen und Werkzeug mit Neuwert (Wert = Neuwert × Menge, Kategorie
+**Inventarliste** (Maschinen-Seite, CSV und Druck; im Dialog wählbar: Maschinen ja/nein, Werkzeug ja/nein, bei Werkzeug «nur mit Neuwert» oder «alle», ausgemustertes nie) enthält Maschinen und Werkzeug (Wert = Neuwert × Menge, Kategorie
 «Werkzeug»). Im Backup stehen die Felder je Werkzeug (`owner` als Name, `purchase_date` ISO); ältere Backups ohne die Felder
 bleiben importierbar. Auf der öffentlichen Gäste-Seite sind sie nie sichtbar.
 
