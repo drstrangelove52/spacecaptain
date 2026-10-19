@@ -85,7 +85,8 @@ async def by_code(code: str, db: AsyncSession = Depends(get_db)):
                   or (res["scope"] == "furniture" and so and so["code"] == res["code"])
                   or (res["scope"] == "level" and lvl_code == res["code"]))
             if ok:
-                machines.append({"id": d["id"], "name": d["name"], "path": d["path"], "category": d["category"]})
+                machines.append({"id": d["id"], "name": d["name"], "path": d["path"], "category": d["category"],
+                                 "code": (lvl_code or (so and so["code"])) or None})
     return {"code": res["code"], "scope": res["scope"], "area": res["area"], "color": res["color"],
             "items": [_guest_item(i) for i in res["items"] if _visible(i)], "machines": machines}
 

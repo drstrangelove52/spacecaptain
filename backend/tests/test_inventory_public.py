@@ -32,6 +32,7 @@ async def test_public_code_view_lists_tools_and_machines(client, enabled, power,
     r = (await client.get("/api/inventory-public/code/LAS-M01")).json()
     assert r["scope"] == "furniture" and [i["name"] for i in r["items"]] == ["Laserbrille", "Spiegel"]
     assert [m["name"] for m in r["machines"]] == ["Lasercutter"]
+    assert r["machines"][0]["code"] == "LAS-M01" and r["machines"][0]["id"]      # für den Plan-Link (Möbel markieren)
     lvl = (await client.get("/api/inventory-public/code/LAS-M01-E02")).json()
     assert [i["name"] for i in lvl["items"]] == ["Spiegel"] and lvl["machines"] == []
     assert (await client.get("/api/inventory-public/code/LAS")).json()["machines"][0]["name"] == "Lasercutter"
