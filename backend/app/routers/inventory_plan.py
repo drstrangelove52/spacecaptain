@@ -4,17 +4,20 @@ Inventar-Modul, Etappe 4: Bauplan-Endpunkte (Teil von /api/inventory, gleiche Fr
 Lesen: jeder Lab Manager. Zeichnen, Verschieben, Raum aendern: Power-Manager/Admin.
 Verschieben ist Alltag und wird nicht einzeln protokolliert; nur Aenderungen am Raum stehen im Aktivitaetslog.
 """
+import asyncio
+import io
 import json
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import MachineLocation, Machine, User, LogType
 from sqlalchemy import select, func, update, delete
-from app.models_inventory import InvFurniture, InvPlacement, InvFloor, InvRoom
+from app.models_inventory import InvFurniture, InvPlacement, InvFloor, InvRoom, InvFloorImage
 from app.routers.inventory import require_inventory_enabled
 from app.services import inventory_plan as plan_svc
 from app.services import logger as log_svc
@@ -28,6 +31,15 @@ class RoomUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=100)
     width_cm: Optional[float] = Field(default=None, ge=100, le=100000)
     height_cm: Optional[float] = Field(default=None, ge=100, le=100000)
+    wall_cm: Optional[float] = Field(default=None, ge=2, le=100)
+
+
+class BackgroundUpdate(BaseModel):
+    x: Optional[float] = Field(default=None, ge=-100000, le=100000)
+    y: Optional[float] = Field(default=None, ge=-100000, le=100000)
+    w: Optional[float] = Field(default=None, ge=100, le=100000)
+    h: Optional[float] = Field(default=None, ge=100, le=100000)
+    opacity: Optional[float] = Field(default=None, ge=0.05, le=1)
 
 
 class RectUpdate(BaseModel):
@@ -110,9 +122,96 @@ async def delete_floor(floor_id: int, db: AsyncSession = Depends(get_db), curren
             model.plan_floor_id == floor_id, model.plan_x.is_not(None))) or 0)
     if used:
         raise HTTPException(409, "Das Stockwerk ist nicht leer: erst Räume und Elemente entfernen oder verschieben")
+    await db.execute(delete(InvFloorImage).where(InvFloorImage.floor_id == floor_id))
     await db.delete(f)
     await db.commit()
     await log_svc.log(db, LogType.inventory_plan_updated, f"Plan: Stockwerk «{f.name}» gelöscht", user_id=current.id)
+    return {"ok": True}
+
+
+# ── Hintergrund-Grundriss (Bild zum Abpausen) ──
+MAX_UPLOAD = 12 * 1024 * 1024
+MAX_SIDE = 2400
+
+
+def _prepare_image(raw: bytes) -> tuple:
+    """Prüft das Bild, verkleinert es auf höchstens 2400 px und speichert es als JPEG. Gibt (Bytes, Breite, Höhe) zurück."""
+    from PIL import Image, ImageOps
+    try:
+        img = Image.open(io.BytesIO(raw))
+        img.load()
+    except Exception:
+        raise HTTPException(400, "Das ist kein lesbares Bild (JPG oder PNG)")
+    if img.format not in ("JPEG", "PNG"):
+        raise HTTPException(400, "Nur JPG oder PNG")
+    img = ImageOps.exif_transpose(img).convert("RGB")
+    img.thumbnail((MAX_SIDE, MAX_SIDE))
+    out = io.BytesIO()
+    img.save(out, "JPEG", quality=85, optimize=True)
+    return out.getvalue(), img.width, img.height
+
+
+async def _floor_or_404(db: AsyncSession, floor_id: int) -> InvFloor:
+    f = await db.get(InvFloor, floor_id)
+    if not f:
+        raise HTTPException(404, "Stockwerk nicht gefunden")
+    return f
+
+
+@router.put("/floors/{floor_id}/background")
+async def upload_background(floor_id: int, file: UploadFile = File(...), db: AsyncSession = Depends(get_db),
+                            current: User = Depends(require_power_manager)):
+    f = await _floor_or_404(db, floor_id)
+    raw = await file.read(MAX_UPLOAD + 1)
+    if len(raw) > MAX_UPLOAD:
+        raise HTTPException(413, "Das Bild ist zu gross (höchstens 12 MB)")
+    data, w, h = await asyncio.to_thread(_prepare_image, raw)
+    img = await db.get(InvFloorImage, floor_id)
+    if img is None:
+        db.add(InvFloorImage(floor_id=floor_id, data=data, content_type="image/jpeg"))
+    else:
+        img.data, img.content_type = data, "image/jpeg"
+    room = await plan_svc.get_room(db)
+    if not f.bg_w:                                           # erste Platzierung: so breit wie das Gebäude, oben links
+        f.bg_x, f.bg_y, f.bg_w = 0.0, 0.0, float(room.width_cm)
+        f.bg_h = f.bg_w * h / w
+    else:                                                    # ersetzen: Breite behalten, Seitenverhältnis des neuen Bildes
+        f.bg_h = f.bg_w * h / w
+    f.bg_version = (f.bg_version or 0) + 1
+    await db.commit()
+    await log_svc.log(db, LogType.inventory_plan_updated, f"Plan: Grundriss für «{f.name}» hochgeladen ({len(data) // 1024} KB)", user_id=current.id)
+    return plan_svc.floor_out(f)
+
+
+@router.get("/floors/{floor_id}/background")
+async def get_background(floor_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+    img = await db.get(InvFloorImage, floor_id)
+    if img is None:
+        raise HTTPException(404, "Kein Grundriss hinterlegt")
+    return Response(content=img.data, media_type=img.content_type, headers={"Cache-Control": "private, max-age=3600"})
+
+
+@router.patch("/floors/{floor_id}/background")
+async def update_background(floor_id: int, payload: BackgroundUpdate, db: AsyncSession = Depends(get_db),
+                            _: User = Depends(require_power_manager)):
+    f = await _floor_or_404(db, floor_id)
+    if not f.bg_version:
+        raise HTTPException(404, "Kein Grundriss hinterlegt")
+    ch = payload.model_dump(exclude_unset=True)
+    for src, dst in (("x", "bg_x"), ("y", "bg_y"), ("w", "bg_w"), ("h", "bg_h"), ("opacity", "bg_opacity")):
+        if ch.get(src) is not None:
+            setattr(f, dst, ch[src])
+    await db.commit()
+    return plan_svc.floor_out(f)
+
+
+@router.delete("/floors/{floor_id}/background")
+async def delete_background(floor_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(require_power_manager)):
+    f = await _floor_or_404(db, floor_id)
+    await db.execute(delete(InvFloorImage).where(InvFloorImage.floor_id == floor_id))
+    f.bg_x = f.bg_y = f.bg_w = f.bg_h = None
+    f.bg_version = 0
+    await db.commit()
     return {"ok": True}
 
 
@@ -213,6 +312,7 @@ async def reset_plan(db: AsyncSession = Depends(get_db), current: User = Depends
     Das Gebäude (Name, Grundfläche), Codes, Standorte (Möbel/Ebene) und Zuordnungen bleiben unberührt."""
     n_rooms = await db.scalar(select(func.count(InvRoom.id))) or 0
     await db.execute(delete(InvRoom))
+    await db.execute(delete(InvFloorImage))
     await db.execute(delete(InvFloor))
     cleared = {"plan_x": None, "plan_y": None, "plan_w": None, "plan_h": None, "plan_floor_id": None}
     await db.execute(update(MachineLocation).values(**cleared))

@@ -639,6 +639,13 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # ── v1.58: Tueren spiegeln (flip: Bit 1 = Anschlag, Bit 2 = Aufschlagseite) ──
         await _add_column_if_missing(conn, "inv_rooms", "flip", "INT NOT NULL DEFAULT 0")
 
+        # ── v1.59: Hintergrund-Grundriss je Stockwerk (Bild in inv_floor_images via create_all) und Wanddicke ──
+        for col, typ in (("bg_x", "DOUBLE DEFAULT NULL"), ("bg_y", "DOUBLE DEFAULT NULL"), ("bg_w", "DOUBLE DEFAULT NULL"),
+                         ("bg_h", "DOUBLE DEFAULT NULL"), ("bg_opacity", "DOUBLE NOT NULL DEFAULT 0.5"),
+                         ("bg_version", "INT NOT NULL DEFAULT 0")):
+            await _add_column_if_missing(conn, "inv_floors", col, typ)
+        await _add_column_if_missing(conn, "inv_plan", "wall_cm", "DOUBLE NOT NULL DEFAULT 20")
+
     log.info("Migrationen abgeschlossen")
 
 

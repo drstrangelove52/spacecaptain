@@ -79,7 +79,15 @@ def room_out(r: InvRoom) -> dict:
 
 
 def room_dict(r: InvPlan) -> dict:
-    return {"name": r.name, "width_cm": r.width_cm, "height_cm": r.height_cm}
+    return {"name": r.name, "width_cm": r.width_cm, "height_cm": r.height_cm, "wall_cm": r.wall_cm if r.wall_cm is not None else 20.0}
+
+
+def floor_out(f: InvFloor, with_background: bool = True) -> dict:
+    out = {"id": f.id, "name": f.name}
+    if with_background and f.bg_version and f.bg_w:
+        out["background"] = {"x": f.bg_x or 0.0, "y": f.bg_y or 0.0, "w": f.bg_w, "h": f.bg_h, "opacity": f.bg_opacity if f.bg_opacity is not None else 0.5,
+                             "version": f.bg_version}
+    return out
 
 
 def rect(x, y, w, h, rot=None, floor_id=None) -> Optional[dict]:
@@ -133,5 +141,5 @@ async def build_plan(db: AsyncSession, only_placed: bool = False) -> dict:
         out_areas = [x for x in out_areas if x["plan"]]
         out_furn = [x for x in out_furn if x["plan"]]
         out_mach = [x for x in out_mach if x["plan"]]
-    return {"room": room_dict(room), "floors": [{"id": f.id, "name": f.name} for f in floors],
+    return {"room": room_dict(room), "floors": [floor_out(f, with_background=not only_placed) for f in floors],
             "rooms": [room_out(r) for r in rooms], "areas": out_areas, "furniture": out_furn, "machines": out_mach}

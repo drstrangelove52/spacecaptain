@@ -4,6 +4,7 @@
  *
  *   const plan = InvPlan.mount(container, data, { editable, onChange(kind, id, rect|null, extra), onSelect(sel|null), onFloor(id) });
  *   plan.setData(data); plan.setHighlight({ codes: ['ELE-M02'], machineIds: [3], areaCodes: ['ELE'] });
+ *   plan.setMode('bg'|null) (Grundriss verschieben); plan.pickPoints(n, cb); plan.drawPolygon(cb); plan.cancelMode(); plan.setBackground(floorId, patch);
  *   plan.setFloor(id); plan.floorId(); plan.select(kind, id); plan.place(kind, id, {x, y}|null);
  *   plan.update(kind, id, {x, w, rot, floor_id …}); plan.remove(kind, id); plan.toPolygon(id); plan.toRect(id);
  *
@@ -67,6 +68,8 @@
     let floor = null;                                        // aktuelles Stockwerk (id)
     let hl = { codes: [], machineIds: [], areaCodes: [] };
     let drag = null;                                         // { mode: 'move'|'resize', kind, id, start, orig }
+    let mode = null;                                         // null | 'bg' (Grundriss verschieben) | 'pick' (Punkte wählen) | 'draw' (Raum zeichnen)
+    let tmp = [], tmpMax = 0, tmpCb = null, hover = null, defsEl = null;
 
     const floors = () => data.floors && data.floors.length ? data.floors : [{ id: 0, name: '' }];
     const list = (kind) => kind === 'room' ? (data.rooms || []) : kind === 'area' ? data.areas : kind === 'furniture' ? data.furniture : data.machines;
@@ -117,11 +120,17 @@
       svg.setAttribute('viewBox', `${x0 - 20} ${y0 - 20} ${x1 - x0 + 40} ${y1 - y0 + 40}`);
       svg.innerHTML = '';
       const defs = svgEl('defs', {}, svg);
+      defsEl = defs;
       const pat = svgEl('pattern', { id: 'invplan-grid', width: 100, height: 100, patternUnits: 'userSpaceOnUse' }, defs);
       svgEl('path', { d: 'M100 0H0V100', fill: 'none', stroke: 'currentColor', 'stroke-opacity': .12, 'stroke-width': 1 }, pat);
       const st = svgEl('pattern', { id: 'invplan-stairs', width: 24, height: 24, patternUnits: 'userSpaceOnUse' }, defs);
       svgEl('path', { d: 'M0 12H24', stroke: 'currentColor', 'stroke-opacity': .55, 'stroke-width': 3 }, st);
       svgEl('rect', { x: 0, y: 0, width: W, height: H, fill: 'var(--surface2)', stroke: 'var(--text)', 'stroke-width': 2, 'stroke-opacity': .25, 'stroke-dasharray': '12 8' }, svg);
+      const curFloor = floors().find(f => f.id === floor) || {};
+      if (curFloor.background && curFloor.bgUrl) {                 // Grundriss zum Abpausen
+        const b = curFloor.background;
+        svgEl('image', { href: curFloor.bgUrl, x: b.x, y: b.y, width: b.w, height: b.h, opacity: b.opacity, preserveAspectRatio: 'none', 'pointer-events': 'none' }, svg);
+      }
       svgEl('rect', { x: 0, y: 0, width: W, height: H, fill: 'url(#invplan-grid)', style: 'color:var(--text)', 'pointer-events': 'none' }, svg);
       const fname = (floors().find(f => f.id === floor) || {}).name;
       const t = svgEl('text', { x: 8, y: H - 10, 'font-size': 18, fill: 'var(--text)', 'fill-opacity': .45 }, svg);
@@ -139,6 +148,7 @@
         for (const o of list(kind).filter(x => visible(kind, x)).sort((a, b) => weight(kind, a) - weight(kind, b))) drawElement(kind, o);
       }
       if (opts.editable && sel) drawHandle();
+      drawTemp();
     }
 
     function drawElement(kind, o) {
@@ -152,7 +162,8 @@
       const vw = rot === 90 ? p.h : p.w, vh = rot === 90 ? p.w : p.h;
 
       if (kind === 'room' && (o.kind === 'tuer' || o.kind === 'durchgang')) {            // Lücke in der Wand, bei Türen mit Schwenkbogen
-        svgEl('rect', { class: 'invplan-shape', x: p.x, y: p.y, width: p.w, height: p.h, fill: 'var(--surface2)', stroke: 'var(--text)', 'stroke-opacity': .55, 'stroke-width': 1.5 }, g);
+        const gh = Math.max(p.h, (data.room.wall_cm || 20) + 4);                     // die Lücke ist so dick wie die Wand
+        svgEl('rect', { class: 'invplan-shape', x: p.x, y: cy - gh / 2, width: p.w, height: gh, fill: 'var(--surface2)', stroke: 'var(--text)', 'stroke-opacity': .55, 'stroke-width': 1.5 }, g);
         if (o.kind === 'tuer') {                              // flip: Bit 1 = Anschlag rechts statt links, Bit 2 = Aufschlag nach unten statt oben
           const fh = (o.flip || 0) & 1, fv = ((o.flip || 0) >> 1) & 1, hy = p.y + p.h / 2;
           const hx = fh ? p.x + p.w : p.x, ex = fh ? p.x : p.x + p.w, ly = fv ? hy + p.w : hy - p.w;
@@ -163,9 +174,14 @@
       }
       if (kind === 'room') {
         const stairs = o.kind === 'treppe';
-        const attrs = { class: 'invplan-shape', fill: 'var(--surface)', 'fill-opacity': stairs ? .9 : .65, stroke: 'var(--text)', 'stroke-opacity': .75, 'stroke-width': stairs ? 3 : 6, 'stroke-linejoin': 'round' };
-        if (!stairs && o.points) svgEl('polygon', Object.assign({ points: o.points.map(q => q.join(',')).join(' ') }, attrs), g);
-        else svgEl('rect', Object.assign({ x: p.x, y: p.y, width: p.w, height: p.h }, attrs), g);
+        if (stairs) svgEl('rect', { class: 'invplan-shape', x: p.x, y: p.y, width: p.w, height: p.h, fill: 'var(--surface)', 'fill-opacity': .9, stroke: 'var(--text)', 'stroke-opacity': .75, 'stroke-width': 3 }, g);
+        else {                                                // Raum = Innenfläche; die Wand (Dicke aus den Gebäude-Einstellungen) liegt ausserhalb
+          const d = o.points ? 'M ' + o.points.map(q => q.join(' ')).join(' L ') + ' Z' : `M ${p.x} ${p.y} H ${p.x + p.w} V ${p.y + p.h} H ${p.x} Z`;
+          const cid = 'invplan-wall-' + o.id, cp = svgEl('clipPath', { id: cid }, defsEl);
+          svgEl('path', { d: 'M -1000000 -1000000 H 1000000 V 1000000 H -1000000 Z ' + d, 'clip-rule': 'evenodd' }, cp);
+          svgEl('path', { d, fill: 'none', stroke: 'var(--text)', 'stroke-opacity': .8, 'stroke-width': (data.room.wall_cm || 20) * 2, 'stroke-linejoin': 'miter', 'clip-path': `url(#${cid})` }, g);
+          svgEl('path', { class: 'invplan-shape', d, fill: 'var(--surface)', 'fill-opacity': .35, stroke: 'none' }, g);
+        }
         if (stairs) svgEl('rect', { x: p.x, y: p.y, width: p.w, height: p.h, fill: 'url(#invplan-stairs)', style: 'color:var(--text)', 'pointer-events': 'none' }, g);
         let txt = o.name;
         if (stairs && o.link_floor_id != null) {
@@ -247,6 +263,14 @@
     if (opts.editable) {
       svg.addEventListener('pointerdown', (ev) => {
         const pt = toCm(ev);
+        if (mode === 'pick' || mode === 'draw') { addTemp(pt); return; }
+        if (mode === 'bg') {                                 // Grundriss verschieben
+          const b = (floors().find(f => f.id === floor) || {}).background;
+          if (!b) return;
+          drag = { mode: 'bg', start: pt, orig: { x: b.x, y: b.y } };
+          svg.setPointerCapture(ev.pointerId); svg.style.cursor = 'grabbing';
+          return;
+        }
         if (ev.target.getAttribute && ev.target.getAttribute('data-handle') && sel) {
           const o = find(sel.kind, sel.id);
           drag = { mode: 'resize', handle: ev.target.getAttribute('data-handle'), kind: sel.kind, id: sel.id, orig: Object.assign({}, o.plan) };
@@ -275,7 +299,13 @@
         svg.setPointerCapture(ev.pointerId);
       });
       svg.addEventListener('pointermove', (ev) => {
+        if (mode === 'pick' || mode === 'draw') { hover = toCm(ev); render(); return; }
         if (!drag) return;
+        if (drag.mode === 'bg') {
+          const b = (floors().find(f => f.id === floor) || {}).background, q = toCm(ev);
+          if (b) { b.x = Math.round(drag.orig.x + q.x - drag.start.x); b.y = Math.round(drag.orig.y + q.y - drag.start.y); render(); }
+          return;
+        }
         const o = find(drag.kind, drag.id), pt = toCm(ev);
         if (drag.mode === 'vertex') {
           drag.moved = true;
@@ -312,10 +342,22 @@
       const end = () => {
         if (!drag) return;
         const d = drag; drag = null;
+        if (d.mode === 'bg') {
+          svg.style.cursor = 'grab';
+          const b = (floors().find(f => f.id === floor) || {}).background;
+          if (b && opts.onBackground) opts.onBackground(floor, { x: b.x, y: b.y });
+          return;
+        }
         const o = find(d.kind, d.id);
         if ((d.mode === 'move' && d.moved) || d.mode === 'resize' || (d.mode === 'vertex' && d.moved)) { emit(d.kind, o); if (opts.onSelect) opts.onSelect(selInfo()); }
       };
       svg.addEventListener('dblclick', (ev) => {
+        if (mode === 'draw') {                               // Doppelklick schliesst den Raum (der zweite Klick hat einen doppelten Punkt gesetzt)
+          const n = tmp.length;
+          if (n > 1 && tmp[n - 1][0] === tmp[n - 2][0] && tmp[n - 1][1] === tmp[n - 2][1]) tmp.pop();
+          if (tmp.length >= 3) finishTemp();
+          return;
+        }
         const t = ev.target;
         if (!(sel && sel.kind === 'room' && t.getAttribute && t.hasAttribute('data-vertex'))) return;
         const o = find('room', sel.id);
@@ -325,6 +367,41 @@
       });
       svg.addEventListener('pointerup', end);
       svg.addEventListener('pointercancel', end);
+    }
+
+    // ── Zeichenmodi: Punkte wählen (Massstab) und Raum per Klick zeichnen ──
+    function startTemp(m, max, cb) {
+      cancelMode();
+      mode = m; tmp = []; tmpMax = max; tmpCb = cb; hover = null; sel = null;
+      svg.style.cursor = 'crosshair';
+      document.addEventListener('keydown', onKey);
+      render();
+      if (opts.onSelect) opts.onSelect(null);
+    }
+    function onKey(ev) { if (ev.key === 'Escape') cancelMode(); else if (ev.key === 'Backspace' && tmp.length) { tmp.pop(); render(); } }
+    function cancelMode() {
+      if (mode === 'pick' || mode === 'draw') { document.removeEventListener('keydown', onKey); mode = null; tmp = []; tmpCb = null; hover = null; svg.style.cursor = ''; render(); }
+    }
+    function finishTemp() {
+      const pts = tmp, cb = tmpCb;
+      document.removeEventListener('keydown', onKey);
+      mode = null; tmp = []; tmpCb = null; hover = null; svg.style.cursor = '';
+      render();
+      if (cb) cb(pts);
+    }
+    function addTemp(pt) {
+      const q = mode === 'draw' ? [snap(pt.x), snap(pt.y)] : [Math.round(pt.x), Math.round(pt.y)];
+      if (mode === 'draw' && tmp.length >= 3 && Math.hypot(q[0] - tmp[0][0], q[1] - tmp[0][1]) < 25) { finishTemp(); return; }   // auf den ersten Punkt klicken schliesst
+      tmp.push(q);
+      if (mode === 'pick' && tmp.length >= tmpMax) { finishTemp(); return; }
+      render();
+    }
+    function drawTemp() {                                    // Vorschau der gerade gesetzten Punkte
+      if (!(mode === 'pick' || mode === 'draw') || !tmp.length) return;
+      const g = svgEl('g', { 'pointer-events': 'none' }, svg);
+      const pts = tmp.concat(hover && mode === 'draw' ? [[snap(hover.x), snap(hover.y)]] : (hover ? [[hover.x, hover.y]] : []));
+      svgEl('polyline', { points: pts.map(q => q.join(',')).join(' '), fill: mode === 'draw' ? 'rgba(244,166,34,.15)' : 'none', stroke: 'var(--accent)', 'stroke-width': 4, 'stroke-dasharray': '12 8' }, g);
+      tmp.forEach((q, i) => svgEl('circle', { cx: q[0], cy: q[1], r: i === 0 && mode === 'draw' ? 14 : 9, fill: 'var(--accent)', stroke: '#000', 'stroke-width': 2 }, g));
     }
 
     function fitBox(o) {                                     // Umgebung der Eckpunkte → plan.x/y/w/h
@@ -358,6 +435,15 @@
         }
         render();
       },
+      setMode(m) {                                           // 'bg' = Grundriss verschieben, sonst aus
+        if (m === 'bg') { cancelMode(); mode = 'bg'; svg.style.cursor = 'grab'; }
+        else if (mode === 'bg') { mode = null; svg.style.cursor = ''; }
+      },
+      mode() { return mode; },
+      pickPoints(n, cb) { startTemp('pick', n, cb); },
+      drawPolygon(cb) { startTemp('draw', 0, cb); },
+      cancelMode,
+      setBackground(floorId, patch) { const f = floors().find(x => x.id === floorId); if (f && f.background) Object.assign(f.background, patch); render(); },
       select(kind, id) { setSelection(kind ? { kind, id } : null); },
       selected: selInfo,
       clientToCm: toCm,

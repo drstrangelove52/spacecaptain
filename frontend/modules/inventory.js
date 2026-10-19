@@ -1213,13 +1213,29 @@
     try { await loadPlanLib(); } catch (e) { $('plan-canvas').innerHTML = '<div class="inv-empty">Der Plan konnte nicht geladen werden.</div>'; return; }
     const d = await GET('/inventory/plan');
     if (!d) return;
+    await attachBackgrounds(d);
     planData = d;
     if (!planCtl || !$('plan-canvas').contains(planCtl.el)) {
-      planCtl = InvPlan.mount($('plan-canvas'), d, { editable: isPower(), onChange: planChanged, onSelect: () => renderPlanSide(), onFloor: () => renderPlanSide() });
+      planCtl = InvPlan.mount($('plan-canvas'), d, { editable: isPower(), onChange: planChanged, onSelect: () => renderPlanSide(), onFloor: () => renderPlanSide(), onBackground: bgMoved });
     } else planCtl.setData(d);
     planZoom();
     renderPlanSide();
     if ($('plan-q').value.trim()) planSearch();
+  }
+  // Grundriss-Bilder brauchen die Anmeldung: laden und als Blob-Adresse an die Stockwerke hängen (Cache je Stockwerk und Version)
+  const bgBlobs = {};
+  async function attachBackgrounds(d) {
+    for (const f of d.floors) {
+      if (!f.background) continue;
+      const key = f.id + ':' + f.background.version;
+      if (!bgBlobs[key]) {
+        try {
+          const r = await fetch('/api/inventory/plan/floors/' + f.id + '/background', { headers: { Authorization: 'Bearer ' + token } });
+          if (r.ok) bgBlobs[key] = URL.createObjectURL(await r.blob());
+        } catch (e) { /* ohne Bild weiterarbeiten */ }
+      }
+      f.bgUrl = bgBlobs[key] || null;
+    }
   }
   function planZoom() {                                  // «Einpassen»: ganzer Plan sichtbar (Höhe ≤ 70 % des Fensters); sonst Prozent der Breite
     if (!planCtl) return;
@@ -1251,14 +1267,27 @@
     if (!power) { box.innerHTML = ''; return; }
     const r = d.room, sel = planCtl && planCtl.selected(), cur = planCtl ? planCtl.floorId() : d.floors[0].id;
     const curName = (d.floors.find(f => f.id === cur) || {}).name || '';
+    const curFl = d.floors.find(f => f.id === cur) || d.floors[0], bgf = curFl.background, mode = planCtl ? planCtl.mode() : null;
     let html = `<div class="inv-plan-box"><h4>STOCKWERKE</h4>
       ${d.floors.map(f => `<div class="inv-row" style="margin-bottom:6px;gap:6px">
         <input class="form-input form-input-sm" value="${esc(f.name)}" maxlength="50" onchange="Inv.floorRename(${f.id}, this.value)" style="flex:1">
         <button class="btn btn-ghost btn-sm" title="Stockwerk löschen (nur wenn leer)" onclick="Inv.floorDelete(${f.id})">✕</button></div>`).join('')}
       <div class="inv-row" style="gap:6px"><input class="form-input form-input-sm" id="inv-floor-new" placeholder="z.B. OG" maxlength="50" style="flex:1">
         <button class="btn btn-ghost btn-sm" onclick="Inv.floorAdd()">+ Stockwerk</button></div></div>
+      <div class="inv-plan-box"><h4>GRUNDRISS ZUM ABPAUSEN · ${esc(curName)}</h4>
+        <div class="inv-dim inv-small" style="margin-bottom:8px">JPG oder PNG deines Plans als Vorlage. Du stellst den Massstab ein und zeichnest die Räume darüber; das Bild sieht nur, wer den Plan bearbeitet.</div>
+        <input type="file" id="inv-bg-file" accept="image/jpeg,image/png" style="display:none" onchange="Inv.bgUpload(this)">
+        <div class="inv-row" style="gap:6px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('inv-bg-file').click()">${bgf ? 'Bild ersetzen' : 'Grundriss hochladen'}</button>
+          ${bgf ? `<button class="btn btn-ghost btn-sm" onclick="Inv.bgScale()" title="Zwei Punkte anklicken und ihren echten Abstand eingeben">📏 Massstab setzen</button>
+          <button class="btn ${mode === 'bg' ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="Inv.bgMove()" title="Das Bild auf dem Plan ziehen">✋ Bild verschieben</button>
+          <button class="btn btn-danger btn-sm" onclick="Inv.bgRemove()">Entfernen</button>` : ''}</div>
+        ${bgf ? `<div class="inv-plan-grid" style="margin-top:8px">
+          <div><label class="form-label">Breite des Bildes (m)</label><input class="form-input" type="number" step="0.1" min="1" value="${(bgf.w / 100).toFixed(2)}" onchange="Inv.bgWidth(this.value)"></div>
+          <div><label class="form-label">Deckkraft</label><input type="range" min="10" max="100" value="${Math.round(bgf.opacity * 100)}" oninput="Inv.bgOpacity(this.value)" style="width:100%"></div></div>` : ''}</div>
       <div class="inv-plan-box"><h4>RÄUME UND TREPPEN · ${esc(curName)}</h4>
-        <div class="inv-row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('raum')">+ Raum</button>
+        <div class="inv-row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="Inv.roomDraw()" title="Ecken nacheinander anklicken, Doppelklick schliesst den Raum">✏️ Raum zeichnen</button>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('raum')">+ Raum</button>
           <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('treppe')">+ Treppe</button>
           <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('tuer')">+ Tür</button>
           <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('durchgang')">+ Durchgang</button></div>
@@ -1268,6 +1297,7 @@
       <div class="inv-plan-grid">
         <div><label class="form-label">Breite (m)</label><input class="form-input" id="inv-room-w" type="number" min="1" step="0.5" value="${r.width_cm / 100}"></div>
         <div><label class="form-label">Tiefe (m)</label><input class="form-input" id="inv-room-h" type="number" min="1" step="0.5" value="${r.height_cm / 100}"></div>
+        <div><label class="form-label">Wanddicke (cm)</label><input class="form-input" id="inv-room-wall" type="number" min="2" max="100" step="1" value="${r.wall_cm || 20}"></div>
       </div>
       <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="Inv.saveRoom()">Gebäude speichern</button></div>
       <div class="inv-plan-box"><h4>PLAN ZURÜCKSETZEN</h4>
@@ -1318,6 +1348,57 @@
     const s = planCtl && planCtl.selected(); if (!s || s.kind !== 'room') return;
     if (await PATCH('/inventory/plan/rooms/' + s.id, { flip: ((s.item.flip || 0) ^ bit) & 3 })) { await loadPlan(); planCtl.select('room', s.id); }
   }
+  // ── Grundriss-Bild: hochladen, Massstab, verschieben, Deckkraft ──
+  const curFloorObj = () => planData && planData.floors.find(f => f.id === planCtl.floorId());
+  async function bgUpload(input) {
+    const file = input.files && input.files[0]; input.value = '';
+    if (!file) return;
+    const fd = new FormData(); fd.append('file', file);
+    showToast('Grundriss wird hochgeladen…', 'info');
+    try {
+      const r = await fetch('/api/inventory/plan/floors/' + planCtl.floorId() + '/background', { method: 'PUT', headers: { Authorization: 'Bearer ' + token }, body: fd });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || r.statusText); }
+      showToast('Grundriss gespeichert. Jetzt den Massstab setzen (📏), dann das Bild verschieben.', 'success');
+      await loadPlan();
+    } catch (e) { showToast('Hochladen fehlgeschlagen: ' + e.message, 'error'); }
+  }
+  async function bgPatch(patch) {
+    const f = curFloorObj(); if (!f) return;
+    if (await PATCH('/inventory/plan/floors/' + f.id + '/background', patch)) { planCtl.setBackground(f.id, patch); renderPlanSide(); }
+  }
+  function bgMoved(floorId, pos) { PATCH('/inventory/plan/floors/' + floorId + '/background', pos); }
+  function bgMove() { planCtl.setMode(planCtl.mode() === 'bg' ? null : 'bg'); renderPlanSide(); }
+  let bgOpTimer = null;
+  function bgOpacity(v) { const f = curFloorObj(); if (!f) return; planCtl.setBackground(f.id, { opacity: v / 100 }); clearTimeout(bgOpTimer); bgOpTimer = setTimeout(() => bgPatch({ opacity: v / 100 }), 400); }
+  function bgWidth(v) {
+    const f = curFloorObj(), w = parseFloat(v) * 100; if (!f || !f.background || !(w >= 100)) return;
+    bgPatch({ w, h: f.background.h * w / f.background.w });
+  }
+  function bgScale() {
+    const f = curFloorObj(); if (!f || !f.background) return;
+    showToast('Klicke auf zwei Punkte im Plan, deren echten Abstand du kennst (z.B. die Enden einer Wand). Esc bricht ab.', 'info');
+    planCtl.pickPoints(2, (pts) => {
+      const dist = Math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]);
+      if (dist < 5) { showToast('Die Punkte liegen zu nah beieinander', 'error'); return; }
+      const m = parseFloat((prompt('Wie lang ist diese Strecke in Wirklichkeit (in Metern)?') || '').replace(',', '.'));
+      if (!(m > 0)) return;
+      const k = m * 100 / dist, b = f.background, p0 = pts[0];                // um den ersten Punkt skalieren, damit er stehen bleibt
+      bgPatch({ x: p0[0] + (b.x - p0[0]) * k, y: p0[1] + (b.y - p0[1]) * k, w: b.w * k, h: b.h * k });
+    });
+  }
+  async function bgRemove() {
+    const f = curFloorObj(); if (!f || !confirm('Grundriss-Bild für dieses Stockwerk entfernen?')) return;
+    if (await DELETE('/inventory/plan/floors/' + f.id + '/background')) await loadPlan();
+  }
+  function roomDraw() {
+    showToast('Klicke die Ecken des Raums nacheinander an. Doppelklick (oder Klick auf die erste Ecke) schliesst den Raum, Rücktaste löscht die letzte Ecke, Esc bricht ab.', 'info');
+    planCtl.drawPolygon(async (pts) => {
+      if (pts.length < 3) return;
+      const n = planData.rooms.filter(r => r.kind === 'raum').length + 1;
+      const r = await POST('/inventory/plan/rooms', { floor_id: planCtl.floorId(), kind: 'raum', name: 'Raum ' + n, points: pts });
+      if (r) { await loadPlan(); planCtl.select('room', r.id); }
+    });
+  }
   function roomShape(id, polygon) { if (planCtl) polygon ? planCtl.toPolygon(id) : planCtl.toRect(id); }
   async function floorAdd() {
     const name = ($('floor-new').value || '').trim();
@@ -1354,7 +1435,7 @@
   function planRotate() { const s = planCtl && planCtl.selected(); if (s) planCtl.update(s.kind, s.id, { rot: ((s.item.plan.rot || 0) + 90) % 360 }); }
   function planRemove() { const s = planCtl && planCtl.selected(); if (!s) return; if (s.kind === 'room' && !confirm('Raum bzw. Treppe wirklich löschen?')) return; planCtl.remove(s.kind, s.id); }
   async function saveRoom() {
-    const body = { name: $('room-name').value.trim() || 'Makerspace', width_cm: Math.round(parseFloat($('room-w').value) * 100), height_cm: Math.round(parseFloat($('room-h').value) * 100) };
+    const body = { name: $('room-name').value.trim() || 'Makerspace', width_cm: Math.round(parseFloat($('room-w').value) * 100), height_cm: Math.round(parseFloat($('room-h').value) * 100), wall_cm: parseFloat($('room-wall').value) || 20 };
     if (!(body.width_cm >= 100) || !(body.height_cm >= 100)) { showToast('Gebäude: mindestens 1 m × 1 m', 'error'); return; }
     if (await PUT('/inventory/plan/room', body)) { showToast('Gebäude gespeichert', 'success'); await loadPlan(); }
   }
@@ -1457,7 +1538,7 @@
     toggleLabel, setLabelCopies, toggleLevelsOf, selectBy, labelFor,
     debouncedLoadMachines, loadMachines, setMachinePlace, openMachines, formPlaceChanged, saveFormPlacement,
     planSearch, planZoom, planDrag, planDrop, planAdd, planField, planRotate, planRemove, saveRoom, loadPlan,
-    planReset, roomShape, doorFlip, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
+    planReset, bgUpload, bgMove, bgOpacity, bgWidth, bgScale, bgRemove, roomDraw, roomShape, doorFlip, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
     setLabelMode, debouncedToolLoad, toggleTool, setCopies, toolSelectAll, toolSelectNone, toolCopiesQty,
   };
 

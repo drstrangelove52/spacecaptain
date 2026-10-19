@@ -10,8 +10,8 @@ from datetime import datetime, date
 from typing import Optional
 
 from sqlalchemy import (Integer, String, Boolean, DateTime, Text, Enum, ForeignKey,
-                        UniqueConstraint, Float, Date)
-from sqlalchemy.dialects.mysql import INTEGER as UINT
+                        UniqueConstraint, Float, Date, LargeBinary)
+from sqlalchemy.dialects.mysql import INTEGER as UINT, LONGBLOB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -123,6 +123,7 @@ class InvPlan(Base):
     name:      Mapped[str]   = mapped_column(String(100), default="Makerspace")
     width_cm:  Mapped[float] = mapped_column(Float, default=1500.0)
     height_cm: Mapped[float] = mapped_column(Float, default=1000.0)
+    wall_cm:   Mapped[float] = mapped_column(Float, default=20.0)         # Wanddicke, aussen um die Raum-Innenflaeche gezeichnet
 
 
 class InvFloor(Base):
@@ -131,6 +132,13 @@ class InvFloor(Base):
     id:         Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name:       Mapped[str] = mapped_column(String(50), nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    # Hintergrund-Grundriss zum Abpausen (Bild in inv_floor_images): Lage und Groesse in cm, Deckkraft 0..1
+    bg_x:       Mapped[Optional[float]] = mapped_column(Float, default=None)
+    bg_y:       Mapped[Optional[float]] = mapped_column(Float, default=None)
+    bg_w:       Mapped[Optional[float]] = mapped_column(Float, default=None)
+    bg_h:       Mapped[Optional[float]] = mapped_column(Float, default=None)
+    bg_opacity: Mapped[float]           = mapped_column(Float, default=0.5)
+    bg_version: Mapped[int]             = mapped_column(Integer, default=0)      # 0 = kein Bild; steigt bei jedem Hochladen (Cache)
 
 
 class InvRoom(Base):
@@ -151,3 +159,11 @@ class InvRoom(Base):
     points:        Mapped[Optional[str]]   = mapped_column(Text, default=None)
     # Spiegelung (Tueren): Bit 1 = Anschlag links/rechts, Bit 2 = Aufschlag auf die andere Wandseite
     flip:          Mapped[int]             = mapped_column(Integer, default=0)
+
+
+class InvFloorImage(Base):
+    """Das hochgeladene Grundriss-Bild eines Stockwerks (JPEG, max. ~2400 px, in der DB gespeichert)."""
+    __tablename__ = "inv_floor_images"
+    floor_id:     Mapped[int]   = mapped_column(Integer, primary_key=True, autoincrement=False)
+    data:         Mapped[bytes] = mapped_column(LargeBinary().with_variant(LONGBLOB(), "mysql"), nullable=False)
+    content_type: Mapped[str]   = mapped_column(String(30), default="image/jpeg")

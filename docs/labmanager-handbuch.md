@@ -281,8 +281,10 @@ Inventar → **Plan** zeigt das Gebäude von oben (Masse in cm), Stockwerk für 
 3. Aus **«Noch nicht auf dem Plan»** ein Element auf die Fläche ziehen (oder **＋** für die Mitte); es landet auf dem gewählten Stockwerk.
 4. **Verschieben** durch Ziehen (rastet auf 5 cm), **Grösse** an Ecken und Kanten, **genaue Werte**, **Stockwerk wechseln**, **↻ 90°** und **Vom Plan nehmen** rechts bei der Auswahl.
 5. Die **Suche** oben markiert Werkzeug, Möbel oder Maschinen auf dem Plan und schaltet auf das richtige Stockwerk.
-6. **Plan zurücksetzen** (rechts bei «Gebäude»): löscht alle Räume, Treppen und Stockwerke (danach nur «EG») und nimmt alle Elemente vom Plan; Gebäude, Codes und Standorte bleiben. Vorher ein Backup machen.
-7. **Zoom:** «Einpassen» zeigt den ganzen Plan auf einen Blick, 25–300 % vergrössern oder verkleinern ihn.
+6. **Grundriss abpausen:** Pro Stockwerk lässt sich ein JPG/PNG des Plans hochladen («Grundriss zum Abpausen»). **📏 Massstab setzen**: zwei Punkte anklicken und den echten Abstand in Metern eingeben. **✋ Bild verschieben** und der Regler **Deckkraft** richten das Bild aus. Danach mit **✏️ Raum zeichnen** die Ecken nacheinander anklicken (Doppelklick oder Klick auf die erste Ecke schliesst den Raum). Das Bild sehen nur Personen, die den Plan bearbeiten; Gäste sehen es nicht.
+7. **Wanddicke:** Räume sind Innenflächen; die Wand (Einstellung «Wanddicke» bei «Gebäude», Standard 20 cm) wird aussen um den Raum gezeichnet, zwischen zwei Räumen entsteht so eine Wand, Türen schneiden sie durch.
+8. **Plan zurücksetzen** (rechts bei «Gebäude»): löscht alle Räume, Treppen und Stockwerke (danach nur «EG») und nimmt alle Elemente vom Plan; Gebäude, Codes und Standorte bleiben. Vorher ein Backup machen.
+9. **Zoom:** «Einpassen» zeigt den ganzen Plan auf einen Blick, 25–300 % vergrössern oder verkleinern ihn.
 
 Änderungen werden sofort gespeichert. Der Plan ist unabhängig von den Codes; nach einem Umzug genügt es, Gebäude, Stockwerke und Räume neu zu zeichnen und die Elemente neu zu ziehen. Ein Stockwerk lässt sich nur löschen, wenn es leer ist. Gäste sehen den Plan auf der Seite «Wo ist …?» (nur eingezeichnete Elemente).
 

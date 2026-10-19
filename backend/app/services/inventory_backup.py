@@ -6,6 +6,7 @@ Alle Verweise laufen ueber natuerliche Schluessel statt DB-IDs, damit ein Restor
 Kompatibilitaet (siehe CLAUDE.md «Backup-Kompatibilitaetsregeln»): fehlt die Sektion oder ein Feld, wird sie bzw. es
 uebersprungen (`.get()` mit Vorgabewert); aeltere Backups bleiben importierbar.
 """
+import base64
 import json
 from datetime import date
 from typing import Optional
@@ -15,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import MachineLocation, Machine, MachineOwner
 from app.models_inventory import (InvFurniture, InvLevel, InvPosition, InvItem, InvPlacement,
-                                  FurnitureKind, InvItemStatus, InvPlan, InvFloor, InvRoom)
+                                  FurnitureKind, InvItemStatus, InvPlan, InvFloor, InvRoom, InvFloorImage)
 from app.services import inventory as inv
 from app.services import inventory_plan as plan_svc
 
@@ -63,6 +64,7 @@ async def export_inventory(db: AsyncSession) -> dict:
 
     floors = (await db.execute(select(InvFloor).order_by(InvFloor.sort_order, InvFloor.id))).scalars().all()
     floor_name = {f.id: f.name for f in floors}
+    images = {i.floor_id: i for i in (await db.execute(select(InvFloorImage))).scalars().all()}
     rooms = (await db.execute(select(InvRoom).order_by(InvRoom.floor_id, InvRoom.id))).scalars().all()
 
     out_furn = []
@@ -106,8 +108,11 @@ async def export_inventory(db: AsyncSession) -> dict:
 
     room = await db.get(InvPlan, 1)
     return {
-        "room": {"name": room.name, "width_cm": room.width_cm, "height_cm": room.height_cm} if room else None,
-        "floors": [{"name": f.name, "sort_order": f.sort_order} for f in floors],
+        "room": {"name": room.name, "width_cm": room.width_cm, "height_cm": room.height_cm, "wall_cm": room.wall_cm} if room else None,
+        "floors": [{"name": f.name, "sort_order": f.sort_order,
+                    "background": ({"x": f.bg_x, "y": f.bg_y, "w": f.bg_w, "h": f.bg_h, "opacity": f.bg_opacity,
+                                    "image": base64.b64encode(images[f.id].data).decode("ascii")}
+                                   if f.bg_version and f.id in images else None)} for f in floors],
         "rooms": [{"floor": floor_name[r.floor_id], "name": r.name, "kind": r.kind, "x": r.plan_x, "y": r.plan_y,
                    "w": r.plan_w, "h": r.plan_h, "rot": r.plan_rot, "link_floor": floor_name.get(r.link_floor_id),
                    "points": plan_svc.parse_points(r.points), "flip": r.flip or 0}
@@ -137,16 +142,35 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
         room.name = (r.get("name") or "Makerspace")[:100]
         room.width_cm = float(r.get("width_cm") or 1500.0)
         room.height_cm = float(r.get("height_cm") or 1000.0)
+        room.wall_cm = float(r.get("wall_cm") or 20.0)
         db.add(room)
 
     # Stockwerke und Raeume des Plans (ueber Namen); Elemente verweisen weiter unten darauf
     floor_by_name = {f.name: f for f in (await db.execute(select(InvFloor))).scalars().all()}
     for f in data.get("floors", []) or []:
+        created = False
         if f.get("name") and f["name"] not in floor_by_name:
             nf = InvFloor(name=str(f["name"])[:50], sort_order=int(f.get("sort_order") or 0))
             db.add(nf)
             await db.flush()
             floor_by_name[nf.name] = nf
+            created = True
+        bg = f.get("background")
+        row = floor_by_name.get(f.get("name"))
+        if bg and bg.get("image") and row is not None and (created or overwrite or not row.bg_version):
+            try:
+                blob = base64.b64decode(bg["image"])
+            except ValueError:
+                blob = b""
+            if blob:
+                img = await db.get(InvFloorImage, row.id)
+                if img is None:
+                    db.add(InvFloorImage(floor_id=row.id, data=blob, content_type="image/jpeg"))
+                else:
+                    img.data = blob
+                row.bg_x, row.bg_y, row.bg_w, row.bg_h = bg.get("x") or 0.0, bg.get("y") or 0.0, bg.get("w") or 1000.0, bg.get("h") or 700.0
+                row.bg_opacity = bg.get("opacity") if bg.get("opacity") is not None else 0.5
+                row.bg_version = (row.bg_version or 0) + 1
     floor_id = lambda name: floor_by_name[name].id if name in floor_by_name else None
     have_rooms = {(r.floor_id, r.name): r for r in (await db.execute(select(InvRoom))).scalars().all()}
     for r in data.get("rooms", []) or []:
