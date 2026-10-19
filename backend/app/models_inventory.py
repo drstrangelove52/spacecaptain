@@ -123,7 +123,7 @@ class InvPlan(Base):
     name:      Mapped[str]   = mapped_column(String(100), default="Makerspace")
     width_cm:  Mapped[float] = mapped_column(Float, default=1500.0)
     height_cm: Mapped[float] = mapped_column(Float, default=1000.0)
-    wall_cm:   Mapped[float] = mapped_column(Float, default=20.0)         # Wanddicke, aussen um die Raum-Innenflaeche gezeichnet
+    wall_cm:   Mapped[float] = mapped_column(Float, default=0.0)          # Standard-Wanddicke (0 = nur Umriss), aussen um die Raum-Innenflaeche
 
 
 class InvFloor(Base):
@@ -160,6 +160,7 @@ class InvRoom(Base):
     points:        Mapped[Optional[str]]   = mapped_column(Text, default=None)
     # Spiegelung (Tueren): Bit 1 = Anschlag links/rechts, Bit 2 = Aufschlag auf die andere Wandseite
     flip:          Mapped[int]             = mapped_column(Integer, default=0)
+    wall_cm:       Mapped[Optional[float]] = mapped_column(Float, default=None)     # eigene Wanddicke dieses Raums; leer = Standard des Gebaeudes
 
 
 class InvFloorImage(Base):

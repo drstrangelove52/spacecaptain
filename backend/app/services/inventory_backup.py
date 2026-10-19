@@ -115,7 +115,7 @@ async def export_inventory(db: AsyncSession) -> dict:
                                    if f.bg_version and f.id in images else None)} for f in floors],
         "rooms": [{"floor": floor_name[r.floor_id], "name": r.name, "kind": r.kind, "x": r.plan_x, "y": r.plan_y,
                    "w": r.plan_w, "h": r.plan_h, "rot": r.plan_rot, "link_floor": floor_name.get(r.link_floor_id),
-                   "points": plan_svc.parse_points(r.points), "flip": r.flip or 0}
+                   "points": plan_svc.parse_points(r.points), "flip": r.flip or 0, "wall_cm": r.wall_cm}
                   for r in rooms if r.floor_id in floor_name],
         "areas": [{"name": a.name, "code": a.code, "color": a.color,
                    "plan_x": a.plan_x, "plan_y": a.plan_y, "plan_w": a.plan_w, "plan_h": a.plan_h,
@@ -142,7 +142,7 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
         room.name = (r.get("name") or "Makerspace")[:100]
         room.width_cm = float(r.get("width_cm") or 1500.0)
         room.height_cm = float(r.get("height_cm") or 1000.0)
-        room.wall_cm = float(r.get("wall_cm") or 20.0)
+        room.wall_cm = float(r.get("wall_cm") or 0.0)
         db.add(room)
 
     # Stockwerke und Raeume des Plans (ueber Namen); Elemente verweisen weiter unten darauf
@@ -189,6 +189,7 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
         pts = r.get("points")
         row.points = json.dumps(pts) if row.kind == "raum" and plan_svc.points_valid(pts) else None
         row.flip = int(r.get("flip") or 0) & 3 if row.kind == "tuer" else 0
+        row.wall_cm = r.get("wall_cm") if row.kind == "raum" else None
         row.plan_x, row.plan_y = r.get("x") or 0.0, r.get("y") or 0.0
         row.plan_w, row.plan_h, row.plan_rot = r.get("w") or 300.0, r.get("h") or 300.0, r.get("rot") or 0.0
         row.link_floor_id = floor_id(r.get("link_floor"))

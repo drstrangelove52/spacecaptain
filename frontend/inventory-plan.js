@@ -165,7 +165,7 @@
       const vw = rot === 90 ? p.h : p.w, vh = rot === 90 ? p.w : p.h;
 
       if (kind === 'room' && (o.kind === 'tuer' || o.kind === 'durchgang')) {            // Lücke in der Wand, bei Türen mit Schwenkbogen
-        const gh = Math.max(p.h, (data.room.wall_cm || 20) + 4);                     // die Lücke ist so dick wie die Wand
+        const gh = Math.max(p.h, (data.room.wall_cm || 0) + 4);                      // die Lücke ist mindestens so dick wie die Wand
         const tr = !!(curFloorOf() && curFloorOf().background && curFloorOf().bgUrl);
         svgEl('rect', { class: 'invplan-shape', x: p.x, y: cy - gh / 2, width: p.w, height: gh, fill: 'var(--surface2)', 'fill-opacity': tr ? .45 : 1, stroke: 'var(--text)', 'stroke-opacity': .55, 'stroke-width': 1.5 }, g);
         if (o.kind === 'tuer') {                              // flip: Bit 1 = Anschlag rechts statt links, Bit 2 = Aufschlag nach unten statt oben
@@ -184,9 +184,10 @@
           const cid = 'invplan-wall-' + o.id, cp = svgEl('clipPath', { id: cid }, defsEl);
           svgEl('path', { d: 'M -1000000 -1000000 H 1000000 V 1000000 H -1000000 Z ' + d, 'clip-rule': 'evenodd' }, cp);
           const tracing = !!(curFloorOf() && curFloorOf().background && curFloorOf().bgUrl);      // Grundriss darunter: nichts verdecken
-          svgEl('path', { d, fill: 'none', stroke: tracing ? 'var(--accent)' : 'var(--text)', 'stroke-opacity': tracing ? .4 : .8, 'stroke-width': (data.room.wall_cm || 20) * 2, 'stroke-linejoin': 'miter', 'clip-path': `url(#${cid})` }, g);
+          const wall = o.wall_cm != null ? o.wall_cm : (data.room.wall_cm || 0);                  // eigene Dicke, sonst Standard; 0 = nur Umriss
+          if (wall > 0) svgEl('path', { d, fill: 'none', stroke: tracing ? 'var(--accent)' : 'var(--text)', 'stroke-opacity': tracing ? .4 : .8, 'stroke-width': wall * 2, 'stroke-linejoin': 'miter', 'clip-path': `url(#${cid})` }, g);
           svgEl('path', { class: 'invplan-shape', d, fill: tracing ? 'var(--accent)' : 'var(--surface)', 'fill-opacity': tracing ? .07 : .35, stroke: 'none' }, g);
-          if (tracing) svgEl('path', { d, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke', 'pointer-events': 'none' }, g);   // feine Innenkante
+          svgEl('path', { d, fill: 'none', stroke: tracing || wall > 0 ? 'var(--accent)' : 'var(--text)', 'stroke-opacity': wall > 0 && !tracing ? .9 : .85, 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke', 'pointer-events': 'none' }, g);   // feine Innenkante / Umriss
         }
         if (stairs) svgEl('rect', { x: p.x, y: p.y, width: p.w, height: p.h, fill: 'url(#invplan-stairs)', style: 'color:var(--text)', 'pointer-events': 'none' }, g);
         let txt = o.name;

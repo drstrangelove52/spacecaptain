@@ -17,7 +17,7 @@ async def _fill(client, power, db):
 async def test_plan_starts_empty_with_default_room(client, enabled, power, db):
     await _fill(client, power, db)
     p = (await client.get("/api/inventory/plan", headers=power)).json()
-    assert p["room"] == {"name": "Makerspace", "width_cm": 1500.0, "height_cm": 1000.0, "wall_cm": 20.0}
+    assert p["room"] == {"name": "Makerspace", "width_cm": 1500.0, "height_cm": 1000.0, "wall_cm": 0.0}
     assert all(a["plan"] is None for a in p["areas"]) and all(f["plan"] is None for f in p["furniture"])
     assert [f["code"] for f in p["furniture"]] == ["LAS-M01"]               # M00 erscheint nicht
     assert "Lasercutter" in [m["name"] for m in p["machines"]]
@@ -60,7 +60,7 @@ async def test_room_update_is_logged(client, enabled, power, db):
     from app.models import ActivityLog, LogType
     await _fill(client, power, db)
     r = await client.put("/api/inventory/plan/room", headers=power, json={"name": "Neue Halle", "width_cm": 2000, "height_cm": 1200})
-    assert r.json() == {"name": "Neue Halle", "width_cm": 2000.0, "height_cm": 1200.0, "wall_cm": 20.0}
+    assert r.json() == {"name": "Neue Halle", "width_cm": 2000.0, "height_cm": 1200.0, "wall_cm": 0.0}
     assert (await client.put("/api/inventory/plan/room", headers=power, json={"width_cm": 10})).status_code == 422
     logs = (await db.execute(select(ActivityLog).where(ActivityLog.type == LogType.inventory_plan_updated))).scalars().all()
     assert len(logs) == 1
@@ -178,7 +178,7 @@ async def test_reset_plan_clears_everything_but_keeps_locations(client, enabled,
     p = (await client.post("/api/inventory/plan/reset", headers=power)).json()
     assert [f["name"] for f in p["floors"]] == ["EG"] and p["rooms"] == []
     assert all(x["plan"] is None for k in ("areas", "furniture", "machines") for x in p[k])
-    assert p["room"] == {"name": "Halle", "width_cm": 2000.0, "height_cm": 1200.0, "wall_cm": 20.0}          # Gebäude bleibt
+    assert p["room"] == {"name": "Halle", "width_cm": 2000.0, "height_cm": 1200.0, "wall_cm": 0.0}          # Gebäude bleibt
     m = (await _machines(client, power))["Lasercutter"]
     assert m["stands_on"]["code"] == "LAS-M01"                                              # Standort (Möbel) bleibt
     # danach wieder normal zeichnen
@@ -296,9 +296,9 @@ async def test_wall_thickness_and_background_survive_backup(client, enabled, pow
     from sqlalchemy import delete
     from app.models_inventory import InvFloor, InvFloorImage, InvPlan
     await _fill(client, power, db)
-    assert (await client.get("/api/inventory/plan", headers=power)).json()["room"]["wall_cm"] == 20.0
+    assert (await client.get("/api/inventory/plan", headers=power)).json()["room"]["wall_cm"] == 0.0
     await client.put("/api/inventory/plan/room", headers=power, json={"wall_cm": 30})
-    assert (await client.put("/api/inventory/plan/room", headers=power, json={"wall_cm": 1})).status_code == 422
+    assert (await client.put("/api/inventory/plan/room", headers=power, json={"wall_cm": 101})).status_code == 422
     eg = (await client.get("/api/inventory/plan", headers=power)).json()["floors"][0]["id"]
     await client.put(f"/api/inventory/plan/floors/{eg}/background", headers=power, files={"file": ("g.jpg", _jpeg(), "image/jpeg")})
     data = (await client.get("/api/backup/export", headers=admin)).json()
@@ -311,3 +311,25 @@ async def test_wall_thickness_and_background_survive_backup(client, enabled, pow
     # Zurücksetzen entfernt auch das Bild
     await client.post("/api/inventory/plan/reset", headers=power)
     assert "background" not in (await client.get("/api/inventory/plan", headers=power)).json()["floors"][0]
+
+
+async def test_wall_thickness_per_room_overrides_the_default(client, enabled, power, admin, db):
+    from sqlalchemy import delete
+    from app.models_inventory import InvRoom
+    await _fill(client, power, db)
+    eg = (await client.get("/api/inventory/plan", headers=power)).json()["floors"][0]["id"]
+    r = (await client.post("/api/inventory/plan/rooms", headers=power, json={"floor_id": eg, "name": "Aussenmauer"})).json()
+    assert r["wall_cm"] is None                                              # Standard des Gebäudes
+    r = (await client.patch(f"/api/inventory/plan/rooms/{r['id']}", headers=power, json={"wall_cm": 35})).json()
+    assert r["wall_cm"] == 35
+    assert (await client.patch(f"/api/inventory/plan/rooms/{r['id']}", headers=power, json={"wall_cm": 500})).status_code == 422
+    t = (await client.post("/api/inventory/plan/rooms", headers=power, json={"floor_id": eg, "kind": "treppe", "wall_cm": 10})).json()
+    assert t["wall_cm"] is None                                              # nur Räume haben eine eigene Wanddicke
+    data = (await client.get("/api/backup/export", headers=admin)).json()
+    await db.execute(delete(InvRoom)); await db.commit()
+    assert (await client.post("/api/backup/import", headers=admin, json=data)).status_code == 200
+    by = {x["name"]: x for x in (await client.get("/api/inventory/plan", headers=power)).json()["rooms"]}
+    assert by["Aussenmauer"]["wall_cm"] == 35
+    r = (await client.patch(f"/api/inventory/plan/rooms/{by['Aussenmauer']['id']}", headers=power, json={"wall_cm": None})).json()
+    assert r["wall_cm"] is None                                              # zurück zum Standard
+    assert (await client.put("/api/inventory/plan/room", headers=power, json={"wall_cm": 0})).json()["wall_cm"] == 0.0

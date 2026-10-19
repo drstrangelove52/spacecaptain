@@ -75,11 +75,11 @@ def points_bbox(pts) -> tuple:
 
 def room_out(r: InvRoom) -> dict:
     return {"id": r.id, "floor_id": r.floor_id, "name": r.name, "kind": r.kind, "link_floor_id": r.link_floor_id,
-            "points": parse_points(r.points), "flip": r.flip or 0, "plan": rect(r.plan_x, r.plan_y, r.plan_w, r.plan_h, r.plan_rot)}
+            "points": parse_points(r.points), "flip": r.flip or 0, "wall_cm": r.wall_cm, "plan": rect(r.plan_x, r.plan_y, r.plan_w, r.plan_h, r.plan_rot)}
 
 
 def room_dict(r: InvPlan) -> dict:
-    return {"name": r.name, "width_cm": r.width_cm, "height_cm": r.height_cm, "wall_cm": r.wall_cm if r.wall_cm is not None else 20.0}
+    return {"name": r.name, "width_cm": r.width_cm, "height_cm": r.height_cm, "wall_cm": r.wall_cm if r.wall_cm is not None else 0.0}
 
 
 def floor_out(f: InvFloor, with_background: bool = True) -> dict:

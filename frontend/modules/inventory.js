@@ -1299,7 +1299,7 @@
       <div class="inv-plan-grid">
         <div><label class="form-label">Breite (m)</label><input class="form-input" id="inv-room-w" type="number" min="1" step="0.5" value="${r.width_cm / 100}"></div>
         <div><label class="form-label">Tiefe (m)</label><input class="form-input" id="inv-room-h" type="number" min="1" step="0.5" value="${r.height_cm / 100}"></div>
-        <div><label class="form-label">Wanddicke (cm)</label><input class="form-input" id="inv-room-wall" type="number" min="2" max="100" step="1" value="${r.wall_cm || 20}"></div>
+        <div><label class="form-label" title="Standard für alle Räume. 0 = nur der Umriss, ohne Wandstärke (praktisch beim Abpausen). Einzelne Räume können eine eigene Dicke haben.">Wanddicke (cm)</label><input class="form-input" id="inv-room-wall" type="number" min="0" max="100" step="1" value="${r.wall_cm == null ? 0 : r.wall_cm}"></div>
       </div>
       <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="Inv.saveRoom()">Gebäude speichern</button></div>
       <div class="inv-plan-box"><h4>PLAN ZURÜCKSETZEN</h4>
@@ -1326,6 +1326,8 @@
         ${k === 'room' && o.kind === 'tuer' ? `<div class="inv-row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="Inv.doorFlip(1)" title="Scharnier auf die andere Seite">⇋ Anschlag spiegeln</button>
           <button class="btn btn-ghost btn-sm" onclick="Inv.doorFlip(2)" title="Tür öffnet zur anderen Seite der Wand">⇵ Aufschlag spiegeln</button></div>` : ''}
+        ${k === 'room' && o.kind === 'raum' ? `<div class="form-group" style="margin:8px 0 0"><label class="form-label">Wanddicke dieses Raums (cm)</label>
+          <input class="form-input" type="number" min="0" max="100" step="1" placeholder="Standard: ${r.wall_cm || 0}" value="${o.wall_cm == null ? '' : o.wall_cm}" onchange="Inv.roomWall(${o.id}, this.value)"></div>` : ''}
         ${k === 'room' && o.kind === 'raum' ? `<div class="inv-row" style="margin-top:8px;gap:6px">${o.points
           ? `<button class="btn btn-ghost btn-sm" onclick="Inv.roomShape(${o.id}, false)" title="Zurück zum Rechteck der Umgebung">Zu Rechteck</button><span class="inv-dim inv-small">Ecken ziehen (Shift/Strg: rechtwinklig) · «+» fügt eine Ecke ein · Doppelklick auf eine Ecke löscht sie</span>`
           : `<button class="btn btn-ghost btn-sm" onclick="Inv.roomShape(${o.id}, true)">In Vieleck umwandeln</button>`}</div>` : ''}
@@ -1405,6 +1407,7 @@
       if (r) { await loadPlan(); planCtl.select('room', r.id); }
     });
   }
+  async function roomWall(id, v) { if (await PATCH('/inventory/plan/rooms/' + id, { wall_cm: v === '' ? null : Math.max(0, parseFloat(v) || 0) })) { await loadPlan(); planCtl.select('room', id); } }
   function roomShape(id, polygon) { if (planCtl) polygon ? planCtl.toPolygon(id) : planCtl.toRect(id); }
   async function floorAdd() {
     const name = ($('floor-new').value || '').trim();
@@ -1441,7 +1444,7 @@
   function planRotate() { const s = planCtl && planCtl.selected(); if (s) planCtl.update(s.kind, s.id, { rot: ((s.item.plan.rot || 0) + 90) % 360 }); }
   function planRemove() { const s = planCtl && planCtl.selected(); if (!s) return; if (s.kind === 'room' && !confirm('Raum bzw. Treppe wirklich löschen?')) return; planCtl.remove(s.kind, s.id); }
   async function saveRoom() {
-    const body = { name: $('room-name').value.trim() || 'Makerspace', width_cm: Math.round(parseFloat($('room-w').value) * 100), height_cm: Math.round(parseFloat($('room-h').value) * 100), wall_cm: parseFloat($('room-wall').value) || 20 };
+    const body = { name: $('room-name').value.trim() || 'Makerspace', width_cm: Math.round(parseFloat($('room-w').value) * 100), height_cm: Math.round(parseFloat($('room-h').value) * 100), wall_cm: Math.max(0, parseFloat($('room-wall').value) || 0) };
     if (!(body.width_cm >= 100) || !(body.height_cm >= 100)) { showToast('Gebäude: mindestens 1 m × 1 m', 'error'); return; }
     if (await PUT('/inventory/plan/room', body)) { showToast('Gebäude gespeichert', 'success'); await loadPlan(); }
   }
@@ -1544,7 +1547,7 @@
     toggleLabel, setLabelCopies, toggleLevelsOf, selectBy, labelFor,
     debouncedLoadMachines, loadMachines, setMachinePlace, openMachines, formPlaceChanged, saveFormPlacement,
     planSearch, planZoom, planDrag, planDrop, planAdd, planField, planRotate, planRemove, saveRoom, loadPlan,
-    planReset, bgUpload, bgRotate, bgRotate90, bgMove, bgOpacity, bgWidth, bgScale, bgRemove, roomDraw, roomShape, doorFlip, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
+    planReset, bgUpload, roomWall, bgRotate, bgRotate90, bgMove, bgOpacity, bgWidth, bgScale, bgRemove, roomDraw, roomShape, doorFlip, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
     setLabelMode, debouncedToolLoad, toggleTool, setCopies, toolSelectAll, toolSelectNone, toolCopiesQty,
   };
 

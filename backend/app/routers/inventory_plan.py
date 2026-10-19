@@ -31,7 +31,7 @@ class RoomUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=100)
     width_cm: Optional[float] = Field(default=None, ge=100, le=100000)
     height_cm: Optional[float] = Field(default=None, ge=100, le=100000)
-    wall_cm: Optional[float] = Field(default=None, ge=2, le=100)
+    wall_cm: Optional[float] = Field(default=None, ge=0, le=100)          # Standard-Wanddicke; 0 = nur Umriss
 
 
 class BackgroundUpdate(BaseModel):
@@ -64,6 +64,7 @@ class RoomBody(BaseModel):
     kind: Optional[Literal["raum", "treppe", "tuer", "durchgang"]] = None
     points: Optional[list[list[float]]] = None        # Eckpunkte eines Raums (cm); null = Rechteck
     flip: Optional[int] = Field(default=None, ge=0, le=3)   # Tür spiegeln: 1 = Anschlag, 2 = Aufschlagseite
+    wall_cm: Optional[float] = Field(default=None, ge=0, le=100)   # eigene Wanddicke dieses Raums; null = Standard des Gebäudes
     x: Optional[float] = None
     y: Optional[float] = None
     w: Optional[float] = None
@@ -246,6 +247,8 @@ def _room_apply(r: InvRoom, p: RoomBody, given: set) -> None:
                                     round(r.plan_y + (q[1] - oy) / oh * r.plan_h, 2)] for q in pts])
     if "flip" in given and p.flip is not None:
         r.flip = p.flip
+    if "wall_cm" in given:
+        r.wall_cm = p.wall_cm if r.kind == "raum" else None
     if r.kind != "raum":
         r.points = None                                       # nur Räume haben Eckpunkte
     if r.kind != "tuer":
