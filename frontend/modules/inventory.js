@@ -1325,7 +1325,7 @@
           <button class="btn btn-ghost btn-sm" onclick="Inv.doorFlip(1)" title="Scharnier auf die andere Seite">⇋ Anschlag spiegeln</button>
           <button class="btn btn-ghost btn-sm" onclick="Inv.doorFlip(2)" title="Tür öffnet zur anderen Seite der Wand">⇵ Aufschlag spiegeln</button></div>` : ''}
         ${k === 'room' && o.kind === 'raum' ? `<div class="inv-row" style="margin-top:8px;gap:6px">${o.points
-          ? `<button class="btn btn-ghost btn-sm" onclick="Inv.roomShape(${o.id}, false)" title="Zurück zum Rechteck der Umgebung">Zu Rechteck</button><span class="inv-dim inv-small">Ecken ziehen · «+» fügt eine Ecke ein · Doppelklick auf eine Ecke löscht sie</span>`
+          ? `<button class="btn btn-ghost btn-sm" onclick="Inv.roomShape(${o.id}, false)" title="Zurück zum Rechteck der Umgebung">Zu Rechteck</button><span class="inv-dim inv-small">Ecken ziehen (Shift/Strg: rechtwinklig) · «+» fügt eine Ecke ein · Doppelklick auf eine Ecke löscht sie</span>`
           : `<button class="btn btn-ghost btn-sm" onclick="Inv.roomShape(${o.id}, true)">In Vieleck umwandeln</button>`}</div>` : ''}
         <div class="inv-row" style="margin-top:8px">
           <button class="btn btn-ghost btn-sm" ${noRot ? 'disabled' : ''} onclick="Inv.planRotate()">↻ 90°</button>
@@ -1391,7 +1391,7 @@
     if (await DELETE('/inventory/plan/floors/' + f.id + '/background')) await loadPlan();
   }
   function roomDraw() {
-    showToast('Klicke die Ecken des Raums nacheinander an. Doppelklick (oder Klick auf die erste Ecke) schliesst den Raum, Rücktaste löscht die letzte Ecke, Esc bricht ab.', 'info');
+    showToast('Klicke die Ecken des Raums nacheinander an. Doppelklick (oder Klick auf die erste Ecke) schliesst den Raum, Rücktaste löscht die letzte Ecke, Esc bricht ab. Mit gedrückter Shift- oder Strg-Taste rastet die Linie bei 0°, 90°, 180° und 270° ein (Alt: 45°).', 'info');
     planCtl.drawPolygon(async (pts) => {
       if (pts.length < 3) return;
       const n = planData.rooms.filter(r => r.kind === 'raum').length + 1;

@@ -68,8 +68,9 @@
     let floor = null;                                        // aktuelles Stockwerk (id)
     let hl = { codes: [], machineIds: [], areaCodes: [] };
     let drag = null;                                         // { mode: 'move'|'resize', kind, id, start, orig }
+    let mods = { shift: false, ctrl: false, alt: false };      // gedrückte Umschalttasten (Winkel einrasten)
     let mode = null;                                         // null | 'bg' (Grundriss verschieben) | 'pick' (Punkte wählen) | 'draw' (Raum zeichnen)
-    let tmp = [], tmpMax = 0, tmpCb = null, hover = null, defsEl = null;
+    let tmp = [], tmpMax = 0, tmpCb = null, hover = null, hoverRaw = null, defsEl = null;
 
     const floors = () => data.floors && data.floors.length ? data.floors : [{ id: 0, name: '' }];
     const list = (kind) => kind === 'room' ? (data.rooms || []) : kind === 'area' ? data.areas : kind === 'furniture' ? data.furniture : data.machines;
@@ -262,8 +263,9 @@
 
     if (opts.editable) {
       svg.addEventListener('pointerdown', (ev) => {
+        readMods(ev);
         const pt = toCm(ev);
-        if (mode === 'pick' || mode === 'draw') { addTemp(pt); return; }
+        if (mode === 'pick' || mode === 'draw') { addTemp(constrainTemp(pt)); return; }
         if (mode === 'bg') {                                 // Grundriss verschieben
           const b = (floors().find(f => f.id === floor) || {}).background;
           if (!b) return;
@@ -299,7 +301,8 @@
         svg.setPointerCapture(ev.pointerId);
       });
       svg.addEventListener('pointermove', (ev) => {
-        if (mode === 'pick' || mode === 'draw') { hover = toCm(ev); render(); return; }
+        readMods(ev);
+        if (mode === 'pick' || mode === 'draw') { hoverRaw = toCm(ev); hover = constrainTemp(hoverRaw); render(); return; }
         if (!drag) return;
         if (drag.mode === 'bg') {
           const b = (floors().find(f => f.id === floor) || {}).background, q = toCm(ev);
@@ -309,7 +312,7 @@
         const o = find(drag.kind, drag.id), pt = toCm(ev);
         if (drag.mode === 'vertex') {
           drag.moved = true;
-          o.points[drag.idx] = [snap(pt.x), snap(pt.y)];
+          o.points[drag.idx] = constrainVertex(o.points, drag.idx, pt);
           fitBox(o);
         } else if (drag.mode === 'move') {
           const dx = pt.x - drag.start.x, dy = pt.y - drag.start.y;
@@ -375,16 +378,45 @@
       mode = m; tmp = []; tmpMax = max; tmpCb = cb; hover = null; sel = null;
       svg.style.cursor = 'crosshair';
       document.addEventListener('keydown', onKey);
+      document.addEventListener('keyup', onKeyUp);
       render();
       if (opts.onSelect) opts.onSelect(null);
     }
-    function onKey(ev) { if (ev.key === 'Escape') cancelMode(); else if (ev.key === 'Backspace' && tmp.length) { tmp.pop(); render(); } }
+    function onKey(ev) {
+      if (ev.key === 'Escape') cancelMode();
+      else if (ev.key === 'Backspace' && tmp.length) { tmp.pop(); render(); }
+      else if (['Shift', 'Control', 'Alt'].includes(ev.key)) { readMods(ev); if (hoverRaw) { hover = constrainTemp(hoverRaw); render(); } }   // Vorschau sofort anpassen
+    }
+    function onKeyUp(ev) { if (['Shift', 'Control', 'Alt'].includes(ev.key)) { readMods(ev); if (hoverRaw) { hover = constrainTemp(hoverRaw); render(); } } }
+    const readMods = (ev) => { mods = { shift: !!ev.shiftKey, ctrl: !!ev.ctrlKey, alt: !!ev.altKey }; };
+    // Winkel einrasten: Shift oder Strg = 0/90/180/270°, Alt = 45°-Schritte, jeweils von einem Bezugspunkt aus
+    function snapAngle(ref, pt) {
+      const step = (mods.shift || mods.ctrl) ? 90 : mods.alt ? 45 : 0;
+      if (!step || !ref) return pt;
+      const r = step * Math.PI / 180, dx = pt.x - ref[0], dy = pt.y - ref[1], d = Math.hypot(dx, dy), a = Math.round(Math.atan2(dy, dx) / r) * r;
+      return { x: ref[0] + d * Math.cos(a), y: ref[1] + d * Math.sin(a) };
+    }
+    function constrainTemp(pt) {                              // beim Zeichnen: vom letzten Punkt (beim Massstab: vom ersten) aus
+      const q = snapAngle(tmp.length ? tmp[tmp.length - 1] : null, pt);
+      return mode === 'draw' ? { x: snap(q.x), y: snap(q.y) } : q;
+    }
+    function constrainVertex(points, i, pt) {                 // Ecke ziehen: Shift/Strg = rechtwinklig zu beiden Nachbarn, Alt = 45° zur vorigen Ecke
+      const n = points.length, prev = points[(i + n - 1) % n], next = points[(i + 1) % n];
+      if (mods.shift || mods.ctrl) {
+        const A = [prev[0], next[1]], B = [next[0], prev[1]];
+        const q = Math.hypot(pt.x - A[0], pt.y - A[1]) <= Math.hypot(pt.x - B[0], pt.y - B[1]) ? A : B;
+        return [snap(q[0]), snap(q[1])];
+      }
+      const q = snapAngle(prev, pt);
+      return [snap(q.x), snap(q.y)];
+    }
     function cancelMode() {
-      if (mode === 'pick' || mode === 'draw') { document.removeEventListener('keydown', onKey); mode = null; tmp = []; tmpCb = null; hover = null; svg.style.cursor = ''; render(); }
+      if (mode === 'pick' || mode === 'draw') { document.removeEventListener('keydown', onKey); document.removeEventListener('keyup', onKeyUp); mode = null; tmp = []; tmpCb = null; hover = null; svg.style.cursor = ''; render(); }
     }
     function finishTemp() {
       const pts = tmp, cb = tmpCb;
       document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keyup', onKeyUp);
       mode = null; tmp = []; tmpCb = null; hover = null; svg.style.cursor = '';
       render();
       if (cb) cb(pts);
