@@ -225,6 +225,8 @@
         <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('tuer')">🚪 Tür</button>
         <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('durchgang')">⬚ Durchgang</button>
         <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('treppe')">🪜 Treppe</button>
+        <span class="inv-sp"></span>
+        <button class="btn btn-ghost btn-sm" id="inv-plan-undo" onclick="Inv.planUndo()" disabled title="Nichts zum Rückgängigmachen">↶ Rückgängig</button>
       </div>
       <div class="inv-plan-hint" id="inv-plan-hint"></div>
       <div class="inv-plan-layout">
@@ -1266,18 +1268,66 @@
     } else planCtl.el.style.width = v === 'fit' ? '100%' : v + '%';
   }
   window.addEventListener('resize', () => { if (planCtl && planCtl.el.isConnected && $('plan-zoom') && $('plan-zoom').value === 'fit') planZoom(); });
+  // ── Rückgängig (Strg+Z): jede Änderung merkt sich, wie sie zurückzunehmen ist (Stand vor der Änderung) ──
+  const undoStack = [];
+  function undoPush(label, run) { undoStack.push({ label, run }); if (undoStack.length > 50) undoStack.shift(); updateUndoBtn(); }
+  function undoClear() { undoStack.length = 0; updateUndoBtn(); }
+  function updateUndoBtn() {
+    const b = $('plan-undo'); if (!b) return;
+    b.disabled = !undoStack.length;
+    b.title = undoStack.length ? `Rückgängig: ${undoStack[undoStack.length - 1].label} (Strg+Z)` : 'Nichts zum Rückgängigmachen';
+  }
+  async function planUndo() {
+    const u = undoStack.pop(); updateUndoBtn();
+    if (!u) return;
+    const ok = await u.run();
+    await loadPlan();
+    showToast(ok ? 'Rückgängig: ' + u.label : 'Das liess sich nicht rückgängig machen', ok ? 'info' : 'error');
+  }
+  document.addEventListener('keydown', (ev) => {
+    if (!(ev.ctrlKey || ev.metaKey) || ev.shiftKey || ev.altKey || ev.key.toLowerCase() !== 'z') return;
+    const pg = document.getElementById('inv-page-plan');
+    if (!pg || !pg.classList.contains('active') || !pg.offsetParent) return;
+    const t = ev.target, tag = t && t.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+    if (planCtl && planCtl.mode()) return;                                  // beim Zeichnen gilt die Rücktaste
+    ev.preventDefault(); planUndo();
+  });
+  async function restoreState(kind, id, before) {                           // Element bzw. Raum auf den gemerkten Stand zurücksetzen
+    if (kind === 'room') {
+      const p = before.plan;
+      return PATCH('/inventory/plan/rooms/' + id, { x: p.x, y: p.y, w: p.w, h: p.h, rot: p.rot || 0, points: before.points || null });
+    }
+    if (!before.plan) return PATCH(`/inventory/plan/${kind}/${id}`, { remove: true });
+    const p = before.plan;
+    return PATCH(`/inventory/plan/${kind}/${id}`, { x: p.x, y: p.y, w: p.w, h: p.h, rot: p.rot || 0, floor_id: p.floor_id });
+  }
   async function planChanged(kind, id, rect, extra) {
+    const before = extra && extra.before;
     let r;
     if (kind === 'room') {
-      r = rect ? await PATCH('/inventory/plan/rooms/' + id, Object.assign({ x: rect.x, y: rect.y, w: rect.w, h: rect.h, rot: rect.rot || 0 }, extra || {}))
-               : await DELETE('/inventory/plan/rooms/' + id);
-      if (!rect) { await loadPlan(); return; }
+      if (!rect) {                                                          // Raum gelöscht: zum Wiederherstellen alle Daten merken
+        const room = planData.rooms.find(x => x.id === id), p = before && before.plan;
+        const data = room && p ? { floor_id: room.floor_id, name: room.name, kind: room.kind, link_floor_id: room.link_floor_id, flip: room.flip || 0, wall_cm: room.wall_cm,
+          points: before.points || null, x: p.x, y: p.y, w: p.w, h: p.h, rot: p.rot || 0 } : null;
+        if (await DELETE('/inventory/plan/rooms/' + id) && data) undoPush('Raum gelöscht', () => POST('/inventory/plan/rooms', data));
+        await loadPlan(); return;
+      }
+      r = await PATCH('/inventory/plan/rooms/' + id, { x: rect.x, y: rect.y, w: rect.w, h: rect.h, rot: rect.rot || 0, points: extra ? extra.points : undefined });
     } else {
       const body = rect ? { x: rect.x, y: rect.y, w: rect.w, h: rect.h, rot: rect.rot || 0, floor_id: rect.floor_id } : { remove: true };
       r = await PATCH(`/inventory/plan/${kind}/${id}`, body);
     }
     if (!r) { await loadPlan(); return; }                 // Fehler: Stand vom Server zeigen
+    if (before) undoPush(kind === 'room' ? 'Raum geändert' : !before.plan ? 'Element eingezeichnet' : !rect ? 'Element entfernt' : 'Element geändert', () => restoreState(kind, id, before));
     renderPlanSide();
+  }
+  async function roomPatch(id, patch, label) {                              // Eigenschaft eines Raums ändern und merken
+    const room = planData.rooms.find(x => x.id === id); if (!room) return false;
+    const prev = {}; for (const k in patch) prev[k] = room[k] === undefined ? null : room[k];
+    const res = await PATCH('/inventory/plan/rooms/' + id, patch);
+    if (res) undoPush(label, () => PATCH('/inventory/plan/rooms/' + id, prev));
+    return !!res;
   }
   const PLAN_KIND = { area: 'Bereich', furniture: 'Möbel', machine: 'Maschine', room: 'Raum' };
   const planName = (k, o) => k === 'furniture' ? `${o.code} · ${o.title}` : k === 'area' ? ((o.code ? o.code + ' · ' : '') + o.name) : o.name;
@@ -1290,6 +1340,7 @@
       draw: `✏️ Raum zeichnen · ${n} Ecke${n === 1 ? '' : 'n'} · Doppelklick oder erste Ecke schliesst · Shift/Strg 90° · Alt 45° · Rücktaste zurück · Esc Abbruch`,
       pick: `📏 Massstab: zwei Punkte anklicken (${n}/2) · Esc Abbruch`,
       bg: '✋ Grundriss verschieben: im Plan ziehen',
+      crop: '✂️ Ausschnitt: Rechteck über den sichtbaren Teil des Grundrisses aufziehen · Esc Abbruch',
     }[mode] || '';
     const el = $('plan-hint'); if (el) el.textContent = t;
   }
@@ -1357,6 +1408,8 @@
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('inv-bg-file').click()">${bgf ? 'Bild ersetzen' : 'Grundriss hochladen'}</button>
         ${bgf ? `<button class="btn btn-ghost btn-sm" onclick="Inv.bgScale()" title="Zwei Punkte anklicken und ihren echten Abstand eingeben">📏 Massstab setzen</button>
         <button class="btn ${mode === 'bg' ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="Inv.bgMove()" title="Das Bild auf dem Plan ziehen">✋ Bild verschieben</button>
+        <button class="btn ${mode === 'crop' ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="Inv.bgCrop()" title="Nur einen Teil des Bildes anzeigen (z.B. ohne Bemassung am Rand)">✂️ Ausschnitt</button>
+        ${bgf.crop && (bgf.crop.l || bgf.crop.t || bgf.crop.r || bgf.crop.b) ? '<button class="btn btn-ghost btn-sm" onclick="Inv.bgCropReset()" title="Das ganze Bild wieder anzeigen">Ausschnitt aufheben</button>' : ''}
         <button class="btn btn-danger btn-sm" onclick="Inv.bgRemove()">Entfernen</button>` : ''}</div>
       ${bgf ? `<div class="inv-plan-grid" style="margin-top:8px">
         <div><label class="form-label">Breite des Bildes (m)</label><input class="form-input" type="number" step="0.1" min="1" value="${(bgf.w / 100).toFixed(2)}" onchange="Inv.bgWidth(this.value)"></div>
@@ -1390,11 +1443,11 @@
   }
   async function planReset() {
     if (!confirm('Plan wirklich zurücksetzen?\n\nAlle Räume, Treppen und Stockwerke werden gelöscht und alle Elemente vom Plan genommen. Codes und Standorte (Möbel, Ebenen) bleiben erhalten.\n\nTipp: vorher unter «Backup & Restore» ein Backup machen.')) return;
-    if (await POST('/inventory/plan/reset', {})) { showToast('Plan zurückgesetzt', 'success'); await loadPlan(); }
+    if (await POST('/inventory/plan/reset', {})) { undoClear(); showToast('Plan zurückgesetzt', 'success'); await loadPlan(); }
   }
   async function doorFlip(bit) {                          // Anschlag (1) bzw. Aufschlagseite (2) umschalten
     const s = planCtl && planCtl.selected(); if (!s || s.kind !== 'room') return;
-    if (await PATCH('/inventory/plan/rooms/' + s.id, { flip: ((s.item.flip || 0) ^ bit) & 3 })) { await loadPlan(); planCtl.select('room', s.id); }
+    if (await roomPatch(s.id, { flip: ((s.item.flip || 0) ^ bit) & 3 }, 'Tür gespiegelt')) { await loadPlan(); planCtl.select('room', s.id); }
   }
   // ── Grundriss-Bild: hochladen, Massstab, verschieben, Deckkraft ──
   const curFloorObj = () => planData && planData.floors.find(f => f.id === planCtl.floorId());
@@ -1407,23 +1460,38 @@
       const r = await fetch('/api/inventory/plan/floors/' + planCtl.floorId() + '/background', { method: 'PUT', headers: { Authorization: 'Bearer ' + token }, body: fd });
       if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || r.statusText); }
       showToast('Grundriss gespeichert. Jetzt den Massstab setzen (📏), dann das Bild verschieben.', 'success');
-      await loadPlan();
+      undoClear(); await loadPlan();
     } catch (e) { showToast('Hochladen fehlgeschlagen: ' + e.message, 'error'); }
   }
-  async function bgPatch(patch) {
-    const f = curFloorObj(); if (!f) return;
-    if (await PATCH('/inventory/plan/floors/' + f.id + '/background', patch)) { planCtl.setBackground(f.id, patch); renderPlanSide(); }
+  const bgVal = (b, k) => k.startsWith('crop_') ? (b.crop || {})[k.slice(5)] || 0 : b[k];
+  const bgLocal = (patch) => { const o = {}, c = {}; for (const k in patch) k.startsWith('crop_') ? (c[k.slice(5)] = patch[k]) : (o[k] = patch[k]); if (Object.keys(c).length) o.crop = Object.assign({ l: 0, t: 0, r: 0, b: 0 }, (curFloorObj().background || {}).crop, c); return o; };
+  async function bgPatch(patch, prevOverride, label) {
+    const f = curFloorObj(); if (!f || !f.background) return;
+    const prev = prevOverride || Object.fromEntries(Object.keys(patch).map(k => [k, bgVal(f.background, k)]));
+    if (await PATCH('/inventory/plan/floors/' + f.id + '/background', patch)) {
+      planCtl.setBackground(f.id, bgLocal(patch)); renderPlanSide();
+      undoPush(label || 'Grundriss geändert', async () => PATCH('/inventory/plan/floors/' + f.id + '/background', prev));
+    }
   }
   const curBgRot = () => { const f = curFloorObj(); return (f && f.background && f.background.rot) || 0; };
-  function bgRotate(v) { const r = ((parseFloat(v) || 0) % 360 + 360) % 360; bgPatch({ rot: r }); }
+  function bgRotate(v) { const r = ((parseFloat(v) || 0) % 360 + 360) % 360; bgPatch({ rot: r }, null, 'Grundriss gedreht'); }
   function bgRotate90() { bgRotate(curBgRot() + 90); }
-  function bgMoved(floorId, pos) { PATCH('/inventory/plan/floors/' + floorId + '/background', pos); }
+  function bgMoved(floorId, pos, prevPos) {
+    PATCH('/inventory/plan/floors/' + floorId + '/background', pos).then(res => {
+      if (res && prevPos) undoPush('Grundriss verschoben', () => PATCH('/inventory/plan/floors/' + floorId + '/background', prevPos));
+    });
+  }
   function bgMove() { planCtl.setMode(planCtl.mode() === 'bg' ? null : 'bg'); renderPlanSide(); }
-  let bgOpTimer = null;
-  function bgOpacity(v) { const f = curFloorObj(); if (!f) return; planCtl.setBackground(f.id, { opacity: v / 100 }); clearTimeout(bgOpTimer); bgOpTimer = setTimeout(() => bgPatch({ opacity: v / 100 }), 400); }
+  let bgOpTimer = null, bgOpPrev = null;
+  function bgOpacity(v) {
+    const f = curFloorObj(); if (!f || !f.background) return;
+    if (bgOpPrev === null) bgOpPrev = f.background.opacity;                 // Stand vor dem Ziehen des Reglers merken
+    planCtl.setBackground(f.id, { opacity: v / 100 }); clearTimeout(bgOpTimer);
+    bgOpTimer = setTimeout(() => { const p = bgOpPrev; bgOpPrev = null; bgPatch({ opacity: v / 100 }, { opacity: p }, 'Deckkraft geändert'); }, 400);
+  }
   function bgWidth(v) {
     const f = curFloorObj(), w = parseFloat(v) * 100; if (!f || !f.background || !(w >= 100)) return;
-    bgPatch({ w, h: f.background.h * w / f.background.w });
+    bgPatch({ w, h: f.background.h * w / f.background.w }, null, 'Bildbreite geändert');
   }
   function bgScale() {
     const f = curFloorObj(); if (!f || !f.background) return;
@@ -1435,12 +1503,26 @@
       if (!(m > 0)) return;
       const k = m * 100 / dist, b = f.background, p0 = pts[0];                // um den ersten Punkt skalieren, damit er stehen bleibt
       const cx = p0[0] + (b.x + b.w / 2 - p0[0]) * k, cy = p0[1] + (b.y + b.h / 2 - p0[1]) * k;   // neue Bildmitte (gilt auch bei gedrehtem Bild)
-      bgPatch({ x: cx - b.w * k / 2, y: cy - b.h * k / 2, w: b.w * k, h: b.h * k });
+      bgPatch({ x: cx - b.w * k / 2, y: cy - b.h * k / 2, w: b.w * k, h: b.h * k }, null, 'Massstab gesetzt');
     });
   }
+  function bgCrop() {
+    const f = curFloorObj(); if (!f || !f.background) return;
+    showToast('Ziehe ein Rechteck über den Teil des Grundrisses, der sichtbar bleiben soll (z.B. ohne Bemassung am Rand). Esc bricht ab.', 'info');
+    planCtl.cropRect((r) => {
+      const b = f.background, cx = b.x + b.w / 2, cy = b.y + b.h / 2, a = (b.rot || 0) * Math.PI / 180;
+      const loc = (x, y) => [cx + (x - cx) * Math.cos(a) + (y - cy) * Math.sin(a), cy - (x - cx) * Math.sin(a) + (y - cy) * Math.cos(a)];   // ins Bildsystem zurückdrehen
+      const p0 = loc(r.x0, r.y0), p1 = loc(r.x1, r.y1), cl = (v) => Math.min(Math.max(v, 0), 0.9);
+      const l = cl((Math.min(p0[0], p1[0]) - b.x) / b.w), t = cl((Math.min(p0[1], p1[1]) - b.y) / b.h);
+      const rr = cl((b.x + b.w - Math.max(p0[0], p1[0])) / b.w), bb = cl((b.y + b.h - Math.max(p0[1], p1[1])) / b.h);
+      if (l + rr > 0.95 || t + bb > 0.95) { showToast('Der Ausschnitt ist zu klein', 'error'); return; }
+      bgPatch({ crop_l: l, crop_t: t, crop_r: rr, crop_b: bb }, null, 'Ausschnitt gesetzt');
+    });
+  }
+  function bgCropReset() { bgPatch({ crop_l: 0, crop_t: 0, crop_r: 0, crop_b: 0 }, null, 'Ausschnitt zurückgesetzt'); }
   async function bgRemove() {
     const f = curFloorObj(); if (!f || !confirm('Grundriss-Bild für dieses Stockwerk entfernen?')) return;
-    if (await DELETE('/inventory/plan/floors/' + f.id + '/background')) await loadPlan();
+    if (await DELETE('/inventory/plan/floors/' + f.id + '/background')) { undoClear(); await loadPlan(); }
   }
   function roomDraw() {
     showToast('Klicke die Ecken des Raums nacheinander an. Doppelklick (oder Klick auf die erste Ecke) schliesst den Raum, Rücktaste löscht die letzte Ecke, Esc bricht ab. Mit gedrückter Shift- oder Strg-Taste rastet die Linie bei 0°, 90°, 180° und 270° ein (Alt: 45°).', 'info');
@@ -1448,10 +1530,10 @@
       if (pts.length < 3) return;
       const n = planData.rooms.filter(r => r.kind === 'raum').length + 1;
       const r = await POST('/inventory/plan/rooms', { floor_id: planCtl.floorId(), kind: 'raum', name: 'Raum ' + n, points: pts });
-      if (r) { await loadPlan(); planCtl.select('room', r.id); }
+      if (r) { undoPush('Raum gezeichnet', () => DELETE('/inventory/plan/rooms/' + r.id)); await loadPlan(); planCtl.select('room', r.id); }
     });
   }
-  async function roomWall(id, v) { if (await PATCH('/inventory/plan/rooms/' + id, { wall_cm: v === '' ? null : Math.max(0, parseFloat(v) || 0) })) { await loadPlan(); planCtl.select('room', id); } }
+  async function roomWall(id, v) { if (await roomPatch(id, { wall_cm: v === '' ? null : Math.max(0, parseFloat(v) || 0) }, 'Wanddicke geändert')) { await loadPlan(); planCtl.select('room', id); } }
   function roomShape(id, polygon) { if (planCtl) polygon ? planCtl.toPolygon(id) : planCtl.toRect(id); }
   async function floorAdd() {
     const name = ($('floor-new').value || '').trim();
@@ -1461,19 +1543,19 @@
   async function floorRename(id, name) { if (name.trim() && await PATCH('/inventory/plan/floors/' + id, { name: name.trim() })) await loadPlan(); else await loadPlan(); }
   async function floorDelete(id) {
     if (!confirm('Stockwerk wirklich löschen? Das geht nur, wenn es leer ist.')) return;
-    if (await DELETE('/inventory/plan/floors/' + id)) await loadPlan();
+    if (await DELETE('/inventory/plan/floors/' + id)) { undoClear(); await loadPlan(); }
   }
   async function roomAdd(kind) {
     const n = planData.rooms.filter(r => r.kind === kind).length + 1;
     const names = { treppe: 'Treppe ' + n, raum: 'Raum ' + n };
     const r = await POST('/inventory/plan/rooms', Object.assign({ floor_id: planCtl.floorId(), kind, x: 100, y: 100 }, names[kind] ? { name: names[kind] } : {}));
-    if (r) { await loadPlan(); planCtl.select('room', r.id); }
+    if (r) { undoPush('Raum angelegt', () => DELETE('/inventory/plan/rooms/' + r.id)); await loadPlan(); planCtl.select('room', r.id); }
   }
-  async function roomRename(id, name) { if (name.trim() && await PATCH('/inventory/plan/rooms/' + id, { name: name.trim() })) await loadPlan(); }
-  async function roomLink(id, v) { if (await PATCH('/inventory/plan/rooms/' + id, { link_floor_id: v ? +v : null })) { await loadPlan(); planCtl.select('room', id); } }
+  async function roomRename(id, name) { if (name.trim() && await roomPatch(id, { name: name.trim() }, 'Raum umbenannt')) await loadPlan(); }
+  async function roomLink(id, v) { if (await roomPatch(id, { link_floor_id: v ? +v : null }, 'Treppenziel geändert')) { await loadPlan(); planCtl.select('room', id); } }
   async function planMoveFloor(fid) {
     const s = planCtl && planCtl.selected(); if (!s) return;
-    if (s.kind === 'room') { if (await PATCH('/inventory/plan/rooms/' + s.id, { floor_id: fid })) { await loadPlan(); planCtl.setFloor(fid); planCtl.select('room', s.id); } }
+    if (s.kind === 'room') { if (await roomPatch(s.id, { floor_id: fid }, 'Stockwerk gewechselt')) { await loadPlan(); planCtl.setFloor(fid); planCtl.select('room', s.id); } }
     else { planCtl.update(s.kind, s.id, { floor_id: fid }); planCtl.setFloor(fid); planCtl.select(s.kind, s.id); }
   }
   function planDrag(ev, kind, id) { ev.dataTransfer.setData('text/plain', kind + ':' + id); ev.dataTransfer.effectAllowed = 'copy'; }
@@ -1591,7 +1673,7 @@
     toggleLabel, setLabelCopies, toggleLevelsOf, selectBy, labelFor,
     debouncedLoadMachines, loadMachines, setMachinePlace, openMachines, formPlaceChanged, saveFormPlacement,
     planSearch, planZoom, planDrag, planDrop, planAdd, planField, planRotate, planRemove, saveRoom, loadPlan,
-    planToggle, planReset, bgUpload, roomWall, bgRotate, bgRotate90, bgMove, bgOpacity, bgWidth, bgScale, bgRemove, roomDraw, roomShape, doorFlip, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
+    planUndo, bgCrop, bgCropReset, planToggle, planReset, bgUpload, roomWall, bgRotate, bgRotate90, bgMove, bgOpacity, bgWidth, bgScale, bgRemove, roomDraw, roomShape, doorFlip, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
     setLabelMode, debouncedToolLoad, toggleTool, setCopies, toolSelectAll, toolSelectNone, toolCopiesQty,
   };
 

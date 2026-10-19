@@ -41,6 +41,10 @@ class BackgroundUpdate(BaseModel):
     h: Optional[float] = Field(default=None, ge=100, le=100000)
     opacity: Optional[float] = Field(default=None, ge=0.05, le=1)
     rot: Optional[float] = Field(default=None, ge=-720, le=720)          # Grad, wird auf 0–359,99 normalisiert
+    crop_l: Optional[float] = Field(default=None, ge=0, le=0.95)         # weggeschnittene Ränder als Anteil der Bildkante
+    crop_t: Optional[float] = Field(default=None, ge=0, le=0.95)
+    crop_r: Optional[float] = Field(default=None, ge=0, le=0.95)
+    crop_b: Optional[float] = Field(default=None, ge=0, le=0.95)
 
 
 class RectUpdate(BaseModel):
@@ -205,6 +209,11 @@ async def update_background(floor_id: int, payload: BackgroundUpdate, db: AsyncS
             setattr(f, dst, ch[src])
     if ch.get("rot") is not None:
         f.bg_rot = round(ch["rot"] % 360, 2)
+    for side in ("l", "t", "r", "b"):
+        if ch.get("crop_" + side) is not None:
+            setattr(f, "bg_crop_" + side, round(ch["crop_" + side], 4))
+    if (f.bg_crop_l or 0) + (f.bg_crop_r or 0) > 0.95 or (f.bg_crop_t or 0) + (f.bg_crop_b or 0) > 0.95:
+        raise HTTPException(400, "Der Ausschnitt ist zu klein")
     await db.commit()
     return plan_svc.floor_out(f)
 

@@ -2,9 +2,9 @@
  * Bauplan des Inventar-Moduls (Etappe 4): zeichnet Gebäude, Stockwerke, Räume, Bereiche, Möbel und Maschinen als Rechtecke
  * (Einheit: cm) in ein SVG. Wird vom LabManager (bearbeitbar) und von der Gäste-Seite inventar.html (nur ansehen) geladen.
  *
- *   const plan = InvPlan.mount(container, data, { editable, onChange(kind, id, rect|null, extra), onMode(mode, count), onSelect(sel|null), onFloor(id) });
+ *   const plan = InvPlan.mount(container, data, { editable, onChange(kind, id, rect|null, {points, before}), onMode(mode, count), onBackground(floorId, pos, prevPos), onSelect, onFloor, onSelect(sel|null), onFloor(id) });
  *   plan.setData(data); plan.setHighlight({ codes: ['ELE-M02'], machineIds: [3], areaCodes: ['ELE'] });
- *   plan.setMode('bg'|null) (Grundriss verschieben); plan.pickPoints(n, cb); plan.drawPolygon(cb); plan.cancelMode(); plan.setBackground(floorId, patch);
+ *   plan.setMode('bg'|null) (Grundriss verschieben); plan.cropRect(cb) (Ausschnitt aufziehen); plan.pickPoints(n, cb); plan.drawPolygon(cb); plan.cancelMode(); plan.setBackground(floorId, patch);
  *   plan.setFloor(id); plan.floorId(); plan.select(kind, id); plan.place(kind, id, {x, y}|null);
  *   plan.update(kind, id, {x, w, rot, floor_id …}); plan.remove(kind, id); plan.toPolygon(id); plan.toRect(id);
  *
@@ -70,12 +70,13 @@
     let drag = null;                                         // { mode: 'move'|'resize', kind, id, start, orig }
     let mods = { shift: false, ctrl: false, alt: false };      // gedrückte Umschalttasten (Winkel einrasten)
     let mode = null;                                         // null | 'bg' (Grundriss verschieben) | 'pick' (Punkte wählen) | 'draw' (Raum zeichnen)
-    let tmp = [], tmpMax = 0, tmpCb = null, hover = null, hoverRaw = null, defsEl = null;
+    let tmp = [], tmpMax = 0, tmpCb = null, hover = null, hoverRaw = null, defsEl = null, cropPrev = null, cropCb = null;
 
     const floors = () => data.floors && data.floors.length ? data.floors : [{ id: 0, name: '' }];
     const list = (kind) => kind === 'room' ? (data.rooms || []) : kind === 'area' ? data.areas : kind === 'furniture' ? data.furniture : data.machines;
     const find = (kind, id) => list(kind).find(o => o.id === id);
     const floorOf = (kind, o) => kind === 'room' ? o.floor_id : (o.plan && o.plan.floor_id != null ? o.plan.floor_id : floors()[0].id);
+    const snapOf = (o) => ({ plan: o.plan ? Object.assign({}, o.plan) : null, points: o.points ? o.points.map(q => q.slice()) : null });   // für «Rückgängig»
     const curFloorOf = () => floors().find(f => f.id === floor);
     const ensureFloor = () => { if (!floors().some(f => f.id === floor)) floor = floors()[0].id; };
 
@@ -131,8 +132,14 @@
       const curFloor = floors().find(f => f.id === floor) || {};
       if (curFloor.background && curFloor.bgUrl) {                 // Grundriss zum Abpausen
         const b = curFloor.background;
-        svgEl('image', { href: curFloor.bgUrl, x: b.x, y: b.y, width: b.w, height: b.h, opacity: b.opacity, preserveAspectRatio: 'none', 'pointer-events': 'none',
-          transform: b.rot ? `rotate(${b.rot} ${b.x + b.w / 2} ${b.y + b.h / 2})` : null }, svg);
+        const c = b.crop || { l: 0, t: 0, r: 0, b: 0 }, gb = svgEl('g', { 'pointer-events': 'none', transform: b.rot ? `rotate(${b.rot} ${b.x + b.w / 2} ${b.y + b.h / 2})` : null }, svg);
+        let tgt = gb;
+        if (c.l || c.t || c.r || c.b) {                       // nur der gewählte Ausschnitt des Bildes ist sichtbar (z.B. ohne Bemassung am Rand)
+          const cp = svgEl('clipPath', { id: 'invplan-bgclip' }, defsEl);
+          svgEl('rect', { x: b.x + c.l * b.w, y: b.y + c.t * b.h, width: b.w * (1 - c.l - c.r), height: b.h * (1 - c.t - c.b) }, cp);
+          tgt = svgEl('g', { 'clip-path': 'url(#invplan-bgclip)' }, gb);
+        }
+        svgEl('image', { href: curFloor.bgUrl, x: b.x, y: b.y, width: b.w, height: b.h, opacity: b.opacity, preserveAspectRatio: 'none' }, tgt);
       }
       svgEl('rect', { x: 0, y: 0, width: W, height: H, fill: 'url(#invplan-grid)', style: 'color:var(--text)', 'pointer-events': 'none' }, svg);
       const fname = (floors().find(f => f.id === floor) || {}).name;
@@ -272,6 +279,7 @@
         readMods(ev);
         const pt = toCm(ev);
         if (mode === 'pick' || mode === 'draw') { addTemp(constrainTemp(pt)); return; }
+        if (mode === 'crop') { drag = { mode: 'crop', start: pt }; cropPrev = { x0: pt.x, y0: pt.y, x1: pt.x, y1: pt.y }; svg.setPointerCapture(ev.pointerId); return; }
         if (mode === 'bg') {                                 // Grundriss verschieben
           const b = (floors().find(f => f.id === floor) || {}).background;
           if (!b) return;
@@ -281,7 +289,7 @@
         }
         if (ev.target.getAttribute && ev.target.getAttribute('data-handle') && sel) {
           const o = find(sel.kind, sel.id);
-          drag = { mode: 'resize', handle: ev.target.getAttribute('data-handle'), kind: sel.kind, id: sel.id, orig: Object.assign({}, o.plan) };
+          drag = { mode: 'resize', handle: ev.target.getAttribute('data-handle'), kind: sel.kind, id: sel.id, orig: Object.assign({}, o.plan), before: snapOf(o) };
           svg.setPointerCapture(ev.pointerId);
           return;
         }
@@ -291,9 +299,10 @@
           if (tgt.hasAttribute('data-mid')) {                    // neue Ecke auf der Kantenmitte, sofort ziehbar
             const i = +tgt.getAttribute('data-mid'), a1 = o.points[i], b1 = o.points[(i + 1) % o.points.length];
             if (o.points.length >= 60) return;
+            const before = snapOf(o);
             o.points.splice(i + 1, 0, [snap((a1[0] + b1[0]) / 2), snap((a1[1] + b1[1]) / 2)]);
-            drag = { mode: 'vertex', kind: 'room', id: sel.id, idx: i + 1, moved: true };
-          } else drag = { mode: 'vertex', kind: 'room', id: sel.id, idx: +tgt.getAttribute('data-vertex'), moved: false };
+            drag = { mode: 'vertex', kind: 'room', id: sel.id, idx: i + 1, moved: true, before };
+          } else drag = { mode: 'vertex', kind: 'room', id: sel.id, idx: +tgt.getAttribute('data-vertex'), moved: false, before: snapOf(o) };
           svg.setPointerCapture(ev.pointerId);
           render();
           return;
@@ -303,13 +312,14 @@
         const kind = g.getAttribute('data-kind'), id = +g.getAttribute('data-id');
         if (!sel || sel.kind !== kind || sel.id !== id) setSelection({ kind, id });
         const oo = find(kind, id);
-        drag = { mode: 'move', kind, id, start: pt, orig: Object.assign({}, oo.plan), origPoints: oo.points ? oo.points.map(q => q.slice()) : null, moved: false };
+        drag = { mode: 'move', kind, id, start: pt, orig: Object.assign({}, oo.plan), origPoints: oo.points ? oo.points.map(q => q.slice()) : null, moved: false, before: snapOf(oo) };
         svg.setPointerCapture(ev.pointerId);
       });
       svg.addEventListener('pointermove', (ev) => {
         readMods(ev);
         if (mode === 'pick' || mode === 'draw') { hoverRaw = toCm(ev); hover = constrainTemp(hoverRaw); render(); return; }
         if (!drag) return;
+        if (drag.mode === 'crop') { const q = toCm(ev); cropPrev = { x0: drag.start.x, y0: drag.start.y, x1: q.x, y1: q.y }; render(); return; }
         if (drag.mode === 'bg') {
           const b = (floors().find(f => f.id === floor) || {}).background, q = toCm(ev);
           if (b) { b.x = Math.round(drag.orig.x + q.x - drag.start.x); b.y = Math.round(drag.orig.y + q.y - drag.start.y); render(); }
@@ -351,14 +361,20 @@
       const end = () => {
         if (!drag) return;
         const d = drag; drag = null;
+        if (d.mode === 'crop') {
+          const r = cropPrev, cb = cropCb; cropPrev = null; cropCb = null; mode = null; svg.style.cursor = ''; document.removeEventListener('keydown', onKey);
+          render(); if (opts.onMode) opts.onMode(null, 0);
+          if (r && cb && Math.abs(r.x1 - r.x0) > 20 && Math.abs(r.y1 - r.y0) > 20) cb(r);
+          return;
+        }
         if (d.mode === 'bg') {
           svg.style.cursor = 'grab';
           const b = (floors().find(f => f.id === floor) || {}).background;
-          if (b && opts.onBackground) opts.onBackground(floor, { x: b.x, y: b.y });
+          if (b && opts.onBackground) opts.onBackground(floor, { x: b.x, y: b.y }, d.orig);
           return;
         }
         const o = find(d.kind, d.id);
-        if ((d.mode === 'move' && d.moved) || d.mode === 'resize' || (d.mode === 'vertex' && d.moved)) { emit(d.kind, o); if (opts.onSelect) opts.onSelect(selInfo()); }
+        if ((d.mode === 'move' && d.moved) || d.mode === 'resize' || (d.mode === 'vertex' && d.moved)) { emit(d.kind, o, d.before); if (opts.onSelect) opts.onSelect(selInfo()); }
       };
       svg.addEventListener('dblclick', (ev) => {
         if (mode === 'draw') {                               // Doppelklick schliesst den Raum (der zweite Klick hat einen doppelten Punkt gesetzt)
@@ -371,8 +387,9 @@
         if (!(sel && sel.kind === 'room' && t.getAttribute && t.hasAttribute('data-vertex'))) return;
         const o = find('room', sel.id);
         if (o.points.length <= 3) return;
+        const before = snapOf(o);
         o.points.splice(+t.getAttribute('data-vertex'), 1);
-        fitBox(o); render(); emit('room', o);
+        fitBox(o); render(); emit('room', o, before);
       });
       svg.addEventListener('pointerup', end);
       svg.addEventListener('pointercancel', end);
@@ -418,7 +435,7 @@
       return [snap(q.x), snap(q.y)];
     }
     function cancelMode() {
-      if (mode === 'pick' || mode === 'draw') { document.removeEventListener('keydown', onKey); document.removeEventListener('keyup', onKeyUp); mode = null; tmp = []; tmpCb = null; hover = null; svg.style.cursor = ''; render(); if (opts.onMode) opts.onMode(null, 0); }
+      if (mode === 'pick' || mode === 'draw' || mode === 'crop') { document.removeEventListener('keydown', onKey); document.removeEventListener('keyup', onKeyUp); mode = null; tmp = []; tmpCb = null; cropPrev = null; cropCb = null; drag = null; hover = null; svg.style.cursor = ''; render(); if (opts.onMode) opts.onMode(null, 0); }
     }
     function finishTemp() {
       const pts = tmp, cb = tmpCb;
@@ -438,6 +455,11 @@
       if (opts.onMode) opts.onMode(mode, tmp.length);
     }
     function drawTemp() {                                    // Vorschau der gerade gesetzten Punkte
+      if (mode === 'crop' && cropPrev) {
+        const g0 = svgEl('g', { 'pointer-events': 'none' }, svg), r = cropPrev;
+        svgEl('rect', { x: Math.min(r.x0, r.x1), y: Math.min(r.y0, r.y1), width: Math.abs(r.x1 - r.x0), height: Math.abs(r.y1 - r.y0), fill: 'rgba(244,166,34,.12)', stroke: 'var(--accent)', 'stroke-width': 3, 'stroke-dasharray': '14 8', 'vector-effect': 'non-scaling-stroke' }, g0);
+        return;
+      }
       if (!(mode === 'pick' || mode === 'draw') || !tmp.length) return;
       const g = svgEl('g', { 'pointer-events': 'none' }, svg);
       const pts = tmp.concat(hover && mode === 'draw' ? [[snap(hover.x), snap(hover.y)]] : (hover ? [[hover.x, hover.y]] : []));
@@ -456,7 +478,7 @@
       o.plan.x = Math.min(...xs); o.plan.y = Math.min(...ys);
       o.plan.w = Math.max(5, Math.max(...xs) - o.plan.x); o.plan.h = Math.max(5, Math.max(...ys) - o.plan.y);
     }
-    function emit(kind, o) { if (opts.onChange) opts.onChange(kind, o.id, o.plan, kind === 'room' ? { points: o.points || null } : undefined); }
+    function emit(kind, o, before) { if (opts.onChange) opts.onChange(kind, o.id, o.plan, { points: kind === 'room' ? (o.points || null) : undefined, before }); }
 
     const api = {
       el: svg,
@@ -481,6 +503,11 @@
           if (hits.length && !hits.includes(floor)) { floor = hits[0]; if (opts.onFloor) opts.onFloor(floor); }
         }
         render();
+      },
+      cropRect(cb) {                                         // Rechteck aufziehen → cb({x0,y0,x1,y1}) in Plan-cm
+        cancelMode(); mode = 'crop'; cropCb = cb; cropPrev = null; svg.style.cursor = 'crosshair';
+        document.addEventListener('keydown', onKey);
+        if (opts.onMode) opts.onMode('crop', 0);
       },
       setMode(m) {                                           // 'bg' = Grundriss verschieben, sonst aus
         if (m === 'bg') { cancelMode(); mode = 'bg'; svg.style.cursor = 'grab'; }
@@ -509,11 +536,11 @@
         ensureFloor();
         o.plan = { x: clamp(snap(c.x - sz[0] / 2), -sz[0] / 2, data.room.width_cm - sz[0] / 2), y: clamp(snap(c.y - sz[1] / 2), -sz[1] / 2, data.room.height_cm - sz[1] / 2),
           w: sz[0], h: sz[1], rot: 0, floor_id: floor };
-        emit(kind, o); setSelection({ kind, id });
+        emit(kind, o, { plan: null, points: null }); setSelection({ kind, id });
       },
       update(kind, id, patch) {
         const o = find(kind, id); if (!o || !o.plan) return;
-        const before = Object.assign({}, o.plan);
+        const snapBefore = snapOf(o), before = Object.assign({}, o.plan);
         Object.assign(o.plan, patch);
         if (o.points && before.w && before.h && ['x', 'y', 'w', 'h'].some(k => k in patch)) {
           o.points = o.points.map(q => [o.plan.x + (q[0] - before.x) / before.w * o.plan.w, o.plan.y + (q[1] - before.y) / before.h * o.plan.h]);
@@ -522,25 +549,28 @@
         o.plan.x = clamp(o.plan.x, -o.plan.w / 2, R.width_cm - o.plan.w / 2);
         o.plan.y = clamp(o.plan.y, -o.plan.h / 2, R.height_cm - o.plan.h / 2);
         if (kind !== 'room' && patch.floor_id != null && patch.floor_id !== floor) sel = null;      // auf anderes Stockwerk verschoben
-        render(); emit(kind, o);
+        render(); emit(kind, o, snapBefore);
         if (opts.onSelect) opts.onSelect(selInfo());
       },
       toPolygon(id) {                                        // Rechteck-Raum → Vieleck mit vier Ecken
         const o = find('room', id); if (!o || !o.plan || o.kind !== 'raum' || o.points) return;
         const p = o.plan;
+        const before = snapOf(o);
         o.points = [[p.x, p.y], [p.x + p.w, p.y], [p.x + p.w, p.y + p.h], [p.x, p.y + p.h]];
-        emit('room', o); setSelection({ kind: 'room', id });
+        emit('room', o, before); setSelection({ kind: 'room', id });
       },
       toRect(id) {                                           // Vieleck → Rechteck der Umgebung
         const o = find('room', id); if (!o || !o.points) return;
+        const before = snapOf(o);
         o.points = null;
-        emit('room', o); setSelection({ kind: 'room', id });
+        emit('room', o, before); setSelection({ kind: 'room', id });
       },
       remove(kind, id) {
         const o = find(kind, id); if (!o) return;
+        const before = snapOf(o);
         o.plan = null;
         if (sel && sel.kind === kind && sel.id === id) sel = null;
-        render(); if (opts.onChange) opts.onChange(kind, id, null);
+        render(); if (opts.onChange) opts.onChange(kind, id, null, { before });
         if (opts.onSelect) opts.onSelect(selInfo());
       },
     };

@@ -255,6 +255,11 @@ async def test_doors_can_be_mirrored_and_keep_it_in_the_backup(client, enabled, 
 
 
 # ── Hintergrund-Grundriss und Wanddicke ──────────────────────────────────────
+def plan_crop(floor_resp):
+    c = floor_resp["background"]["crop"]
+    return (c["l"], c["t"], c["r"], c["b"])
+
+
 def _jpeg(w=800, h=400):
     import io
     from PIL import Image
@@ -279,6 +284,12 @@ async def test_floor_background_upload_adjust_download_delete(client, enabled, p
     assert r["background"]["rot"] == 90.0                          # wird auf 0–360° normalisiert
     r = (await client.patch(f"/api/inventory/plan/floors/{eg}/background", headers=power, json={"rot": -1.5})).json()
     assert r["background"]["rot"] == 358.5                         # auch Zehntelgrad für schief gescannte Pläne
+    assert plan_crop(r) == (0, 0, 0, 0)
+    c = (await client.patch(f"/api/inventory/plan/floors/{eg}/background", headers=power,
+                            json={"crop_l": 0.1, "crop_t": 0.05, "crop_r": 0.2, "crop_b": 0.0})).json()
+    assert plan_crop(c) == (0.1, 0.05, 0.2, 0.0)                    # Ausschnitt: Ränder wegschneiden (z.B. Bemassung)
+    assert (await client.patch(f"/api/inventory/plan/floors/{eg}/background", headers=power, json={"crop_l": 0.9, "crop_r": 0.9})).status_code == 400
+    assert (await client.patch(f"/api/inventory/plan/floors/{eg}/background", headers=power, json={"crop_l": 0.99})).status_code == 422
     assert (await client.patch(f"/api/inventory/plan/floors/{eg}/background", headers=power, json={"opacity": 5})).status_code == 422
     plan = (await client.get("/api/inventory/plan", headers=power)).json()
     assert plan["floors"][0]["background"]["x"] == 20
@@ -307,6 +318,7 @@ async def test_wall_thickness_and_background_survive_backup(client, enabled, pow
     assert (await client.post("/api/backup/import", headers=admin, json=data)).status_code == 200
     plan = (await client.get("/api/inventory/plan", headers=power)).json()
     assert plan["room"]["wall_cm"] == 30.0 and plan["floors"][0]["background"]["w"] == 1500.0
+    assert plan["floors"][0]["background"]["crop"]["l"] == 0.0
     assert (await client.get(f"/api/inventory/plan/floors/{plan['floors'][0]['id']}/background", headers=power)).status_code == 200
     # Zurücksetzen entfernt auch das Bild
     await client.post("/api/inventory/plan/reset", headers=power)

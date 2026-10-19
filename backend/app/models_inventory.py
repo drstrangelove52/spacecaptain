@@ -139,6 +139,11 @@ class InvFloor(Base):
     bg_h:       Mapped[Optional[float]] = mapped_column(Float, default=None)
     bg_opacity: Mapped[float]           = mapped_column(Float, default=0.5)
     bg_rot:     Mapped[float]           = mapped_column(Float, default=0.0)      # Drehung des Bildes in Grad um seine Mitte
+    # Sichtbarer Ausschnitt des Bildes als Anteile (0..1) der Bildkanten, die weggeschnitten werden (z.B. Bemassung am Rand)
+    bg_crop_l:  Mapped[float]           = mapped_column(Float, default=0.0)
+    bg_crop_t:  Mapped[float]           = mapped_column(Float, default=0.0)
+    bg_crop_r:  Mapped[float]           = mapped_column(Float, default=0.0)
+    bg_crop_b:  Mapped[float]           = mapped_column(Float, default=0.0)
     bg_version: Mapped[int]             = mapped_column(Integer, default=0)      # 0 = kein Bild; steigt bei jedem Hochladen (Cache)
 
 

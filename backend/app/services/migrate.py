@@ -649,6 +649,9 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "inv_floors", "bg_rot", "DOUBLE NOT NULL DEFAULT 0")
         # ── v1.61: Wanddicke je Raum (leer = Standard des Gebaeudes; der Standard selbst darf 0 = nur Umriss sein) ──
         await _add_column_if_missing(conn, "inv_rooms", "wall_cm", "DOUBLE DEFAULT NULL")
+        # ── v1.62: sichtbarer Ausschnitt des Grundriss-Bildes (Anteile der weggeschnittenen Ränder) ──
+        for col in ("bg_crop_l", "bg_crop_t", "bg_crop_r", "bg_crop_b"):
+            await _add_column_if_missing(conn, "inv_floors", col, "DOUBLE NOT NULL DEFAULT 0")
 
     log.info("Migrationen abgeschlossen")
 
