@@ -75,7 +75,7 @@ def points_bbox(pts) -> tuple:
 
 def room_out(r: InvRoom) -> dict:
     return {"id": r.id, "floor_id": r.floor_id, "name": r.name, "kind": r.kind, "link_floor_id": r.link_floor_id,
-            "points": parse_points(r.points), "plan": rect(r.plan_x, r.plan_y, r.plan_w, r.plan_h, r.plan_rot)}
+            "points": parse_points(r.points), "flip": r.flip or 0, "plan": rect(r.plan_x, r.plan_y, r.plan_w, r.plan_h, r.plan_rot)}
 
 
 def room_dict(r: InvPlan) -> dict:

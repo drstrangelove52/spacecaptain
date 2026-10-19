@@ -149,3 +149,5 @@ class InvRoom(Base):
     link_floor_id: Mapped[Optional[int]]   = mapped_column(Integer, default=None)
     # Eckpunkte eines Raums als JSON [[x, y], …] in cm; leer = Rechteck. plan_x/y/w/h bleiben die Umgebung (bbox) der Punkte.
     points:        Mapped[Optional[str]]   = mapped_column(Text, default=None)
+    # Spiegelung (Tueren): Bit 1 = Anschlag links/rechts, Bit 2 = Aufschlag auf die andere Wandseite
+    flip:          Mapped[int]             = mapped_column(Integer, default=0)

@@ -50,6 +50,7 @@ class RoomBody(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=100)
     kind: Optional[Literal["raum", "treppe", "tuer", "durchgang"]] = None
     points: Optional[list[list[float]]] = None        # Eckpunkte eines Raums (cm); null = Rechteck
+    flip: Optional[int] = Field(default=None, ge=0, le=3)   # Tür spiegeln: 1 = Anschlag, 2 = Aufschlagseite
     x: Optional[float] = None
     y: Optional[float] = None
     w: Optional[float] = None
@@ -141,8 +142,12 @@ def _room_apply(r: InvRoom, p: RoomBody, given: set) -> None:
             ox, oy, ow, oh = old
             r.points = json.dumps([[round(r.plan_x + (q[0] - ox) / ow * r.plan_w, 2),
                                     round(r.plan_y + (q[1] - oy) / oh * r.plan_h, 2)] for q in pts])
+    if "flip" in given and p.flip is not None:
+        r.flip = p.flip
     if r.kind != "raum":
         r.points = None                                       # nur Räume haben Eckpunkte
+    if r.kind != "tuer":
+        r.flip = 0                                            # nur Türen haben einen Schwenk
 
 
 async def _check_room(db: AsyncSession, r: InvRoom, p: RoomBody, given: set) -> None:

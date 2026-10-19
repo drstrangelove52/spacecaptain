@@ -233,3 +233,22 @@ async def test_polygon_rooms_and_doors_survive_backup(client, enabled, power, ad
     by = {r["name"]: r for r in (await client.get("/api/inventory/plan", headers=power)).json()["rooms"]}
     assert by["Dreieck"]["points"] == [[0.0, 0.0], [400.0, 0.0], [0.0, 300.0]]
     assert by["Eingang"]["kind"] == "tuer" and by["Eingang"]["plan"]["rot"] == 180
+
+
+async def test_doors_can_be_mirrored_and_keep_it_in_the_backup(client, enabled, power, admin, db):
+    from sqlalchemy import delete
+    from app.models_inventory import InvRoom
+    await _fill(client, power, db)
+    eg = (await client.get("/api/inventory/plan", headers=power)).json()["floors"][0]["id"]
+    d = (await client.post("/api/inventory/plan/rooms", headers=power, json={"floor_id": eg, "kind": "tuer", "x": 10, "y": 10})).json()
+    assert d["flip"] == 0
+    d = (await client.patch(f"/api/inventory/plan/rooms/{d['id']}", headers=power, json={"flip": 3})).json()
+    assert d["flip"] == 3
+    assert (await client.patch(f"/api/inventory/plan/rooms/{d['id']}", headers=power, json={"flip": 7})).status_code == 422
+    room = (await client.post("/api/inventory/plan/rooms", headers=power, json={"floor_id": eg, "name": "R", "flip": 1})).json()
+    assert room["flip"] == 0                                  # nur Türen haben einen Schwenk
+    data = (await client.get("/api/backup/export", headers=admin)).json()
+    await db.execute(delete(InvRoom)); await db.commit()
+    assert (await client.post("/api/backup/import", headers=admin, json=data)).status_code == 200
+    by = {r["name"]: r for r in (await client.get("/api/inventory/plan", headers=power)).json()["rooms"]}
+    assert by["Tür"]["flip"] == 3 and by["R"]["flip"] == 0

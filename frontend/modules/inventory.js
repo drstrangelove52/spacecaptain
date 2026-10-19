@@ -1291,6 +1291,9 @@
         </div>
         ${noRot ? '' : `<div class="form-group" style="margin:8px 0 0"><label class="form-label">Drehung (°)</label>
           <input class="form-input" type="number" step="5" value="${Math.round(p.rot || 0)}" onchange="Inv.planField('rot', this.value)"></div>`}
+        ${k === 'room' && o.kind === 'tuer' ? `<div class="inv-row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="Inv.doorFlip(1)" title="Scharnier auf die andere Seite">⇋ Anschlag spiegeln</button>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.doorFlip(2)" title="Tür öffnet zur anderen Seite der Wand">⇵ Aufschlag spiegeln</button></div>` : ''}
         ${k === 'room' && o.kind === 'raum' ? `<div class="inv-row" style="margin-top:8px;gap:6px">${o.points
           ? `<button class="btn btn-ghost btn-sm" onclick="Inv.roomShape(${o.id}, false)" title="Zurück zum Rechteck der Umgebung">Zu Rechteck</button><span class="inv-dim inv-small">Ecken ziehen · «+» fügt eine Ecke ein · Doppelklick auf eine Ecke löscht sie</span>`
           : `<button class="btn btn-ghost btn-sm" onclick="Inv.roomShape(${o.id}, true)">In Vieleck umwandeln</button>`}</div>` : ''}
@@ -1310,6 +1313,10 @@
   async function planReset() {
     if (!confirm('Plan wirklich zurücksetzen?\n\nAlle Räume, Treppen und Stockwerke werden gelöscht und alle Elemente vom Plan genommen. Codes und Standorte (Möbel, Ebenen) bleiben erhalten.\n\nTipp: vorher unter «Backup & Restore» ein Backup machen.')) return;
     if (await POST('/inventory/plan/reset', {})) { showToast('Plan zurückgesetzt', 'success'); await loadPlan(); }
+  }
+  async function doorFlip(bit) {                          // Anschlag (1) bzw. Aufschlagseite (2) umschalten
+    const s = planCtl && planCtl.selected(); if (!s || s.kind !== 'room') return;
+    if (await PATCH('/inventory/plan/rooms/' + s.id, { flip: ((s.item.flip || 0) ^ bit) & 3 })) { await loadPlan(); planCtl.select('room', s.id); }
   }
   function roomShape(id, polygon) { if (planCtl) polygon ? planCtl.toPolygon(id) : planCtl.toRect(id); }
   async function floorAdd() {
@@ -1450,7 +1457,7 @@
     toggleLabel, setLabelCopies, toggleLevelsOf, selectBy, labelFor,
     debouncedLoadMachines, loadMachines, setMachinePlace, openMachines, formPlaceChanged, saveFormPlacement,
     planSearch, planZoom, planDrag, planDrop, planAdd, planField, planRotate, planRemove, saveRoom, loadPlan,
-    planReset, roomShape, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
+    planReset, roomShape, doorFlip, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
     setLabelMode, debouncedToolLoad, toggleTool, setCopies, toolSelectAll, toolSelectNone, toolCopiesQty,
   };
 

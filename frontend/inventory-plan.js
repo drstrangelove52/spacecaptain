@@ -153,9 +153,10 @@
 
       if (kind === 'room' && (o.kind === 'tuer' || o.kind === 'durchgang')) {            // Lücke in der Wand, bei Türen mit Schwenkbogen
         svgEl('rect', { class: 'invplan-shape', x: p.x, y: p.y, width: p.w, height: p.h, fill: 'var(--surface2)', stroke: 'var(--text)', 'stroke-opacity': .55, 'stroke-width': 1.5 }, g);
-        if (o.kind === 'tuer') {
-          const hy = p.y + p.h / 2;
-          svgEl('path', { d: `M ${p.x} ${hy} L ${p.x} ${hy - p.w} A ${p.w} ${p.w} 0 0 1 ${p.x + p.w} ${hy}`, fill: 'none', stroke: 'var(--text)', 'stroke-opacity': .6,
+        if (o.kind === 'tuer') {                              // flip: Bit 1 = Anschlag rechts statt links, Bit 2 = Aufschlag nach unten statt oben
+          const fh = (o.flip || 0) & 1, fv = ((o.flip || 0) >> 1) & 1, hy = p.y + p.h / 2;
+          const hx = fh ? p.x + p.w : p.x, ex = fh ? p.x : p.x + p.w, ly = fv ? hy + p.w : hy - p.w;
+          svgEl('path', { d: `M ${hx} ${hy} L ${hx} ${ly} A ${p.w} ${p.w} 0 0 ${fh ^ fv ? 0 : 1} ${ex} ${hy}`, fill: 'none', stroke: 'var(--text)', 'stroke-opacity': .6,
             'stroke-width': 2.5, 'pointer-events': 'none' }, g);
         }
         return;

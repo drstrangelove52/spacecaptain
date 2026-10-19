@@ -636,6 +636,8 @@ async def run_migrations(engine: AsyncEngine) -> None:
 
         # ── v1.57: Raeume als Vieleck (points, JSON), Tueren/Durchgaenge als kind in inv_rooms ──
         await _add_column_if_missing(conn, "inv_rooms", "points", "TEXT DEFAULT NULL")
+        # ── v1.58: Tueren spiegeln (flip: Bit 1 = Anschlag, Bit 2 = Aufschlagseite) ──
+        await _add_column_if_missing(conn, "inv_rooms", "flip", "INT NOT NULL DEFAULT 0")
 
     log.info("Migrationen abgeschlossen")
 
