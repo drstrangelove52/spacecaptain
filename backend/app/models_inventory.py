@@ -138,6 +138,7 @@ class InvFloor(Base):
     bg_w:       Mapped[Optional[float]] = mapped_column(Float, default=None)
     bg_h:       Mapped[Optional[float]] = mapped_column(Float, default=None)
     bg_opacity: Mapped[float]           = mapped_column(Float, default=0.5)
+    bg_rot:     Mapped[float]           = mapped_column(Float, default=0.0)      # Drehung des Bildes in Grad um seine Mitte
     bg_version: Mapped[int]             = mapped_column(Integer, default=0)      # 0 = kein Bild; steigt bei jedem Hochladen (Cache)
 
 

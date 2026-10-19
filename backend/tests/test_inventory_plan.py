@@ -274,6 +274,11 @@ async def test_floor_background_upload_adjust_download_delete(client, enabled, p
     assert (await client.get(f"/api/inventory/plan/floors/{eg}/background", headers=manager)).headers["content-type"] == "image/jpeg"
     p = (await client.patch(f"/api/inventory/plan/floors/{eg}/background", headers=power, json={"x": 20, "w": 3000, "h": 1500, "opacity": 0.8})).json()
     assert p["background"]["w"] == 3000 and p["background"]["opacity"] == 0.8
+    assert p["background"]["rot"] == 0.0
+    r = (await client.patch(f"/api/inventory/plan/floors/{eg}/background", headers=power, json={"rot": 450})).json()
+    assert r["background"]["rot"] == 90.0                          # wird auf 0–360° normalisiert
+    r = (await client.patch(f"/api/inventory/plan/floors/{eg}/background", headers=power, json={"rot": -1.5})).json()
+    assert r["background"]["rot"] == 358.5                         # auch Zehntelgrad für schief gescannte Pläne
     assert (await client.patch(f"/api/inventory/plan/floors/{eg}/background", headers=power, json={"opacity": 5})).status_code == 422
     plan = (await client.get("/api/inventory/plan", headers=power)).json()
     assert plan["floors"][0]["background"]["x"] == 20

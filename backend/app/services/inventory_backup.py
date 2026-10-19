@@ -110,7 +110,7 @@ async def export_inventory(db: AsyncSession) -> dict:
     return {
         "room": {"name": room.name, "width_cm": room.width_cm, "height_cm": room.height_cm, "wall_cm": room.wall_cm} if room else None,
         "floors": [{"name": f.name, "sort_order": f.sort_order,
-                    "background": ({"x": f.bg_x, "y": f.bg_y, "w": f.bg_w, "h": f.bg_h, "opacity": f.bg_opacity,
+                    "background": ({"x": f.bg_x, "y": f.bg_y, "w": f.bg_w, "h": f.bg_h, "opacity": f.bg_opacity, "rot": f.bg_rot or 0.0,
                                     "image": base64.b64encode(images[f.id].data).decode("ascii")}
                                    if f.bg_version and f.id in images else None)} for f in floors],
         "rooms": [{"floor": floor_name[r.floor_id], "name": r.name, "kind": r.kind, "x": r.plan_x, "y": r.plan_y,
@@ -170,6 +170,7 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
                     img.data = blob
                 row.bg_x, row.bg_y, row.bg_w, row.bg_h = bg.get("x") or 0.0, bg.get("y") or 0.0, bg.get("w") or 1000.0, bg.get("h") or 700.0
                 row.bg_opacity = bg.get("opacity") if bg.get("opacity") is not None else 0.5
+                row.bg_rot = float(bg.get("rot") or 0.0)
                 row.bg_version = (row.bg_version or 0) + 1
     floor_id = lambda name: floor_by_name[name].id if name in floor_by_name else None
     have_rooms = {(r.floor_id, r.name): r for r in (await db.execute(select(InvRoom))).scalars().all()}

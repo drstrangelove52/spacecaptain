@@ -167,7 +167,7 @@ OR-Verknüpfung in Bedingungen ist bewusst nicht implementiert — zwei separate
 - **Inventarliste für Buchhaltung**: Button «📋 Inventarliste» auf der Maschinen-Seite exportiert nur die buchhaltungsrelevanten Felder (Name, Kategorie, Hersteller, Modell, Seriennummer, Standort, Kaufdatum, Neuwert, Eigentümer + Summenzeile) als CSV oder Druckansicht (PDF via Browser-Druckdialog, kein PDF-Backend nötig) — bewusst getrennt von der operativen CSV (`exportMachinesCsv()`), die zusätzlich Status/Schulung/Smart-Plug/Kommentar enthält.
 - Migration v1.39.
 
-## Inventar-Modul (optional, Migrationen v1.51–v1.59)
+## Inventar-Modul (optional, Migrationen v1.51–v1.60)
 
 Ausführliche Doku mit allen Entscheidungen: `docs/inventar-konzept.md`. Kurzfassung für die Arbeit am Code:
 

@@ -40,6 +40,7 @@ class BackgroundUpdate(BaseModel):
     w: Optional[float] = Field(default=None, ge=100, le=100000)
     h: Optional[float] = Field(default=None, ge=100, le=100000)
     opacity: Optional[float] = Field(default=None, ge=0.05, le=1)
+    rot: Optional[float] = Field(default=None, ge=-720, le=720)          # Grad, wird auf 0–359,99 normalisiert
 
 
 class RectUpdate(BaseModel):
@@ -201,6 +202,8 @@ async def update_background(floor_id: int, payload: BackgroundUpdate, db: AsyncS
     for src, dst in (("x", "bg_x"), ("y", "bg_y"), ("w", "bg_w"), ("h", "bg_h"), ("opacity", "bg_opacity")):
         if ch.get(src) is not None:
             setattr(f, dst, ch[src])
+    if ch.get("rot") is not None:
+        f.bg_rot = round(ch["rot"] % 360, 2)
     await db.commit()
     return plan_svc.floor_out(f)
 

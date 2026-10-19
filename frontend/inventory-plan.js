@@ -130,7 +130,8 @@
       const curFloor = floors().find(f => f.id === floor) || {};
       if (curFloor.background && curFloor.bgUrl) {                 // Grundriss zum Abpausen
         const b = curFloor.background;
-        svgEl('image', { href: curFloor.bgUrl, x: b.x, y: b.y, width: b.w, height: b.h, opacity: b.opacity, preserveAspectRatio: 'none', 'pointer-events': 'none' }, svg);
+        svgEl('image', { href: curFloor.bgUrl, x: b.x, y: b.y, width: b.w, height: b.h, opacity: b.opacity, preserveAspectRatio: 'none', 'pointer-events': 'none',
+          transform: b.rot ? `rotate(${b.rot} ${b.x + b.w / 2} ${b.y + b.h / 2})` : null }, svg);
       }
       svgEl('rect', { x: 0, y: 0, width: W, height: H, fill: 'url(#invplan-grid)', style: 'color:var(--text)', 'pointer-events': 'none' }, svg);
       const fname = (floors().find(f => f.id === floor) || {}).name;

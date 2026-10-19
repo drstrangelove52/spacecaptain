@@ -86,7 +86,7 @@ def floor_out(f: InvFloor, with_background: bool = True) -> dict:
     out = {"id": f.id, "name": f.name}
     if with_background and f.bg_version and f.bg_w:
         out["background"] = {"x": f.bg_x or 0.0, "y": f.bg_y or 0.0, "w": f.bg_w, "h": f.bg_h, "opacity": f.bg_opacity if f.bg_opacity is not None else 0.5,
-                             "version": f.bg_version}
+                             "rot": f.bg_rot or 0.0, "version": f.bg_version}
     return out
 
 

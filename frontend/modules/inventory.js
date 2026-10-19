@@ -1284,7 +1284,9 @@
           <button class="btn btn-danger btn-sm" onclick="Inv.bgRemove()">Entfernen</button>` : ''}</div>
         ${bgf ? `<div class="inv-plan-grid" style="margin-top:8px">
           <div><label class="form-label">Breite des Bildes (m)</label><input class="form-input" type="number" step="0.1" min="1" value="${(bgf.w / 100).toFixed(2)}" onchange="Inv.bgWidth(this.value)"></div>
-          <div><label class="form-label">Deckkraft</label><input type="range" min="10" max="100" value="${Math.round(bgf.opacity * 100)}" oninput="Inv.bgOpacity(this.value)" style="width:100%"></div></div>` : ''}</div>
+          <div><label class="form-label">Deckkraft</label><input type="range" min="10" max="100" value="${Math.round(bgf.opacity * 100)}" oninput="Inv.bgOpacity(this.value)" style="width:100%"></div>
+          <div><label class="form-label">Drehung (°)</label><input class="form-input" type="number" step="0.5" value="${bgf.rot || 0}" onchange="Inv.bgRotate(this.value)"></div>
+          <div style="align-self:end"><button class="btn btn-ghost btn-sm" onclick="Inv.bgRotate90()" title="Bild um 90° drehen">↻ 90° drehen</button></div></div>` : ''}</div>
       <div class="inv-plan-box"><h4>RÄUME UND TREPPEN · ${esc(curName)}</h4>
         <div class="inv-row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="Inv.roomDraw()" title="Ecken nacheinander anklicken, Doppelklick schliesst den Raum">✏️ Raum zeichnen</button>
           <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('raum')">+ Raum</button>
@@ -1366,6 +1368,9 @@
     const f = curFloorObj(); if (!f) return;
     if (await PATCH('/inventory/plan/floors/' + f.id + '/background', patch)) { planCtl.setBackground(f.id, patch); renderPlanSide(); }
   }
+  const curBgRot = () => { const f = curFloorObj(); return (f && f.background && f.background.rot) || 0; };
+  function bgRotate(v) { const r = ((parseFloat(v) || 0) % 360 + 360) % 360; bgPatch({ rot: r }); }
+  function bgRotate90() { bgRotate(curBgRot() + 90); }
   function bgMoved(floorId, pos) { PATCH('/inventory/plan/floors/' + floorId + '/background', pos); }
   function bgMove() { planCtl.setMode(planCtl.mode() === 'bg' ? null : 'bg'); renderPlanSide(); }
   let bgOpTimer = null;
@@ -1383,7 +1388,8 @@
       const m = parseFloat((prompt('Wie lang ist diese Strecke in Wirklichkeit (in Metern)?') || '').replace(',', '.'));
       if (!(m > 0)) return;
       const k = m * 100 / dist, b = f.background, p0 = pts[0];                // um den ersten Punkt skalieren, damit er stehen bleibt
-      bgPatch({ x: p0[0] + (b.x - p0[0]) * k, y: p0[1] + (b.y - p0[1]) * k, w: b.w * k, h: b.h * k });
+      const cx = p0[0] + (b.x + b.w / 2 - p0[0]) * k, cy = p0[1] + (b.y + b.h / 2 - p0[1]) * k;   // neue Bildmitte (gilt auch bei gedrehtem Bild)
+      bgPatch({ x: cx - b.w * k / 2, y: cy - b.h * k / 2, w: b.w * k, h: b.h * k });
     });
   }
   async function bgRemove() {
@@ -1538,7 +1544,7 @@
     toggleLabel, setLabelCopies, toggleLevelsOf, selectBy, labelFor,
     debouncedLoadMachines, loadMachines, setMachinePlace, openMachines, formPlaceChanged, saveFormPlacement,
     planSearch, planZoom, planDrag, planDrop, planAdd, planField, planRotate, planRemove, saveRoom, loadPlan,
-    planReset, bgUpload, bgMove, bgOpacity, bgWidth, bgScale, bgRemove, roomDraw, roomShape, doorFlip, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
+    planReset, bgUpload, bgRotate, bgRotate90, bgMove, bgOpacity, bgWidth, bgScale, bgRemove, roomDraw, roomShape, doorFlip, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
     setLabelMode, debouncedToolLoad, toggleTool, setCopies, toolSelectAll, toolSelectNone, toolCopiesQty,
   };
 
