@@ -420,3 +420,25 @@ async def test_categories_stay_untouched_while_inventory_is_off(client, power, d
     assert r.status_code == 200, r.text
     ms = {m["name"]: m for m in (await client.get("/api/machines", headers=power)).json()}
     assert ms["Fräse"]["category"] == "CNC" and ms["Plotter"]["category"] == "Sonstiges"
+
+
+async def test_several_machines_share_a_shelf_with_levels_and_show_in_the_tree(client, enabled, power, db):
+    from app.models import MachineLocation, Machine
+    db.add(MachineLocation(name="3D-Druck", code="3DR"))
+    db.add_all([Machine(name=f"Prusa Mini {i}", category="x", location="3D-Druck", qr_token=f"qr-p{i}") for i in range(1, 7)])
+    await db.commit()
+    area = await _area_id(client, power, "3D-Druck")
+    shelf = (await client.post("/api/inventory/furniture", headers=power,
+                               json={"area_id": area, "kind": "regal", "name": "Prusa Mini", "levels": 2})).json()
+    tree = (await client.get("/api/inventory/tree", headers=power)).json()
+    lv = [l for a in tree if a["name"] == "3D-Druck" for f in a["furniture"] if f["id"] == shelf["id"] for l in f["levels"] if l["number"] > 0]
+    ms = await _machines(client, power)
+    for i in range(1, 7):                                   # 3 Maschinen je Ebene
+        r = await client.patch(f"/api/inventory/machines/{ms[f'Prusa Mini {i}']['id']}", headers=power,
+                               json={"furniture_id": shelf["id"], "level_id": lv[0 if i <= 3 else 1]["id"]})
+        assert r.status_code == 200, r.text
+    tree = (await client.get("/api/inventory/tree", headers=power)).json()
+    f = [f for a in tree for f in a["furniture"] if f["id"] == shelf["id"]][0]
+    assert f["machine_count"] == 6
+    by = {l["number"]: l["machines"] for l in f["levels"] if l["number"] > 0}
+    assert by[1] == ["Prusa Mini 1", "Prusa Mini 2", "Prusa Mini 3"] and by[2] == ["Prusa Mini 4", "Prusa Mini 5", "Prusa Mini 6"]

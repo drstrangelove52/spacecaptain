@@ -339,6 +339,15 @@ async def tree(db: AsyncSession = Depends(get_db), _: User = Depends(get_current
         select(Machine.area_id, func.count(Machine.id)).where(Machine.area_id.is_not(None))
         .group_by(Machine.area_id))).all())
 
+    # Maschinen, die auf einem Moebel bzw. einer Ebene stehen (Platzierung); ohne Ebene → «Ebene offen» (E00)
+    mname = {m.id: m.name for m in (await db.execute(select(Machine))).scalars().all()}
+    on_level: dict[int, list] = {}
+    on_furn: dict[int, list] = {}
+    for pl in (await db.execute(select(InvPlacement).where(InvPlacement.furniture_id.is_not(None)))).scalars().all():
+        if pl.machine_id not in mname:
+            continue
+        (on_level.setdefault(pl.level_id, []) if pl.level_id else on_furn.setdefault(pl.furniture_id, [])).append(mname[pl.machine_id])
+
     pos_by_level: dict[int, list] = {}
     for p in poss:
         pos_by_level.setdefault(p.level_id, []).append(p)
@@ -355,6 +364,7 @@ async def tree(db: AsyncSession = Depends(get_db), _: User = Depends(get_current
         f_list = []
         for f in furn_by_area.get(a.id, []):
             f_total = 0
+            f_machines = 0
             l_list = []
             for l in lvl_by_furn.get(f.id, []):
                 p_list = []
@@ -367,13 +377,16 @@ async def tree(db: AsyncSession = Depends(get_db), _: User = Depends(get_current
                         "code": inv.short_code(a.code, f.number, l.number, p.number),
                     })
                 f_total += l_total
+                ms = sorted(on_level.get(l.id, []) + (on_furn.get(f.id, []) if l.number == 0 else []))
+                f_machines += len(ms)
                 l_list.append({
                     "id": l.id, "number": l.number, "label": l.label, "item_count": l_total,
                     "code": inv.short_code(a.code, f.number, l.number), "positions": p_list,
+                    "machines": ms,
                 })
             a_total += f_total
             fo = _furniture_out(a, f)
-            fo.update({"item_count": f_total, "levels": l_list})
+            fo.update({"item_count": f_total, "machine_count": f_machines, "levels": l_list})
             f_list.append(fo)
         ao = _area_out(a, machine_count=mcount.get(a.id, 0))
         ao.update({"item_count": a_total, "furniture": f_list})

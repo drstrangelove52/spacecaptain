@@ -578,7 +578,7 @@
         <span class="inv-code">${esc(f.code)}</span>
         <b>${title}</b>
         ${f.number > 0 ? `<span class="inv-dim inv-small">${KIND[f.kind] || ''}</span>` : ''}
-        <span class="inv-dim inv-small">${f.item_count} Werkzeuge</span>
+        <span class="inv-dim inv-small">${f.item_count} Werkzeuge${f.machine_count ? ` · ${f.machine_count} Maschinen` : ''}</span>
         ${f.label_outdated ? '<span class="badge badge-orange" title="Neu angelegt oder Code geändert: Etikett (neu) drucken">Etikett neu/veraltet</span>' : ''}
         <span class="inv-sp"></span>
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();Inv.gotoItems('${esc(f.code)}')">Werkzeug anzeigen</button>
@@ -598,6 +598,7 @@
       <span class="inv-code">${esc(l.code)}</span>
       <span>${l.number === 0 ? '<i class="inv-dim">Ebene offen / nicht unterteilt</i>' : esc(l.label || 'Ebene ' + l.number)}</span>
       <span class="inv-dim inv-small">${l.item_count} Werkzeuge</span>
+      ${l.machines && l.machines.length ? `<span class="inv-small" title="Maschinen auf dieser Ebene">🏭 ${l.machines.map(esc).join(', ')}</span>` : ''}
       <span class="inv-sp"></span>
       ${l.number > 0 ? `<button class="btn btn-ghost btn-sm" onclick="Inv.labelFor('${esc(l.code)}')" title="Dieses Etikett drucken / nachdrucken">🏷️</button>` : ''}
       ${p && l.number > 0 ? `<button class="btn btn-ghost btn-sm" onclick="Inv.renameLevel(${l.id})">Name</button>
