@@ -203,7 +203,8 @@
         <div class="search-wrap"><span class="search-icon">🔍</span>
           <input class="search-input" id="inv-plan-q" placeholder="Wo ist …? Werkzeug, Möbel oder Maschine markieren" oninput="Inv.planSearch()"></div>
         <select class="filter-input" id="inv-plan-zoom" onchange="Inv.planZoom()" title="Zoom">
-          <option value="100">Zoom 100 %</option><option value="150">150 %</option><option value="200">200 %</option><option value="300">300 %</option></select>
+          <option value="fit">Einpassen</option><option value="25">25 %</option><option value="50">50 %</option><option value="75">75 %</option>
+          <option value="100">100 %</option><option value="150">150 %</option><option value="200">200 %</option><option value="300">300 %</option></select>
         <span class="inv-dim inv-small" id="inv-plan-count"></span>
       </div>
       <div class="inv-plan-layout">
@@ -1219,7 +1220,11 @@
     renderPlanSide();
     if ($('plan-q').value.trim()) planSearch();
   }
-  function planZoom() { if (planCtl) planCtl.el.style.width = $('plan-zoom').value + '%'; }
+  function planZoom() {                                  // «Einpassen»: ganzer Plan sichtbar (Höhe ≤ 70 % des Fensters); sonst Prozent der Breite
+    if (!planCtl) return;
+    const v = $('plan-zoom').value, r = planData && planData.room;
+    planCtl.el.style.width = v === 'fit' && r ? `min(100%, ${(70 * (r.width_cm + 40) / (r.height_cm + 40)).toFixed(1)}vh)` : (v === 'fit' ? '100%' : v + '%');
+  }
   async function planChanged(kind, id, rect) {
     let r;
     if (kind === 'room') {
