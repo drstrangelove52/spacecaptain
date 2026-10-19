@@ -6,6 +6,7 @@ Der Plan liegt in vorhandenen Spalten: `machine_locations.plan_*` (Bereich), `in
 plan_x/plan_y/plan_w/plan_h gesetzt sind. Codes und Zuordnungen haengen nicht am Plan: zieht der Makerspace um,
 wird nur neu gezeichnet.
 """
+import json
 import math
 from typing import Optional
 
@@ -41,9 +42,40 @@ async def get_floors(db: AsyncSession) -> list:
     return list(rows)
 
 
+ROOM_KINDS = ("raum", "treppe", "tuer", "durchgang")
+MAX_POINTS = 60
+
+
+def parse_points(raw) -> Optional[list]:
+    """JSON-Text → [[x, y], …] oder None (Rechteck)."""
+    if not raw:
+        return None
+    try:
+        pts = json.loads(raw)
+    except ValueError:
+        return None
+    ok = isinstance(pts, list) and len(pts) >= 3 and all(isinstance(q, list) and len(q) == 2 for q in pts)
+    return [[float(q[0]), float(q[1])] for q in pts] if ok else None
+
+
+def points_valid(pts) -> bool:
+    if not isinstance(pts, list) or not 3 <= len(pts) <= MAX_POINTS:
+        return False
+    for q in pts:
+        if not (isinstance(q, (list, tuple)) and len(q) == 2 and all(isinstance(v, (int, float)) and math.isfinite(v) and abs(v) <= MAX_POS for v in q)):
+            return False
+    xs, ys = [q[0] for q in pts], [q[1] for q in pts]
+    return max(xs) - min(xs) >= MIN_SIZE and max(ys) - min(ys) >= MIN_SIZE
+
+
+def points_bbox(pts) -> tuple:
+    xs, ys = [q[0] for q in pts], [q[1] for q in pts]
+    return min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)
+
+
 def room_out(r: InvRoom) -> dict:
     return {"id": r.id, "floor_id": r.floor_id, "name": r.name, "kind": r.kind, "link_floor_id": r.link_floor_id,
-            "plan": rect(r.plan_x, r.plan_y, r.plan_w, r.plan_h, r.plan_rot)}
+            "points": parse_points(r.points), "plan": rect(r.plan_x, r.plan_y, r.plan_w, r.plan_h, r.plan_rot)}
 
 
 def room_dict(r: InvPlan) -> dict:

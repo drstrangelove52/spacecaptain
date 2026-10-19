@@ -134,7 +134,7 @@ class InvFloor(Base):
 
 
 class InvRoom(Base):
-    """Raum oder Treppe als Rechteck auf einem Stockwerk (cm). Eine Treppe zeigt sich zusaetzlich auf `link_floor_id`.
+    """Raum, Treppe, Tuer oder Durchgang auf einem Stockwerk (cm): Rechteck, Raeume optional als Vieleck (`points`). Eine Treppe zeigt sich zusaetzlich auf `link_floor_id`.
     Keine DB-Fremdschluessel (Integritaet im App-Code)."""
     __tablename__ = "inv_rooms"
     id:            Mapped[int]             = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -147,3 +147,5 @@ class InvRoom(Base):
     plan_h:        Mapped[float]           = mapped_column(Float, default=300.0)
     plan_rot:      Mapped[float]           = mapped_column(Float, default=0.0)
     link_floor_id: Mapped[Optional[int]]   = mapped_column(Integer, default=None)
+    # Eckpunkte eines Raums als JSON [[x, y], …] in cm; leer = Rechteck. plan_x/y/w/h bleiben die Umgebung (bbox) der Punkte.
+    points:        Mapped[Optional[str]]   = mapped_column(Text, default=None)

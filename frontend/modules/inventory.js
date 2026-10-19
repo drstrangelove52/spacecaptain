@@ -1226,10 +1226,10 @@
     const v = $('plan-zoom').value, r = planData && planData.room;
     planCtl.el.style.width = v === 'fit' && r ? `min(100%, ${(70 * (r.width_cm + 40) / (r.height_cm + 40)).toFixed(1)}vh)` : (v === 'fit' ? '100%' : v + '%');
   }
-  async function planChanged(kind, id, rect) {
+  async function planChanged(kind, id, rect, extra) {
     let r;
     if (kind === 'room') {
-      r = rect ? await PATCH('/inventory/plan/rooms/' + id, { x: rect.x, y: rect.y, w: rect.w, h: rect.h, rot: rect.rot || 0 })
+      r = rect ? await PATCH('/inventory/plan/rooms/' + id, Object.assign({ x: rect.x, y: rect.y, w: rect.w, h: rect.h, rot: rect.rot || 0 }, extra || {}))
                : await DELETE('/inventory/plan/rooms/' + id);
       if (!rect) { await loadPlan(); return; }
     } else {
@@ -1258,9 +1258,11 @@
       <div class="inv-row" style="gap:6px"><input class="form-input form-input-sm" id="inv-floor-new" placeholder="z.B. OG" maxlength="50" style="flex:1">
         <button class="btn btn-ghost btn-sm" onclick="Inv.floorAdd()">+ Stockwerk</button></div></div>
       <div class="inv-plan-box"><h4>RÄUME UND TREPPEN · ${esc(curName)}</h4>
-        <div class="inv-row" style="gap:6px"><button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('raum')">+ Raum</button>
-          <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('treppe')">+ Treppe</button></div>
-        <div class="inv-dim inv-small" style="margin-top:6px">Räume sind Rechtecke; L-förmige Räume setzt du aus zwei zusammen. Eine Treppe erscheint auch auf ihrem Ziel-Stockwerk.</div></div>
+        <div class="inv-row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('raum')">+ Raum</button>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('treppe')">+ Treppe</button>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('tuer')">+ Tür</button>
+          <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('durchgang')">+ Durchgang</button></div>
+        <div class="inv-dim inv-small" style="margin-top:6px">Ein Raum beginnt als Rechteck; «In Vieleck umwandeln» macht jede Form möglich (Wand = Umriss). Türen und Durchgänge setzt du auf eine Wand und drehst sie passend. Eine Treppe erscheint auch auf ihrem Ziel-Stockwerk.</div></div>
       <div class="inv-plan-box"><h4>GEBÄUDE (GRUNDFLÄCHE)</h4>
       <div class="form-group" style="margin-bottom:8px"><input class="form-input" id="inv-room-name" value="${esc(r.name)}" maxlength="100"></div>
       <div class="inv-plan-grid">
@@ -1273,9 +1275,10 @@
         <button class="btn btn-danger btn-sm" onclick="Inv.planReset()">Plan zurücksetzen</button></div>`;
     if (sel && sel.item && sel.item.plan) {
       const p = sel.item.plan, k = sel.kind, o = sel.item;
-      const noRot = k === 'area' || (k === 'room' && o.kind !== 'treppe');
+      const noRot = k === 'area' || (k === 'room' && o.kind === 'raum');
+      const roomKindName = { treppe: 'TREPPE', tuer: 'TÜR', durchgang: 'DURCHGANG' };
       const myFloor = k === 'room' ? o.floor_id : p.floor_id;
-      html += `<div class="inv-plan-box"><h4>${(k === 'room' && o.kind === 'treppe' ? 'TREPPE' : PLAN_KIND[k].toUpperCase())} AUSGEWÄHLT</h4>
+      html += `<div class="inv-plan-box"><h4>${(k === 'room' && roomKindName[o.kind]) || PLAN_KIND[k].toUpperCase()} AUSGEWÄHLT</h4>
         ${k === 'room' ? `<div class="form-group" style="margin-bottom:8px"><input class="form-input" value="${esc(o.name)}" maxlength="100" onchange="Inv.roomRename(${o.id}, this.value)"></div>`
           : `<div style="font-weight:700;margin-bottom:8px">${esc(planName(k, o))}</div>`}
         <div class="form-group" style="margin-bottom:8px"><label class="form-label">Stockwerk</label>
@@ -1286,6 +1289,11 @@
           ${[['x', 'X (cm)', p.x], ['y', 'Y (cm)', p.y], ['w', 'Breite (cm)', p.w], ['h', 'Tiefe (cm)', p.h]].map(([f, l, v]) =>
             `<div><label class="form-label">${l}</label><input class="form-input" type="number" step="5" value="${Math.round(v)}" onchange="Inv.planField('${f}', this.value)"></div>`).join('')}
         </div>
+        ${noRot ? '' : `<div class="form-group" style="margin:8px 0 0"><label class="form-label">Drehung (°)</label>
+          <input class="form-input" type="number" step="5" value="${Math.round(p.rot || 0)}" onchange="Inv.planField('rot', this.value)"></div>`}
+        ${k === 'room' && o.kind === 'raum' ? `<div class="inv-row" style="margin-top:8px;gap:6px">${o.points
+          ? `<button class="btn btn-ghost btn-sm" onclick="Inv.roomShape(${o.id}, false)" title="Zurück zum Rechteck der Umgebung">Zu Rechteck</button><span class="inv-dim inv-small">Ecken ziehen · «+» fügt eine Ecke ein · Doppelklick auf eine Ecke löscht sie</span>`
+          : `<button class="btn btn-ghost btn-sm" onclick="Inv.roomShape(${o.id}, true)">In Vieleck umwandeln</button>`}</div>` : ''}
         <div class="inv-row" style="margin-top:8px">
           <button class="btn btn-ghost btn-sm" ${noRot ? 'disabled' : ''} onclick="Inv.planRotate()">↻ 90°</button>
           <button class="btn btn-danger btn-sm" onclick="Inv.planRemove()">${k === 'room' ? 'Löschen' : 'Vom Plan nehmen'}</button></div></div>`;
@@ -1303,6 +1311,7 @@
     if (!confirm('Plan wirklich zurücksetzen?\n\nAlle Räume, Treppen und Stockwerke werden gelöscht und alle Elemente vom Plan genommen. Codes und Standorte (Möbel, Ebenen) bleiben erhalten.\n\nTipp: vorher unter «Backup & Restore» ein Backup machen.')) return;
     if (await POST('/inventory/plan/reset', {})) { showToast('Plan zurückgesetzt', 'success'); await loadPlan(); }
   }
+  function roomShape(id, polygon) { if (planCtl) polygon ? planCtl.toPolygon(id) : planCtl.toRect(id); }
   async function floorAdd() {
     const name = ($('floor-new').value || '').trim();
     if (!name) return;
@@ -1315,7 +1324,8 @@
   }
   async function roomAdd(kind) {
     const n = planData.rooms.filter(r => r.kind === kind).length + 1;
-    const r = await POST('/inventory/plan/rooms', { floor_id: planCtl.floorId(), kind, name: kind === 'treppe' ? 'Treppe ' + n : 'Raum ' + n, x: 100, y: 100 });
+    const names = { treppe: 'Treppe ' + n, raum: 'Raum ' + n };
+    const r = await POST('/inventory/plan/rooms', Object.assign({ floor_id: planCtl.floorId(), kind, x: 100, y: 100 }, names[kind] ? { name: names[kind] } : {}));
     if (r) { await loadPlan(); planCtl.select('room', r.id); }
   }
   async function roomRename(id, name) { if (name.trim() && await PATCH('/inventory/plan/rooms/' + id, { name: name.trim() })) await loadPlan(); }
@@ -1440,7 +1450,7 @@
     toggleLabel, setLabelCopies, toggleLevelsOf, selectBy, labelFor,
     debouncedLoadMachines, loadMachines, setMachinePlace, openMachines, formPlaceChanged, saveFormPlacement,
     planSearch, planZoom, planDrag, planDrop, planAdd, planField, planRotate, planRemove, saveRoom, loadPlan,
-    planReset, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
+    planReset, roomShape, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
     setLabelMode, debouncedToolLoad, toggleTool, setCopies, toolSelectAll, toolSelectNone, toolCopiesQty,
   };
 

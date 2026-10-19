@@ -185,3 +185,51 @@ async def test_reset_plan_clears_everything_but_keeps_locations(client, enabled,
     new_eg = p["floors"][0]["id"]
     r = await client.patch(f"/api/inventory/plan/furniture/{t['id']}", headers=power, json={"x": 1, "y": 1, "w": 50, "h": 50})
     assert r.json()["plan"]["floor_id"] == new_eg
+
+
+# ── Vieleck-Räume, Türen und Durchgänge ──────────────────────────────────────
+async def test_polygon_room_doors_and_scaling(client, enabled, power, db):
+    await _fill(client, power, db)
+    eg = (await client.get("/api/inventory/plan", headers=power)).json()["floors"][0]["id"]
+    l_shape = [[0, 0], [600, 0], [600, 300], [300, 300], [300, 600], [0, 600]]
+    r = (await client.post("/api/inventory/plan/rooms", headers=power,
+                           json={"floor_id": eg, "name": "Werkstatt", "points": l_shape})).json()
+    assert r["points"] == [[0.0, 0.0], [600.0, 0.0], [600.0, 300.0], [300.0, 300.0], [300.0, 600.0], [0.0, 600.0]]
+    assert (r["plan"]["x"], r["plan"]["y"], r["plan"]["w"], r["plan"]["h"]) == (0, 0, 600, 600)       # bbox aus den Punkten
+    # Verschieben/Skalieren per Rechteck führt die Punkte mit
+    r2 = (await client.patch(f"/api/inventory/plan/rooms/{r['id']}", headers=power, json={"x": 100, "y": 50, "w": 1200, "h": 600})).json()
+    assert r2["points"][1] == [1300.0, 50.0] and r2["points"][4] == [700.0, 650.0]
+    # Punkte ändern → bbox folgt; ungültige Punkte werden abgelehnt
+    r3 = (await client.patch(f"/api/inventory/plan/rooms/{r['id']}", headers=power,
+                             json={"points": [[0, 0], [100, 0], [100, 100]]})).json()
+    assert r3["plan"]["w"] == 100 and len(r3["points"]) == 3
+    assert (await client.patch(f"/api/inventory/plan/rooms/{r['id']}", headers=power, json={"points": [[0, 0], [1, 1]]})).status_code == 400
+    # zurück zum Rechteck
+    r4 = (await client.patch(f"/api/inventory/plan/rooms/{r['id']}", headers=power, json={"points": None})).json()
+    assert r4["points"] is None and r4["plan"]["w"] == 100
+    # Türen und Durchgänge: eigene Arten mit Standardgrösse, keine Eckpunkte
+    d = (await client.post("/api/inventory/plan/rooms", headers=power, json={"floor_id": eg, "kind": "tuer", "x": 10, "y": 10})).json()
+    assert d["kind"] == "tuer" and d["name"] == "Tür" and d["plan"]["w"] == 90 and d["points"] is None
+    g = (await client.post("/api/inventory/plan/rooms", headers=power, json={"floor_id": eg, "kind": "durchgang", "x": 10, "y": 10, "rot": 90})).json()
+    assert g["kind"] == "durchgang" and g["plan"]["rot"] == 90
+    # Türen haben keine Eckpunkte, auch wenn welche mitgeschickt werden
+    d2 = (await client.patch(f"/api/inventory/plan/rooms/{d['id']}", headers=power, json={"points": [[0, 0], [50, 0], [50, 50]]})).json()
+    assert d2["points"] is None
+
+
+async def test_polygon_rooms_and_doors_survive_backup(client, enabled, power, admin, db):
+    from sqlalchemy import delete
+    from app.models_inventory import InvRoom
+    await _fill(client, power, db)
+    eg = (await client.get("/api/inventory/plan", headers=power)).json()["floors"][0]["id"]
+    tri = [[0, 0], [400, 0], [0, 300]]
+    await client.post("/api/inventory/plan/rooms", headers=power, json={"floor_id": eg, "name": "Dreieck", "points": tri})
+    await client.post("/api/inventory/plan/rooms", headers=power, json={"floor_id": eg, "name": "Eingang", "kind": "tuer", "x": 5, "y": 5, "rot": 180})
+    data = (await client.get("/api/backup/export", headers=admin)).json()
+    assert [r["points"] for r in data["inventory"]["rooms"] if r["name"] == "Dreieck"] == [[[0.0, 0.0], [400.0, 0.0], [0.0, 300.0]]]
+    await db.execute(delete(InvRoom))
+    await db.commit()
+    assert (await client.post("/api/backup/import", headers=admin, json=data)).status_code == 200
+    by = {r["name"]: r for r in (await client.get("/api/inventory/plan", headers=power)).json()["rooms"]}
+    assert by["Dreieck"]["points"] == [[0.0, 0.0], [400.0, 0.0], [0.0, 300.0]]
+    assert by["Eingang"]["kind"] == "tuer" and by["Eingang"]["plan"]["rot"] == 180

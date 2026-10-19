@@ -2,12 +2,12 @@
  * Bauplan des Inventar-Moduls (Etappe 4): zeichnet Gebäude, Stockwerke, Räume, Bereiche, Möbel und Maschinen als Rechtecke
  * (Einheit: cm) in ein SVG. Wird vom LabManager (bearbeitbar) und von der Gäste-Seite inventar.html (nur ansehen) geladen.
  *
- *   const plan = InvPlan.mount(container, data, { editable, onChange(kind, id, rect|null), onSelect(sel|null), onFloor(id) });
+ *   const plan = InvPlan.mount(container, data, { editable, onChange(kind, id, rect|null, extra), onSelect(sel|null), onFloor(id) });
  *   plan.setData(data); plan.setHighlight({ codes: ['ELE-M02'], machineIds: [3], areaCodes: ['ELE'] });
  *   plan.setFloor(id); plan.floorId(); plan.select(kind, id); plan.place(kind, id, {x, y}|null);
- *   plan.update(kind, id, {x, w, rot, floor_id …}); plan.remove(kind, id);
+ *   plan.update(kind, id, {x, w, rot, floor_id …}); plan.remove(kind, id); plan.toPolygon(id); plan.toRect(id);
  *
- * kind: 'room' (Raum oder Treppe), 'area', 'furniture', 'machine'.
+ * kind: 'room' (Raum, Treppe, Tür oder Durchgang; Räume optional als Vieleck mit `points`), 'area', 'furniture', 'machine'.
  * `data` kommt von GET /api/inventory/plan bzw. /api/inventory-public/plan. Elemente stehen auf genau einem Stockwerk
  * (`plan.floor_id`); eine Treppe liegt auf einem Stockwerk und erscheint zusätzlich auf ihrem Ziel-Stockwerk.
  * Die Seite stellt die CSS-Variablen --text, --border, --surface, --surface2, --accent, --body bereit.
@@ -134,10 +134,9 @@
         svgEl('rect', { x: p.x, y: p.y, width: p.w, height: p.h, fill: 'none', stroke: 'var(--text)', 'stroke-opacity': .22, 'stroke-width': 3,
           'stroke-dasharray': '16 10', 'pointer-events': 'none' }, svg);
       }
+      const weight = (kind, o) => kind === 'room' ? (o.kind === 'raum' ? 0 : o.kind === 'treppe' ? 1 : 2) : 0;
       for (const kind of KIND_ORDER) {
-        for (const o of list(kind)) {
-          if (visible(kind, o)) drawElement(kind, o);
-        }
+        for (const o of list(kind).filter(x => visible(kind, x)).sort((a, b) => weight(kind, a) - weight(kind, b))) drawElement(kind, o);
       }
       if (opts.editable && sel) drawHandle();
     }
@@ -152,10 +151,20 @@
       const rot = ((p.rot || 0) % 180 + 180) % 180;
       const vw = rot === 90 ? p.h : p.w, vh = rot === 90 ? p.w : p.h;
 
+      if (kind === 'room' && (o.kind === 'tuer' || o.kind === 'durchgang')) {            // Lücke in der Wand, bei Türen mit Schwenkbogen
+        svgEl('rect', { class: 'invplan-shape', x: p.x, y: p.y, width: p.w, height: p.h, fill: 'var(--surface2)', stroke: 'var(--text)', 'stroke-opacity': .55, 'stroke-width': 1.5 }, g);
+        if (o.kind === 'tuer') {
+          const hy = p.y + p.h / 2;
+          svgEl('path', { d: `M ${p.x} ${hy} L ${p.x} ${hy - p.w} A ${p.w} ${p.w} 0 0 1 ${p.x + p.w} ${hy}`, fill: 'none', stroke: 'var(--text)', 'stroke-opacity': .6,
+            'stroke-width': 2.5, 'pointer-events': 'none' }, g);
+        }
+        return;
+      }
       if (kind === 'room') {
         const stairs = o.kind === 'treppe';
-        svgEl('rect', { class: 'invplan-shape', x: p.x, y: p.y, width: p.w, height: p.h, fill: 'var(--surface)', 'fill-opacity': stairs ? .9 : .65,
-          stroke: 'var(--text)', 'stroke-opacity': .75, 'stroke-width': stairs ? 3 : 6 }, g);
+        const attrs = { class: 'invplan-shape', fill: 'var(--surface)', 'fill-opacity': stairs ? .9 : .65, stroke: 'var(--text)', 'stroke-opacity': .75, 'stroke-width': stairs ? 3 : 6, 'stroke-linejoin': 'round' };
+        if (!stairs && o.points) svgEl('polygon', Object.assign({ points: o.points.map(q => q.join(',')).join(' ') }, attrs), g);
+        else svgEl('rect', Object.assign({ x: p.x, y: p.y, width: p.w, height: p.h }, attrs), g);
         if (stairs) svgEl('rect', { x: p.x, y: p.y, width: p.w, height: p.h, fill: 'url(#invplan-stairs)', style: 'color:var(--text)', 'pointer-events': 'none' }, g);
         let txt = o.name;
         if (stairs && o.link_floor_id != null) {
@@ -194,6 +203,15 @@
     function drawHandle() {
       const o = find(sel.kind, sel.id);
       if (!o || !o.plan || !visible(sel.kind, o)) return;
+      if (sel.kind === 'room' && o.points) {                     // Vieleck: Eckpunkte ziehen, «+» an den Kanten fügt eine Ecke ein
+        const g2 = svgEl('g', {}, svg), n = o.points.length;
+        o.points.forEach((q, i) => {
+          const nx = o.points[(i + 1) % n];
+          svgEl('circle', { cx: (q[0] + nx[0]) / 2, cy: (q[1] + nx[1]) / 2, r: 7, fill: 'var(--surface)', stroke: 'var(--accent)', 'stroke-width': 2, 'data-mid': i, style: 'cursor:copy' }, g2);
+        });
+        o.points.forEach((q, i) => svgEl('circle', { class: 'invplan-handle', cx: q[0], cy: q[1], r: 10, 'data-vertex': i, style: 'cursor:move' }, g2));
+        return;
+      }
       const p = o.plan, cx = p.x + p.w / 2, cy = p.y + p.h / 2, T = 16;
       const g = svgEl('g', { transform: `rotate(${p.rot || 0} ${cx} ${cy})` }, svg);
       const inH = Math.min(T / 2, p.h * 0.25), inW = Math.min(T / 2, p.w * 0.25);      // nach innen nur wenig, damit Verschieben möglich bleibt
@@ -234,23 +252,45 @@
           svg.setPointerCapture(ev.pointerId);
           return;
         }
+        const tgt = ev.target.getAttribute ? ev.target : null;
+        if (tgt && sel && sel.kind === 'room' && (tgt.hasAttribute('data-vertex') || tgt.hasAttribute('data-mid'))) {
+          const o = find('room', sel.id);
+          if (tgt.hasAttribute('data-mid')) {                    // neue Ecke auf der Kantenmitte, sofort ziehbar
+            const i = +tgt.getAttribute('data-mid'), a1 = o.points[i], b1 = o.points[(i + 1) % o.points.length];
+            if (o.points.length >= 60) return;
+            o.points.splice(i + 1, 0, [snap((a1[0] + b1[0]) / 2), snap((a1[1] + b1[1]) / 2)]);
+            drag = { mode: 'vertex', kind: 'room', id: sel.id, idx: i + 1, moved: true };
+          } else drag = { mode: 'vertex', kind: 'room', id: sel.id, idx: +tgt.getAttribute('data-vertex'), moved: false };
+          svg.setPointerCapture(ev.pointerId);
+          render();
+          return;
+        }
         const g = ev.target.closest && ev.target.closest('[data-kind]');
         if (!g) { setSelection(null); return; }
         const kind = g.getAttribute('data-kind'), id = +g.getAttribute('data-id');
         if (!sel || sel.kind !== kind || sel.id !== id) setSelection({ kind, id });
-        drag = { mode: 'move', kind, id, start: pt, orig: Object.assign({}, find(kind, id).plan), moved: false };
+        const oo = find(kind, id);
+        drag = { mode: 'move', kind, id, start: pt, orig: Object.assign({}, oo.plan), origPoints: oo.points ? oo.points.map(q => q.slice()) : null, moved: false };
         svg.setPointerCapture(ev.pointerId);
       });
       svg.addEventListener('pointermove', (ev) => {
         if (!drag) return;
         const o = find(drag.kind, drag.id), pt = toCm(ev);
-        if (drag.mode === 'move') {
+        if (drag.mode === 'vertex') {
+          drag.moved = true;
+          o.points[drag.idx] = [snap(pt.x), snap(pt.y)];
+          fitBox(o);
+        } else if (drag.mode === 'move') {
           const dx = pt.x - drag.start.x, dy = pt.y - drag.start.y;
           if (!drag.moved && Math.hypot(dx, dy) < 3) return;
           drag.moved = true;
           const R = data.room;                               // der Mittelpunkt bleibt im Gebäude, sonst gehen Elemente «verloren»
           o.plan.x = clamp(snap(drag.orig.x + dx), -o.plan.w / 2, R.width_cm - o.plan.w / 2);
           o.plan.y = clamp(snap(drag.orig.y + dy), -o.plan.h / 2, R.height_cm - o.plan.h / 2);
+          if (drag.origPoints) {                             // Vieleck: alle Ecken um denselben Betrag mitnehmen
+            const ddx = o.plan.x - drag.orig.x, ddy = o.plan.y - drag.orig.y;
+            o.points = drag.origPoints.map(q => [q[0] + ddx, q[1] + ddy]);
+          }
         } else {                                             // Grösse: im Eigensystem des (gedrehten) Elements, Gegenkante bleibt stehen
           const og = drag.orig, h = drag.handle;
           const c0 = { x: og.x + og.w / 2, y: og.y + og.h / 2 };
@@ -272,13 +312,26 @@
         if (!drag) return;
         const d = drag; drag = null;
         const o = find(d.kind, d.id);
-        if ((d.mode === 'move' && d.moved) || d.mode === 'resize') { emit(d.kind, o); if (opts.onSelect) opts.onSelect(selInfo()); }
+        if ((d.mode === 'move' && d.moved) || d.mode === 'resize' || (d.mode === 'vertex' && d.moved)) { emit(d.kind, o); if (opts.onSelect) opts.onSelect(selInfo()); }
       };
+      svg.addEventListener('dblclick', (ev) => {
+        const t = ev.target;
+        if (!(sel && sel.kind === 'room' && t.getAttribute && t.hasAttribute('data-vertex'))) return;
+        const o = find('room', sel.id);
+        if (o.points.length <= 3) return;
+        o.points.splice(+t.getAttribute('data-vertex'), 1);
+        fitBox(o); render(); emit('room', o);
+      });
       svg.addEventListener('pointerup', end);
       svg.addEventListener('pointercancel', end);
     }
 
-    function emit(kind, o) { if (opts.onChange) opts.onChange(kind, o.id, o.plan); }
+    function fitBox(o) {                                     // Umgebung der Eckpunkte → plan.x/y/w/h
+      const xs = o.points.map(q => q[0]), ys = o.points.map(q => q[1]);
+      o.plan.x = Math.min(...xs); o.plan.y = Math.min(...ys);
+      o.plan.w = Math.max(5, Math.max(...xs) - o.plan.x); o.plan.h = Math.max(5, Math.max(...ys) - o.plan.y);
+    }
+    function emit(kind, o) { if (opts.onChange) opts.onChange(kind, o.id, o.plan, kind === 'room' ? { points: o.points || null } : undefined); }
 
     const api = {
       el: svg,
@@ -325,13 +378,28 @@
       },
       update(kind, id, patch) {
         const o = find(kind, id); if (!o || !o.plan) return;
+        const before = Object.assign({}, o.plan);
         Object.assign(o.plan, patch);
+        if (o.points && before.w && before.h && ['x', 'y', 'w', 'h'].some(k => k in patch)) {
+          o.points = o.points.map(q => [o.plan.x + (q[0] - before.x) / before.w * o.plan.w, o.plan.y + (q[1] - before.y) / before.h * o.plan.h]);
+        }
         const R = data.room;
         o.plan.x = clamp(o.plan.x, -o.plan.w / 2, R.width_cm - o.plan.w / 2);
         o.plan.y = clamp(o.plan.y, -o.plan.h / 2, R.height_cm - o.plan.h / 2);
         if (kind !== 'room' && patch.floor_id != null && patch.floor_id !== floor) sel = null;      // auf anderes Stockwerk verschoben
         render(); emit(kind, o);
         if (opts.onSelect) opts.onSelect(selInfo());
+      },
+      toPolygon(id) {                                        // Rechteck-Raum → Vieleck mit vier Ecken
+        const o = find('room', id); if (!o || !o.plan || o.kind !== 'raum' || o.points) return;
+        const p = o.plan;
+        o.points = [[p.x, p.y], [p.x + p.w, p.y], [p.x + p.w, p.y + p.h], [p.x, p.y + p.h]];
+        emit('room', o); setSelection({ kind: 'room', id });
+      },
+      toRect(id) {                                           // Vieleck → Rechteck der Umgebung
+        const o = find('room', id); if (!o || !o.points) return;
+        o.points = null;
+        emit('room', o); setSelection({ kind: 'room', id });
       },
       remove(kind, id) {
         const o = find(kind, id); if (!o) return;

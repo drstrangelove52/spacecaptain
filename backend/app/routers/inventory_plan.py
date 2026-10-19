@@ -4,6 +4,7 @@ Inventar-Modul, Etappe 4: Bauplan-Endpunkte (Teil von /api/inventory, gleiche Fr
 Lesen: jeder Lab Manager. Zeichnen, Verschieben, Raum aendern: Power-Manager/Admin.
 Verschieben ist Alltag und wird nicht einzeln protokolliert; nur Aenderungen am Raum stehen im Aktivitaetslog.
 """
+import json
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -47,7 +48,8 @@ class FloorBody(BaseModel):
 class RoomBody(BaseModel):
     floor_id: Optional[int] = None
     name: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    kind: Optional[Literal["raum", "treppe"]] = None
+    kind: Optional[Literal["raum", "treppe", "tuer", "durchgang"]] = None
+    points: Optional[list[list[float]]] = None        # Eckpunkte eines Raums (cm); null = Rechteck
     x: Optional[float] = None
     y: Optional[float] = None
     w: Optional[float] = None
@@ -115,6 +117,7 @@ async def delete_floor(floor_id: int, db: AsyncSession = Depends(get_db), curren
 
 # ── Räume und Treppen ──
 def _room_apply(r: InvRoom, p: RoomBody, given: set) -> None:
+    old = (r.plan_x, r.plan_y, r.plan_w, r.plan_h)
     for src, dst in (("x", "plan_x"), ("y", "plan_y"), ("w", "plan_w"), ("h", "plan_h")):
         if src in given and getattr(p, src) is not None:
             setattr(r, dst, getattr(p, src))
@@ -124,6 +127,22 @@ def _room_apply(r: InvRoom, p: RoomBody, given: set) -> None:
         r.name = p.name.strip()
     if "kind" in given and p.kind:
         r.kind = p.kind
+    if "points" in given:
+        if p.points is None:
+            r.points = None                                   # zurück zum Rechteck (bbox bleibt)
+        else:
+            if not plan_svc.points_valid(p.points):
+                raise HTTPException(400, "Ungültige Eckpunkte (3–60 Punkte, Mindestgrösse 5 cm)")
+            r.plan_x, r.plan_y, r.plan_w, r.plan_h = plan_svc.points_bbox(p.points)
+            r.points = json.dumps([[round(q[0], 2), round(q[1], 2)] for q in p.points])
+    elif r.points and (r.plan_x, r.plan_y, r.plan_w, r.plan_h) != old and old[2] and old[3]:
+        pts = plan_svc.parse_points(r.points)                   # Verschieben/Skalieren per Rechteck: Punkte mitführen
+        if pts:
+            ox, oy, ow, oh = old
+            r.points = json.dumps([[round(r.plan_x + (q[0] - ox) / ow * r.plan_w, 2),
+                                    round(r.plan_y + (q[1] - oy) / oh * r.plan_h, 2)] for q in pts])
+    if r.kind != "raum":
+        r.points = None                                       # nur Räume haben Eckpunkte
 
 
 async def _check_room(db: AsyncSession, r: InvRoom, p: RoomBody, given: set) -> None:
@@ -147,6 +166,10 @@ async def create_room(payload: RoomBody, db: AsyncSession = Depends(get_db), _: 
                 plan_x=0.0, plan_y=0.0, plan_w=300.0, plan_h=300.0, plan_rot=0.0)
     if r.kind == "treppe" and "w" not in given:
         r.plan_w, r.plan_h = 100.0, 250.0
+    if r.kind in ("tuer", "durchgang") and "w" not in given:
+        r.plan_w, r.plan_h = 90.0, 14.0
+        if not payload.name:
+            r.name = "Tür" if r.kind == "tuer" else "Durchgang"
     _room_apply(r, payload, given)
     await _check_room(db, r, payload, given)
     db.add(r)

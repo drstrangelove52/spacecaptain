@@ -6,6 +6,7 @@ Alle Verweise laufen ueber natuerliche Schluessel statt DB-IDs, damit ein Restor
 Kompatibilitaet (siehe CLAUDE.md «Backup-Kompatibilitaetsregeln»): fehlt die Sektion oder ein Feld, wird sie bzw. es
 uebersprungen (`.get()` mit Vorgabewert); aeltere Backups bleiben importierbar.
 """
+import json
 from datetime import date
 from typing import Optional
 
@@ -16,6 +17,7 @@ from app.models import MachineLocation, Machine, MachineOwner
 from app.models_inventory import (InvFurniture, InvLevel, InvPosition, InvItem, InvPlacement,
                                   FurnitureKind, InvItemStatus, InvPlan, InvFloor, InvRoom)
 from app.services import inventory as inv
+from app.services import inventory_plan as plan_svc
 
 _PLAN = ("plan_x", "plan_y", "plan_w", "plan_h")
 
@@ -107,7 +109,8 @@ async def export_inventory(db: AsyncSession) -> dict:
         "room": {"name": room.name, "width_cm": room.width_cm, "height_cm": room.height_cm} if room else None,
         "floors": [{"name": f.name, "sort_order": f.sort_order} for f in floors],
         "rooms": [{"floor": floor_name[r.floor_id], "name": r.name, "kind": r.kind, "x": r.plan_x, "y": r.plan_y,
-                   "w": r.plan_w, "h": r.plan_h, "rot": r.plan_rot, "link_floor": floor_name.get(r.link_floor_id)}
+                   "w": r.plan_w, "h": r.plan_h, "rot": r.plan_rot, "link_floor": floor_name.get(r.link_floor_id),
+                   "points": plan_svc.parse_points(r.points)}
                   for r in rooms if r.floor_id in floor_name],
         "areas": [{"name": a.name, "code": a.code, "color": a.color,
                    "plan_x": a.plan_x, "plan_y": a.plan_y, "plan_w": a.plan_w, "plan_h": a.plan_h,
@@ -157,7 +160,9 @@ async def import_inventory(data: Optional[dict], db: AsyncSession, overwrite: bo
             have_rooms[(fid, r["name"])] = row
         elif not overwrite:
             continue
-        row.kind = r.get("kind") if r.get("kind") in ("raum", "treppe") else "raum"
+        row.kind = r.get("kind") if r.get("kind") in plan_svc.ROOM_KINDS else "raum"
+        pts = r.get("points")
+        row.points = json.dumps(pts) if row.kind == "raum" and plan_svc.points_valid(pts) else None
         row.plan_x, row.plan_y = r.get("x") or 0.0, r.get("y") or 0.0
         row.plan_w, row.plan_h, row.plan_rot = r.get("w") or 300.0, r.get("h") or 300.0, r.get("rot") or 0.0
         row.link_floor_id = floor_id(r.get("link_floor"))

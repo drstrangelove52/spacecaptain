@@ -634,6 +634,9 @@ async def run_migrations(engine: AsyncEngine) -> None:
         await _add_column_if_missing(conn, "inv_furniture", "plan_floor_id", "INT DEFAULT NULL")
         await _add_column_if_missing(conn, "inv_placements", "plan_floor_id", "INT DEFAULT NULL")
 
+        # ── v1.57: Raeume als Vieleck (points, JSON), Tueren/Durchgaenge als kind in inv_rooms ──
+        await _add_column_if_missing(conn, "inv_rooms", "points", "TEXT DEFAULT NULL")
+
     log.info("Migrationen abgeschlossen")
 
 

@@ -534,7 +534,8 @@ Verworfen: Maschinen ebenfalls mit Platz und Etikett auszustatten. Dann wären b
 - **Backup:** Sektion `inventory` enthält `room` (Gebäude), `floors`, `rooms` und die Plan-Rechtecke samt Stockwerkname von Bereichen, Möbeln und Maschinen (`placements`);
   fehlender Planplatz bestehender Möbel wird beim Import ohne «Überschreiben» ergänzt.
 - **Zurücksetzen:** `POST /api/inventory/plan/reset` (Power-Manager/Admin, protokolliert) löscht Räume, Treppen und Stockwerke (neu nur «EG») und nimmt alle Elemente vom Plan; Gebäude, Codes, Möbel/Ebenen und Maschinen-Standorte bleiben.
-- **Bewusst nicht:** Hintergrund-Grundriss, Wände/Türen, freie Raumumrisse, Undo. Wenn der neue Raum feststeht, reicht es,
+- **Vieleck-Räume, Wände, Türen (Entscheid 2026-10-19):** Räume dürfen beliebige Umrisse haben. `inv_rooms.points` (JSON `[[x,y],…]`, 3–60 Punkte, Migration v1.57; leer = Rechteck) ist die Form, `plan_x/y/w/h` bleiben die Umgebung der Punkte (so funktionieren Ansicht, Einrasten und Verschieben unverändert). Die **Wand ist der Umriss** des Raums. Verschieben oder Skalieren per Rechteck/Zahlen führt die Punkte mit. Im Editor: «In Vieleck umwandeln» (vier Ecken), Ecken ziehen, «+» auf der Kantenmitte fügt eine Ecke ein, Doppelklick löscht eine, «Zu Rechteck» geht zurück. **Türen und Durchgänge** sind `inv_rooms` mit `kind` `tuer`/`durchgang` (Standard 90 × 14 cm, drehbar): eine Lücke in der Wand, bei Türen mit Schwenkbogen. Sie gehören zu einem Stockwerk, nicht zu einem bestimmten Raum, erscheinen im Gäste-Plan und im Backup (`points` und `kind`).
+- **Bewusst nicht:** Hintergrund-Grundriss (Bild zum Abpausen, möglich in Etappe 5), Wanddicke je Wand, Undo. Wenn der neue Raum feststeht, reicht es,
   den Raum einzustellen und die Elemente neu zu ziehen.
 
 ## 12. Offene Punkte
