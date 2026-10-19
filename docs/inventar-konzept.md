@@ -533,6 +533,7 @@ Verworfen: Maschinen ebenfalls mit Platz und Etikett auszustatten. Dann wären b
   stehen bei Werkzeug und Möbel; Maschinen-Treffer führen auf den Plan. Nicht eingezeichnete Ziele zeigen einen Hinweis.
 - **Backup:** Sektion `inventory` enthält `room` (Gebäude), `floors`, `rooms` und die Plan-Rechtecke samt Stockwerkname von Bereichen, Möbeln und Maschinen (`placements`);
   fehlender Planplatz bestehender Möbel wird beim Import ohne «Überschreiben» ergänzt.
+- **Zurücksetzen:** `POST /api/inventory/plan/reset` (Power-Manager/Admin, protokolliert) löscht Räume, Treppen und Stockwerke (neu nur «EG») und nimmt alle Elemente vom Plan; Gebäude, Codes, Möbel/Ebenen und Maschinen-Standorte bleiben.
 - **Bewusst nicht:** Hintergrund-Grundriss, Wände/Türen, freie Raumumrisse, Undo. Wenn der neue Raum feststeht, reicht es,
   den Raum einzustellen und die Elemente neu zu ziehen.
 

@@ -161,3 +161,27 @@ async def test_floors_and_rooms_survive_backup(client, enabled, power, admin, db
     by = {r["name"]: r for r in p["rooms"]}
     assert names[by["Atelier"]["floor_id"]] == "OG" and by["Treppe"]["kind"] == "treppe" and names[by["Treppe"]["link_floor_id"]] == "OG"
     assert names[p["furniture"][0]["plan"]["floor_id"]] == "OG"
+
+
+async def test_reset_plan_clears_everything_but_keeps_locations(client, enabled, power, manager, db):
+    laser, t, mid = await _fill(client, power, db)
+    og = (await client.post("/api/inventory/plan/floors", headers=power, json={"name": "OG"})).json()
+    eg = (await client.get("/api/inventory/plan", headers=power)).json()["floors"][0]["id"]
+    await client.post("/api/inventory/plan/rooms", headers=power, json={"floor_id": og["id"], "name": "Atelier"})
+    await client.patch(f"/api/inventory/plan/area/{laser}", headers=power, json={"x": 0, "y": 0, "w": 300, "h": 200})
+    await client.patch(f"/api/inventory/plan/furniture/{t['id']}", headers=power, json={"x": 5, "y": 5, "w": 100, "h": 50, "floor_id": og["id"]})
+    await client.patch(f"/api/inventory/plan/machine/{mid}", headers=power, json={"x": 9, "y": 9, "w": 70, "h": 50})
+    await client.put("/api/inventory/plan/room", headers=power, json={"name": "Halle", "width_cm": 2000, "height_cm": 1200})
+    await client.patch(f"/api/inventory/machines/{mid}", headers=power, json={"furniture_id": t["id"]})
+
+    assert (await client.post("/api/inventory/plan/reset", headers=manager)).status_code == 403
+    p = (await client.post("/api/inventory/plan/reset", headers=power)).json()
+    assert [f["name"] for f in p["floors"]] == ["EG"] and p["rooms"] == []
+    assert all(x["plan"] is None for k in ("areas", "furniture", "machines") for x in p[k])
+    assert p["room"] == {"name": "Halle", "width_cm": 2000.0, "height_cm": 1200.0}          # Gebäude bleibt
+    m = (await _machines(client, power))["Lasercutter"]
+    assert m["stands_on"]["code"] == "LAS-M01"                                              # Standort (Möbel) bleibt
+    # danach wieder normal zeichnen
+    new_eg = p["floors"][0]["id"]
+    r = await client.patch(f"/api/inventory/plan/furniture/{t['id']}", headers=power, json={"x": 1, "y": 1, "w": 50, "h": 50})
+    assert r.json()["plan"]["floor_id"] == new_eg

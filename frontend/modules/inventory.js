@@ -1267,7 +1267,10 @@
         <div><label class="form-label">Breite (m)</label><input class="form-input" id="inv-room-w" type="number" min="1" step="0.5" value="${r.width_cm / 100}"></div>
         <div><label class="form-label">Tiefe (m)</label><input class="form-input" id="inv-room-h" type="number" min="1" step="0.5" value="${r.height_cm / 100}"></div>
       </div>
-      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="Inv.saveRoom()">Gebäude speichern</button></div>`;
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="Inv.saveRoom()">Gebäude speichern</button></div>
+      <div class="inv-plan-box"><h4>PLAN ZURÜCKSETZEN</h4>
+        <div class="inv-dim inv-small" style="margin-bottom:8px">Entfernt alle Räume, Treppen und Stockwerke (danach nur «EG») und nimmt alle Elemente vom Plan. Gebäude, Codes und Standorte bleiben.</div>
+        <button class="btn btn-danger btn-sm" onclick="Inv.planReset()">Plan zurücksetzen</button></div>`;
     if (sel && sel.item && sel.item.plan) {
       const p = sel.item.plan, k = sel.kind, o = sel.item;
       const noRot = k === 'area' || (k === 'room' && o.kind !== 'treppe');
@@ -1295,6 +1298,10 @@
     html += (hasA.length + hasFurn.length + hasM.length) ? `<div class="inv-dim inv-small" style="padding:0 2px">Noch nicht auf dem Plan: Element auf die Fläche ziehen (es landet auf «${esc(curName)}»).</div>` : '';
     html += tray('BEREICHE', 'area', hasA) + tray('MÖBEL', 'furniture', hasFurn) + tray('MASCHINEN', 'machine', hasM);
     box.innerHTML = html;
+  }
+  async function planReset() {
+    if (!confirm('Plan wirklich zurücksetzen?\n\nAlle Räume, Treppen und Stockwerke werden gelöscht und alle Elemente vom Plan genommen. Codes und Standorte (Möbel, Ebenen) bleiben erhalten.\n\nTipp: vorher unter «Backup & Restore» ein Backup machen.')) return;
+    if (await POST('/inventory/plan/reset', {})) { showToast('Plan zurückgesetzt', 'success'); await loadPlan(); }
   }
   async function floorAdd() {
     const name = ($('floor-new').value || '').trim();
@@ -1433,7 +1440,7 @@
     toggleLabel, setLabelCopies, toggleLevelsOf, selectBy, labelFor,
     debouncedLoadMachines, loadMachines, setMachinePlace, openMachines, formPlaceChanged, saveFormPlacement,
     planSearch, planZoom, planDrag, planDrop, planAdd, planField, planRotate, planRemove, saveRoom, loadPlan,
-    floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
+    planReset, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
     setLabelMode, debouncedToolLoad, toggleTool, setCopies, toolSelectAll, toolSelectNone, toolCopiesQty,
   };
 

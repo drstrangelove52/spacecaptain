@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import MachineLocation, Machine, User, LogType
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update, delete
 from app.models_inventory import InvFurniture, InvPlacement, InvFloor, InvRoom
 from app.routers.inventory import require_inventory_enabled
 from app.services import inventory_plan as plan_svc
@@ -177,6 +177,23 @@ async def delete_room(room_id: int, db: AsyncSession = Depends(get_db), _: User 
     await db.delete(r)
     await db.commit()
     return {"ok": True}
+
+
+@router.post("/reset")
+async def reset_plan(db: AsyncSession = Depends(get_db), current: User = Depends(require_power_manager)):
+    """Plan von vorn beginnen: alle Räume, Treppen und Stockwerke weg (danach nur «EG»), alle Elemente vom Plan genommen.
+    Das Gebäude (Name, Grundfläche), Codes, Standorte (Möbel/Ebene) und Zuordnungen bleiben unberührt."""
+    n_rooms = await db.scalar(select(func.count(InvRoom.id))) or 0
+    await db.execute(delete(InvRoom))
+    await db.execute(delete(InvFloor))
+    cleared = {"plan_x": None, "plan_y": None, "plan_w": None, "plan_h": None, "plan_floor_id": None}
+    await db.execute(update(MachineLocation).values(**cleared))
+    await db.execute(update(InvFurniture).values(plan_rot=None, **cleared))
+    await db.execute(update(InvPlacement).values(plan_rot=None, **cleared))
+    await plan_svc.get_floors(db)                                   # legt «EG» neu an
+    await db.commit()
+    await log_svc.log(db, LogType.inventory_plan_updated, f"Plan zurückgesetzt ({n_rooms} Räume/Treppen entfernt)", user_id=current.id)
+    return await plan_svc.build_plan(db)
 
 
 @router.get("")
