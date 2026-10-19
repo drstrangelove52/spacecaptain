@@ -76,6 +76,7 @@
     const list = (kind) => kind === 'room' ? (data.rooms || []) : kind === 'area' ? data.areas : kind === 'furniture' ? data.furniture : data.machines;
     const find = (kind, id) => list(kind).find(o => o.id === id);
     const floorOf = (kind, o) => kind === 'room' ? o.floor_id : (o.plan && o.plan.floor_id != null ? o.plan.floor_id : floors()[0].id);
+    const curFloorOf = () => floors().find(f => f.id === floor);
     const ensureFloor = () => { if (!floors().some(f => f.id === floor)) floor = floors()[0].id; };
 
     function isHit(kind, o) {
@@ -165,7 +166,8 @@
 
       if (kind === 'room' && (o.kind === 'tuer' || o.kind === 'durchgang')) {            // Lücke in der Wand, bei Türen mit Schwenkbogen
         const gh = Math.max(p.h, (data.room.wall_cm || 20) + 4);                     // die Lücke ist so dick wie die Wand
-        svgEl('rect', { class: 'invplan-shape', x: p.x, y: cy - gh / 2, width: p.w, height: gh, fill: 'var(--surface2)', stroke: 'var(--text)', 'stroke-opacity': .55, 'stroke-width': 1.5 }, g);
+        const tr = !!(curFloorOf() && curFloorOf().background && curFloorOf().bgUrl);
+        svgEl('rect', { class: 'invplan-shape', x: p.x, y: cy - gh / 2, width: p.w, height: gh, fill: 'var(--surface2)', 'fill-opacity': tr ? .45 : 1, stroke: 'var(--text)', 'stroke-opacity': .55, 'stroke-width': 1.5 }, g);
         if (o.kind === 'tuer') {                              // flip: Bit 1 = Anschlag rechts statt links, Bit 2 = Aufschlag nach unten statt oben
           const fh = (o.flip || 0) & 1, fv = ((o.flip || 0) >> 1) & 1, hy = p.y + p.h / 2;
           const hx = fh ? p.x + p.w : p.x, ex = fh ? p.x : p.x + p.w, ly = fv ? hy + p.w : hy - p.w;
@@ -181,8 +183,10 @@
           const d = o.points ? 'M ' + o.points.map(q => q.join(' ')).join(' L ') + ' Z' : `M ${p.x} ${p.y} H ${p.x + p.w} V ${p.y + p.h} H ${p.x} Z`;
           const cid = 'invplan-wall-' + o.id, cp = svgEl('clipPath', { id: cid }, defsEl);
           svgEl('path', { d: 'M -1000000 -1000000 H 1000000 V 1000000 H -1000000 Z ' + d, 'clip-rule': 'evenodd' }, cp);
-          svgEl('path', { d, fill: 'none', stroke: 'var(--text)', 'stroke-opacity': .8, 'stroke-width': (data.room.wall_cm || 20) * 2, 'stroke-linejoin': 'miter', 'clip-path': `url(#${cid})` }, g);
-          svgEl('path', { class: 'invplan-shape', d, fill: 'var(--surface)', 'fill-opacity': .35, stroke: 'none' }, g);
+          const tracing = !!(curFloorOf() && curFloorOf().background && curFloorOf().bgUrl);      // Grundriss darunter: nichts verdecken
+          svgEl('path', { d, fill: 'none', stroke: tracing ? 'var(--accent)' : 'var(--text)', 'stroke-opacity': tracing ? .4 : .8, 'stroke-width': (data.room.wall_cm || 20) * 2, 'stroke-linejoin': 'miter', 'clip-path': `url(#${cid})` }, g);
+          svgEl('path', { class: 'invplan-shape', d, fill: tracing ? 'var(--accent)' : 'var(--surface)', 'fill-opacity': tracing ? .07 : .35, stroke: 'none' }, g);
+          if (tracing) svgEl('path', { d, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke', 'pointer-events': 'none' }, g);   // feine Innenkante
         }
         if (stairs) svgEl('rect', { x: p.x, y: p.y, width: p.w, height: p.h, fill: 'url(#invplan-stairs)', style: 'color:var(--text)', 'pointer-events': 'none' }, g);
         let txt = o.name;
