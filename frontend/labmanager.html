@@ -6006,10 +6006,12 @@ async function loadUpdateStatus() {
   if (!d) return;
   document.getElementById('update-version-display').textContent =
     `v${d.version}${d.build ? ' · Build ' + d.build : ''}`;
+  const _res = { updated: 'aktualisiert', up_to_date: 'bereits aktuell', restarted: 'neu gestartet', running: 'läuft', error: 'Fehler' }[d.last_result] || '';
   document.getElementById('update-last-triggered').textContent =
     d.last_triggered
-      ? 'Letzter Update: ' + new Date(d.last_triggered).toLocaleString('de-CH')
+      ? 'Letzter Update: ' + new Date(d.last_triggered).toLocaleString('de-CH') + (_res ? ' · ' + _res : '')
       : 'Noch kein Update ausgeführt';
+  if (d.pending && !_updatePolling) _pollUpdateStatus();          // Seite neu geladen, während ein Vorgang läuft: Anzeige weiter nachführen
   const badge = document.getElementById('update-watcher-badge');
   const warning = document.getElementById('update-setup-warning');
   const updateBtn = document.getElementById('update-trigger-btn');
@@ -6104,30 +6106,50 @@ async function downloadLogBundle() {
   URL.revokeObjectURL(url);
 }
 
+let _updatePolling = false;
+function _resetUpdateButtons() {
+  const t = { 'update-trigger-btn': 'Update starten', 'restart-trigger-btn': 'Backend neu starten', 'restart-all-trigger-btn': 'Alle neu starten' };
+  for (const id in t) { const b = document.getElementById(id); if (b) { b.textContent = t[id]; b.disabled = false; } }
+}
+// Nach einem Vorgang die Anzeige sicher auf «fertig» bringen: das Backend startet gerade neu, die erste Abfrage kann scheitern
+async function _finishUpdateUi(d) {
+  for (let i = 0; i < 6; i++) {
+    const ok = await GET('/update/status');
+    if (ok) { await loadUpdateStatus(); break; }
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  _resetUpdateButtons();
+  if (!d) return;
+  const staleJs = d.build && window._buildTag && String(d.build) !== String(window._buildTag);
+  if (d.last_result === 'up_to_date') showToast('Bereits aktuell — kein Update nötig', 'info');
+  else if (d.last_result === 'restarted') showToast('Backend erfolgreich neu gestartet', 'success');
+  else if (d.last_result === 'error') showToast('Vorgang fehlgeschlagen — Log prüfen', 'error');
+  else showToast('Update abgeschlossen' + (d.build ? ' (Build ' + d.build + ')' : '') + (staleJs ? ' — Seite mit Strg+F5 neu laden' : ''), 'success');
+}
 function _pollUpdateStatus() {
+  if (_updatePolling) return;
+  _updatePolling = true;
+  const t0 = Date.now();
+  let busy = false;
+  const stop = () => { clearInterval(interval); _updatePolling = false; };
   const interval = setInterval(async () => {
+    if (busy) return;
+    busy = true;
     try {
+      if (Date.now() - t0 > 15 * 60 * 1000) {                    // nie ewig «Läuft…» anzeigen
+        stop(); await _finishUpdateUi(null);
+        showToast('Keine Rückmeldung nach 15 Minuten — Update-Log prüfen', 'error');
+        return;
+      }
       const r = await fetch('/api/update/status', {
         headers: { Authorization: 'Bearer ' + (localStorage.getItem('ms_token') || '') }
       });
       if (!r.ok) return; // Backend noch nicht bereit
       const d = await r.json();
-      if (!d.pending && d.last_result !== 'running') {
-        clearInterval(interval);
-        await loadUpdateStatus();
-        if (d.last_result === 'up_to_date') {
-          showToast('Bereits aktuell — kein Update nötig', 'info');
-        } else if (d.last_result === 'restarted') {
-          showToast('Backend erfolgreich neu gestartet', 'success');
-        } else if (d.last_result === 'error') {
-          showToast('Vorgang fehlgeschlagen — Log prüfen', 'error');
-        } else {
-          showToast('Update abgeschlossen', 'success');
-        }
-      }
+      if (!d.pending && d.last_result !== 'running') { stop(); await _finishUpdateUi(d); }
     } catch (_) {
       // Backend startet noch — weiter warten
-    }
+    } finally { busy = false; }
   }, 4000);
 }
 
