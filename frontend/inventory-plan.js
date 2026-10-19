@@ -2,7 +2,7 @@
  * Bauplan des Inventar-Moduls (Etappe 4): zeichnet Gebäude, Stockwerke, Räume, Bereiche, Möbel und Maschinen als Rechtecke
  * (Einheit: cm) in ein SVG. Wird vom LabManager (bearbeitbar) und von der Gäste-Seite inventar.html (nur ansehen) geladen.
  *
- *   const plan = InvPlan.mount(container, data, { editable, onChange(kind, id, rect|null, extra), onSelect(sel|null), onFloor(id) });
+ *   const plan = InvPlan.mount(container, data, { editable, onChange(kind, id, rect|null, extra), onMode(mode, count), onSelect(sel|null), onFloor(id) });
  *   plan.setData(data); plan.setHighlight({ codes: ['ELE-M02'], machineIds: [3], areaCodes: ['ELE'] });
  *   plan.setMode('bg'|null) (Grundriss verschieben); plan.pickPoints(n, cb); plan.drawPolygon(cb); plan.cancelMode(); plan.setBackground(floorId, patch);
  *   plan.setFloor(id); plan.floorId(); plan.select(kind, id); plan.place(kind, id, {x, y}|null);
@@ -382,6 +382,7 @@
     function startTemp(m, max, cb) {
       cancelMode();
       mode = m; tmp = []; tmpMax = max; tmpCb = cb; hover = null; sel = null;
+      if (opts.onMode) opts.onMode(mode, 0);
       svg.style.cursor = 'crosshair';
       document.addEventListener('keydown', onKey);
       document.addEventListener('keyup', onKeyUp);
@@ -417,7 +418,7 @@
       return [snap(q.x), snap(q.y)];
     }
     function cancelMode() {
-      if (mode === 'pick' || mode === 'draw') { document.removeEventListener('keydown', onKey); document.removeEventListener('keyup', onKeyUp); mode = null; tmp = []; tmpCb = null; hover = null; svg.style.cursor = ''; render(); }
+      if (mode === 'pick' || mode === 'draw') { document.removeEventListener('keydown', onKey); document.removeEventListener('keyup', onKeyUp); mode = null; tmp = []; tmpCb = null; hover = null; svg.style.cursor = ''; render(); if (opts.onMode) opts.onMode(null, 0); }
     }
     function finishTemp() {
       const pts = tmp, cb = tmpCb;
@@ -425,6 +426,7 @@
       document.removeEventListener('keyup', onKeyUp);
       mode = null; tmp = []; tmpCb = null; hover = null; svg.style.cursor = '';
       render();
+      if (opts.onMode) opts.onMode(null, 0);
       if (cb) cb(pts);
     }
     function addTemp(pt) {
@@ -433,6 +435,7 @@
       tmp.push(q);
       if (mode === 'pick' && tmp.length >= tmpMax) { finishTemp(); return; }
       render();
+      if (opts.onMode) opts.onMode(mode, tmp.length);
     }
     function drawTemp() {                                    // Vorschau der gerade gesetzten Punkte
       if (!(mode === 'pick' || mode === 'draw') || !tmp.length) return;
@@ -440,6 +443,12 @@
       const pts = tmp.concat(hover && mode === 'draw' ? [[snap(hover.x), snap(hover.y)]] : (hover ? [[hover.x, hover.y]] : []));
       svgEl('polyline', { points: pts.map(q => q.join(',')).join(' '), fill: mode === 'draw' ? 'rgba(244,166,34,.15)' : 'none', stroke: 'var(--accent)', 'stroke-width': 4, 'stroke-dasharray': '12 8' }, g);
       tmp.forEach((q, i) => svgEl('circle', { cx: q[0], cy: q[1], r: i === 0 && mode === 'draw' ? 14 : 9, fill: 'var(--accent)', stroke: '#000', 'stroke-width': 2 }, g));
+      if (hover) {                                           // Länge der aktuellen Strecke und Winkel direkt am Mauszeiger
+        const a = tmp[tmp.length - 1], hx = mode === 'draw' ? snap(hover.x) : hover.x, hy = mode === 'draw' ? snap(hover.y) : hover.y;
+        const len = Math.hypot(hx - a[0], hy - a[1]), ang = Math.round(((Math.atan2(hy - a[1], hx - a[0]) * 180 / Math.PI) + 360) % 360);
+        const t = svgEl('text', { x: hx + 18, y: hy - 14, 'font-size': Math.max(14, data.room.width_cm / 70), 'font-weight': 700, fill: 'var(--accent)', stroke: 'var(--surface)', 'stroke-width': 5, 'paint-order': 'stroke' }, g);
+        t.textContent = `${(len / 100).toFixed(2).replace('.', ',')} m · ${ang}°`;
+      }
     }
 
     function fitBox(o) {                                     // Umgebung der Eckpunkte → plan.x/y/w/h
@@ -476,6 +485,7 @@
       setMode(m) {                                           // 'bg' = Grundriss verschieben, sonst aus
         if (m === 'bg') { cancelMode(); mode = 'bg'; svg.style.cursor = 'grab'; }
         else if (mode === 'bg') { mode = null; svg.style.cursor = ''; }
+        if (opts.onMode) opts.onMode(mode, 0);
       },
       mode() { return mode; },
       pickPoints(n, cb) { startTemp('pick', n, cb); },

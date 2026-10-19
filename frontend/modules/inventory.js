@@ -65,12 +65,22 @@
   #page-inventory .inv-dim{color:var(--text-dim)}#page-inventory .inv-small{font-size:14px}
   #page-inventory .inv-empty{text-align:center;color:var(--text-dim);padding:40px 10px}
   #page-inventory .inv-plan-layout{display:flex;gap:14px;align-items:flex-start}
-  #page-inventory .inv-plan-main{flex:1;min-width:0}
-  #page-inventory .inv-plan-side{width:290px;flex-shrink:0;display:flex;flex-direction:column;gap:12px}
-  #page-inventory .inv-plan-box{border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--surface)}
+  #page-inventory .inv-plan-main{flex:1;min-width:0;display:flex;flex-direction:column;height:calc(100vh - 290px);min-height:420px}
+  #page-inventory .inv-plan-main .invplan-wrap{flex:1;min-height:0;max-height:none}
+  #page-inventory .inv-plan-side{width:310px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;position:sticky;top:6px;max-height:calc(100vh - 290px);min-height:420px;overflow-y:auto;padding-right:2px}
+  #page-inventory .inv-plan-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-4px 0 10px}
+  #page-inventory .inv-plan-hint{font-size:13px;color:var(--accent);font-family:var(--mono);min-height:20px;line-height:20px;margin:-4px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #page-inventory .inv-plan-box,#page-inventory .inv-plan-acc{border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--surface)}
+  #page-inventory .inv-plan-acc{padding:0}
+  #page-inventory .inv-plan-acc>summary{cursor:pointer;padding:9px 12px;font-size:13px;letter-spacing:1px;color:var(--text-dim);font-family:var(--mono);list-style:none}
+  #page-inventory .inv-plan-acc>summary::-webkit-details-marker{display:none}
+  #page-inventory .inv-plan-acc>summary::before{content:'▸ '}
+  #page-inventory .inv-plan-acc[open]>summary::before{content:'▾ '}
+  #page-inventory .inv-plan-acc[open]>summary{border-bottom:1px solid var(--border)}
+  #page-inventory .inv-plan-acc-body{padding:10px 12px}
   #page-inventory .inv-plan-box h4{font-size:13px;letter-spacing:1px;color:var(--text-dim);margin:0 0 8px;font-family:var(--mono);font-weight:400}
   #page-inventory .inv-plan-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  #page-inventory .inv-plan-tray{max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+  #page-inventory .inv-plan-tray{max-height:260px;overflow:auto;display:flex;flex-direction:column;gap:4px}
   #page-inventory .inv-plan-chip{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:14px;cursor:grab;background:var(--surface2)}
   #page-inventory .inv-plan-chip .inv-sw{width:10px;height:10px;border-radius:2px;flex-shrink:0}
   #page-inventory .inv-plan-chip button{margin-left:auto}
@@ -194,11 +204,12 @@
     </div>
 
     <div class="inv-page" id="inv-page-plan">
-      <div class="inv-hint">
+      <details class="inv-hint">
+        <summary>So funktioniert der Plan</summary>
         Der <b>Bauplan</b> zeigt das Gebäude von oben, Masse in <b>cm</b>: Stockwerke (oben wählbar), Räume und Treppen, darin Bereiche (gestrichelt), Möbel und Maschinen. Die Suche markiert, wo etwas steht.
-        <span id="inv-plan-help-edit">Zum Einzeichnen ziehst du Elemente aus der Liste «Noch nicht auf dem Plan» auf die Fläche (oder «＋» tippst), verschiebst sie mit der Maus
-        und änderst die Grösse an den Ecken und Kanten. Drehen und genaue Masse stehen rechts bei der Auswahl. Der Plan ist unabhängig von den Codes: nach einem Umzug zeichnest du nur neu.</span>
-      </div>
+        <span id="inv-plan-help-edit">Räume zeichnest du mit «✏️ Raum zeichnen» (Ecken anklicken) über ein hochgeladenes Grundriss-Bild. Bereiche, Möbel und Maschinen ziehst du aus der Liste «Noch nicht auf dem Plan» auf die Fläche,
+        verschiebst sie mit der Maus und änderst die Grösse an den Ecken und Kanten. Drehen und genaue Masse stehen rechts bei der Auswahl. Der Plan ist unabhängig von den Codes: nach einem Umzug zeichnest du nur neu.</span>
+      </details>
       <div class="inv-toolbar">
         <div class="search-wrap"><span class="search-icon">🔍</span>
           <input class="search-input" id="inv-plan-q" placeholder="Wo ist …? Werkzeug, Möbel oder Maschine markieren" oninput="Inv.planSearch()"></div>
@@ -207,6 +218,15 @@
           <option value="100">100 %</option><option value="150">150 %</option><option value="200">200 %</option><option value="300">300 %</option></select>
         <span class="inv-dim inv-small" id="inv-plan-count"></span>
       </div>
+      <div class="inv-plan-tools" id="inv-plan-tools">
+        <span class="inv-dim inv-small">Zeichnen:</span>
+        <button class="btn btn-primary btn-sm" onclick="Inv.roomDraw()" title="Ecken nacheinander anklicken; Doppelklick oder Klick auf die erste Ecke schliesst den Raum">✏️ Raum zeichnen</button>
+        <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('raum')" title="Rechteckiger Raum, danach in der Grösse ändern">▭ Rechteck</button>
+        <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('tuer')">🚪 Tür</button>
+        <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('durchgang')">⬚ Durchgang</button>
+        <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('treppe')">🪜 Treppe</button>
+      </div>
+      <div class="inv-plan-hint" id="inv-plan-hint"></div>
       <div class="inv-plan-layout">
         <div class="inv-plan-main" id="inv-plan-canvas" ondragover="event.preventDefault()" ondrop="Inv.planDrop(event)"></div>
         <div class="inv-plan-side" id="inv-plan-side"></div>
@@ -1216,7 +1236,7 @@
     await attachBackgrounds(d);
     planData = d;
     if (!planCtl || !$('plan-canvas').contains(planCtl.el)) {
-      planCtl = InvPlan.mount($('plan-canvas'), d, { editable: isPower(), onChange: planChanged, onSelect: () => renderPlanSide(), onFloor: () => renderPlanSide(), onBackground: bgMoved });
+      planCtl = InvPlan.mount($('plan-canvas'), d, { editable: isPower(), onChange: planChanged, onSelect: () => renderPlanSide(), onFloor: () => renderPlanSide(), onBackground: bgMoved, onMode: (m, n) => { planHint(m, n); renderPlanSide(); } });
     } else planCtl.setData(d);
     planZoom();
     renderPlanSide();
@@ -1237,11 +1257,15 @@
       f.bgUrl = bgBlobs[key] || null;
     }
   }
-  function planZoom() {                                  // «Einpassen»: ganzer Plan sichtbar (Höhe ≤ 70 % des Fensters); sonst Prozent der Breite
+  function planZoom() {                                  // «Einpassen»: ganzer Plan im verfügbaren Platz; sonst Prozent der Breite
     if (!planCtl) return;
-    const v = $('plan-zoom').value, r = planData && planData.room;
-    planCtl.el.style.width = v === 'fit' && r ? `min(100%, ${(70 * (r.width_cm + 40) / (r.height_cm + 40)).toFixed(1)}vh)` : (v === 'fit' ? '100%' : v + '%');
+    const v = $('plan-zoom').value, r = planData && planData.room, wrap = planCtl.el.parentElement;
+    if (v === 'fit' && r && wrap) {
+      const w = wrap.clientWidth - 6, h = wrap.clientHeight - 6, ratio = (r.width_cm + 40) / (r.height_cm + 40);
+      planCtl.el.style.width = (w > 50 && h > 50 ? Math.floor(Math.min(w, h * ratio)) : 600) + 'px';
+    } else planCtl.el.style.width = v === 'fit' ? '100%' : v + '%';
   }
+  window.addEventListener('resize', () => { if (planCtl && planCtl.el.isConnected && $('plan-zoom') && $('plan-zoom').value === 'fit') planZoom(); });
   async function planChanged(kind, id, rect, extra) {
     let r;
     if (kind === 'room') {
@@ -1258,90 +1282,110 @@
   const PLAN_KIND = { area: 'Bereich', furniture: 'Möbel', machine: 'Maschine', room: 'Raum' };
   const planName = (k, o) => k === 'furniture' ? `${o.code} · ${o.title}` : k === 'area' ? ((o.code ? o.code + ' · ' : '') + o.name) : o.name;
   const floorOpts = (sel, skip) => planData.floors.filter(f => f.id !== skip).map(f => `<option value="${f.id}" ${f.id === sel ? 'selected' : ''}>${esc(f.name)}</option>`).join('');
+  const planOpen = new Set(['tray']);                    // geöffnete Abschnitte der rechten Spalte (bleiben beim Neuzeichnen offen)
+  function planToggle(id, open) { open ? planOpen.add(id) : planOpen.delete(id); }
+  const acc = (id, title, body) => `<details class="inv-plan-acc" ${planOpen.has(id) ? 'open' : ''} ontoggle="Inv.planToggle('${id}', this.open)"><summary>${title}</summary><div class="inv-plan-acc-body">${body}</div></details>`;
+  function planHint(mode, n) {
+    const t = {
+      draw: `✏️ Raum zeichnen · ${n} Ecke${n === 1 ? '' : 'n'} · Doppelklick oder erste Ecke schliesst · Shift/Strg 90° · Alt 45° · Rücktaste zurück · Esc Abbruch`,
+      pick: `📏 Massstab: zwei Punkte anklicken (${n}/2) · Esc Abbruch`,
+      bg: '✋ Grundriss verschieben: im Plan ziehen',
+    }[mode] || '';
+    const el = $('plan-hint'); if (el) el.textContent = t;
+  }
+  function selectionHtml(sel, d) {
+    const r = d.room, p = sel.item.plan, k = sel.kind, o = sel.item;
+    const noRot = k === 'area' || (k === 'room' && o.kind === 'raum');
+    const roomKindName = { treppe: 'TREPPE', tuer: 'TÜR', durchgang: 'DURCHGANG' };
+    const myFloor = k === 'room' ? o.floor_id : p.floor_id;
+    return `<div class="inv-plan-box"><h4>${(k === 'room' && roomKindName[o.kind]) || PLAN_KIND[k].toUpperCase()} AUSGEWÄHLT</h4>
+      ${k === 'room' ? `<div class="form-group" style="margin-bottom:8px"><input class="form-input" value="${esc(o.name)}" maxlength="100" onchange="Inv.roomRename(${o.id}, this.value)"></div>`
+        : `<div style="font-weight:700;margin-bottom:8px">${esc(planName(k, o))}</div>`}
+      <div class="form-group" style="margin-bottom:8px"><label class="form-label">Stockwerk</label>
+        <select class="form-input" onchange="Inv.planMoveFloor(+this.value)">${floorOpts(myFloor)}</select></div>
+      ${k === 'room' && o.kind === 'treppe' ? `<div class="form-group" style="margin-bottom:8px"><label class="form-label">Verbindet mit</label>
+        <select class="form-input" onchange="Inv.roomLink(${o.id}, this.value)"><option value="">— nicht verbunden —</option>${floorOpts(o.link_floor_id, o.floor_id)}</select></div>` : ''}
+      <div class="inv-plan-grid">
+        ${[['x', 'X (cm)', p.x], ['y', 'Y (cm)', p.y], ['w', 'Breite (cm)', p.w], ['h', 'Tiefe (cm)', p.h]].map(([f, l, v]) =>
+          `<div><label class="form-label">${l}</label><input class="form-input" type="number" step="5" value="${Math.round(v)}" onchange="Inv.planField('${f}', this.value)"></div>`).join('')}
+      </div>
+      ${noRot ? '' : `<div class="form-group" style="margin:8px 0 0"><label class="form-label">Drehung (°)</label>
+        <input class="form-input" type="number" step="5" value="${Math.round(p.rot || 0)}" onchange="Inv.planField('rot', this.value)"></div>`}
+      ${k === 'room' && o.kind === 'tuer' ? `<div class="inv-row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="Inv.doorFlip(1)" title="Scharnier auf die andere Seite">⇋ Anschlag spiegeln</button>
+        <button class="btn btn-ghost btn-sm" onclick="Inv.doorFlip(2)" title="Tür öffnet zur anderen Seite der Wand">⇵ Aufschlag spiegeln</button></div>` : ''}
+      ${k === 'room' && o.kind === 'raum' ? `<div class="form-group" style="margin:8px 0 0"><label class="form-label">Wanddicke dieses Raums (cm)</label>
+        <input class="form-input" type="number" min="0" max="100" step="1" placeholder="Standard: ${r.wall_cm || 0}" value="${o.wall_cm == null ? '' : o.wall_cm}" onchange="Inv.roomWall(${o.id}, this.value)"></div>
+        <div class="inv-row" style="margin-top:8px;gap:6px">${o.points
+          ? `<button class="btn btn-ghost btn-sm" onclick="Inv.roomShape(${o.id}, false)" title="Zurück zum Rechteck der Umgebung">Zu Rechteck</button><span class="inv-dim inv-small">Ecken ziehen (Shift/Strg: rechtwinklig) · «+» fügt eine Ecke ein · Doppelklick auf eine Ecke löscht sie</span>`
+          : `<button class="btn btn-ghost btn-sm" onclick="Inv.roomShape(${o.id}, true)">In Vieleck umwandeln</button>`}</div>` : ''}
+      <div class="inv-row" style="margin-top:8px">
+        <button class="btn btn-ghost btn-sm" ${noRot ? 'disabled' : ''} onclick="Inv.planRotate()">↻ 90°</button>
+        <button class="btn btn-danger btn-sm" onclick="Inv.planRemove()">${k === 'room' ? 'Löschen' : 'Vom Plan nehmen'}</button></div></div>`;
+  }
   function renderPlanSide() {
-    const box = $('plan-side');
+    const box = $('plan-side'), tools = $('plan-tools');
     if (!planData) { box.innerHTML = ''; return; }
     const d = planData, power = isPower();
     const placed = d.areas.filter(a => a.plan).length + d.furniture.filter(f => f.plan).length + d.machines.filter(m => m.plan).length;
     $('plan-count').textContent = `${placed} auf dem Plan`;
-    if (!power) { box.innerHTML = ''; return; }
+    if (tools) tools.style.display = power ? '' : 'none';
+    if (!power) { box.innerHTML = ''; box.style.display = 'none'; return; }
+    box.style.display = '';
     const r = d.room, sel = planCtl && planCtl.selected(), cur = planCtl ? planCtl.floorId() : d.floors[0].id;
-    const curName = (d.floors.find(f => f.id === cur) || {}).name || '';
-    const curFl = d.floors.find(f => f.id === cur) || d.floors[0], bgf = curFl.background, mode = planCtl ? planCtl.mode() : null;
-    let html = `<div class="inv-plan-box"><h4>STOCKWERKE</h4>
+    const curFl = d.floors.find(f => f.id === cur) || d.floors[0], curName = curFl.name, bgf = curFl.background, mode = planCtl ? planCtl.mode() : null;
+
+    // 1) Auswahl (immer oben, nur wenn etwas gewählt ist)
+    let html = sel && sel.item && sel.item.plan ? selectionHtml(sel, d)
+      : '<div class="inv-dim inv-small" style="padding:2px 4px">Ein Element im Plan anklicken, um es zu bearbeiten.</div>';
+
+    // 2) Noch nicht eingezeichnet
+    const tray = (title, kind, list) => list.length ? `<div class="inv-dim inv-small" style="margin:6px 0 4px">${title} (${list.length})</div><div class="inv-plan-tray">${list.map(o =>
+      `<div class="inv-plan-chip" draggable="true" ondragstart="Inv.planDrag(event,'${kind}',${o.id})">
+        <span class="inv-sw" style="background:${esc(o.color || '#22d3ee')}"></span><span>${esc(planName(kind, o))}</span>
+        <button class="btn btn-ghost btn-sm" title="Auf dieses Stockwerk setzen" onclick="Inv.planAdd('${kind}',${o.id})">＋</button></div>`).join('')}</div>` : '';
+    const hasFurn = d.furniture.filter(f => !f.plan), hasM = d.machines.filter(m => !m.plan), hasA = d.areas.filter(a => !a.plan);
+    const open = hasA.length + hasFurn.length + hasM.length;
+    if (open) html += acc('tray', `NOCH NICHT AUF DEM PLAN (${open})`, `<div class="inv-dim inv-small">Auf die Fläche ziehen oder «＋»: landet auf «${esc(curName)}».</div>`
+      + tray('Bereiche', 'area', hasA) + tray('Möbel', 'furniture', hasFurn) + tray('Maschinen', 'machine', hasM));
+
+    // 3) Grundriss-Bild
+    html += acc('bg', `GRUNDRISS ZUM ABPAUSEN · ${esc(curName)}`, `
+      <div class="inv-dim inv-small" style="margin-bottom:8px">JPG oder PNG deines Plans als Vorlage. Du stellst den Massstab ein und zeichnest die Räume darüber; das Bild sieht nur, wer den Plan bearbeitet.</div>
+      <input type="file" id="inv-bg-file" accept="image/jpeg,image/png" style="display:none" onchange="Inv.bgUpload(this)">
+      <div class="inv-row" style="gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('inv-bg-file').click()">${bgf ? 'Bild ersetzen' : 'Grundriss hochladen'}</button>
+        ${bgf ? `<button class="btn btn-ghost btn-sm" onclick="Inv.bgScale()" title="Zwei Punkte anklicken und ihren echten Abstand eingeben">📏 Massstab setzen</button>
+        <button class="btn ${mode === 'bg' ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="Inv.bgMove()" title="Das Bild auf dem Plan ziehen">✋ Bild verschieben</button>
+        <button class="btn btn-danger btn-sm" onclick="Inv.bgRemove()">Entfernen</button>` : ''}</div>
+      ${bgf ? `<div class="inv-plan-grid" style="margin-top:8px">
+        <div><label class="form-label">Breite des Bildes (m)</label><input class="form-input" type="number" step="0.1" min="1" value="${(bgf.w / 100).toFixed(2)}" onchange="Inv.bgWidth(this.value)"></div>
+        <div><label class="form-label">Deckkraft</label><input type="range" min="10" max="100" value="${Math.round(bgf.opacity * 100)}" oninput="Inv.bgOpacity(this.value)" style="width:100%"></div>
+        <div><label class="form-label">Drehung (°)</label><input class="form-input" type="number" step="0.5" value="${bgf.rot || 0}" onchange="Inv.bgRotate(this.value)"></div>
+        <div style="align-self:end"><button class="btn btn-ghost btn-sm" onclick="Inv.bgRotate90()" title="Bild um 90° drehen">↻ 90° drehen</button></div></div>` : ''}`);
+
+    // 4) Stockwerke
+    html += acc('floors', 'STOCKWERKE', `
       ${d.floors.map(f => `<div class="inv-row" style="margin-bottom:6px;gap:6px">
         <input class="form-input form-input-sm" value="${esc(f.name)}" maxlength="50" onchange="Inv.floorRename(${f.id}, this.value)" style="flex:1">
         <button class="btn btn-ghost btn-sm" title="Stockwerk löschen (nur wenn leer)" onclick="Inv.floorDelete(${f.id})">✕</button></div>`).join('')}
       <div class="inv-row" style="gap:6px"><input class="form-input form-input-sm" id="inv-floor-new" placeholder="z.B. OG" maxlength="50" style="flex:1">
-        <button class="btn btn-ghost btn-sm" onclick="Inv.floorAdd()">+ Stockwerk</button></div></div>
-      <div class="inv-plan-box"><h4>GRUNDRISS ZUM ABPAUSEN · ${esc(curName)}</h4>
-        <div class="inv-dim inv-small" style="margin-bottom:8px">JPG oder PNG deines Plans als Vorlage. Du stellst den Massstab ein und zeichnest die Räume darüber; das Bild sieht nur, wer den Plan bearbeitet.</div>
-        <input type="file" id="inv-bg-file" accept="image/jpeg,image/png" style="display:none" onchange="Inv.bgUpload(this)">
-        <div class="inv-row" style="gap:6px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('inv-bg-file').click()">${bgf ? 'Bild ersetzen' : 'Grundriss hochladen'}</button>
-          ${bgf ? `<button class="btn btn-ghost btn-sm" onclick="Inv.bgScale()" title="Zwei Punkte anklicken und ihren echten Abstand eingeben">📏 Massstab setzen</button>
-          <button class="btn ${mode === 'bg' ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="Inv.bgMove()" title="Das Bild auf dem Plan ziehen">✋ Bild verschieben</button>
-          <button class="btn btn-danger btn-sm" onclick="Inv.bgRemove()">Entfernen</button>` : ''}</div>
-        ${bgf ? `<div class="inv-plan-grid" style="margin-top:8px">
-          <div><label class="form-label">Breite des Bildes (m)</label><input class="form-input" type="number" step="0.1" min="1" value="${(bgf.w / 100).toFixed(2)}" onchange="Inv.bgWidth(this.value)"></div>
-          <div><label class="form-label">Deckkraft</label><input type="range" min="10" max="100" value="${Math.round(bgf.opacity * 100)}" oninput="Inv.bgOpacity(this.value)" style="width:100%"></div>
-          <div><label class="form-label">Drehung (°)</label><input class="form-input" type="number" step="0.5" value="${bgf.rot || 0}" onchange="Inv.bgRotate(this.value)"></div>
-          <div style="align-self:end"><button class="btn btn-ghost btn-sm" onclick="Inv.bgRotate90()" title="Bild um 90° drehen">↻ 90° drehen</button></div></div>` : ''}</div>
-      <div class="inv-plan-box"><h4>RÄUME UND TREPPEN · ${esc(curName)}</h4>
-        <div class="inv-row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="Inv.roomDraw()" title="Ecken nacheinander anklicken, Doppelklick schliesst den Raum">✏️ Raum zeichnen</button>
-          <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('raum')">+ Raum</button>
-          <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('treppe')">+ Treppe</button>
-          <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('tuer')">+ Tür</button>
-          <button class="btn btn-ghost btn-sm" onclick="Inv.roomAdd('durchgang')">+ Durchgang</button></div>
-        <div class="inv-dim inv-small" style="margin-top:6px">Ein Raum beginnt als Rechteck; «In Vieleck umwandeln» macht jede Form möglich (Wand = Umriss). Türen und Durchgänge setzt du auf eine Wand und drehst sie passend. Eine Treppe erscheint auch auf ihrem Ziel-Stockwerk.</div></div>
-      <div class="inv-plan-box"><h4>GEBÄUDE (GRUNDFLÄCHE)</h4>
+        <button class="btn btn-ghost btn-sm" onclick="Inv.floorAdd()">+ Stockwerk</button></div>`);
+
+    // 5) Gebäude
+    html += acc('bldg', 'GEBÄUDE (GRUNDFLÄCHE, WANDDICKE)', `
       <div class="form-group" style="margin-bottom:8px"><input class="form-input" id="inv-room-name" value="${esc(r.name)}" maxlength="100"></div>
       <div class="inv-plan-grid">
         <div><label class="form-label">Breite (m)</label><input class="form-input" id="inv-room-w" type="number" min="1" step="0.5" value="${r.width_cm / 100}"></div>
         <div><label class="form-label">Tiefe (m)</label><input class="form-input" id="inv-room-h" type="number" min="1" step="0.5" value="${r.height_cm / 100}"></div>
         <div><label class="form-label" title="Standard für alle Räume. 0 = nur der Umriss, ohne Wandstärke (praktisch beim Abpausen). Einzelne Räume können eine eigene Dicke haben.">Wanddicke (cm)</label><input class="form-input" id="inv-room-wall" type="number" min="0" max="100" step="1" value="${r.wall_cm == null ? 0 : r.wall_cm}"></div>
       </div>
-      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="Inv.saveRoom()">Gebäude speichern</button></div>
-      <div class="inv-plan-box"><h4>PLAN ZURÜCKSETZEN</h4>
-        <div class="inv-dim inv-small" style="margin-bottom:8px">Entfernt alle Räume, Treppen und Stockwerke (danach nur «EG») und nimmt alle Elemente vom Plan. Gebäude, Codes und Standorte bleiben.</div>
-        <button class="btn btn-danger btn-sm" onclick="Inv.planReset()">Plan zurücksetzen</button></div>`;
-    if (sel && sel.item && sel.item.plan) {
-      const p = sel.item.plan, k = sel.kind, o = sel.item;
-      const noRot = k === 'area' || (k === 'room' && o.kind === 'raum');
-      const roomKindName = { treppe: 'TREPPE', tuer: 'TÜR', durchgang: 'DURCHGANG' };
-      const myFloor = k === 'room' ? o.floor_id : p.floor_id;
-      html += `<div class="inv-plan-box"><h4>${(k === 'room' && roomKindName[o.kind]) || PLAN_KIND[k].toUpperCase()} AUSGEWÄHLT</h4>
-        ${k === 'room' ? `<div class="form-group" style="margin-bottom:8px"><input class="form-input" value="${esc(o.name)}" maxlength="100" onchange="Inv.roomRename(${o.id}, this.value)"></div>`
-          : `<div style="font-weight:700;margin-bottom:8px">${esc(planName(k, o))}</div>`}
-        <div class="form-group" style="margin-bottom:8px"><label class="form-label">Stockwerk</label>
-          <select class="form-input" onchange="Inv.planMoveFloor(+this.value)">${floorOpts(myFloor)}</select></div>
-        ${k === 'room' && o.kind === 'treppe' ? `<div class="form-group" style="margin-bottom:8px"><label class="form-label">Verbindet mit</label>
-          <select class="form-input" onchange="Inv.roomLink(${o.id}, this.value)"><option value="">— nicht verbunden —</option>${floorOpts(o.link_floor_id, o.floor_id)}</select></div>` : ''}
-        <div class="inv-plan-grid">
-          ${[['x', 'X (cm)', p.x], ['y', 'Y (cm)', p.y], ['w', 'Breite (cm)', p.w], ['h', 'Tiefe (cm)', p.h]].map(([f, l, v]) =>
-            `<div><label class="form-label">${l}</label><input class="form-input" type="number" step="5" value="${Math.round(v)}" onchange="Inv.planField('${f}', this.value)"></div>`).join('')}
-        </div>
-        ${noRot ? '' : `<div class="form-group" style="margin:8px 0 0"><label class="form-label">Drehung (°)</label>
-          <input class="form-input" type="number" step="5" value="${Math.round(p.rot || 0)}" onchange="Inv.planField('rot', this.value)"></div>`}
-        ${k === 'room' && o.kind === 'tuer' ? `<div class="inv-row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="Inv.doorFlip(1)" title="Scharnier auf die andere Seite">⇋ Anschlag spiegeln</button>
-          <button class="btn btn-ghost btn-sm" onclick="Inv.doorFlip(2)" title="Tür öffnet zur anderen Seite der Wand">⇵ Aufschlag spiegeln</button></div>` : ''}
-        ${k === 'room' && o.kind === 'raum' ? `<div class="form-group" style="margin:8px 0 0"><label class="form-label">Wanddicke dieses Raums (cm)</label>
-          <input class="form-input" type="number" min="0" max="100" step="1" placeholder="Standard: ${r.wall_cm || 0}" value="${o.wall_cm == null ? '' : o.wall_cm}" onchange="Inv.roomWall(${o.id}, this.value)"></div>` : ''}
-        ${k === 'room' && o.kind === 'raum' ? `<div class="inv-row" style="margin-top:8px;gap:6px">${o.points
-          ? `<button class="btn btn-ghost btn-sm" onclick="Inv.roomShape(${o.id}, false)" title="Zurück zum Rechteck der Umgebung">Zu Rechteck</button><span class="inv-dim inv-small">Ecken ziehen (Shift/Strg: rechtwinklig) · «+» fügt eine Ecke ein · Doppelklick auf eine Ecke löscht sie</span>`
-          : `<button class="btn btn-ghost btn-sm" onclick="Inv.roomShape(${o.id}, true)">In Vieleck umwandeln</button>`}</div>` : ''}
-        <div class="inv-row" style="margin-top:8px">
-          <button class="btn btn-ghost btn-sm" ${noRot ? 'disabled' : ''} onclick="Inv.planRotate()">↻ 90°</button>
-          <button class="btn btn-danger btn-sm" onclick="Inv.planRemove()">${k === 'room' ? 'Löschen' : 'Vom Plan nehmen'}</button></div></div>`;
-    }
-    const tray = (title, kind, list) => list.length ? `<div class="inv-plan-box"><h4>${title} (${list.length})</h4><div class="inv-plan-tray">${list.map(o =>
-      `<div class="inv-plan-chip" draggable="true" ondragstart="Inv.planDrag(event,'${kind}',${o.id})">
-        <span class="inv-sw" style="background:${esc(o.color || '#22d3ee')}"></span><span>${esc(planName(kind, o))}</span>
-        <button class="btn btn-ghost btn-sm" title="Auf dieses Stockwerk setzen" onclick="Inv.planAdd('${kind}',${o.id})">＋</button></div>`).join('')}</div></div>` : '';
-    const hasFurn = d.furniture.filter(f => !f.plan), hasM = d.machines.filter(m => !m.plan), hasA = d.areas.filter(a => !a.plan);
-    html += (hasA.length + hasFurn.length + hasM.length) ? `<div class="inv-dim inv-small" style="padding:0 2px">Noch nicht auf dem Plan: Element auf die Fläche ziehen (es landet auf «${esc(curName)}»).</div>` : '';
-    html += tray('BEREICHE', 'area', hasA) + tray('MÖBEL', 'furniture', hasFurn) + tray('MASCHINEN', 'machine', hasM);
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="Inv.saveRoom()">Gebäude speichern</button>`);
+
+    // 6) Zurücksetzen
+    html += acc('reset', 'PLAN ZURÜCKSETZEN', `
+      <div class="inv-dim inv-small" style="margin-bottom:8px">Entfernt alle Räume, Treppen und Stockwerke (danach nur «EG») und nimmt alle Elemente vom Plan. Gebäude, Codes und Standorte bleiben.</div>
+      <button class="btn btn-danger btn-sm" onclick="Inv.planReset()">Plan zurücksetzen</button>`);
     box.innerHTML = html;
   }
   async function planReset() {
@@ -1547,7 +1591,7 @@
     toggleLabel, setLabelCopies, toggleLevelsOf, selectBy, labelFor,
     debouncedLoadMachines, loadMachines, setMachinePlace, openMachines, formPlaceChanged, saveFormPlacement,
     planSearch, planZoom, planDrag, planDrop, planAdd, planField, planRotate, planRemove, saveRoom, loadPlan,
-    planReset, bgUpload, roomWall, bgRotate, bgRotate90, bgMove, bgOpacity, bgWidth, bgScale, bgRemove, roomDraw, roomShape, doorFlip, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
+    planToggle, planReset, bgUpload, roomWall, bgRotate, bgRotate90, bgMove, bgOpacity, bgWidth, bgScale, bgRemove, roomDraw, roomShape, doorFlip, floorAdd, floorRename, floorDelete, roomAdd, roomRename, roomLink, planMoveFloor,
     setLabelMode, debouncedToolLoad, toggleTool, setCopies, toolSelectAll, toolSelectNone, toolCopiesQty,
   };
 
