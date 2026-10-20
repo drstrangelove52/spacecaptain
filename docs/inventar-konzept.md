@@ -481,7 +481,7 @@ Ordnungsmerkmal:
   aber nur das Nötige heraus (Name, Beschreibung, Menge, Status, Standort mit Code und Pfad). **Ausgemustertes Werkzeug**
   bleibt verborgen, defektes wird mit «DEFEKT» gezeigt. Maschinen erscheinen mit Name, Kategorie und Pfad, nie mit Status,
   Plug oder Seriennummer. Ist das Modul ausgeschaltet, antworten alle vier Endpunkte mit 404.
-- **Gast-App (`index.html`):** Auf Anmelde- und Scan-Bildschirm erscheint «🔎 Wo ist …?» (nur bei aktivem Inventar,
+- **Gast-App (`index.html`):** Auf dem Scan-Bildschirm (nach der Anmeldung) erscheint «🔎 Wo ist …?» (nur bei aktivem Inventar,
   gesteuert über `inventory_enabled` aus `/api/settings/public`).
 - **Anmeldung (Entscheid 2026-10-20, v1.64):** Plan und Werkzeugsuche sind nur noch hinter dem Login erreichbar. `inventar.html` liest das Token
   aus `localStorage` (nur `guest_token`; ein Lab-Manager-Login im selben Browser zählt hier bewusst nicht); fehlt es oder ist es ungültig, geht es zu `/?next=inventar.html?…` und nach der
