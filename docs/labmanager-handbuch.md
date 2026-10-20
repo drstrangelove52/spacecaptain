@@ -578,21 +578,51 @@ Der Update-Watcher muss einmalig auf dem Host eingerichtet sein (siehe [README �
 
 ## 13. Rollen und Rechte
 
-Es gibt drei Rollen mit aufsteigenden Rechten: **Manager** (Betrieb), **Power-Manager** (Konfiguration) und **Admin** (Systemverwaltung).
+Es gibt drei Rollen, die **aufeinander aufbauen**: Jede Rolle kann alles, was die darunter kann, und etwas dazu. (Gäste haben ein eigenes System und stehen hier nicht.)
 
-| Funktion | Manager | Power-Manager | Admin |
+### 13.1 Was kommt mit jeder Rolle dazu?
+
+| Rolle | Darf (zusätzlich) |
+|---|---|
+| **Manager** (Betrieb) | Gäste verwalten und Berechtigungen vergeben, Maschinen schalten, Raum öffnen/schliessen, Notfall-Alarm, Wartung erfassen, Log und Statistiken ansehen, Werkzeug im Inventar pflegen |
+| **+ Power-Manager** (Konfiguration) | Maschinen anlegen/ändern/löschen, CSV-Import, Kategorien/Standorte/Eigentümer, Plug-Pool, Automationen, Aushänge, Wartungsintervalle, Push-Topics, Inventar-Struktur und Bauplan, Maschinen-Standorte |
+| **+ Admin** (Systemverwaltung) | Lab Manager anlegen/löschen und Rollen ändern, Backup und Restore, Einstellungen (inkl. Inventar-Modul), In-App-Update |
+
+### 13.2 Rechtetabelle: wer darf was?
+
+| Aktion | Manager | Power-Manager | Admin |
 |---|:---:|:---:|:---:|
-| Gäste anzeigen / bearbeiten / löschen | ✅ | ✅ | ✅ |
-| Berechtigungen verwalten | ✅ | ✅ | ✅ |
-| Maschinen anzeigen und schalten | ✅ | ✅ | ✅ |
-| Maschinen anlegen / bearbeiten / löschen, CSV-Import, Kategorien, Standorte | ❌ | ✅ | ✅ |
-| Plug-Pool, Automationen, Aushänge, Wartungsintervalle, Push-Topics verwalten | ❌ | ✅ | ✅ |
-| Inventar: Werkzeug pflegen | ✅ | ✅ | ✅ |
-| Inventar: Bereiche, Möbel, Maschinen-Standorte | ❌ | ✅ | ✅ |
-| Lab Manager anlegen / löschen, Rollen ändern | ❌ | ❌ | ✅ |
-| Backup, Einstellungen (inkl. Inventar-Modul), In-App-Update | ❌ | ❌ | ✅ |
+| **Gäste und Berechtigungen** | | | |
+| Gäste anzeigen, freischalten, bearbeiten, anlegen, löschen | ✅ | ✅ | ✅ |
+| Berechtigungen vergeben und entziehen | ✅ | ✅ | ✅ |
+| Berechtigungsmatrix, Aktivitätslog und Statistiken ansehen | ✅ | ✅ | ✅ |
+| **Maschinen** | | | |
+| Maschinen anzeigen und schalten (EIN/AUS) | ✅ | ✅ | ✅ |
+| Maschinen anlegen, bearbeiten, löschen, QR neu generieren | ❌ | ✅ | ✅ |
+| CSV-Import; Kategorien, Standorte, Eigentümer verwalten | ❌ | ✅ | ✅ |
+| **Plug-Pool und Automationen** | | | |
+| Plug-Pool und Automationen ansehen | ✅ | ✅ | ✅ |
+| Plugs anlegen, bearbeiten, löschen, testen, zuweisen | ❌ | ✅ | ✅ |
+| Automationen anlegen, bearbeiten, löschen | ❌ | ✅ | ✅ |
+| **Maschinenpflege** | | | |
+| Wartung erfassen, Übersicht ansehen | ✅ | ✅ | ✅ |
+| Wartungsintervalle anlegen, bearbeiten, löschen | ❌ | ✅ | ✅ |
+| **Betrieb und Kommunikation** | | | |
+| Raum öffnen/schliessen, Notfall-Alarm | ✅ | ✅ | ✅ |
+| Eigenes Profil bearbeiten | ✅ | ✅ | ✅ |
+| Aushänge verwalten | ❌ | ✅ | ✅ |
+| Push-Topics (ntfy) verwalten | ❌ | ✅ | ✅ |
+| **Inventar (wenn aktiviert)** | | | |
+| Suchen; Werkzeug anlegen, bearbeiten, umlagern, importieren | ✅ | ✅ | ✅ |
+| Bereiche, Möbel, Ebenen und Bauplan bearbeiten; Maschinen einem Standort zuweisen | ❌ | ✅ | ✅ |
+| Inventar-Modul ein-/ausschalten | ❌ | ❌ | ✅ |
+| **System** | | | |
+| Lab Manager anlegen, löschen, Rollen ändern | ❌ | ❌ | ✅ |
+| Backup und Restore | ❌ | ❌ | ✅ |
+| Einstellungen | ❌ | ❌ | ✅ |
+| In-App-Update | ❌ | ❌ | ✅ |
 
-Die vollständige Rechtetabelle steht in der App unter Hilfe → Rollen & Rechte.
+Dieselbe Übersicht steht in der App unter **Hilfe → Rollen & Rechte**, dort mit Filter «Was darf Rolle X?».
 
 ---
 

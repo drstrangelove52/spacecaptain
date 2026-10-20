@@ -154,6 +154,23 @@
   .help-article-body strong{color:var(--text)}
   .help-article-body code{background:var(--surface2);padding:1px 5px;border-radius:3px;font-family:var(--mono);font-size:14px;color:var(--accent2)}
   .help-search-result-cat{padding:10px 24px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+  .rl-card{border:1px solid var(--border);border-left:4px solid var(--rl,var(--accent2));border-radius:8px;padding:10px 14px;background:var(--surface)}
+  .rl-card+.rl-arrow{text-align:center;color:var(--text-dim);font-size:18px;line-height:1.1;margin:2px 0}
+  .rl-card h5{margin:0 0 6px;font-size:15px;font-weight:700;color:var(--text);display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .rl-card h5 small{font-weight:400;color:var(--text-dim);font-size:13px}
+  .rl-card ul{margin:0 0 0 18px;padding:0}.rl-card li{margin:2px 0}
+  .rm-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+  .rm-chip{border:1px solid var(--border);border-radius:16px;padding:4px 12px;cursor:pointer;font-size:14px;background:var(--surface);color:var(--text)}
+  .rm-chip.on{border-color:var(--accent);color:var(--accent)}
+  .rm-table{width:100%;border-collapse:collapse;font-size:14px}
+  .rm-table th{position:sticky;top:0;background:var(--surface2);padding:6px 8px;text-align:center;font-size:12px;letter-spacing:1px;text-transform:uppercase}
+  .rm-table th:first-child{text-align:left}
+  .rm-table td{padding:5px 8px;border-bottom:1px solid var(--border)}
+  .rm-table .rm-grp td{background:var(--surface2);color:var(--text-dim);font-size:12px;letter-spacing:1px;text-transform:uppercase;font-weight:600;padding:6px 8px}
+  .rm-table td.rc{text-align:center;width:92px;font-weight:700}
+  .rm-table td.rc.on{background:color-mix(in srgb,var(--success) 22%,transparent);color:var(--success)}
+  .rm-table td.rc.off{color:var(--text-dim);opacity:.45}
+  .rm-table tr.hide{display:none}
   .help-tip{background:color-mix(in srgb,var(--success) 6%,transparent);border:1px solid color-mix(in srgb,var(--success) 25%,transparent);border-left:3px solid #22c55e;border-radius:6px;padding:10px 14px;margin-top:10px;font-size:15px;color:var(--text-mid);line-height:1.6}
   .help-tip strong{color:#22c55e}
   .help-warn{background:color-mix(in srgb,var(--accent) 6%,transparent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-left:3px solid var(--accent);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:15px;color:var(--text-mid);line-height:1.6}
@@ -2760,61 +2777,16 @@ sudo ./install-service.sh</pre>
               <div class="help-panel-header"><span class="help-panel-icon">🔐</span><span class="help-panel-title">Rollen & Rechte</span></div>
               <div class="help-cat-body">
                 <div class="help-article">
-                  <div class="help-article-title">Rollenübersicht</div>
+                  <div class="help-article-title">Rollenübersicht: was kommt mit jeder Rolle dazu?</div>
                   <div class="help-article-body">
-                    SpaceCaptain kennt drei Rollen mit aufsteigenden Rechten:<br><br>
-                    <strong>Manager</strong> — Betrieb: Gäste verwalten, Maschinen schalten, Berechtigungen vergeben, Wartung erfassen, Raum und Alarm steuern.<br><br>
-                    <strong>Power-Manager</strong> — Konfiguration: Alles was Manager darf, zusätzlich Maschinen anlegen/bearbeiten/löschen, Plugs, Automationen, Aushänge, Wartungsintervalle, Kategorien, Standorte (bzw. Bereiche) und Push-Topics verwalten; mit aktivem Inventar zusätzlich Möbel, Ebenen und Maschinen-Standorte.<br><br>
-                    <strong>Admin</strong> — Systemverwaltung: Alles was Power-Manager darf, zusätzlich Lab Manager verwalten, Backup/Restore, Einstellungen und In-App-Update.
+                    Es gibt drei Rollen, die aufeinander aufbauen: Jede Rolle kann alles, was die darunter kann, und etwas dazu.
+                    <div id="roles-levels" style="margin-top:12px"></div>
                   </div>
                 </div>
                 <div class="help-article">
-                  <div class="help-article-title">Rechtetabelle</div>
+                  <div class="help-article-title">Rechtetabelle: wer darf was?</div>
                   <div class="help-article-body">
-                    <table style="width:100%;border-collapse:collapse;font-size:15px">
-                      <thead>
-                        <tr style="border-bottom:2px solid var(--border)">
-                          <th style="text-align:left;padding:6px 8px;color:var(--text-dim);font-weight:600">Bereich / Aktion</th>
-                          <th style="text-align:center;padding:6px 8px;color:var(--accent);font-weight:600;white-space:nowrap">Manager</th>
-                          <th style="text-align:center;padding:6px 8px;color:#c084fc;font-weight:600;white-space:nowrap">Power-Mgr.</th>
-                          <th style="text-align:center;padding:6px 8px;color:var(--danger);font-weight:600;white-space:nowrap">Admin</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Gäste</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Anzeigen, freischalten, bearbeiten, anlegen, löschen</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Berechtigungen vergeben / entziehen</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Maschinen</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Anzeigen, schalten (EIN/AUS)</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Anlegen, bearbeiten, löschen, QR neu generieren</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">CSV-Import, Kategorien, Standorte verwalten</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Plug-Pool</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Anzeigen</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Anlegen, bearbeiten, löschen, testen, zuweisen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Automationen</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Anzeigen</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Anlegen, bearbeiten, löschen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Maschinenpflege</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Wartung erfassen, Übersicht</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Intervalle anlegen, bearbeiten, löschen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Kommunikation</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Aushänge: anlegen, bearbeiten, löschen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Push-Nachrichten (ntfy): Topics verwalten</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Inventar (wenn aktiviert)</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Suchen, Standorte und Werkzeug ansehen</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Werkzeug anlegen, bearbeiten, umlagern, importieren</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Bereiche, Möbel, Ebenen, Plätze; Plan zeichnen; Maschinen einem Standort zuweisen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Inventar-Modul ein-/ausschalten</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Betrieb</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Raum öffnen / schliessen, Notfall-Alarm</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Berechtigungen, Log, Statistiken</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">System</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Lab Manager: anlegen, bearbeiten, löschen, Rollen ändern</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Backup & Restore</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Einstellungen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                        <tr><td style="padding:6px 8px">In-App Update</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td></tr>
-                      </tbody>
-                    </table>
+                    <div id="roles-matrix"></div>
                   </div>
                 </div>
                 <div class="help-article">
@@ -3135,6 +3107,74 @@ function navigateToHelp(section) {
   navigateTo('help');
   setTimeout(() => selectHelpCat(section), 50);
 }
+
+// ── Rollen & Rechte (Hilfe): Stufenmodell + Matrix aus denselben Daten ──
+const ROLE_NAMES = ['Manager', 'Power-Manager', 'Admin'];
+const ROLE_LEVELS = [
+  { n: 1, name: 'Manager', sub: 'Betrieb', color: 'var(--accent2)', items: [
+    'Gäste verwalten (anlegen, freischalten, bearbeiten, löschen) und Berechtigungen vergeben',
+    'Maschinen schalten, Raum öffnen/schliessen, Notfall-Alarm',
+    'Wartung erfassen, Aktivitätslog und Statistiken ansehen',
+    'Inventar: suchen, Werkzeug pflegen, umlagern, importieren'] },
+  { n: 2, name: 'Power-Manager', sub: 'Konfiguration, zusätzlich', color: 'var(--accent)', items: [
+    'Maschinen anlegen, bearbeiten, löschen; CSV-Import; Kategorien, Standorte, Eigentümer',
+    'Plug-Pool, Automationen, Aushänge, Wartungsintervalle, Push-Topics verwalten',
+    'Inventar: Bereiche, Möbel, Ebenen, Bauplan; Maschinen einem Standort zuweisen'] },
+  { n: 3, name: 'Admin', sub: 'Systemverwaltung, zusätzlich', color: 'var(--danger)', items: [
+    'Lab Manager anlegen, löschen, Rollen ändern',
+    'Backup & Restore, Einstellungen (inkl. Inventar-Modul ein-/ausschalten), In-App-Update'] },
+];
+// Zeile: [Text, Mindest-Rolle 1 = Manager, 2 = Power-Manager, 3 = Admin]
+const ROLE_MATRIX = [
+  ['Gäste und Berechtigungen', [
+    ['Gäste anzeigen, freischalten, bearbeiten, anlegen, löschen', 1],
+    ['Berechtigungen vergeben und entziehen', 1],
+    ['Berechtigungsmatrix, Aktivitätslog und Statistiken ansehen', 1]]],
+  ['Maschinen', [
+    ['Maschinen anzeigen und schalten (EIN/AUS)', 1],
+    ['Maschinen anlegen, bearbeiten, löschen, QR neu generieren', 2],
+    ['CSV-Import; Kategorien, Standorte, Eigentümer verwalten', 2]]],
+  ['Plug-Pool und Automationen', [
+    ['Plug-Pool und Automationen ansehen', 1],
+    ['Plugs anlegen, bearbeiten, löschen, testen, zuweisen', 2],
+    ['Automationen anlegen, bearbeiten, löschen', 2]]],
+  ['Maschinenpflege', [
+    ['Wartung erfassen, Übersicht ansehen', 1],
+    ['Wartungsintervalle anlegen, bearbeiten, löschen', 2]]],
+  ['Betrieb und Kommunikation', [
+    ['Raum öffnen/schliessen, Notfall-Alarm', 1],
+    ['Eigenes Profil bearbeiten', 1],
+    ['Aushänge verwalten', 2],
+    ['Push-Topics (ntfy) verwalten', 2]]],
+  ['Inventar (wenn aktiviert)', [
+    ['Suchen; Werkzeug anlegen, bearbeiten, umlagern, importieren', 1],
+    ['Bereiche, Möbel, Ebenen und Bauplan bearbeiten; Maschinen einem Standort zuweisen', 2],
+    ['Inventar-Modul ein-/ausschalten', 3]]],
+  ['System', [
+    ['Lab Manager anlegen, löschen, Rollen ändern', 3],
+    ['Backup und Restore', 3],
+    ['Einstellungen', 3],
+    ['In-App-Update', 3]]],
+];
+let _rolesFilter = 0;
+function renderRolesHelp() {
+  const lv = document.getElementById('roles-levels'), mx = document.getElementById('roles-matrix');
+  if (lv) lv.innerHTML = ROLE_LEVELS.map((r, i) => `${i ? '<div class="rl-arrow">↓</div>' : ''}<div class="rl-card" style="--rl:${r.color}">
+      <h5>${i ? '+ ' : ''}${r.name} <small>${r.sub}</small></h5><ul>${r.items.map(t => `<li>${escHtml(t)}</li>`).join('')}</ul></div>`).join('')
+    .replace(/<\/div><div class="rl-arrow">/g, '</div><div class="rl-arrow">');
+  if (!mx) return;
+  const chip = (n, label) => `<span class="rm-chip ${_rolesFilter === n ? 'on' : ''}" onclick="rolesFilter(${n})">${label}</span>`;
+  const rows = ROLE_MATRIX.map(([g, items]) => {
+    const vis = items.filter(([, min]) => !_rolesFilter || _rolesFilter >= min);
+    if (!vis.length) return '';
+    return `<tr class="rm-grp"><td colspan="4">${escHtml(g)}</td></tr>` + vis.map(([t, min]) =>
+      `<tr><td>${escHtml(t)}</td>${[1, 2, 3].map(n => `<td class="rc ${n >= min ? 'on' : 'off'}">${n >= min ? '✓' : '—'}</td>`).join('')}</tr>`).join('');
+  }).join('');
+  mx.innerHTML = `<div class="rm-filter"><span style="font-size:13px;color:var(--text-dim)">Anzeigen:</span>${chip(0, 'Alle Rechte')}${chip(1, 'Was ein Manager darf')}${chip(2, 'Was ein Power-Manager darf')}${chip(3, 'Was ein Admin darf')}</div>
+    <table class="rm-table"><thead><tr><th>Aktion</th>${ROLE_NAMES.map(n => `<th>${n}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+function rolesFilter(n) { _rolesFilter = n; renderRolesHelp(); }
+document.addEventListener('DOMContentLoaded', renderRolesHelp);
 
 function initHelp() {
   selectHelpCat(_helpActiveCat);
