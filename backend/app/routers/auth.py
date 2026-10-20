@@ -77,6 +77,28 @@ async def me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+class UnlockRequest(BaseModel):
+    kind: str          # "user" | "guest" | "ip"
+    value: str         # E-Mail, Benutzername oder IP
+
+
+@router.get("/lockouts")
+async def list_lockouts(_: User = Depends(get_current_user)):
+    """Wegen Fehlversuchen gesperrte Kennungen (Lab Manager: E-Mail, Gäste: «g:<username>») und IPs."""
+    return login_guard.blocked()
+
+
+@router.post("/unlock")
+async def unlock_login(payload: UnlockRequest, db: AsyncSession = Depends(get_db), current: User = Depends(get_current_user)):
+    """Jeder angemeldete Lab Manager kann gesperrte Lab Manager oder Gäste wieder freigeben."""
+    if payload.kind not in ("user", "guest", "ip"):
+        raise HTTPException(400, "kind muss user, guest oder ip sein")
+    ident = "g:" + payload.value if payload.kind == "guest" else payload.value
+    login_guard.unlock("ip" if payload.kind == "ip" else "id", ident if payload.kind != "ip" else payload.value)
+    await log_svc.log(db, LogType.login_unlocked, f"Login-Sperre aufgehoben: {payload.value} von {current.name}", user_id=current.id)
+    return {"ok": True}
+
+
 class LoginByTokenRequest(BaseModel):
     login_token: str
 

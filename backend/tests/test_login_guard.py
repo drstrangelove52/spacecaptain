@@ -52,3 +52,19 @@ async def test_gast_token_per_header_statt_query(client, session_factory):
     assert (await client.get(f"/api/guest/my?access_token={t}")).status_code == 200
     assert (await client.get("/api/queue/my", headers={"Authorization": f"Bearer {t}"})).status_code == 200
     assert bearer_or_query("Bearer abc", None) == "abc"
+
+
+@pytest.mark.asyncio
+async def test_manager_kann_gast_und_manager_entsperren(client, manager):
+    for _ in range(login_guard.MAX_FAILS_IDENT):
+        await client.post("/api/guest/login", json={"username": "anna", "password": "x"})
+        await client.post("/api/auth/login", json={"email": "Chef@Test.ch", "password": "x"})
+    assert (await client.post("/api/guest/login", json={"username": "anna", "password": "x"})).status_code == 429
+    r = await client.get("/api/auth/lockouts", headers=manager)
+    assert set(r.json()["idents"]) == {"g:anna", "chef@test.ch"}
+    assert (await client.get("/api/auth/lockouts")).status_code == 401
+    assert (await client.post("/api/auth/unlock", json={"kind": "guest", "value": "anna"}, headers=manager)).status_code == 200
+    assert (await client.post("/api/auth/unlock", json={"kind": "user", "value": "Chef@Test.ch"}, headers=manager)).status_code == 200
+    assert (await client.get("/api/auth/lockouts", headers=manager)).json() == {"idents": [], "ips": []}
+    assert (await client.post("/api/guest/login", json={"username": "anna", "password": "x"})).status_code == 401
+    assert (await client.post("/api/auth/unlock", json={"kind": "user", "value": "x"})).status_code == 401

@@ -655,7 +655,7 @@ async def run_migrations(engine: AsyncEngine) -> None:
 
         # ── v1.63: LogType-Erweiterung — Login-Sperre nach Fehlversuchen, Login-Token für Gäste erzeugt/widerrufen ──
         await _extend_enum_if_needed(conn, "activity_log", "type", [
-            "login_blocked", "guest_login_token_created", "guest_login_token_revoked",
+            "login_blocked", "guest_login_token_created", "guest_login_token_revoked", "login_unlocked",
         ])
 
     log.info("Migrationen abgeschlossen")

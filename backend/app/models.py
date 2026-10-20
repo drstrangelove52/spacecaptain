@@ -110,6 +110,7 @@ class LogType(str, enum.Enum):
     tailscale_updated = "tailscale_updated"
     machine_qr_regenerated = "machine_qr_regenerated"
     login_blocked = "login_blocked"
+    login_unlocked = "login_unlocked"
     guest_login_token_created = "guest_login_token_created"
     guest_login_token_revoked = "guest_login_token_revoked"
     inventory_area_updated = "inventory_area_updated"

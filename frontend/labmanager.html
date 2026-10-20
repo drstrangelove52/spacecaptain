@@ -3463,12 +3463,24 @@ function fmtLocalDate(isoStr) {
   });
 }
 
+let _lockouts = {idents: [], ips: []};
+function _lockBadge(kind, value) {
+  const id = kind === 'guest' ? 'g:' + String(value).toLowerCase() : String(value).toLowerCase();
+  if (!_lockouts.idents.includes(id)) return '';
+  return `<span class="badge badge-red" title="Zu viele Fehlversuche">🔒 gesperrt</span> <button class="btn btn-ghost btn-sm" onclick="unlockLogin('${kind}','${String(value).replace(/'/g, "\'")}')">Entsperren</button>`;
+}
+async function unlockLogin(kind, value) {
+  const res = await POST('/auth/unlock', {kind, value});
+  if (res) { showToast('Login entsperrt', 'success'); const l = await GET('/auth/lockouts'); if (l) _lockouts = l; renderGuests(); renderLM(); }
+}
+
 async function loadAll() {
   _openInventoryFromHash();
   // Basis-Daten zuerst laden und sofort rendern (kein Plug-Status nötig)
-  const [guests,users,machines,perms,stats,cats,locs,plugsData,owners,batteries] = await Promise.all([
-    GET('/guests'),GET('/users'),GET('/machines'),GET('/permissions'),GET('/dashboard'),GET('/categories'),GET('/locations'),GET('/plugs'),GET('/owners'),GET('/batteries')
+  const [guests,users,machines,perms,stats,cats,locs,plugsData,owners,batteries,locks] = await Promise.all([
+    GET('/guests'),GET('/users'),GET('/machines'),GET('/permissions'),GET('/dashboard'),GET('/categories'),GET('/locations'),GET('/plugs'),GET('/owners'),GET('/batteries'),GET('/auth/lockouts')
   ]);
+  if (locks)     _lockouts = locks;
   if (cats)      { cache.categories=cats; _refreshCatFilter(); }
   if (locs)      { cache.locations=locs; _refreshLocFilter(); }
   if (owners)    cache.owners    = owners;
@@ -3703,7 +3715,7 @@ function renderGuests() {
   if (!cache.guests.length) { tbody.innerHTML='<tr><td colspan="6" style="color:var(--text-dim);text-align:center;padding:24px">Noch keine Gäste.</td></tr>'; return; }
   const sorted=[...cache.guests].sort((a,b)=>a.name.localeCompare(b.name,'de'));
   tbody.innerHTML=sorted.map(g=>`<tr>
-    <td><strong>${g.name}</strong></td>
+    <td><strong>${g.name}</strong> ${_lockBadge('guest', g.username)}</td>
     <td style="font-family:var(--mono)">@${g.username}</td>
     <td style="font-family:var(--mono);font-size:13px">${g.email||'—'}</td>
     <td><span class="badge badge-cyan">${g.permission_count} Maschinen</span></td>
@@ -3839,7 +3851,7 @@ function renderLM() {
   if (!cache.users.length) { tbody.innerHTML='<tr><td colspan="6" style="color:var(--text-dim);text-align:center;padding:24px">Keine Lab Manager</td></tr>'; return; }
   const sorted=[...cache.users].sort((a,b)=>a.name.localeCompare(b.name,'de'));
   tbody.innerHTML=sorted.map(u=>`<tr>
-    <td><strong>${u.name}</strong></td>
+    <td><strong>${u.name}</strong> ${_lockBadge('user', u.email)}</td>
     <td style="font-family:var(--mono)">${u.email}</td>
     <td><span class="badge ${u.role==='admin'?'badge-red':u.role==='power_manager'?'badge-purple':'badge-orange'}">${u.role==='power_manager'?'Power-Manager':u.role}</span></td>
     <td style="font-size:14px;color:var(--text-dim)">${u.area||'—'}</td>
@@ -5557,6 +5569,7 @@ const logColors={
   owner_deleted: 'var(--accent)',
   tailscale_updated: 'var(--accent2)',
   login_blocked: 'var(--danger)',
+  login_unlocked: 'var(--accent2)',
   guest_login_token_created: 'var(--accent2)',
   guest_login_token_revoked: 'var(--accent2)',
   machine_qr_regenerated: 'var(--accent2)',
@@ -5638,6 +5651,7 @@ const logTypeLabels={
   owner_deleted: 'Eigentümer gelöscht',
   tailscale_updated: 'Tailscale geändert',
   login_blocked: 'Login gesperrt',
+  login_unlocked: 'Login entsperrt',
   guest_login_token_created: 'Gast-Login-Token erzeugt',
   guest_login_token_revoked: 'Gast-Login-Token widerrufen',
   machine_qr_regenerated: 'QR-Code neu generiert',
