@@ -163,9 +163,9 @@ async function viewPlan(code, machineId, machineName) {
     <div id="plan"></div>
     <a class="card" href="inventar.html"><div class="card-name">Zur Suche ›</div></a>`, false);
   d.floors.forEach(f => { if (f.background) f.bgUrl = '/api/inventory-public/plan/floors/' + f.id + '/background?v=' + f.background.version; });   // Grundriss als Hintergrund
-  const ctl = InvPlan.mount($('plan'), d, { editable: false });
-  ctl.el.style.width = window.innerWidth < 700 ? '230%' : '100%';        // auf dem Handy grösser zeichnen, Ausschnitt scrollt
+  const ctl = InvPlan.mount($('plan'), d, { editable: false, zoomControls: true });                 // Knöpfe, Pinch, ganzer Plan als Start
   ctl.setHighlight(hl);
+  if (hl.codes.length + hl.machineIds.length + hl.areaCodes.length && ctl.zoomTo) { ctl.zoomTo(2.2); }   // auf das Ziel zoomen, mit − oder ⤢ wieder heraus
   if (ctl.scrollToHighlight) ctl.scrollToHighlight();
 }
 

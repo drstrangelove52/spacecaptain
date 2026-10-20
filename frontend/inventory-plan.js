@@ -4,6 +4,7 @@
  *
  *   const plan = InvPlan.mount(container, data, { editable, onChange(kind, id, rect|null, {points, before}), onMode(mode, count), onBackground(floorId, pos, prevPos), onSelect, onFloor, onSelect(sel|null), onFloor(id) });
  *   plan.setData(data); plan.setHighlight({ codes: ['ELE-M02'], machineIds: [3], areaCodes: ['ELE'] });
+ *   Option zoomControls (Gäste-Seite): Knöpfe + − ⤢, Pinch-Zoom und Strg+Mausrad; plan.zoomTo(z) / plan.zoomFit(), Standard = ganzer Plan sichtbar.
  *   plan.setMode('bg'|null) (Grundriss verschieben); plan.cropRect(cb) (Ausschnitt aufziehen); plan.pickPoints(n, cb); plan.drawPolygon(cb); plan.cancelMode(); plan.setBackground(floorId, patch);
  *   plan.setFloor(id); plan.floorId(); plan.select(kind, id); plan.place(kind, id, {x, y}|null);
  *   plan.update(kind, id, {x, w, rot, floor_id …}); plan.remove(kind, id); plan.toPolygon(id); plan.toRect(id);
@@ -36,6 +37,11 @@
     st.textContent = `
       .invplan-wrap{border:1px solid var(--border);border-radius:10px;background:var(--surface2);overflow:auto;max-height:78vh}
       .invplan-svg{display:block;font-family:var(--body,sans-serif);user-select:none;-webkit-user-select:none}
+      .invplan-stage{position:relative}
+      .invplan-zoomable{height:auto;max-height:68vh;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+      .invplan-zoomable .invplan-svg{margin:0 auto}
+      .invplan-zoombtns{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px;z-index:3}
+      .invplan-zoombtns button{width:42px;height:42px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:22px;line-height:1;cursor:pointer;opacity:.94;touch-action:manipulation}
       .invplan-floors{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
       .invplan-floor{padding:6px 14px;border:1px solid var(--border);border-radius:16px;cursor:pointer;font-size:15px;font-weight:600;color:var(--text);background:var(--surface)}
       .invplan-floor.on{border-color:var(--accent);color:var(--accent)}
@@ -56,9 +62,12 @@
     const bar = document.createElement('div');
     bar.className = 'invplan-floors';
     container.appendChild(bar);
+    const zoomable = !!opts.zoomControls;
+    let stage = container;
+    if (zoomable) { stage = document.createElement('div'); stage.className = 'invplan-stage'; container.appendChild(stage); }
     const wrap = document.createElement('div');
-    wrap.className = 'invplan-wrap';
-    container.appendChild(wrap);
+    wrap.className = 'invplan-wrap' + (zoomable ? ' invplan-zoomable' : '');
+    stage.appendChild(wrap);
     const svg = svgEl('svg', { class: 'invplan-svg' + (opts.editable ? ' invplan-edit' : '') });
     svg.style.width = '100%';
     if (opts.editable) svg.style.touchAction = 'none';
@@ -170,6 +179,7 @@
       }
       if (opts.editable && sel) drawHandle();
       drawTemp();
+      applyZoom();
     }
 
     function drawElement(kind, o) {
@@ -485,6 +495,50 @@
       }
     }
 
+    // ── Zoom für Touch-Geräte (Gäste-Seite): ganzer Plan sichtbar, Knöpfe, Pinch, Strg+Mausrad ──
+    let zoom = 1;
+    function fitWidth() {
+      const vb = (svg.getAttribute('viewBox') || '0 0 1 1').split(' ').map(Number), ratio = (vb[2] / vb[3]) || 1;
+      return Math.max(120, Math.min(wrap.clientWidth - 4, window.innerHeight * 0.66 * ratio));          // ganzer Plan: Breite des Feldes, höchstens ~2/3 der Fensterhöhe
+    }
+    function applyZoom() { if (zoomable) svg.style.width = Math.round(fitWidth() * zoom) + 'px'; }
+    function setZoom(z, cx, cy) {                            // cx/cy: Bildschirmpunkt, der unter dem Finger/Zeiger stehen bleibt
+      z = Math.min(Math.max(z, 1), 8);
+      if (Math.abs(z - zoom) < 0.001) return;
+      const wr = wrap.getBoundingClientRect(), ax = cx == null ? wr.left + wr.width / 2 : cx, ay = cy == null ? wr.top + wr.height / 2 : cy;
+      const s0 = svg.getBoundingClientRect(), fx = (ax - s0.left) / (s0.width || 1), fy = (ay - s0.top) / (s0.height || 1);
+      zoom = z; applyZoom();
+      const s1 = svg.getBoundingClientRect();
+      wrap.scrollLeft += (s1.left + fx * s1.width) - ax;
+      wrap.scrollTop += (s1.top + fy * s1.height) - ay;
+    }
+    if (zoomable) {
+      const btns = document.createElement('div');
+      btns.className = 'invplan-zoombtns';
+      btns.innerHTML = '<button type="button" data-z="in" aria-label="Vergrössern">＋</button><button type="button" data-z="out" aria-label="Verkleinern">−</button><button type="button" data-z="fit" aria-label="Ganzen Plan zeigen" title="Ganzer Plan">⤢</button>';
+      btns.addEventListener('click', (e) => {
+        const z = e.target.getAttribute && e.target.getAttribute('data-z');
+        if (z === 'in') setZoom(zoom * 1.5); else if (z === 'out') setZoom(zoom / 1.5);
+        else if (z === 'fit') { zoom = 1; applyZoom(); wrap.scrollLeft = 0; wrap.scrollTop = 0; }
+      });
+      stage.appendChild(btns);
+      let pinch = null;
+      const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+      wrap.addEventListener('touchstart', (e) => { if (e.touches.length === 2) pinch = { d: dist(e.touches) || 1, z: zoom }; }, { passive: true });
+      wrap.addEventListener('touchmove', (e) => {
+        if (!pinch || e.touches.length !== 2) return;
+        e.preventDefault();                                  // sonst zoomt iOS die ganze Seite statt des Plans
+        setZoom(pinch.z * dist(e.touches) / pinch.d, (e.touches[0].clientX + e.touches[1].clientX) / 2, (e.touches[0].clientY + e.touches[1].clientY) / 2);
+      }, { passive: false });
+      wrap.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true });
+      wrap.addEventListener('wheel', (e) => {                // Trackpad/Maus: Strg+Rad oder Pinch-Geste
+        if (!(e.ctrlKey || e.metaKey)) return;
+        e.preventDefault();
+        setZoom(zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY);
+      }, { passive: false });
+      window.addEventListener('resize', applyZoom);
+    }
+
     function fitBox(o) {                                     // Umgebung der Eckpunkte → plan.x/y/w/h
       const xs = o.points.map(q => q[0]), ys = o.points.map(q => q[1]);
       o.plan.x = Math.min(...xs); o.plan.y = Math.min(...ys);
@@ -516,6 +570,8 @@
         }
         render();
       },
+      zoomTo(z) { zoom = Math.min(Math.max(z, 1), 8); applyZoom(); },
+      zoomFit() { zoom = 1; applyZoom(); wrap.scrollLeft = 0; wrap.scrollTop = 0; },
       cropRect(cb) {                                         // Rechteck aufziehen → cb({x0,y0,x1,y1}) in Plan-cm
         cancelMode(); mode = 'crop'; cropCb = cb; cropPrev = null; svg.style.cursor = 'crosshair';
         document.addEventListener('keydown', onKey);
