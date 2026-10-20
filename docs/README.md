@@ -10,6 +10,7 @@ SpaceCaptain ist ein webbasiertes Zugangs- und Verwaltungssystem für Makerspace
 |---|---|
 | [Lab-Manager-Handbuch](./labmanager-handbuch.md) | Administratoren und Lab Manager |
 | [Gäste-Handbuch](./gast-handbuch.md) | Makerspace-Mitglieder / Gäste |
+| [Inventar-Konzept](./inventar-konzept.md) | Entwickler und Admins: Aufbau, Entscheidungen und Stand des Inventar-Moduls |
 
 ---
 

@@ -305,6 +305,7 @@
     <div class="nav-item" data-page="machines" onclick="navigate(this)"><span class="nav-icon">🏭</span> Maschinen <span class="nav-badge" id="badge-machines">0</span></div>
     <div class="nav-item" data-page="plugs" onclick="navigate(this)"><span class="nav-icon">🔌</span> Plug-Pool <span class="nav-badge" id="badge-plugs">0</span></div>
     <div class="nav-item" data-page="batteries" onclick="navigate(this)"><span class="nav-icon">🔋</span> Akkus <span class="nav-badge" id="badge-batteries">0</span></div>
+    <div class="nav-item" id="nav-inventory" data-page="inventory" data-module="inventory" onclick="navigate(this)" style="display:none"><span class="nav-icon">🗄️</span> Inventar</div>
     <div class="nav-item" data-page="automations" onclick="navigate(this)"><span class="nav-icon">⚡</span> Automationen <span class="nav-badge" id="badge-automations">0</span></div>
     <div class="nav-item" data-page="maintenance" onclick="navigate(this)"><span class="nav-icon">🔧</span> Maschinenpflege <span class="nav-badge nav-badge-danger" id="badge-maintenance" style="display:none">!</span></div>
     <div class="nav-item" data-page="permissions" onclick="navigate(this)"><span class="nav-icon">🔑</span> Berechtigungen</div>
@@ -618,6 +619,7 @@
     <!-- BACKUP PAGE -->
 
     <!-- AUTOMATIONEN -->
+    <div class="page" id="page-inventory"></div>
     <div class="page" id="page-automations">
       <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" id="auto-search" placeholder="Regelname, Maschine suchen…" oninput="filterAutomations(this.value)"></div>
       <div id="automations-list"></div>
@@ -737,6 +739,13 @@
                   <label class="form-label">Währung</label>
                   <input class="form-input" id="cfg-currency" maxlength="10" placeholder="z.B. CHF">
                   <div style="font-size:14px;color:var(--text-dim);margin-top:4px">Für den Neuwert bei Maschinen und Akkus sowie die Inventarliste</div>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Inventar-Modul</label>
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:16px">
+                    <input type="checkbox" id="cfg-inventory-enabled" style="width:auto"> Standorte &amp; Werkzeug aktivieren
+                  </label>
+                  <div style="font-size:14px;color:var(--text-dim);margin-top:4px">Zeigt den Menüpunkt «Inventar» (Möbel, Ebenen, Werkzeug, Etiketten), nennt die Standorte «Bereiche» und leitet die Maschinen-Kategorie aus dem Bereich ab. Zusätzlich gibt es die Gäste-Suche «Wo ist …?». Ausgeschaltet bleibt alles unsichtbar. Siehe Hilfe → Inventar & Standorte.</div>
                 </div>
                 <div class="form-group" style="margin:0">
                   <label class="form-label">NFC-Schreibgerät</label>
@@ -1496,6 +1505,7 @@ sudo ./install-service.sh</pre>
             <div class="help-nav-item active" onclick="selectHelpCat('start')"><span class="help-nav-icon">🚀</span><span class="help-nav-label">Erste Schritte</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('guests')"><span class="help-nav-icon">👥</span><span class="help-nav-label">Gästeverwaltung</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('machines')"><span class="help-nav-icon">🏭</span><span class="help-nav-label">Maschinen</span></div>
+            <div class="help-nav-item" onclick="selectHelpCat('inventory')"><span class="help-nav-icon">🗄️</span><span class="help-nav-label">Inventar & Standorte</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('plugs')"><span class="help-nav-icon">🔌</span><span class="help-nav-label">Plug-Pool</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('permissions')"><span class="help-nav-icon">🔑</span><span class="help-nav-label">Berechtigungen</span></div>
             <div class="help-nav-item" onclick="selectHelpCat('automations')"><span class="help-nav-icon">⚡</span><span class="help-nav-label">Automationen</span></div>
@@ -1675,6 +1685,7 @@ sudo ./install-service.sh</pre>
                   <li>Sidebar → <strong>Maschinen</strong> → «+ Maschine hinzufügen»</li>
                   <li>Name, Kategorie, Hersteller und Modell eingeben</li>
                   <li>Optional: Standort, Kommentar, Smart Plug konfigurieren</li>
+                  <li>Bei aktivem Inventar-Modul entfällt die Kategorie: Sie ergibt sich aus dem Standort (Bereich). Siehe <a href="#" onclick="navigateToHelp('inventory');return false">Inventar & Standorte</a>.</li>
                   <li>«Schulung erforderlich» aktivieren wenn Gäste eine explizite Berechtigung brauchen</li>
                 </ol>
                 <div class="help-tip"><strong>Tipp:</strong> Maschinen ohne «Schulung erforderlich» sind für alle aktiven Gäste automatisch zugänglich — sofern sie nicht explizit gesperrt wurden.</div>
@@ -1758,7 +1769,7 @@ sudo ./install-service.sh</pre>
             <div class="help-article">
               <div class="help-article-title">Maschinenkategorien verwalten</div>
               <div class="help-article-body">
-                Kategorien gruppieren Maschinen thematisch (z.B. Laser, CNC, 3D-Druck) und bestimmen die Anzeigereihenfolge auf der Display-Seite.
+                Kategorien gruppieren Maschinen thematisch (z.B. Laser, CNC, 3D-Druck) und bestimmen die Anzeigereihenfolge auf der Display-Seite. <em>Bei aktivem Inventar-Modul werden sie automatisch aus den Bereichen abgeleitet; «⚙ Kategorien» ist dann ausgeblendet.</em>
                 <ol style="margin-top:8px">
                   <li>Sidebar → <strong>Maschinen</strong> → «⚙ Kategorien»</li>
                   <li><strong>Neu:</strong> Name und Icon-Emoji eingeben → «Hinzufügen»</li>
@@ -1787,6 +1798,135 @@ sudo ./install-service.sh</pre>
                 </ol>
                 Beim nächsten Einschalten erscheint der Text in einem orangefarbenen Hinweis-Panel. Der Gast muss «Ich habe die Sicherheitshinweise gelesen und befolge sie» anhaken bevor der Einschaltenknopf aktiv wird.
                 <div class="help-tip"><strong>Tipp:</strong> Feld leer lassen = kein Bestätigungs-Dialog. Der normale Einschaltfluss wird nur bei befülltem Feld unterbrochen.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Inventar & Standorte ── -->
+            <div class="help-panel" id="help-panel-inventory">
+              <div class="help-panel-header"><span class="help-panel-icon">🗄️</span><span class="help-panel-title">Inventar & Standorte</span></div>
+              <div class="help-cat-body">
+            <div class="help-article">
+              <div class="help-article-title">Wozu das Inventar?</div>
+              <div class="help-article-body">
+                Das Inventar beantwortet zwei Fragen: <strong>«Wo ist …?»</strong> (neue Gäste finden Werkzeug und Maschinen selbst) und
+                <strong>«Wohin gehört …?»</strong> (Werkzeug landet nicht im falschen Schrank). Dafür bekommt jeder Ort einen kurzen Code, den du auf Etiketten druckst.
+                <ol style="margin-top:8px">
+                  <li>Ein <strong>Admin</strong> aktiviert das Modul unter Einstellungen → System → «Inventar-Modul».</li>
+                  <li>Danach erscheint in der Sidebar der Punkt <strong>Inventar</strong>. Ausgeschaltet bleibt alles unsichtbar.</li>
+                  <li>Die bisherigen «Standorte» der Maschinen heissen dann <strong>Bereiche</strong> (dieselbe Liste).</li>
+                </ol>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Maschine oder Werkzeug?</div>
+              <div class="help-article-body">
+                Jedes Gerät steht entweder als <strong>Maschine</strong> oder als <strong>Werkzeug</strong> im System, nie doppelt. Die Trennung hängt an der Frage, ob es einen <em>Standort</em> oder einen <em>Platz</em> hat:
+                <table style="width:100%;border-collapse:collapse;font-size:14px;margin:10px 0">
+                  <thead><tr style="border-bottom:1px solid var(--border);text-align:left"><th style="padding:6px 8px"></th><th style="padding:6px 8px">Maschine</th><th style="padding:6px 8px">Werkzeug</th></tr></thead>
+                  <tbody>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Wo?</td><td style="padding:6px 8px"><strong>Standort</strong>: steht oder hängt fest (Bereich, ggf. auf Tisch/Regal und Ebene)</td><td style="padding:6px 8px"><strong>Platz</strong>: liegt im Schrank und gehört dorthin zurück</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Etikett</td><td style="padding:6px 8px">kein Etikett-Code</td><td style="padding:6px 8px">Etikett mit Code und QR («gehört nach …»)</td></tr>
+                    <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Typisch</td><td style="padding:6px 8px">Einweisung, Smart Plug, Wartungsintervall</td><td style="padding:6px 8px">keine Einweisung, oft mehrere Stück</td></tr>
+                    <tr><td style="padding:6px 8px">Erfasst unter</td><td style="padding:6px 8px">Sidebar → Maschinen</td><td style="padding:6px 8px">Inventar → Werkzeug</td></tr>
+                  </tbody>
+                </table>
+                <strong>Versichern ist ein eigenes Thema:</strong> Kaufdatum, Neuwert, Seriennummer und Eigentümer kannst du bei beiden erfassen. Beim Werkzeug sind sie optional («Buchhaltung / Versicherung» im Formular), z.B. für einen versicherten Akkuschrauber. Der Neuwert gilt <strong>je Stück</strong>; führe solche Geräte einzeln, nicht als Sammelmenge. Die «📋 Inventarliste» unter Maschinen lässt dich im Dialog wählen: <strong>Maschinen</strong> und/oder <strong>Werkzeug</strong>, bei Werkzeug «nur mit erfasstem Neuwert» (Versicherung) oder «alle» (Bestandsliste). So druckst du beide Listen getrennt oder zusammen.
+                <div class="help-tip"><strong>Faustregel für Handgeräte</strong> (Akkuschrauber, Stichsäge, Lötstation): ohne Einweisung und mit festem Schrankplatz ist es Werkzeug; braucht es Einweisung, Plug oder Wartungsintervall, ist es eine Maschine.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Der Code: Bereich – Möbel – Ebene – Platz</div>
+              <div class="help-article-body">
+                Ein Code beschreibt einen Ort von gross nach klein, z.B. <code>ELE-M02-E03-P04</code>:
+                <ul style="margin:8px 0 8px 18px">
+                  <li><code>ELE</code> = <strong>Bereich</strong> (genau 3 Zeichen, z.B. Elektronik)</li>
+                  <li><code>M02</code> = <strong>Möbel</strong> 2 (Schrank, Regal, Werkzeugwand oder Tisch)</li>
+                  <li><code>E03</code> = <strong>Ebene</strong> 3, gezählt von oben nach unten</li>
+                  <li><code>P04</code> = <strong>Platz</strong> 4, gezählt von links nach rechts</li>
+                </ul>
+                Alle Nummern sind zweistellig. Die <strong>00</strong> heisst «nicht unterteilt oder noch nicht festgelegt» (<code>M00</code> = im Bereich ohne Möbel, <code>E00</code> = Ebene offen, <code>P00</code> = kein fester Platz). Auf Etiketten entfallen abschliessende Nullen: <code>ELE-M02</code> steht für das ganze Möbel.
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Bereiche, Möbel und Ebenen einrichten</div>
+              <div class="help-article-body">
+                <em>(Power-Manager und Admin)</em>
+                <ol>
+                  <li><strong>Bereiche</strong> pflegst du wie bisher über Maschinen → «⚙ Bereiche» (oder Inventar → Struktur). Jeder Bereich braucht ein <strong>Kürzel</strong> aus 3 Zeichen; das System schlägt eines vor. Ändert sich das Kürzel, ändern sich alle Codes darunter, die Etiketten gelten dann als «veraltet».</li>
+                  <li>Inventar → <strong>Struktur</strong> → «+ Möbel»: Art, Name und Anzahl Ebenen/Plätze angeben. Ebenen und Plätze lassen sich später ergänzen.</li>
+                  <li>Löschen geht nur, wenn nichts mehr daran hängt (Werkzeug, Maschinen).</li>
+                </ol>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Werkzeug erfassen</div>
+              <div class="help-article-body">
+                Inventar → <strong>Werkzeug</strong> → «+ Werkzeug»: Name, Synonyme (z.B. «Bohrschrauber» für Akkuschrauber), Menge, Status (aktiv, defekt, ausgemustert) und Standort. Der Standort lässt sich als Code tippen oder über Bereich → Möbel → Ebene → Platz auswählen. «Ohne Platz» zeigt Werkzeug, das noch keinen Ort hat.
+                <br><strong>Viele auf einmal:</strong> Inventar → <strong>Import</strong>. Eine Zeile pro Werkzeug: <code>Name ; Synonyme ; Code ; Menge</code> (aus Excel einfügbar). «Prüfen» zeigt Fehler, ohne zu speichern.
+                <div class="help-tip"><strong>Tipp:</strong> Sammelartikel wie Lineale legst du einmal mit Menge an und klebst auf jedes Stück ein Etikett (Anzahl beim Drucken wählen).</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Maschinen: Standort statt Kategorie</div>
+              <div class="help-article-body">
+                Bei aktivem Inventar ersetzt der <strong>Bereich</strong> die Kategorie. Im Maschinenformular wählst du nur noch den <strong>Standort</strong> (Bereich, optional Möbel und Ebene, jeweils mit Code, z.B. <code>LAS-M01-E02</code>).
+                <ul style="margin:8px 0 8px 18px">
+                  <li>Die <strong>Kategorie</strong> ergibt sich automatisch: gleicher Name wie der Bereich, ohne Bereich «Sonstiges». «⚙ Kategorien» und der Kategoriefilter entfallen.</li>
+                  <li><strong>Bereich umbenennen</strong> benennt die Maschinen und die Kategorie mit um; <strong>Bereich löschen</strong> setzt seine Maschinen auf «Sonstiges».</li>
+                  <li>Der Reiter Inventar → <strong>Maschinen</strong> zeigt alle Maschinen mit ihrem Standort und erlaubt das schnelle Umstellen. Maschinen ohne Bereich sind filterbar.</li>
+                  <li>Schaltest du das Modul wieder aus, siehst du wieder Kategorie und einfaches Standort-Dropdown; die zuletzt abgeleiteten Kategorien bleiben stehen.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Bauplan: Bereiche, Möbel und Maschinen einzeichnen</div>
+              <div class="help-article-body">
+                Inventar → <strong>Plan</strong> zeigt das Gebäude von oben (Masse in cm), Stockwerk für Stockwerk (Reiter «EG», «OG» …). <em>Ansehen und Suchen</em> darf jeder Lab Manager, <em>Zeichnen</em> der Power-Manager und der Admin.
+                <ol style="margin-top:8px">
+                  <li>Rechts unter <strong>Gebäude</strong> die Grundfläche in Metern einstellen (die Fläche, die alle Stockwerke zusammen brauchen) und unter <strong>Stockwerke</strong> «EG», «OG» usw. anlegen.</li>
+                  <li>Pro Stockwerk mit den Knöpfen der Leiste <strong>«Zeichnen»</strong> über dem Plan (<strong>✏️ Raum zeichnen</strong>, ▭ Rechteck, 🚪 Tür, ⬚ Durchgang, 🪜 Treppe) die Räume und Treppen anlegen (sie beginnen als Rechteck, mit <strong>«In Vieleck umwandeln»</strong> bekommen sie beliebig viele Ecken: Ecken ziehen, «+» an einer Kante fügt eine Ecke ein, Doppelklick auf eine Ecke löscht sie; die Wand ist der Umriss). Mit <strong>«+ Tür»</strong> und <strong>«+ Durchgang»</strong> setzt du Türen (mit Schwenkbogen) und Öffnungen in die Wand: verschieben, in der Breite ändern, mit «Drehung» an die Wand anpassen und mit «Anschlag spiegeln» bzw. «Aufschlag spiegeln» festlegen, auf welcher Seite das Scharnier sitzt und zu welcher Seite die Tür aufgeht. Eine Treppe wählst du mit «Verbindet mit» einem zweiten Stockwerk zu, dann erscheint sie auf beiden.</li>
+                  <li>Aus der Liste <strong>«Noch nicht auf dem Plan»</strong> ein Element auf die Fläche ziehen (oder «＋» für die Mitte); es landet auf dem gewählten Stockwerk, das du bei der Auswahl wechseln kannst. Reihenfolge von unten: Raum, Bereich, Möbel, Maschine.</li>
+                  <li><strong>Verschieben:</strong> Element ziehen (rastet auf 5 cm). <strong>Grösse:</strong> Ecken oder Kanten ziehen (die gegenüberliegende Seite bleibt stehen). <strong>Genau:</strong> Zahlenfelder rechts, «↻ 90°» zum Drehen, «Vom Plan nehmen» zum Entfernen.</li>
+                  <li>Die <strong>Suche</strong> oben markiert, wo ein Werkzeug, Möbel oder eine Maschine steht (Treffer blinken, der Rest wird abgedunkelt).</li>
+                  <li><strong>Rückgängig:</strong> Der Knopf <strong>«↶ Rückgängig»</strong> (oder <strong>Strg+Z</strong>) nimmt die letzten Änderungen am Plan einzeln zurück (bis zu 50): Verschieben, Grösse, Drehung, Ecken, Anlegen und Löschen von Räumen, Türen spiegeln, Grundriss verschieben, drehen, skalieren und zuschneiden. Nicht rückgängig zu machen sind Stockwerke anlegen oder löschen, Hochladen oder Entfernen des Grundriss-Bildes und «Plan zurücksetzen». Beim Zeichnen löscht die Rücktaste die letzte Ecke.</li>
+                  <li><strong>Ausschnitt:</strong> Mit <strong>«✂️ Ausschnitt»</strong> im Abschnitt «Grundriss zum Abpausen» ziehst du ein Rechteck über den Teil des Bildes, der sichtbar bleiben soll (zum Beispiel ohne die Bemassung am Rand). Das Bild selbst bleibt vollständig gespeichert; «Ausschnitt aufheben» zeigt es wieder ganz.</li>
+                  <li><strong>Übersicht:</strong> Der Plan nimmt die ganze Breite ein. Rechts steht oben die <strong>Auswahl</strong>, darunter einklappbare Abschnitte (Noch nicht auf dem Plan, Grundriss, Stockwerke, Gebäude, Zurücksetzen); offen bleibt, was du aufgeklappt hast. Beim Zeichnen zeigt eine Zeile über dem Plan die Bedienung, am Mauszeiger stehen Länge und Winkel der aktuellen Strecke.</li>
+                  <li><strong>Zoom:</strong> «Einpassen» zeigt den ganzen Plan auf einen Blick, 25–300 % vergrössern oder verkleinern ihn.</li>
+                  <li><strong>Grundriss abpausen:</strong> Pro Stockwerk kannst du rechts bei «Grundriss zum Abpausen» ein JPG oder PNG deines Plans hochladen. Mit <strong>«📏 Massstab setzen»</strong> klickst du zwei Punkte an und gibst ihren echten Abstand an (zum Beispiel die Länge einer Wand); mit <strong>«✋ Bild verschieben»</strong> schiebst du das Bild an die richtige Stelle, mit <strong>«↻ 90° drehen»</strong> bzw. dem Feld «Drehung» (auch in Zehntelgrad, für schief gescannte Pläne) richtest du es aus, die Deckkraft stellst du mit dem Regler ein. Dann zeichnest du mit <strong>«✏️ Raum zeichnen»</strong> die Ecken nacheinander an (Doppelklick oder Klick auf die erste Ecke schliesst den Raum, Rücktaste löscht die letzte Ecke, Esc bricht ab). <strong>Shift oder Strg</strong> gedrückt halten lässt die Linie bei 0°, 90°, 180° und 270° einrasten (<strong>Alt</strong>: 45°-Schritte); beim Ziehen einer Ecke macht dasselbe die Wände rechtwinklig. Das Bild (mit dem gewählten Ausschnitt) sehen auch die Gäste im Plan der «Wo ist …?»-Seite; die Ansicht richtet sich nach dem Ausschnitt, nicht nach dem ganzen Gebäude.</li>
+                  <li><strong>Wände:</strong> Ein Raum ist die Innenfläche. Beim Abpausen genügt der <strong>Umriss</strong> (Standard «Wanddicke 0»), die echten Wände siehst du im Bild. Willst du Wände mit Dicke, stellst du sie unter «Gebäude» ein (aussen um den Raum, zwischen zwei Räumen entsteht so eine Wand); da Wände unterschiedlich dick sind, kann jeder Raum bei der Auswahl <strong>eine eigene Wanddicke</strong> bekommen (leer = Standard).</li>
+                  <li><strong>Von vorn beginnen:</strong> Rechts unten bei «Gebäude» gibt es <strong>«Plan zurücksetzen»</strong>. Das löscht alle Räume, Treppen und Stockwerke (danach gibt es nur «EG») und nimmt alle Elemente vom Plan. Gebäude, Codes und Standorte bleiben. Vorher ein Backup machen.</li>
+                  <li><strong>Nichts geht verloren:</strong> Elemente lassen sich nicht aus dem Gebäude schieben (der Mittelpunkt bleibt innen). Liegt eines trotzdem ausserhalb, erweitert sich die Ansicht, damit du es anfassen und zurückziehen kannst.</li>
+                </ol>
+                Änderungen werden sofort gespeichert. Der Plan ist unabhängig von den Codes: nach einem Umzug zeichnest du Gebäude, Stockwerke und Räume neu und ziehst die Elemente an ihren neuen Platz, Codes und Etiketten bleiben gültig. Ein Stockwerk lässt sich nur löschen, wenn es leer ist.
+                <div class="help-tip"><strong>Gäste</strong> sehen den Plan unter «🗺️ Plan ansehen» auf der «Wo ist …?»-Seite; bei Werkzeug und Möbeln gibt es «Auf dem Plan zeigen». Es erscheinen nur Elemente, die du eingezeichnet hast.</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Etiketten drucken</div>
+              <div class="help-article-body">
+                Inventar → <strong>Etiketten</strong>. Links wählst du aus, welche Etiketten gedruckt werden (Möbel und Ebenen, oder Werkzeug) und in welcher <strong>Anzahl</strong>. Rechts stellst du die Vorlage ein und siehst die Vorschau.
+                <ul style="margin:8px 0 8px 18px">
+                  <li>Vorbereitet ist der <strong>Avery Zweckform L6009-20</strong> (45,7 × 21,2 mm, 48 Etiketten je A4-Bogen, Laserdrucker). Angefangene Bögen lassen sich über die <em>Startposition</em> weiterverwenden.</li>
+                  <li>Drucken: A4, Skalierung <strong>100 %</strong> («Tatsächliche Grösse»), Kopf-/Fusszeilen aus, keine Ränder.</li>
+                  <li>Vor dem ersten Druck den <strong>Testbogen</strong> auf normales Papier drucken und gegen das Licht über einen Etikettenbogen halten; bei einem Versatz die Werte «Versatz X/Y» anpassen.</li>
+                  <li>Neue oder geänderte Möbel sind mit <strong>«Etikett neu/veraltet»</strong> markiert; «Neue/veraltete» wählt sie zum Nachdrucken aus.</li>
+                  <li>Der QR-Code führt auf die Gäste-Seite des Ortes bzw. des Werkzeugs («gehört nach …»), das Werkzeug-Etikett bleibt auch nach dem Umlagern gültig.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Gäste: «Wo ist …?»</div>
+              <div class="help-article-body">
+                Unter <code>/inventar.html</code> gibt es eine schlanke Seite <strong>ohne Anmeldung</strong> (auch über «🔎 Wo ist …?» in der Gast-App). Gäste suchen dort nach Werkzeug, Möbeln und Maschinen (auch über Synonyme) oder stöbern durch die Bereiche. Die QR-Codes auf Möbeln und Ebenen zeigen den Inhalt, die QR-Codes auf Werkzeug zeigen «gehört nach …».
+                <div class="help-tip"><strong>Datenschutz:</strong> Die Seite zeigt nur Name, Beschreibung, Menge, Status und Standort. Ausgemustertes Werkzeug ist verborgen; Maschinen erscheinen ohne Status, Plug oder Seriennummer. Buchhaltungsfelder sind nie sichtbar. Ist das Modul aus, ist die Seite leer (404).</div>
+              </div>
+            </div>
+            <div class="help-article">
+              <div class="help-article-title">Backup</div>
+              <div class="help-article-body">
+                Das Inventar ist im JSON-Backup enthalten (Sektion «inventory»): Bereichs-Kürzel und -Farben, Möbel, Ebenen, Plätze, Werkzeug (mit Buchhaltungsfeldern), die Standorte der Maschinen und der Bauplan (Gebäude, Stockwerke, Räume und eingezeichnete Elemente). Verweise laufen über Namen und Nummern, deshalb funktioniert der Restore auch auf einer anderen Instanz. Ältere Backups ohne Inventar lassen sich weiterhin einspielen.
               </div>
             </div>
           </div>
@@ -2284,6 +2424,8 @@ sudo ./install-service.sh</pre>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">plug_created / plug_updated / plug_deleted / plug_assigned / plug_unassigned</td><td style="padding:4px 8px">Plug-Pool-Verwaltung (Anlegen, Bearbeiten, Löschen, Zuweisen zu/Entfernen von einer Maschine)</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">battery_created / battery_updated / battery_deleted</td><td style="padding:4px 8px">Akku-Verwaltung</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">category_* / location_* / owner_*</td><td style="padding:4px 8px">Kategorien/Standorte/Eigentümer angelegt, bearbeitet oder gelöscht</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">inventory_*</td><td style="padding:4px 8px">Inventar: Bereich, Möbel, Ebene bzw. Werkzeug angelegt, geändert, gelöscht, umgelagert oder importiert; <span style="font-family:var(--mono)">inventory_plan_updated</span> = Gebäude oder Stockwerke des Bauplans geändert</td></tr>
+                    <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">machine_area_changed</td><td style="padding:4px 8px">Maschine in einen anderen Bereich (Standort) verschoben</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">tailscale_updated</td><td style="padding:4px 8px">Tailscale-Fernzugriff aktiviert/deaktiviert</td></tr>
                     <tr><td style="padding:4px 8px;font-family:var(--mono);font-size:13px">machine_qr_regenerated</td><td style="padding:4px 8px">QR-Code einer Maschine neu generiert (alter Code wird ungültig)</td></tr>
                   </tbody>
@@ -2606,7 +2748,7 @@ sudo ./install-service.sh</pre>
             <div class="help-article">
               <div class="help-article-title">Was ist im Backup enthalten?</div>
               <div class="help-article-body">
-                <strong>Enthalten:</strong> Einstellungen, Benutzer, Gäste, Maschinen, Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln.<br><br>
+                <strong>Enthalten:</strong> Einstellungen, Benutzer, Gäste, Maschinen, Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln, Kategorien, Standorte (Bereiche), Eigentümer, Akkus und das Inventar (Möbel, Ebenen, Werkzeug, Standorte der Maschinen).<br><br>
                 <strong>Nicht enthalten:</strong> Aktive Warteschlangen-Einträge und NFC-Gast-Tokens (temporäre Laufzeitdaten, die nach einem Restore automatisch neu erstellt werden). Bei den SFTP-Einstellungen für das externe Backup: Host/Port/Benutzername/Zielverzeichnis/Auth-Typ sind enthalten, Passwort/SSH-Key/Passphrase bewusst nicht (siehe «Externes Backup (SFTP)» oben).
               </div>
             </div>
@@ -2622,7 +2764,7 @@ sudo ./install-service.sh</pre>
                   <div class="help-article-body">
                     SpaceCaptain kennt drei Rollen mit aufsteigenden Rechten:<br><br>
                     <strong>Manager</strong> — Betrieb: Gäste verwalten, Maschinen schalten, Berechtigungen vergeben, Wartung erfassen, Raum und Alarm steuern.<br><br>
-                    <strong>Power-Manager</strong> — Konfiguration: Alles was Manager darf, zusätzlich Maschinen anlegen/bearbeiten/löschen, Plugs, Automationen, Aushänge, Wartungsintervalle, Kategorien, Standorte und Push-Topics verwalten.<br><br>
+                    <strong>Power-Manager</strong> — Konfiguration: Alles was Manager darf, zusätzlich Maschinen anlegen/bearbeiten/löschen, Plugs, Automationen, Aushänge, Wartungsintervalle, Kategorien, Standorte (bzw. Bereiche) und Push-Topics verwalten; mit aktivem Inventar zusätzlich Möbel, Ebenen und Maschinen-Standorte.<br><br>
                     <strong>Admin</strong> — Systemverwaltung: Alles was Power-Manager darf, zusätzlich Lab Manager verwalten, Backup/Restore, Einstellungen und In-App-Update.
                   </div>
                 </div>
@@ -2658,6 +2800,11 @@ sudo ./install-service.sh</pre>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Kommunikation</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Aushänge: anlegen, bearbeiten, löschen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Push-Nachrichten (ntfy): Topics verwalten</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Inventar (wenn aktiviert)</td></tr>
+                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Suchen, Standorte und Werkzeug ansehen</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Werkzeug anlegen, bearbeiten, umlagern, importieren</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Bereiche, Möbel, Ebenen, Plätze; Plan zeichnen; Maschinen einem Standort zuweisen</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Inventar-Modul ein-/ausschalten</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--text-dim)">✗</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;color:var(--text-dim);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase" colspan="4">Betrieb</td></tr>
                         <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">Raum öffnen / schliessen, Notfall-Alarm</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
                         <tr style="border-bottom:1px solid var(--border);background:var(--hover-subtle)"><td style="padding:6px 8px">Berechtigungen, Log, Statistiken</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td><td style="text-align:center;color:var(--success)">✓</td></tr>
@@ -2812,7 +2959,7 @@ async function api(method, path, body=null) {
     if (r.status===401) { doLogout(); return null; }
     if (!r.ok) {
       const err = await r.json().catch(()=>({detail:r.statusText}));
-      showToast(typeof err.detail==='string'?err.detail:JSON.stringify(err.detail),'error');
+      showToast(escHtml(typeof err.detail==='string'?err.detail:JSON.stringify(err.detail)),'error');
       return null;
     }
     return await r.json();
@@ -2891,12 +3038,13 @@ _updateThemeToggleLabel();
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
-const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',plugs:'Plug-Pool',batteries:'Akkus',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Aushänge',notifications:'Push-Nachrichten',backup:'Backup & Restore',settings:'Einstellungen',automations:'Automationen',info:'Info',help:'Hilfe & Dokumentation'};
+const pageTitles={dashboard:'Dashboard',guests:'Gästeverwaltung',labmanager:'Lab Manager',machines:'Maschinen',plugs:'Plug-Pool',batteries:'Akkus',inventory:'Inventar',permissions:'Berechtigungen',log:'Aktivitätslog',stats:'Statistiken & Auswertung',maintenance:'Maschinenpflege',announcements:'Aushänge',notifications:'Push-Nachrichten',backup:'Backup & Restore',settings:'Einstellungen',automations:'Automationen',info:'Info',help:'Hilfe & Dokumentation'};
 const pageHelpSection={dashboard:'start',guests:'guests',labmanager:'start',machines:'machines',permissions:'permissions',maintenance:'maintenance',backup:'backup',settings:'settings'};
 const pageActions={
+  inventory:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('inventory')" title="Hilfe zu Inventar">? Hilfe</button>`,
   guests:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('guests')" title="Hilfe zu Gästeverwaltung">? Hilfe</button> <button class="btn btn-primary" onclick="showAddGuest()">+ Gast hinzufügen</button>`,
   labmanager:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button>${_isAdmin()?` <button class="btn btn-primary" onclick="showAddLM()">+ Lab Manager hinzufügen</button>`:''}`,
-  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)">`:''} <button class="btn btn-ghost btn-sm" onclick="showInventoryExportModal()">📋 Inventarliste</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button> <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ Standorte</button> <button class="btn btn-ghost btn-sm" onclick="showOwnersModal()">⚙ Eigentümer</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`:''}`,
+  machines:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('machines')" title="Hilfe zu Maschinen">? Hilfe</button> <button class="btn btn-ghost btn-sm" onclick="exportMachinesCsv()">↓ CSV</button>${_isPowerPlus()?` <button class="btn btn-ghost btn-sm" onclick="triggerCsvImport()">↑ CSV</button> <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="handleCsvImport(event)">`:''} <button class="btn btn-ghost btn-sm" onclick="showInventoryExportModal()">📋 Inventarliste</button>${_isPowerPlus()?`${_inventoryOn?'':' <button class="btn btn-ghost btn-sm" onclick="showCategoriesModal()">⚙ Kategorien</button>'} <button class="btn btn-ghost btn-sm" onclick="showLocationsModal()">⚙ ${_locWord(true)}</button> <button class="btn btn-ghost btn-sm" onclick="showOwnersModal()">⚙ Eigentümer</button> <button class="btn btn-primary" onclick="showAddMachine()">+ Maschine hinzufügen</button>`:''}`,
   plugs:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('plugs')" title="Hilfe zu Plug-Pool">? Hilfe</button> <button class="btn btn-ghost" id="plug-status-refresh-btn" onclick="loadPlugLiveStatus()">🔄 Status aktualisieren</button>${_isPowerPlus()?` <button class="btn btn-ghost" onclick="showDiscoverModal()">🔍 Geräte suchen</button> <button class="btn btn-primary" onclick="showAddPlug()">+ Plug hinzufügen</button>`:''}`,
   batteries:()=>`${_isPowerPlus()?`<button class="btn btn-primary" onclick="showAddBattery()">+ Akku hinzufügen</button>`:''}`,
   automations:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('automations')" title="Hilfe zu Automationen">? Hilfe</button>${_isPowerPlus()?` <button class="btn btn-primary" onclick="showAddRule()">+ Neue Regel</button>`:''}`,
@@ -2910,6 +3058,44 @@ const pageActions={
   settings:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('settings')" title="Hilfe zu Einstellungen">? Hilfe</button>`,
   dashboard:()=>`<button class="help-ctx-btn" onclick="navigateToHelp('start')" title="Hilfe">? Hilfe</button> <button id="dash-refresh-countdown" class="btn btn-ghost btn-sm" onclick="dashboardRefreshNow()" style="font-family:var(--mono);font-size:13px">↻ …</button>`,
 };
+// ═══════════════════════════════════════════════════════
+// MODULE — Seiten, die beim ersten Öffnen nachgeladen werden (frontend/modules/<name>.js)
+// Ein Modul registriert sich mit LabModules.register(name, {mount(el), show(el), actions()}).
+// Nav-Eintrag: data-page="<name>" data-module="<name>", Container: <div class="page" id="page-<name>">.
+// ═══════════════════════════════════════════════════════
+const LabModules = (function () {
+  const defs = {}, loading = {};
+  function register(name, def) { defs[name] = def; }
+  function load(name) {
+    if (defs[name]) return Promise.resolve(defs[name]);
+    if (loading[name]) return loading[name];
+    loading[name] = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = `/modules/${name}.js?v=${encodeURIComponent(window._buildTag || '0')}`;   // Build-Nummer als Cache-Schlüssel
+      s.onload = () => defs[name] ? resolve(defs[name]) : reject(new Error('Modul hat sich nicht registriert: ' + name));
+      s.onerror = () => { delete loading[name]; reject(new Error('Modul nicht ladbar: ' + name)); };
+      document.head.appendChild(s);
+    });
+    return loading[name];
+  }
+  async function show(name) {
+    const page = document.getElementById('page-' + name);
+    if (!page) return;
+    if (!defs[name] && !page.dataset.mounted) page.innerHTML = '<div class="loading"><div class="spinner"></div>Laden…</div>';
+    try {
+      const def = await load(name);
+      if (!page.dataset.mounted) { page.innerHTML = ''; await def.mount(page); page.dataset.mounted = '1'; }
+      if (!page.classList.contains('active')) return;          // inzwischen woanders hin navigiert
+      document.getElementById('topbar-actions').innerHTML = def.actions ? def.actions() : '';
+      if (def.show) await def.show(page);
+    } catch (e) {
+      console.error(e);
+      page.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--text-dim)">Das Modul «${escHtml(name)}» konnte nicht geladen werden.<br><button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="LabModules.show('${escHtml(name)}')">Erneut versuchen</button></div>`;
+    }
+  }
+  return { register, load, show };
+})();
+
 function navigate(el) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   el.classList.add('active');
@@ -2940,6 +3126,7 @@ function navigate(el) {
   if (page==='dashboard') loadRoomStatus();
 
   if (page==='help') initHelp();
+  if (el.dataset.module) LabModules.show(page);
 }
 
 let _helpActiveCat = 'start';
@@ -2969,8 +3156,8 @@ function selectSettingsCat(id) {
 function selectHelpCat(id) {
   _helpActiveCat = id;
   document.getElementById('help-search').value = '';
-  const ids = ['start','guests','machines','plugs','permissions','automations','maintenance','announcements','notifications','emergency','stats','log','display','nfc','settings','backup','roles','problems'];
-  document.querySelectorAll('.help-nav-item').forEach((item, i) => item.classList.toggle('active', ids[i] === id));
+  const ids = ['start','guests','machines','inventory','plugs','permissions','automations','maintenance','announcements','notifications','emergency','stats','log','display','nfc','settings','backup','roles','problems'];
+  document.querySelectorAll('#page-help .help-nav-item').forEach((item, i) => item.classList.toggle('active', ids[i] === id));
   document.querySelectorAll('.help-panel').forEach(p => p.classList.toggle('active', p.id === 'help-panel-' + id));
   document.getElementById('help-search-results').style.display = 'none';
   document.getElementById('help-no-result').style.display = 'none';
@@ -2990,7 +3177,7 @@ function helpSearch(query) {
   }
   document.querySelectorAll('.help-panel').forEach(p => p.classList.remove('active'));
   const catNames = {
-    start:'Erste Schritte', guests:'Gästeverwaltung', machines:'Maschinen',
+    start:'Erste Schritte', guests:'Gästeverwaltung', machines:'Maschinen', inventory:'Inventar & Standorte',
     permissions:'Berechtigungen', maintenance:'Maschinenpflege', announcements:'Aushänge',
     notifications:'Push-Nachrichten', emergency:'Notfall-Alarm', stats:'Statistiken',
     log:'Aktivitätslog', display:'Display & Kiosk', nfc:'NFC-Writer',
@@ -3235,6 +3422,7 @@ function fmtLocalDate(isoStr) {
 }
 
 async function loadAll() {
+  _openInventoryFromHash();
   // Basis-Daten zuerst laden und sofort rendern (kein Plug-Status nötig)
   const [guests,users,machines,perms,stats,cats,locs,plugsData,owners,batteries] = await Promise.all([
     GET('/guests'),GET('/users'),GET('/machines'),GET('/permissions'),GET('/dashboard'),GET('/categories'),GET('/locations'),GET('/plugs'),GET('/owners'),GET('/batteries')
@@ -3750,7 +3938,7 @@ function _emojiOutside(e){if(!document.getElementById('_emoji-picker')?.contains
 function _catIcon(name){const c=cache.categories.find(x=>x.name===name);return c?c.icon:'🔧';}
 function _catOptions(selected=''){return cache.categories.map(c=>`<option value="${escHtml(c.name)}"${c.name===selected?' selected':''}>${escHtml(c.icon)} ${escHtml(c.name)}</option>`).join('');}
 function _refreshCatFilter(){const s=document.getElementById('machine-filter-cat');if(!s)return;const cur=s.value;s.innerHTML='<option value="">Alle Kategorien</option>'+cache.categories.map(c=>`<option value="${escHtml(c.name)}"${c.name===cur?' selected':''}>${escHtml(c.icon)} ${escHtml(c.name)}</option>`).join('');}
-function _refreshLocFilter(){const s=document.getElementById('machine-filter-loc');if(!s)return;const cur=s.value;s.innerHTML='<option value="">Alle Standorte</option>'+cache.locations.map(l=>`<option value="${escHtml(l.name)}"${l.name===cur?' selected':''}>${escHtml(l.name)}</option>`).join('');}
+function _refreshLocFilter(){const s=document.getElementById('machine-filter-loc');if(!s)return;const cur=s.value;s.innerHTML='<option value="">Alle '+_locWord(true)+'</option>'+cache.locations.map(l=>`<option value="${escHtml(l.name)}"${l.name===cur?' selected':''}>${escHtml(l.name)}</option>`).join('');}
 async function loadCategories(){const data=await GET('/categories');if(data){cache.categories=data;_refreshCatFilter();}}
 async function loadLocations(){const data=await GET('/locations');if(data){cache.locations=data;_refreshLocFilter();}}
 async function loadOwners(){const data=await GET('/owners');if(data)cache.owners=data;}
@@ -3815,12 +4003,14 @@ async function deleteCategory(id,name){
 // ── Standorte ─────────────────────────────────────────────────────────────────
 function _locOptions(selected=''){
   const opts=cache.locations.map(l=>`<option value="${escHtml(l.name)}"${l.name===selected?' selected':''}>${escHtml(l.name)}</option>`).join('');
-  return `<option value="">— kein Standort —</option>`+opts;
+  return `<option value="">— kein ${_locWord()} —</option>`+opts;
 }
 function _renderLocList(){
   return cache.locations.map(l=>`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <input class="form-input form-input-sm" id="loc-name-${l.id}" value="${escHtml(l.name)}" placeholder="Name" style="flex:1;min-width:0">
+      ${_inventoryOn?`<input class="form-input form-input-sm" id="loc-code-${l.id}" value="${escHtml(l.code||'')}" maxlength="3" placeholder="—" title="Kürzel für den Standort-Code im Inventar (z.B. EL)" style="width:62px;flex-shrink:0;text-transform:uppercase;font-family:var(--mono)">
+      <input type="color" id="loc-color-${l.id}" value="${escHtml(l.color||'#22d3ee')}" data-orig="${escHtml(l.color||'')}" title="Farbe im Inventar" style="width:38px;height:32px;padding:1px;flex-shrink:0;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer">`:''}
       <input class="form-input form-input-sm" id="loc-order-${l.id}" type="number" value="${l.sort_order}" title="Reihenfolge" style="width:52px;flex-shrink:0">
       <button class="btn btn-ghost btn-sm" onclick="saveLocation(${l.id})" title="Speichern">💾</button>
       <button class="btn btn-danger btn-sm" onclick="deleteLocation(${l.id},'${escHtml(l.name)}')" title="Löschen">✕</button>
@@ -3828,17 +4018,19 @@ function _renderLocList(){
 }
 
 async function showLocationsModal(){
-  openModal('Standorte verwalten',`
+  openModal(_locWord(true)+' verwalten',`
     <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);display:flex;gap:8px;margin-bottom:6px;padding:0 2px">
       <span style="flex:1">NAME</span>
+      ${_inventoryOn?'<span style="width:62px;text-align:center" title="Kürzel für den Standort-Code im Inventar">KÜRZEL</span><span style="width:38px;text-align:center">FARBE</span>':''}
       <span style="width:52px;text-align:center">POS</span>
       <span style="width:66px"></span>
     </div>
     <div id="loc-list">${_renderLocList()}</div>
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
-      <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-bottom:8px">NEUER STANDORT</div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-bottom:8px">NEUER ${_locWord().toUpperCase()}</div>
       <div style="display:flex;gap:8px;align-items:center">
         <input class="form-input form-input-sm" id="new-loc-name" placeholder="Name" style="flex:1;min-width:0">
+        ${_inventoryOn?'<input class="form-input form-input-sm" id="new-loc-code" maxlength="3" placeholder="Kürzel (auto)" title="Leer lassen: es wird ein Kürzel aus dem Namen vorgeschlagen" style="width:110px;flex-shrink:0;text-transform:uppercase;font-family:var(--mono)">':''}
         <button class="btn btn-primary btn-sm" onclick="addLocation()" style="flex-shrink:0">+ Hinzufügen</button>
       </div>
     </div>
@@ -3850,19 +4042,31 @@ async function saveLocation(id){
   const name=document.getElementById(`loc-name-${id}`)?.value.trim();
   const sort_order=parseInt(document.getElementById(`loc-order-${id}`)?.value)||0;
   if(!name){showToast('Name darf nicht leer sein','warn');return;}
-  const res=await PATCH(`/locations/${id}`,{name,sort_order});
+  const body={name,sort_order};
+  if(_inventoryOn){
+    const code=document.getElementById(`loc-code-${id}`)?.value.trim().toUpperCase();
+    if(code) body.code=code;                       // leer = unverändert (Entfernen nur im Inventar)
+    const ce=document.getElementById(`loc-color-${id}`);
+    if(ce && ce.value!==(ce.dataset.orig||'#22d3ee')) body.color=ce.value;
+  }
+  const res=await PATCH(`/locations/${id}`,body);
   if(res){await loadLocations();showToast('Gespeichert!','success');document.getElementById('loc-list').innerHTML=_renderLocList();}
 }
 
 async function addLocation(){
   const name=document.getElementById('new-loc-name')?.value.trim();
   if(!name){showToast('Name darf nicht leer sein','warn');return;}
-  const res=await POST('/locations',{name,sort_order:cache.locations.length});
-  if(res){await loadLocations();document.getElementById('loc-list').innerHTML=_renderLocList();document.getElementById('new-loc-name').value='';showToast(`${name} hinzugefügt`,'success');}
+  const body={name,sort_order:cache.locations.length};
+  const code=document.getElementById('new-loc-code')?.value.trim().toUpperCase();
+  if(code) body.code=code;
+  const res=await POST('/locations',body);
+  if(res){await loadLocations();document.getElementById('loc-list').innerHTML=_renderLocList();document.getElementById('new-loc-name').value='';
+    const nc=document.getElementById('new-loc-code'); if(nc) nc.value='';
+    showToast(`${name} hinzugefügt`+(res.code?` (Kürzel ${res.code})`:''),'success');}
 }
 
 async function deleteLocation(id,name){
-  if(!confirm(`Standort „${name}" wirklich löschen?`))return;
+  if(!confirm(`${_locWord()} „${name}" wirklich löschen?`))return;
   const res=await DELETE(`/locations/${id}`);
   if(res){await loadLocations();document.getElementById('loc-list').innerHTML=_renderLocList();showToast(`${name} gelöscht`,'warn');}
 }
@@ -4109,7 +4313,15 @@ function _inventoryCols(){return ['Name','Kategorie','Hersteller','Modell','Seri
 
 function showInventoryExportModal(){
   openModal('Inventarliste exportieren',`
-    <p style="color:var(--text-dim);font-size:15px;margin-bottom:16px;line-height:1.5">Für Buchhaltung/Versicherung — enthält nur ${cache.machines.length} Maschinen mit Name, Kategorie, Hersteller, Modell, Seriennummer, Standort, Kaufdatum, Neuwert und Eigentümer. Keine Kommentare, Sicherheitshinweise oder Smart-Plug-Daten.</p>
+    <p style="color:var(--text-dim);font-size:15px;margin-bottom:16px;line-height:1.5">Für Buchhaltung/Versicherung — enthält ${_inventoryOn?'die gewählten Geräte':cache.machines.length+' Maschinen'} mit Name, Kategorie, Hersteller, Modell, Seriennummer, Standort, Kaufdatum, Neuwert und Eigentümer. Keine Kommentare, Sicherheitshinweise oder Smart-Plug-Daten.</p>
+    ${_inventoryOn?`<div class="form-group" style="margin-bottom:16px">
+      <label class="form-label">Was soll in die Liste?</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:16px;margin-bottom:6px"><input type="checkbox" id="invx-machines" checked style="width:auto"> Maschinen (${cache.machines.length})</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:16px;margin-bottom:8px"><input type="checkbox" id="invx-tools" checked style="width:auto" onchange="document.getElementById('invx-scope').disabled=!this.checked"> Werkzeug</label>
+      <select class="form-input" id="invx-scope" style="margin-left:26px;width:calc(100% - 26px)">
+        <option value="valued">nur Werkzeug mit erfasstem Neuwert (Versicherung)</option>
+        <option value="all">alle Werkzeuge (Bestandsliste, auch ohne Neuwert)</option>
+      </select></div>`:''}
     <div style="display:flex;gap:12px">
       <button class="btn btn-primary" style="flex:1" onclick="exportInventoryCsv()">📊 Als CSV</button>
       <button class="btn btn-primary" style="flex:1" onclick="exportInventoryPdf()">🖨️ Als PDF drucken</button>
@@ -4118,9 +4330,34 @@ function showInventoryExportModal(){
   document.getElementById('modal-footer').innerHTML='<button class="btn btn-ghost" onclick="closeModal()">Schließen</button>';
 }
 
-function exportInventoryCsv(){
+// Zeilen der Inventarliste nach Auswahl im Dialog: Maschinen und/oder Werkzeug (nur mit Neuwert oder alle).
+// Wert eines Werkzeugs = Neuwert je Stück × Menge; ohne Neuwert bleibt er leer.
+async function _inventoryRows(){
+  const el=id=>document.getElementById(id);
+  const withMachines=!_inventoryOn||!el('invx-machines')||el('invx-machines').checked;
+  const withTools=_inventoryOn&&el('invx-tools')&&el('invx-tools').checked;
+  const allTools=withTools&&el('invx-scope').value==='all';
+  const rows=withMachines?cache.machines.map(m=>({name:m.name,category:m.category,manufacturer:m.manufacturer,model:m.model,serial_number:m.serial_number,location:m.location,purchase_date:m.purchase_date,value_new:m.value_new,owner_name:m.owner_name})):[];
+  if(withTools){
+    let offset=0,total=1;
+    while(offset<total){
+      const r=await GET(`/inventory/items?${allTools?'':'valued=true&'}limit=1000&offset=${offset}`);
+      if(!r)break;
+      total=r.total;offset+=1000;
+      r.items.forEach(t=>{
+        if(t.status==='ausgemustert')return;
+        const owner=(cache.owners||[]).find(o=>o.id===t.owner_id);
+        rows.push({name:t.name+(t.quantity>1?` (×${t.quantity})`:''),category:'Werkzeug',manufacturer:'',model:'',serial_number:t.serial_number,
+          location:t.position?t.position.path:'',purchase_date:t.purchase_date,value_new:t.value_new!=null?t.value_new*Math.max(t.quantity,1):null,owner_name:owner?owner.name:''});
+      });
+    }
+  }
+  return rows;
+}
+
+async function exportInventoryCsv(){
   const esc=v=>v==null?'':'"'+String(v).replace(/"/g,'""')+'"';
-  const rows=[...cache.machines].sort((a,b)=>a.name.localeCompare(b.name,'de')).map(m=>[
+  const rows=(await _inventoryRows()).sort((a,b)=>a.name.localeCompare(b.name,'de')).map(m=>[
     esc(m.name), esc(m.category), esc(m.manufacturer), esc(m.model),
     esc(m.serial_number), esc(m.location), esc(m.purchase_date), m.value_new??'', esc(m.owner_name)
   ].join(';'));
@@ -4133,8 +4370,8 @@ function exportInventoryCsv(){
   closeModal();
 }
 
-function exportInventoryPdf(){
-  const rows=[...cache.machines].sort((a,b)=>(a.category||'').localeCompare(b.category||'','de')||a.name.localeCompare(b.name,'de'));
+async function exportInventoryPdf(){
+  const rows=(await _inventoryRows()).sort((a,b)=>(a.category||'').localeCompare(b.category||'','de')||a.name.localeCompare(b.name,'de'));
   const totalValue=rows.reduce((sum,m)=>sum+(m.value_new||0),0);
   const win=window.open('','_blank');
   if(!win){showToast('Popup wurde blockiert — bitte Popups für diese Seite erlauben','error');return;}
@@ -4150,7 +4387,7 @@ function exportInventoryPdf(){
       td.num,th.num{text-align:right}
     </style></head><body>
     <h1>${escHtml(_spaceName)} — Inventarliste</h1>
-    <div class="meta">Erstellt am ${new Date().toLocaleDateString('de-CH')} · ${rows.length} Maschinen</div>
+    <div class="meta">Erstellt am ${new Date().toLocaleDateString('de-CH')} · ${rows.length} Einträge</div>
     <table>
       <thead><tr>${_inventoryCols().map((c,i)=>`<th${i===7?' class="num"':''}>${escHtml(c)}</th>`).join('')}</tr></thead>
       <tbody>
@@ -4323,7 +4560,7 @@ function _machineCard(m) {
   return `<div class="machine-card ${m.status} ${idleClass} ${inUseClass}" id="mc-${m.id}">
     <div class="machine-icon">${icon}</div>
     <div class="machine-name">${escHtml(m.name)}${m.training_required===false?'<span style="font-family:var(--mono);font-size:11px;background:color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--accent2);border:1px solid color-mix(in srgb,var(--accent2) 30%,transparent);border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle">OFFEN</span>':''}</div>
-    <div class="machine-cat">${m.category}${m.location?' // '+escHtml(m.location):''}</div>
+    <div class="machine-cat">${_inventoryOn?escHtml(m.category):m.category+(m.location?' // '+escHtml(m.location):'')}</div>
     ${mfrModel?`<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-top:2px">${escHtml(mfrModel)}</div>`:''}
     ${m.comment?`<div class="machine-comment" style="display:block">⚠ ${escHtml(m.comment)}</div>`:''}
     ${sessionHtml}
@@ -4371,11 +4608,11 @@ function _machineTable(machines) {
     return `<tr>
       <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusDot}"></span></td>
       <td><span style="font-size:16px;margin-right:6px">${icon}</span><strong>${escHtml(m.name)}</strong>${m.training_required===false?'<span style="font-family:var(--mono);font-size:11px;background:color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--accent2);border:1px solid color-mix(in srgb,var(--accent2) 30%,transparent);border-radius:3px;padding:1px 4px;margin-left:6px">OFFEN</span>':''}</td>
-      <td style="color:var(--text-mid)">${m.category}</td>
+      ${_inventoryOn?'':`<td style="color:var(--text-mid)">${m.category}</td>`}
       <td style="color:var(--text-mid)">${escHtml(m.manufacturer||'—')}</td>
       <td style="color:var(--text-mid)">${escHtml(m.model||'—')}</td>
       <td style="color:var(--text-mid)">${escHtml(m.serial_number||'—')}</td>
-      <td style="color:var(--text-mid)">${escHtml(m.location||'—')}</td>
+      <td style="color:var(--text-mid)">${escHtml(m.location||(_inventoryOn?m.category:'—'))}</td>
       <td>${session}</td>
       <td>${plug}</td>
       <td style="white-space:nowrap">
@@ -4390,11 +4627,11 @@ function _machineTable(machines) {
     <thead><tr>
       <th></th>
       ${_machineTableTh('Name','name')}
-      ${_machineTableTh('Kategorie','category')}
+      ${_inventoryOn?'':_machineTableTh('Kategorie','category')}
       ${_machineTableTh('Hersteller','manufacturer')}
       ${_machineTableTh('Modell','model')}
       ${_machineTableTh('Seriennummer','serial_number')}
-      ${_machineTableTh('Standort','location')}
+      ${_machineTableTh(_locWord(),'location')}
       <th>Session</th><th>Plug</th><th>Aktionen</th>
     </tr></thead>
     <tbody>${rows}</tbody>
@@ -4433,8 +4670,20 @@ async function managerSwitchMachine(id, action, btn) {
 function showAddMachine() {
   openModal('Maschine hinzufügen',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="mc-name" placeholder="Lasercutter XL-40"></div>
+    ${_inventoryOn?`
+    <input type="hidden" id="mc-cat" value="Sonstiges"><input type="hidden" id="mc-loc" value="">
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="mc-cat">${_catOptions()}</select></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="mc-status"><option value="online">Freigegeben</option><option value="offline">Gesperrt</option><option value="maintenance">In Wartung</option></select></div>
+      <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="mc-serial" placeholder="SN-123456"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Hersteller</label><input class="form-input" id="mc-mfr"></div>
+      <div class="form-group"><label class="form-label">Modell</label><input class="form-input" id="mc-model"></div>
+    </div>
+    <div class="form-group" id="inv-form-slot"></div>
+    `:`
+    <div class="form-row">
+      <div class="form-group"><label class="form-label" title="Art der Maschine (z.B. Laser, CNC) — für Filter, Symbole und Auswertungen">Kategorie</label><select class="form-input" id="mc-cat">${_catOptions()}</select></div>
       <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="mc-status"><option value="online">Freigegeben</option><option value="offline">Gesperrt</option><option value="maintenance">In Wartung</option></select></div>
     </div>
     <div class="form-row">
@@ -4443,8 +4692,9 @@ function showAddMachine() {
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="mc-serial" placeholder="SN-123456"></div>
-      <div class="form-group"><label class="form-label">Standort</label><select class="form-input" id="mc-loc">${_locOptions()}</select></div>
+      <div class="form-group"><label class="form-label" title="Wo die Maschine steht">${_locWord()}</label><select class="form-input" id="mc-loc">${_locOptions()}</select></div>
     </div>
+    `}
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="mc-comment" rows="2" placeholder="z.B. Linse verschmutzt, bitte melden"></textarea></div>
     <div class="form-group"><label class="form-label">Dokumentations-Link</label><input class="form-input" id="mc-doc-url" type="url" placeholder="https://..."></div>
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="mc-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden&#10;Wird vor dem Einschalten als Pflicht-Bestätigung angezeigt."></textarea></div>
@@ -4507,9 +4757,11 @@ function showAddMachine() {
     const res=await POST('/machines',{name,category:document.getElementById('mc-cat').value,status:document.getElementById('mc-status').value,manufacturer:document.getElementById('mc-mfr').value.trim()||null,model:document.getElementById('mc-model').value.trim()||null,serial_number:document.getElementById('mc-serial').value.trim()||null,location:document.getElementById('mc-loc').value.trim(),comment:document.getElementById('mc-comment').value.trim()||null,doc_url:document.getElementById('mc-doc-url').value.trim()||null,safety_notes:document.getElementById('mc-safety').value.trim()||null,plug_type:'none',idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required,force_off_on_close,purchase_date,value_new:value_new?parseFloat(value_new):null,owner_id:owner_id?parseInt(owner_id):null});
     if (res) {
       if (plugId) await POST(`/plugs/${plugId}/assign?machine_id=${res.id}`,{});
+      await _saveInvSlot(res.id);
       closeModal(); await loadAll(); showToast(`${res.name} hinzugefügt!`,'success');
     }
   }, undefined, undefined, 'input', 900);
+  _mountInvSlot(null);
 }
 
 let _editMachinePlugs = [];        // [{id, name, plug_ip, plug_type}] — aktueller Zustand im Dialog
@@ -4567,8 +4819,20 @@ function editMachine(id) {
   _editMachinePlugsOrig = [...(m.plugs||[]).map(p=>({...p}))];
   openModal('Maschine bearbeiten',`
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="e-name" value="${escHtml(m.name)}"></div>
+    ${_inventoryOn?`
+    <input type="hidden" id="e-cat" value="${escHtml(m.category||'Sonstiges')}"><input type="hidden" id="e-loc" value="${escHtml(m.location||'')}">
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Kategorie</label><select class="form-input" id="e-cat">${_catOptions(m.category)}</select></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-status"><option value="online" ${m.status==='online'?'selected':''}>Freigegeben</option><option value="offline" ${m.status==='offline'?'selected':''}>Gesperrt</option><option value="maintenance" ${m.status==='maintenance'?'selected':''}>In Wartung</option></select></div>
+      <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="e-serial" value="${escHtml(m.serial_number||'')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Hersteller</label><input class="form-input" id="e-mfr" value="${escHtml(m.manufacturer||'')}"></div>
+      <div class="form-group"><label class="form-label">Modell</label><input class="form-input" id="e-model" value="${escHtml(m.model||'')}"></div>
+    </div>
+    <div class="form-group" id="inv-form-slot"></div>
+    `:`
+    <div class="form-row">
+      <div class="form-group"><label class="form-label" title="Art der Maschine (z.B. Laser, CNC) — für Filter, Symbole und Auswertungen">Kategorie</label><select class="form-input" id="e-cat">${_catOptions(m.category)}</select></div>
       <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="e-status"><option value="online" ${m.status==='online'?'selected':''}>Freigegeben</option><option value="offline" ${m.status==='offline'?'selected':''}>Gesperrt</option><option value="maintenance" ${m.status==='maintenance'?'selected':''}>In Wartung</option></select></div>
     </div>
     <div class="form-row">
@@ -4577,8 +4841,9 @@ function editMachine(id) {
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Seriennummer</label><input class="form-input" id="e-serial" value="${escHtml(m.serial_number||'')}"></div>
-      <div class="form-group"><label class="form-label">Standort</label><select class="form-input" id="e-loc">${_locOptions(m.location||'')}</select></div>
+      <div class="form-group"><label class="form-label" title="Wo die Maschine steht">${_locWord()}</label><select class="form-input" id="e-loc">${_locOptions(m.location||'')}</select></div>
     </div>
+    `}
     <div class="form-group"><label class="form-label">Kommentar / Hinweis</label><textarea class="form-input" id="e-comment" rows="2" placeholder="z.B. Linse verschmutzt">${m.comment||''}</textarea></div>
     <div class="form-group"><label class="form-label">Dokumentations-Link</label><input class="form-input" id="e-doc-url" type="url" placeholder="https://..." value="${escHtml(m.doc_url||'')}"></div>
     <div class="form-group"><label class="form-label">Sicherheitshinweise</label><textarea class="form-input" id="e-safety" rows="3" placeholder="z.B. Schutzbrille · Gehörschutz · Haare zurückbinden">${m.safety_notes||''}</textarea></div>
@@ -4642,10 +4907,11 @@ function editMachine(id) {
     const owner_id=document.getElementById('e-owner')?.value;
     const payload={name:document.getElementById('e-name').value.trim(),category:document.getElementById('e-cat').value,status:document.getElementById('e-status').value,manufacturer:document.getElementById('e-mfr').value.trim()||null,model:document.getElementById('e-model').value.trim()||null,serial_number:document.getElementById('e-serial').value.trim()||null,location:document.getElementById('e-loc').value.trim(),comment:document.getElementById('e-comment').value.trim()||null,doc_url:document.getElementById('e-doc-url').value.trim()||null,safety_notes:document.getElementById('e-safety').value.trim()||null,idle_power_w:idle_w?parseFloat(idle_w):null,idle_timeout_min:idle_t?parseInt(idle_t):null,plug_poll_interval_sec:poll_s?Math.max(10,parseInt(poll_s)):60,training_required,force_off_on_close,purchase_date,value_new:value_new?parseFloat(value_new):null,owner_id:owner_id?parseInt(owner_id):null};
     const res=await PATCH(`/machines/${id}`,payload);
-    if (res) { closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
+    if (res) { await _saveInvSlot(id); closeModal(); await loadAll(); showToast('Gespeichert!','success'); }
   }, undefined, undefined, 'input', 900);
   // Nach Modal-Render: Liste und Dropdown initialisieren
   setTimeout(()=>{ _renderEditPlugList(); _refreshEditPlugDropdown(); }, 0);
+  _mountInvSlot(id);
 }
 
 function updateMcIdleRow() {
@@ -4929,7 +5195,7 @@ async function selectPermGuest(guestId) {
       <div style="font-size:18px;text-align:center">${icon(m)}</div>
       <div>
         <div class="perm-machine-name">${m.name}${isOpen?'<span style="font-family:var(--mono);font-size:11px;background:color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--accent2);border:1px solid color-mix(in srgb,var(--accent2) 30%,transparent);border-radius:3px;padding:1px 4px;margin-left:5px">OFFEN</span>':''}</div>
-        <div class="perm-machine-sub">${m.category}${m.location?' · '+m.location:''}</div>
+        <div class="perm-machine-sub">${_inventoryOn?escHtml(m.category):m.category+(m.location?' · '+m.location:'')}</div>
       </div>
       <div style="font-family:var(--mono);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="perm-hist-comment-${m.id}">${commentHtml}</div>
       <div style="font-family:var(--mono);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="perm-hist-user-${m.id}">${userHtml}</div>
@@ -5437,6 +5703,7 @@ function filterTable(input,tableId) {
 // ═══════════════════════════════════════════════════════
 fetch('/api/version').then(r=>r.json()).then(d=>{
   const build = d.build ? ` · Build ${d.build}` : '';
+  window._buildTag = d.build || d.version || '0';
   const s = document.getElementById('app-version-sidebar');
   const l = document.getElementById('app-version-login');
   if (s) s.textContent = `v${d.version}${build}`;
@@ -5460,7 +5727,7 @@ if (_ltParam) {
   GET('/auth/me').then(u=>{ if (u) { currentUser=u; document.getElementById('current-user-label').textContent=u.name; document.getElementById('nav-settings').style.display=_isAdmin()?'':'none';document.getElementById('nav-backup').style.display=_isAdmin()?'':'none';document.getElementById('nav-notifications').style.display=_isPowerPlus()?'':'none'; _applyUserTheme(u); document.getElementById('login-overlay').style.display='none'; loadAll(); } else doLogout(); });
 }
 document.getElementById('login-pass').addEventListener('keydown',e=>{ if (e.key==='Enter') doLogin(); });
-fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){_spaceName=n;document.getElementById('login-space-sub').textContent=n;document.getElementById('sidebar-space-sub').textContent=n;}_currency=s.currency||'CHF';_applyCurrencyLabels();}).catch(()=>{});
+fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){_spaceName=n;document.getElementById('login-space-sub').textContent=n;document.getElementById('sidebar-space-sub').textContent=n;}_currency=s.currency||'CHF';_applyCurrencyLabels();_applyInventoryNav(!!s.inventory_enabled);}).catch(()=>{});
 setInterval(()=>{ if(document.querySelector('.nav-item.active')?.dataset.page==='log') loadLog(); },30000);
 // ═══════════════════════════════════════════════════════
 // EINSTELLUNGEN
@@ -5519,6 +5786,8 @@ async function loadSettings() {
   document.getElementById('cfg-guest-ttl-hours').value = s.guest_token_ttl_hours ?? 8;
   document.getElementById('cfg-space-name').value = s.space_name ?? '';
   document.getElementById('cfg-currency').value = s.currency ?? 'CHF';
+  document.getElementById('cfg-inventory-enabled').checked = !!s.inventory_enabled;
+  _applyInventoryNav(!!s.inventory_enabled);
   document.getElementById('cfg-mcp-enabled').checked = !!s.mcp_enabled;
   document.getElementById('cfg-mcp-token').value = s.mcp_api_token || '';
   _updateMcpHints(s.mcp_api_token || '');
@@ -5585,6 +5854,7 @@ function buildSettingsPayload() {
     auto_backup_keep:          parseInt(document.getElementById('cfg-auto-backup-keep').value) || 30,
     space_name:                document.getElementById('cfg-space-name').value.trim(),
     currency:                  document.getElementById('cfg-currency').value.trim() || 'CHF',
+    inventory_enabled:         document.getElementById('cfg-inventory-enabled').checked,
     guest_token_ttl_hours:     parseInt(document.getElementById('cfg-guest-ttl-hours').value) || 8,
     mcp_enabled:               document.getElementById('cfg-mcp-enabled').checked,
     mcp_user_id:               parseInt(document.getElementById('cfg-mcp-user-id').value) || 0,
@@ -5743,10 +6013,12 @@ async function loadUpdateStatus() {
   if (!d) return;
   document.getElementById('update-version-display').textContent =
     `v${d.version}${d.build ? ' · Build ' + d.build : ''}`;
+  const _res = { updated: 'aktualisiert', up_to_date: 'bereits aktuell', restarted: 'neu gestartet', running: 'läuft', error: 'Fehler' }[d.last_result] || '';
   document.getElementById('update-last-triggered').textContent =
     d.last_triggered
-      ? 'Letzter Update: ' + new Date(d.last_triggered).toLocaleString('de-CH')
+      ? 'Letzter Update: ' + new Date(d.last_triggered).toLocaleString('de-CH') + (_res ? ' · ' + _res : '')
       : 'Noch kein Update ausgeführt';
+  if (d.pending && !_updatePolling) _pollUpdateStatus();          // Seite neu geladen, während ein Vorgang läuft: Anzeige weiter nachführen
   const badge = document.getElementById('update-watcher-badge');
   const warning = document.getElementById('update-setup-warning');
   const updateBtn = document.getElementById('update-trigger-btn');
@@ -5841,30 +6113,50 @@ async function downloadLogBundle() {
   URL.revokeObjectURL(url);
 }
 
+let _updatePolling = false;
+function _resetUpdateButtons() {
+  const t = { 'update-trigger-btn': 'Update starten', 'restart-trigger-btn': 'Backend neu starten', 'restart-all-trigger-btn': 'Alle neu starten' };
+  for (const id in t) { const b = document.getElementById(id); if (b) { b.textContent = t[id]; b.disabled = false; } }
+}
+// Nach einem Vorgang die Anzeige sicher auf «fertig» bringen: das Backend startet gerade neu, die erste Abfrage kann scheitern
+async function _finishUpdateUi(d) {
+  for (let i = 0; i < 6; i++) {
+    const ok = await GET('/update/status');
+    if (ok) { await loadUpdateStatus(); break; }
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  _resetUpdateButtons();
+  if (!d) return;
+  const staleJs = d.build && window._buildTag && String(d.build) !== String(window._buildTag);
+  if (d.last_result === 'up_to_date') showToast('Bereits aktuell — kein Update nötig', 'info');
+  else if (d.last_result === 'restarted') showToast('Backend erfolgreich neu gestartet', 'success');
+  else if (d.last_result === 'error') showToast('Vorgang fehlgeschlagen — Log prüfen', 'error');
+  else showToast('Update abgeschlossen' + (d.build ? ' (Build ' + d.build + ')' : '') + (staleJs ? ' — Seite mit Strg+F5 neu laden' : ''), 'success');
+}
 function _pollUpdateStatus() {
+  if (_updatePolling) return;
+  _updatePolling = true;
+  const t0 = Date.now();
+  let busy = false;
+  const stop = () => { clearInterval(interval); _updatePolling = false; };
   const interval = setInterval(async () => {
+    if (busy) return;
+    busy = true;
     try {
+      if (Date.now() - t0 > 15 * 60 * 1000) {                    // nie ewig «Läuft…» anzeigen
+        stop(); await _finishUpdateUi(null);
+        showToast('Keine Rückmeldung nach 15 Minuten — Update-Log prüfen', 'error');
+        return;
+      }
       const r = await fetch('/api/update/status', {
         headers: { Authorization: 'Bearer ' + (localStorage.getItem('ms_token') || '') }
       });
       if (!r.ok) return; // Backend noch nicht bereit
       const d = await r.json();
-      if (!d.pending && d.last_result !== 'running') {
-        clearInterval(interval);
-        await loadUpdateStatus();
-        if (d.last_result === 'up_to_date') {
-          showToast('Bereits aktuell — kein Update nötig', 'info');
-        } else if (d.last_result === 'restarted') {
-          showToast('Backend erfolgreich neu gestartet', 'success');
-        } else if (d.last_result === 'error') {
-          showToast('Vorgang fehlgeschlagen — Log prüfen', 'error');
-        } else {
-          showToast('Update abgeschlossen', 'success');
-        }
-      }
+      if (!d.pending && d.last_result !== 'running') { stop(); await _finishUpdateUi(d); }
     } catch (_) {
       // Backend startet noch — weiter warten
-    }
+    } finally { busy = false; }
   }, 4000);
 }
 
@@ -6244,6 +6536,36 @@ async function deleteBackupFile(filename) {
 let _roomStatus = {room_open: false, room_open_since: null, room_open_auto: true};
 let _spaceName = 'Raum';
 let _currency = 'CHF';
+// Inventar-Modul: Menuepunkt nur zeigen, wenn es in den Einstellungen aktiviert ist
+let _inventoryOn = false, _hashHandled = false;
+// Begriff: «Standort» der Maschinen heisst bei aktivem Inventar «Bereich» (dieselbe Liste)
+function _locWord(plural){ return _inventoryOn ? (plural ? 'Bereiche' : 'Bereich') : (plural ? 'Standorte' : 'Standort'); }
+function _applyInventoryNav(on){
+  _inventoryOn = !!on; const el=document.getElementById('nav-inventory'); if(el) el.style.display = on ? '' : 'none';
+  // Bei aktivem Inventar ersetzt der Bereich die Kategorie: Filter ausblenden
+  const cf=document.getElementById('machine-filter-cat'); if(cf){ cf.style.display = on ? 'none' : ''; if(on) cf.value=''; }
+  try { _refreshLocFilter(); if (typeof renderMachines === 'function' && document.getElementById('page-machines')?.classList.contains('active')) { renderMachines(); document.getElementById('topbar-actions').innerHTML = pageActions.machines(); } } catch(e) {}
+  _openInventoryFromHash();
+}
+// Maschinenformular: «Standort» (Bereich/Möbel/Ebene) kommt aus dem nachladbaren Inventar-Modul
+function _mountInvSlot(machineId){
+  if (!_inventoryOn) return;
+  const el=document.getElementById('inv-form-slot'); if (!el) return;
+  LabModules.load('inventory').then(d=>d.mountMachineSlot(el, machineId)).catch(()=>el.remove());
+}
+async function _saveInvSlot(machineId){ try { if (_inventoryOn && window.Inv) await Inv.saveFormPlacement(machineId); } catch(e) { console.error(e); } }
+// QR-Codes zeigen auf /inventar.html?code=ELE-M01 → leitet nach /labmanager.html#inventory/ELE-M01 weiter
+function _openInventoryFromHash(){
+  if (_hashHandled || !token || !currentUser || !_inventoryOn) return;
+  const m = location.hash.match(/^#inventory(?:\/(.+))?$/);
+  if (!m) return;
+  _hashHandled = true;
+  const rest = m[1] ? decodeURIComponent(m[1]) : '';
+  const im = rest.match(/^item\/(\d+)$/);            // #inventory/item/<ID> = QR-Code eines Werkzeug-Etiketts
+  window._invItem = im ? +im[1] : null;
+  window._invCode = (!im && rest) ? rest : null;
+  navigateTo('inventory');
+}
 function _applyCurrencyLabels(){
   const el=document.getElementById('battery-price-label');
   if(el) el.textContent=`Neuwert (${_currency})`;

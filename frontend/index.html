@@ -191,6 +191,7 @@
     <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:center;padding:8px">
       Zugang zu Maschinen über QR-Code an der jeweiligen Maschine
     </div>
+    <a class="btn-secondary inv-find-link" href="/inventar.html" style="display:none;text-align:center;text-decoration:none">🔎 Wo ist …? Werkzeug &amp; Maschinen finden</a>
     <div style="font-size:13px;color:var(--text-dim);text-align:center;padding:4px 8px 8px">
       Noch kein Konto? <a href="/register" style="color:var(--accent2);text-decoration:none">Jetzt registrieren →</a>
     </div>
@@ -208,6 +209,7 @@
     </div>
 
     <!-- Primäre Aktion: QR scannen -->
+    <a class="btn-secondary inv-find-link" href="/inventar.html" style="display:none;text-align:center;text-decoration:none">🔎 Wo ist …? Werkzeug &amp; Maschinen finden</a>
     <!-- Laufende Maschine (Banner) -->
     <div id="active-session-banner" style="display:none"></div>
 
@@ -1266,7 +1268,7 @@ async function doChangePassword() {
 
 
 async function init() {
-  fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){document.getElementById('header-space-name').textContent=n;document.getElementById('dash-space-name').textContent=n;}}).catch(()=>{});
+  fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){document.getElementById('header-space-name').textContent=n;document.getElementById('dash-space-name').textContent=n;}if(s.inventory_enabled)document.querySelectorAll('.inv-find-link').forEach(a=>a.style.display='block');}).catch(()=>{});
   S.machineToken = getParam('m');
   const loginToken = getParam('lt');  // persönlicher Login-Token
 

@@ -242,6 +242,8 @@ class MachineLocationOut(BaseModel):
     id: int
     name: str
     sort_order: int
+    code: Optional[str] = None      # Inventar-Modul: Kürzel des Bereichs
+    color: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -249,10 +251,14 @@ class MachineLocationOut(BaseModel):
 class MachineLocationCreate(BaseModel):
     name: str
     sort_order: int = 0
+    code: Optional[str] = None
+    color: Optional[str] = None
 
 class MachineLocationUpdate(BaseModel):
     name: Optional[str] = None
     sort_order: Optional[int] = None
+    code: Optional[str] = None
+    color: Optional[str] = None
 
 
 # ── Machine Owners ────────────────────────────────────────

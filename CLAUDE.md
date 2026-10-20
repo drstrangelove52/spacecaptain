@@ -22,7 +22,7 @@ Alle Services laufen in Docker Compose. Die Konfiguration erfolgt via `.env`.
 - JWT-Auth für Manager/Admins, eigenes Token-System für Gäste
 
 **Frontend:**
-- Eine einzige `labmanager.html` — kein Build-Schritt, kein Framework
+- Eine einzige `labmanager.html` — kein Build-Schritt, kein Framework. Ausnahme: grosse, optionale Bereiche leben als nachladbares Modul unter `frontend/modules/` (bisher nur `inventory.js`, geladen über `LabModules.load/register/show` in der HTML-Datei, Namensraum `Inv`, CSS-Präfix `inv-`; Cache-Busting über `?v=<Build-Nummer>`)
 - `GET/POST/PATCH/DELETE`-Wrapper: `api()`, `GET()`, `POST()`, `PATCH()`, `DELETE()` in der HTML-Datei
 - `DELETE()` unterstützt optionalen Body: `DELETE(path, body)`
 - `downloadBackupFile()` nutzt eigenen `fetch`-Aufruf (braucht Blob-Handling, nicht JSON)
@@ -44,11 +44,18 @@ backend/app/
   routers/owners.py          — Maschinen-Eigentümer CRUD (Lookup-Tabelle wie locations.py)
   routers/batteries.py       — Akku-Verwaltung CRUD (eigene Seite im Frontend, kein Machine-Bezug)
   routers/guest_auth.py      — Gast-Zugang inkl. Raum-Sperre
+  routers/inventory.py       — Inventar-Modul (Bereiche, Möbel/Ebenen/Plätze, Werkzeug, Suche, Etiketten, Maschinen-Standort)
+  routers/inventory_public.py — Inventar: öffentliche Nur-Lese-Sicht für Gäste (ohne Login, `/api/inventory-public/*`)
+  services/inventory.py      — Codes, Nullplätze, Kategorie aus Bereich, Maschinen-Sync; services/inventory_backup.py — Backup-Sektion
+  models_inventory.py        — ORM des Inventars (`inv_*`-Tabellen)
   routers/backup.py          — Backup REST-Endpoints
   routers/update.py          — In-App Update: GET /status + POST /trigger (schreibt update_trigger/trigger)
 
 frontend/
   labmanager.html            — Komplette Admin-UI (single file, kein Framework)
+  modules/inventory.js       — Inventar-Modul der Admin-UI (lazy geladen)
+  inventory-plan.js          — Bauplan-Renderer/-Editor (SVG), von modules/inventory.js und inventar.html geladen
+  inventar.html              — Gäste-Seite «Wo ist …?» ohne Login (Ziel der QR-Codes auf Möbeln/Werkzeug)
   index.html                 — Gäste-App
   display.html               — Kiosk/Display-Seite
 ```
@@ -76,7 +83,7 @@ Migrationen laufen **bei jedem Backend-Start** in `backend/app/services/migrate.
 - Neue Top-Level-Sektionen mit `payload.get("sektion", [])` lesen
 - Nie `payload["key"]` ohne Existenzprüfung
 
-**Was ist im Backup enthalten:** Einstellungen (inkl. Währung), Benutzer (inkl. `login_token`), Gäste (inkl. `login_token`/`pending_approval`), Maschinen (inkl. Kaufdatum/Neuwert/Eigentümer/`total_hours`), Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln, Kategorien, Standorte, Eigentümer, Akkus.
+**Was ist im Backup enthalten:** Einstellungen (inkl. Währung), Benutzer (inkl. `login_token`), Gäste (inkl. `login_token`/`pending_approval`), Maschinen (inkl. Kaufdatum/Neuwert/Eigentümer/`total_hours`), Plug-Pool, Berechtigungen, Sessions, Aktivitätslog, Wartungsintervalle, Wartungshistorie, Aushänge, ntfy-Topics, Automationsregeln, Kategorien, Standorte, Eigentümer, Akkus, Inventar (Sektion `inventory`, siehe Abschnitt «Inventar-Modul»).
 
 **`total_hours`-Falle (behoben):** War zwar im Export enthalten, wurde beim Restore aber nie direkt zurückgeschrieben — nur indirekt aus `sessions` rekonstruiert (`hours_accumulator`, greift nur wenn `total_hours == 0.0`). Bei Overwrite auf eine bestehende Maschine blieb der alte Wert also stehen. Jetzt in beiden Machine-Restore-Zweigen direkt gesetzt (`m.get("total_hours", ...)`); die Session-Rekonstruktion bleibt als Fallback nur noch für sehr alte Backups (vor Einführung von `total_hours` im Export) relevant.
 
@@ -150,6 +157,7 @@ OR-Verknüpfung in Bedingungen ist bewusst nicht implementiert — zwei separate
 - **CSV-Import** legt fehlende Kategorien, Standorte und Eigentümer automatisch an (`import/confirm`-Endpoint in `routers/machines.py`).
 - **CSV-Import kann bestehende Maschinen aktualisieren**: Export enthält eine `ID`-Spalte, beim Re-Import wird darüber gematcht (`existing_by_id`-Lookup in `_parse_csv_row`). Zeilen mit passender ID werden als Action `"update"` markiert, aber nur angewendet wenn der Import mit der Checkbox "Bestehende aktualisieren" (`update_existing: bool` im `/import/confirm`-Payload) bestätigt wird — sonst wie bisher übersprungen. Leere Zellen leeren dabei das jeweilige Feld (CSV gilt als vollständiger Datensatz), nur die ID selbst dient rein dem Matching und wird nie geschrieben.
 - Alle drei Tabellen sind vollständig im Backup enthalten.
+- **Bei aktivem Inventar-Modul** ändert sich das Verhalten (Details im Abschnitt «Inventar-Modul»): «Standorte» heissen «Bereiche», die Kategorie einer Maschine wird aus dem Bereich abgeleitet («Sonstiges» ohne Bereich), «⚙ Kategorien» und der Kategoriefilter sind ausgeblendet, und es gibt Kürzel/Farbe je Bereich.
 - Frontend: `cache.categories` / `cache.locations` / `cache.owners`, `_catOptions()` / `_locOptions()` / `_ownerOptions()`, `_refreshCatFilter()` / `_refreshLocFilter()`.
 
 ## Inventar (Kaufdatum, Neuwert, Eigentümer) und Akku-Verwaltung
@@ -158,6 +166,23 @@ OR-Verknüpfung in Bedingungen ist bewusst nicht implementiert — zwei separate
 - **Akkus** (`batteries`, `routers/batteries.py`) sind ein eigenständiger Verbrauchsmaterial-Pool ohne Machine-Bezug: Hersteller, Modell, Kaufdatum, Neuwert (`value_new`, bis Migration v1.41 `price_new` — auf `Machine.value_new` vereinheitlicht, siehe Kompatibilitätshinweis unten), Status (`aktiv`/`defekt`/`ausgemustert`). Eigene Seite unter AUSSTATTUNG im Frontend (nicht in der Maschinen-Sektion), bedienungsmässig identisch zum Plug-Pool (sortierbare Tabelle, Suche/Status-Filter, Modal für Anlegen/Bearbeiten).
 - **Inventarliste für Buchhaltung**: Button «📋 Inventarliste» auf der Maschinen-Seite exportiert nur die buchhaltungsrelevanten Felder (Name, Kategorie, Hersteller, Modell, Seriennummer, Standort, Kaufdatum, Neuwert, Eigentümer + Summenzeile) als CSV oder Druckansicht (PDF via Browser-Druckdialog, kein PDF-Backend nötig) — bewusst getrennt von der operativen CSV (`exportMachinesCsv()`), die zusätzlich Status/Schulung/Smart-Plug/Kommentar enthält.
 - Migration v1.39.
+
+## Inventar-Modul (optional, Migrationen v1.51–v1.62)
+
+Ausführliche Doku mit allen Entscheidungen: `docs/inventar-konzept.md`. Kurzfassung für die Arbeit am Code:
+
+- **Schalter:** `system_settings.inventory_enabled` (nur Admin; in `read_settings_public()`). Aus = Menüpunkt weg, `/api/inventory*` antwortet 404, Maschinenformular wie früher (Kategorie + einfaches Standort-Dropdown).
+- **Code:** `<Bereich 3 Zeichen>-M<nn>-E<nn>-P<nn>` (z.B. `ELE-M02-E03-P04`), `00` = nicht unterteilt/offen (`M00`/`E00`/`P00` werden automatisch angelegt, `ensure_structure()`), abschliessende Nullen entfallen auf Etiketten. Bereiche sind die vorhandenen `machine_locations` (um `code`, `color`, `plan_*` erweitert).
+- **Maschine oder Werkzeug (Entscheidung):** Maschine = **Standort** (steht fest; Bereich, optional Möbel/Ebene via `inv_placements`; kein Etikett; meist Einweisung/Plug/Wartung), Werkzeug = **Platz** (`inv_items.position_id`, Etikett mit QR «gehört nach …»). Versicherung ist unabhängig davon: Werkzeug hat dieselben optionalen Buchhaltungsfelder wie Maschinen (`serial_number`, `purchase_date`, `value_new` je Stück, `owner_id`); die Inventarliste enthält beide (Dialog: Maschinen/Werkzeug einzeln wählbar, Werkzeug «nur mit Neuwert» oder «alle»).
+- **Kategorie aus Bereich:** Bei aktivem Inventar ist `machines.category` = Bereichsname (ohne Bereich «Sonstiges»); `services/inventory.py` → `align_categories()`/`categories_need_align()`, aufgerufen bei Maschinen-Anlegen/Ändern, Bereichswechsel, Bereich anlegen/umbenennen/löschen, CSV-Import und lazy beim ersten Zugriff (`ensure_structure_if_needed`). Die Spalte bleibt für Filter, Statistik, Gäste-Ansicht, CSV und MCP.
+- **Maschinen ↔ Bereich:** `machines.area_id` (ohne DB-FK) ist massgebend, `machines.location` (Text) bleibt in Einklang (Text → Bereich über `sync_machine_areas`; Text ohne passenden Bereich = kein Bereich).
+- **Keine DB-Fremdschlüssel** auf `machine_locations`/`machines`/`machine_owners` aus `inv_*` (Spaltentyp signed/unsigned je Installation → errno 150); Integrität im App-Code.
+- **MariaDB-Falle (Vorfall, «Illegal mix of collations»):** Textspalten verschiedener Tabellen **nie in SQL vergleichen** — `machines` (init.sql) hat `utf8mb4_unicode_ci`, per ORM erzeugte Tabellen `utf8mb4_uca1400_ai_ci`. Vergleiche in Python (siehe `machines_need_sync`). Tests laufen auf SQLite und fangen das nicht ab.
+- **Backup:** Sektion `inventory` in `services/inventory_backup.py` mit natürlichen Schlüsseln (Bereichsname, Möbelnummer, Ebenen-/Platznummer, Maschinenname, Eigentümername); alle Felder mit `.get()`, ältere Backups bleiben importierbar.
+- **Gäste:** `routers/inventory_public.py` (nur GET, ohne Login, nur das Nötige, Ausgemustertes und Buchhaltungsfelder verborgen) + `frontend/inventar.html`; Link «Wo ist …?» in `index.html` nur bei aktivem Inventar.
+- **Bauplan:** Rechtecke in cm in `plan_*`-Spalten (Bereich `machine_locations`, Möbel `inv_furniture`, Maschine `inv_placements`) und `inv_plan` (Gebäude-Grundfläche, eine Zeile), `inv_floors` (Stockwerke), `inv_rooms` (Räume als Rechteck oder Vieleck via `points` (JSON), Treppen, Türen und Durchgänge; `kind` raum|treppe|tuer|durchgang, Treppe mit `link_floor_id`); jedes eingezeichnete Element hat `plan_floor_id` (ohne DB-FK); Grundriss-Bild je Stockwerk in `inv_floor_images` (LONGBLOB, per Pillow auf ≤2400 px/JPEG normalisiert, Lage in `inv_floors.bg_*`, im Editor mit Login, für Gäste über `/api/inventory-public/plan/floors/{id}/background`; die Ansicht folgt dem Ausschnitt), Wanddicke `inv_plan.wall_cm` als Standard (0 = nur Umriss) und je Raum `inv_rooms.wall_cm` (Wand ausserhalb der Raum-Innenfläche); `routers/inventory_plan.py` + `services/inventory_plan.py`, gemeinsamer SVG-Renderer `frontend/inventory-plan.js` (Admin-UI bearbeitbar, `inventar.html` nur ansehen). Plan-Ändern = Power-Manager; Verschieben wird nicht geloggt, nur der Raum (`inventory_plan_updated`).
+- **Tests:** `cd backend && pytest` (SQLite in-memory, `tests/conftest.py`; braucht `aiosqlite pytest pytest-asyncio`). Neue Inventar-Logik braucht Tests in `tests/test_inventory*.py`.
+- **Etiketten:** Vorlage Avery Zweckform L6009-20 (45,7 × 21,2 mm, 48/Bogen), Druck über iframe mit eigenem `@page`; das Raster ist noch nicht an einem echten Bogen verifiziert (Testbogen + Versatz X/Y vorhanden).
 
 ## Display/Dashboard-Sichtbarkeit
 
@@ -230,6 +255,9 @@ Drei Stufen: `manager` < `power_manager` < `admin`.
 | Push-Nachrichten (ntfy): Topics verwalten | ✗ | ✓ | ✓ |
 | Raum öffnen/schliessen, Notfall-Alarm | ✓ | ✓ | ✓ |
 | Berechtigungen, Log, Statistiken | ✓ | ✓ | ✓ |
+| Inventar (wenn aktiviert): suchen, Werkzeug anlegen/bearbeiten/umlagern | ✓ | ✓ | ✓ |
+| Inventar: Bereiche, Möbel, Ebenen anlegen; Maschinen einem Standort zuweisen | ✗ | ✓ | ✓ |
+| Inventar-Modul ein-/ausschalten (Einstellungen) | ✗ | ✗ | ✓ |
 | Lab Manager: anlegen, bearbeiten, löschen, Rollen ändern | ✗ | ✗ | ✓ |
 | Backup & Restore | ✗ | ✗ | ✓ |
 | Einstellungen | ✗ | ✗ | ✓ |
@@ -270,6 +298,7 @@ Audit ergab: mehrere Router hatten überhaupt keine `log_svc.log()`-Aufrufe, obw
 
 ## Terminologie
 
+- **Standort / Bereich / Platz:** Bei ausgeschaltetem Inventar heisst die Liste `machine_locations` in der UI «Standorte». Bei aktivem Inventar heisst sie «Bereiche» (`_locWord()` in `labmanager.html`), und das Feld im Maschinenformular «Standort» (Bereich, optional Möbel und Ebene). **Maschinen haben einen Standort, Werkzeug hat einen Platz** (siehe Abschnitt «Inventar-Modul»). Das Wort «Lagerort» wird nicht mehr verwendet.
 - **Aushänge** (nicht "Mitteilungen"): zeitgesteuerte Ankündigungen für Gäste (`announcements`)
 - **Push-Nachrichten** (nicht "Benachrichtigungen"): ntfy-basierte Push-Nachrichten
 - **Maschinen-Status-Labels**: UI zeigt "Freigegeben"/"Gesperrt"/"In Wartung" statt "Online"/"Offline"/"Wartung" — die gespeicherten Enum-Werte (`online`/`offline`/`maintenance`, `MachineStatus` in `models.py`) sind **unverändert**, nur reine Anzeigetext-Änderung (Filter-Dropdown, Formulare, Hilfetexte in `labmanager.html`). Grund: "Online"/"Offline" implizierte einen Schaltzustand, der für ungeschaltete Inventar-Einträge (z.B. Akku-Schrauber ohne Plug) nicht passt; "Verfügbar"/"Einsatzbereit" wurden verworfen, weil sie mit dem separaten Echtzeit-Belegungsstatus ("In Benutzung") kollidieren können. `_STATUS_MAP` in `routers/machines.py` (CSV-Import) kennt die neuen Begriffe zusätzlich als Synonyme. MCP-Tool `set_machine_status` und der zugehörige `mcp_api.py`-Endpoint nutzen weiterhin die technischen Werte (`online`/`offline`/`maintenance`) als Parameter.
@@ -378,6 +407,7 @@ Der Token lebt ausschliesslich in der DB (`system_settings.mcp_api_token`) und w
 - Imports aus `backup.py` auf Modulebene in `backup_service.py` — zirkulärer Import
 - Neue Settings-Felder nur in `models.py` eintragen — `SettingsOut`/`SettingsUpdate`, den PATCH-Handler (`update_settings()`, setzt jedes Feld einzeln) und Migration vergessen. Schema allein reicht nicht, ohne die explizite `if payload.x is not None: row.x = ...`-Zeile persistiert PATCH das Feld nie.
 - Bei `automations.py` Log-Nachrichten `tm.name` verwenden ohne zu prüfen ob `tm` None ist — bei `room_open`/`room_close`/`notify`-Aktionen gibt es keine Ziel-Maschine
+- Textspalten verschiedener Tabellen in SQL vergleichen (MariaDB: «Illegal mix of collations», siehe Abschnitt «Inventar-Modul») — in Python vergleichen
 - Neue Backup-Sektionen ohne `payload.get("sektion", [])` lesen — bricht ältere Backups
 - `emergency_plug_id`/`emergency_plug2_id` direkt in den Settings exportieren — sind DB-interne IDs, müssen als IP-Referenz exportiert und beim Import aufgelöst werden (siehe Notfall-Alarm-Sektion)
 - Neue dedizierte Modals (eigenes `<div class="modal-overlay" id="...">`, z.B. `plug-modal`/`battery-modal`) ohne Prüfung von `clientSettings.modal_backdrop_input` schliessen lassen — das generische `openModal()`/`closeModal()` beachtet die Einstellung "Modal bei Klick auf Hintergrund schliessen" bereits, dedizierte Modals müssen das im eigenen `close*Modal(e)`-Handler nachbilden (`if (e && !clientSettings.modal_backdrop_input) return;`), sonst gehen ungespeicherte Formulareingaben bei einem Fehlklick verloren obwohl die Einstellung deaktiviert ist

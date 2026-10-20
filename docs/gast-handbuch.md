@@ -11,6 +11,7 @@ Dieses Handbuch erklärt, wie du als Gast des Makerspaces die SpaceCaptain-App v
 3. [Maschine starten](#3-maschine-starten)
 4. [Maschine beenden](#4-maschine-beenden)
 5. [Maschinenübersicht](#5-maschinenübersicht)
+   - [5a. Werkzeug und Maschinen finden](#5a-werkzeug-und-maschinen-finden)
 6. [Kein Zugang](#6-kein-zugang)
 7. [Leerlauf-Abschaltung](#7-leerlauf-abschaltung)
 8. [Passwort ändern](#8-passwort-ändern)
@@ -117,6 +118,22 @@ Tippe auf eine Maschine, um direkt zum Kontrollscreen zu wechseln.
 
 ---
 
+## 5a. Werkzeug und Maschinen finden
+
+*(nur wenn dein Makerspace das Inventar nutzt)*
+
+Du weisst nicht, wo ein Werkzeug oder eine Maschine ist? Tippe auf **🔎 Wo ist …?** (Anmelde- oder Startbildschirm) oder öffne die Seite `/inventar.html`. Eine Anmeldung brauchst du dafür nicht.
+
+- **Suchen:** Gib einen Begriff ein, z. B. «Akkuschrauber» oder «Lötkolben». Auch andere Namen funktionieren («Bohrschrauber»). Jeder Treffer zeigt den **Code** und den Weg zum Ort, z. B. `ELE-M01-E02`: Bereich Elektronik, Möbel 1, Ebene 2.
+- **Stöbern:** Ohne Suchbegriff siehst du die Bereiche und Möbel zum Durchklicken.
+- **Plan:** Tippe auf **🗺️ Plan ansehen** oder bei einem Treffer auf **Auf dem Plan zeigen**. Der Ort ist markiert und blinkt, das passende Stockwerk wird automatisch gezeigt (oben wechselst du zwischen «EG», «OG» …). Der Plan startet mit dem ganzen Gebäude; mit **＋ / −**, dem Spreizen und Zusammenziehen zweier Finger oder dem Knopf **⤢** vergrösserst, verkleinerst und zeigst du ihn wieder ganz. Mit einem Finger verschiebst du den Ausschnitt. Hast du einen Treffer geöffnet, ist der Plan schon auf das Ziel vergrössert.
+- **QR-Codes an Schränken und Regalen:** Scannen zeigt, was dort liegt und welche Maschinen dort stehen.
+- **QR-Code am Werkzeug:** Scannen zeigt, **wohin es gehört**. So räumst du es an den richtigen Platz zurück.
+
+Findest du etwas nicht, frag eine Person im Makerspace.
+
+---
+
 ## 6. Kein Zugang
 
 Falls du keine Berechtigung für eine Maschine hast, erscheint der Bildschirm **Kein Zugang**:
@@ -179,6 +196,12 @@ Mögliche Ursachen:
 - Die Maschine ist gerade von jemand anderem in Benutzung — warte, bis sie frei ist
 - Der Smart Plug ist nicht erreichbar (Netzwerkproblem) — informiere einen Lab Manager
 - Die Maschine ist auf "Offline" oder "Wartung" gesetzt — informiere einen Lab Manager
+
+---
+
+**Ich finde ein Werkzeug nicht.**
+
+Nutze «🔎 Wo ist …?» (siehe [Kapitel 5a](#5a-werkzeug-und-maschinen-finden)). Ist es dort nicht aufgeführt oder fehlt es am Platz, melde es einem Lab Manager.
 
 ---
 

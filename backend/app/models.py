@@ -109,6 +109,17 @@ class LogType(str, enum.Enum):
     owner_deleted = "owner_deleted"
     tailscale_updated = "tailscale_updated"
     machine_qr_regenerated = "machine_qr_regenerated"
+    inventory_area_updated = "inventory_area_updated"
+    inventory_furniture_created = "inventory_furniture_created"
+    inventory_furniture_updated = "inventory_furniture_updated"
+    inventory_furniture_deleted = "inventory_furniture_deleted"
+    inventory_item_created = "inventory_item_created"
+    inventory_item_updated = "inventory_item_updated"
+    inventory_item_deleted = "inventory_item_deleted"
+    inventory_item_moved = "inventory_item_moved"
+    inventory_items_imported = "inventory_items_imported"
+    machine_area_changed = "machine_area_changed"
+    inventory_plan_updated = "inventory_plan_updated"
 
 class SessionEndedBy(str, enum.Enum):
     guest = "guest"
@@ -167,6 +178,9 @@ class Machine(Base):
     model:              Mapped[Optional[str]]   = mapped_column(String(100))
     serial_number:      Mapped[Optional[str]]   = mapped_column(String(100))
     location:           Mapped[Optional[str]]   = mapped_column(String(200))
+    # Inventar-Modul: massgeblicher Bereich (= machine_locations.id). Bewusst ohne DB-Fremdschluessel (Typ der
+    # Zielspalte ist je Installation signed/unsigned); `location` bleibt als Text fuer die bisherigen Ansichten erhalten.
+    area_id:            Mapped[Optional[int]]   = mapped_column(UINT(unsigned=True), default=None, index=True)
     status:             Mapped[MachineStatus]   = mapped_column(Enum(MachineStatus), default=MachineStatus.online)
     plug_type:          Mapped[PlugType]        = mapped_column(Enum(PlugType), default=PlugType.none)
     plug_ip:            Mapped[Optional[str]]   = mapped_column(String(50))
@@ -288,6 +302,7 @@ class SystemSettings(Base):
     space_name:                 Mapped[str]            = mapped_column(String(100), default="")
     currency:                   Mapped[str]            = mapped_column(String(10), default="CHF")
     public_pages_theme:         Mapped[str]            = mapped_column(String(10), default="dark")
+    inventory_enabled:          Mapped[bool]           = mapped_column(Boolean, default=False)
     room_open:                  Mapped[bool]           = mapped_column(Boolean, default=False)
     room_open_since:            Mapped[Optional[datetime]] = mapped_column(DateTime, default=None)
     room_open_auto:             Mapped[bool]           = mapped_column(Boolean, default=True)
@@ -395,11 +410,20 @@ class MachineCategory(Base):
 
 
 class MachineLocation(Base):
+    """Standort einer Maschine — zugleich der «Bereich» des Inventar-Moduls."""
     __tablename__ = "machine_locations"
     id:         Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
     name:       Mapped[str]           = mapped_column(String(100), unique=True, nullable=False)
     sort_order: Mapped[int]           = mapped_column(Integer, default=0)
     created_at: Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
+    # Inventar-Modul: Kuerzel fuer den Lagerort-Code (z.B. "EL"), Farbe, Platz im Plan (cm)
+    code:       Mapped[Optional[str]]   = mapped_column(String(4), unique=True, default=None)
+    color:      Mapped[Optional[str]]   = mapped_column(String(9), default=None)
+    plan_x:     Mapped[Optional[float]] = mapped_column(Float, default=None)
+    plan_y:     Mapped[Optional[float]] = mapped_column(Float, default=None)
+    plan_w:     Mapped[Optional[float]] = mapped_column(Float, default=None)
+    plan_h:     Mapped[Optional[float]] = mapped_column(Float, default=None)
+    plan_floor_id: Mapped[Optional[int]] = mapped_column(Integer, default=None)
 
 
 class MachineOwner(Base):

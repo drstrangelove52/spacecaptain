@@ -21,6 +21,10 @@ from app.routers import update as update_router
 from app.routers import mcp_api as mcp_router
 from app.routers import tailscale as tailscale_router
 from app.routers import data_management as data_management_router
+from app.routers import inventory as inventory_router
+from app.routers import inventory_public as inventory_public_router
+from app.routers import inventory_plan as inventory_plan_router
+import app.models_inventory  # noqa: F401  (Tabellen fuer create_all registrieren)
 from app.services.session import idle_watcher, plug_watcher, queue_watcher
 from app.services.backup_service import backup_watcher
 from app.services.rule_watcher import rule_watcher
@@ -42,6 +46,10 @@ async def lifespan(app: FastAPI):
             logging.getLogger("uvicorn").warning(f"DB not ready (attempt {attempt}/10), retrying in 3s… ({e})")
             await asyncio.sleep(3)
     await run_migrations(engine)
+    from app.database import AsyncSessionLocal
+    from app.services.inventory import ensure_structure
+    async with AsyncSessionLocal() as _db:
+        await ensure_structure(_db)
     task1 = asyncio.create_task(idle_watcher(app))
     task2 = asyncio.create_task(plug_watcher(app))
     task3 = asyncio.create_task(queue_watcher(app))
@@ -125,3 +133,6 @@ app.include_router(update_router.router,        prefix="/api")
 app.include_router(mcp_router.router,           prefix="/api")
 app.include_router(tailscale_router.router,     prefix="/api")
 app.include_router(data_management_router.router, prefix="/api")
+app.include_router(inventory_router.router,       prefix="/api")
+app.include_router(inventory_plan_router.router,   prefix="/api")
+app.include_router(inventory_public_router.router, prefix="/api")

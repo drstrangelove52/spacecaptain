@@ -44,6 +44,7 @@ class SettingsOut(BaseModel):
     space_name: str = ""
     currency: str = "CHF"
     public_pages_theme: str = "dark"
+    inventory_enabled: bool = False
     room_open: bool = False
     room_open_since: Optional[datetime] = None
     room_open_auto: bool = True
@@ -102,6 +103,7 @@ class SettingsUpdate(BaseModel):
     space_name: Optional[str] = None
     currency: Optional[str] = None
     public_pages_theme: Optional[str] = None
+    inventory_enabled: Optional[bool] = None
     room_open_auto: Optional[bool] = None
     guest_token_ttl_hours: Optional[int] = None
     ts_enabled: Optional[bool] = None
@@ -136,6 +138,7 @@ async def read_settings_public(db: AsyncSession = Depends(get_db)):
         "space_name": s.space_name or "",
         "currency": s.currency or "CHF",
         "public_pages_theme": s.public_pages_theme or "dark",
+        "inventory_enabled": bool(s.inventory_enabled),
         "room_open": s.room_open,
     }
 
@@ -219,6 +222,8 @@ async def update_settings(
         row.currency = payload.currency.strip() or "CHF"
     if payload.public_pages_theme is not None:
         row.public_pages_theme = "light" if payload.public_pages_theme == "light" else "dark"
+    if payload.inventory_enabled is not None:
+        row.inventory_enabled = payload.inventory_enabled
     if payload.room_open_auto is not None:
         row.room_open_auto = payload.room_open_auto
     if payload.guest_token_ttl_hours is not None:

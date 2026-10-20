@@ -11,6 +11,7 @@ Dieses Handbuch richtet sich an **Lab Manager** und **Administratoren**, die das
 3. [Gäste verwalten](#3-gäste-verwalten)
 4. [Lab Manager verwalten](#4-lab-manager-verwalten)
 5. [Maschinen verwalten](#5-maschinen-verwalten)
+   - [5a. Inventar & Standorte](#5a-inventar--standorte)
 6. [Berechtigungen](#6-berechtigungen)
 7. [QR-System](#7-qr-system)
 8. [Aktivitätslog](#8-aktivitätslog)
@@ -188,9 +189,9 @@ Jede Maschine wird als Karte angezeigt mit:
 1. **+ Maschine anlegen** klicken
 2. Grunddaten ausfüllen:
    - **Name** *(Pflichtfeld)*
-   - **Kategorie**
+   - **Kategorie** — entfällt bei aktivem Inventar-Modul (ergibt sich aus dem Standort, siehe [5a](#5a-inventar--standorte))
    - **Hersteller** / **Modell** *(optional)*
-   - **Standort** *(optional)* — z. B. "Raum A, links"
+   - **Standort** *(optional)* — z. B. "Raum A, links"; bei aktivem Inventar-Modul der **Bereich**, optional mit Möbel und Ebene
    - **Status** — Online / Offline / Wartung
    - **Kommentar** *(optional)* — Wird dem Gast bei der Anmeldung angezeigt (z. B. Sicherheitshinweise)
 3. **Smart Plug** konfigurieren (optional, siehe [Smarte Steckdosen](#14-smarte-steckdosen))
@@ -216,6 +217,97 @@ Jede Maschine hat einen eindeutigen QR-Token. Über **QR erneuern** wird ein neu
 ### Maschine löschen
 
 Löscht die Maschine dauerhaft. Alle zugehörigen Berechtigungen werden ebenfalls gelöscht. Aktivitätslogs und Sitzungsaufzeichnungen bleiben erhalten.
+
+---
+
+## 5a. Inventar & Standorte
+
+Das optionale **Inventar-Modul** beantwortet zwei Fragen: *«Wo ist …?»* (Gäste finden Werkzeug und Maschinen selbst) und *«Wohin gehört …?»* (Werkzeug landet nicht im falschen Schrank). Es wird von einem **Admin** unter Einstellungen → System → **Inventar-Modul** eingeschaltet; danach erscheint in der Sidebar der Punkt **Inventar**. Ausgeschaltet bleibt alles unsichtbar.
+
+### Maschine oder Werkzeug?
+
+Jedes Gerät steht entweder als **Maschine** oder als **Werkzeug** im System, nie doppelt. Die Trennung hängt an der Frage, ob es einen *Standort* oder einen *Platz* hat:
+
+| | Maschine | Werkzeug |
+|---|---|---|
+| Wo? | **Standort**: steht oder hängt fest (Bereich, ggf. auf Tisch/Regal und Ebene) | **Platz**: liegt im Schrank und gehört dorthin zurück |
+| Etikett | kein Etikett-Code | Etikett mit Code und QR («gehört nach …») |
+| Typisch | Einweisung, Smart Plug, Wartungsintervall | keine Einweisung, oft mehrere Stück |
+| Erfasst unter | Sidebar → Maschinen | Inventar → Werkzeug |
+
+**Versichern ist ein eigenes Thema:** Kaufdatum, Neuwert, Seriennummer und Eigentümer lassen sich bei beiden erfassen. Beim Werkzeug sind sie optional (Formularabschnitt «Buchhaltung / Versicherung»), z. B. für einen versicherten Akkuschrauber. Der Neuwert gilt **je Stück**; solche Geräte werden einzeln geführt, nicht als Sammelmenge. Die **📋 Inventarliste** (Maschinen-Seite) fragt im Dialog, was hinein soll: **Maschinen** und/oder **Werkzeug**, bei Werkzeug «nur mit erfasstem Neuwert» (Versicherung) oder «alle Werkzeuge» (Bestandsliste); Ausgabe als CSV oder Druck, mit Summe.
+
+**Faustregel für Handgeräte** (Akkuschrauber, Stichsäge, Lötstation): ohne Einweisung und mit festem Schrankplatz ist es Werkzeug; braucht es Einweisung, Plug oder Wartungsintervall, ist es eine Maschine.
+
+### Der Code
+
+Ein Code beschreibt einen Ort von gross nach klein, z. B. `ELE-M02-E03-P04`:
+
+| Teil | Bedeutung |
+|---|---|
+| `ELE` | **Bereich** (genau 3 Zeichen, z. B. Elektronik) |
+| `M02` | **Möbel** 2: Schrank, Regal, Werkzeugwand oder Tisch |
+| `E03` | **Ebene** 3, von oben nach unten gezählt |
+| `P04` | **Platz** 4, von links nach rechts gezählt |
+
+Alle Nummern sind zweistellig. **00** heisst «nicht unterteilt oder noch nicht festgelegt» (`M00` = im Bereich ohne Möbel, `E00` = Ebene offen, `P00` = kein fester Platz). Auf Etiketten entfallen abschliessende Nullen; `ELE-M02` steht für das ganze Möbel.
+
+### Einrichten *(Power-Manager und Admin)*
+
+1. **Bereiche** sind die bisherigen Standorte (dieselbe Liste, Maschinen → **⚙ Bereiche**). Jeder Bereich braucht ein **Kürzel** aus 3 Zeichen (wird vorgeschlagen) und kann eine Farbe haben. Ein geändertes Kürzel ändert alle Codes darunter; die Etiketten gelten dann als «veraltet».
+2. Inventar → **Struktur** → **+ Möbel**: Art, Name und Anzahl Ebenen/Plätze angeben.
+3. Löschen ist nur möglich, wenn nichts mehr daran hängt.
+
+### Werkzeug erfassen
+
+Inventar → **Werkzeug** → **+ Werkzeug**: Name, Synonyme (z. B. «Bohrschrauber»), Menge, Status (aktiv, defekt, ausgemustert), Standort (Code tippen oder Bereich → Möbel → Ebene → Platz wählen), Beschreibung. Mehrere auf einmal: Inventar → **Import** (eine Zeile pro Werkzeug: `Name ; Synonyme ; Code ; Menge`, aus Excel einfügbar, mit «Prüfen» vorab).
+
+### Maschinen: Standort statt Kategorie
+
+Bei aktivem Inventar ersetzt der **Bereich** die Kategorie:
+
+- Im Maschinenformular gibt es nur den **Standort** (Bereich, optional Möbel und Ebene, mit Code).
+- Die **Kategorie** wird automatisch abgeleitet (gleicher Name wie der Bereich, ohne Bereich «Sonstiges»). **⚙ Kategorien** und der Kategoriefilter entfallen.
+- Einen Bereich **umzubenennen** zieht Maschinen und Kategorie mit; ihn zu **löschen** setzt seine Maschinen auf «Sonstiges».
+- Inventar → **Maschinen** zeigt alle Maschinen mit Standort und erlaubt das schnelle Umstellen (auch «Ohne Bereich»).
+- Beim Ausschalten des Moduls erscheinen Kategorie und einfaches Standort-Dropdown wieder; die zuletzt abgeleiteten Kategorien bleiben bestehen.
+
+### Bauplan
+
+Inventar → **Plan** zeigt das Gebäude von oben (Masse in cm), Stockwerk für Stockwerk (Reiter «EG», «OG» …), mit Räumen, Treppen, Bereichen (gestrichelt), Möbeln und Maschinen. Ansehen und Suchen darf jeder Lab Manager, **Zeichnen** der Power-Manager und der Admin.
+
+1. Rechts unter **Gebäude** die Grundfläche in Metern einstellen und unter **Stockwerke** «EG», «OG» usw. anlegen.
+2. Pro Stockwerk mit der Leiste **Zeichnen** über dem Plan (✏️ Raum zeichnen, ▭ Rechteck, 🚪 Tür, ⬚ Durchgang, 🪜 Treppe) Räume und Treppen anlegen. Ein Raum beginnt als Rechteck; **In Vieleck umwandeln** erlaubt beliebige Formen (Ecken ziehen, «+» an einer Kante fügt eine Ecke ein, Doppelklick auf eine Ecke löscht sie). Mit **+ Tür** und **+ Durchgang** setzt du Türen (mit Schwenkbogen) und Öffnungen in die Wand; Drehung und Breite stellst du bei der Auswahl ein; **Anschlag spiegeln** setzt das Scharnier auf die andere Seite, **Aufschlag spiegeln** lässt die Tür zur anderen Wandseite aufgehen. Eine Treppe wird über «Verbindet mit» einem zweiten Stockwerk zugeordnet und erscheint auf beiden.
+3. Aus **«Noch nicht auf dem Plan»** ein Element auf die Fläche ziehen (oder **＋** für die Mitte); es landet auf dem gewählten Stockwerk.
+4. **Verschieben** durch Ziehen (rastet auf 5 cm), **Grösse** an Ecken und Kanten, **genaue Werte**, **Stockwerk wechseln**, **↻ 90°** und **Vom Plan nehmen** rechts bei der Auswahl.
+5. Die **Suche** oben markiert Werkzeug, Möbel oder Maschinen auf dem Plan und schaltet auf das richtige Stockwerk.
+6. **Rückgängig:** **↶ Rückgängig** (oder **Strg+Z**) nimmt die letzten Änderungen am Plan einzeln zurück (bis zu 50). Nicht rückgängig zu machen: Stockwerke anlegen/löschen, Grundriss-Bild hochladen/entfernen, Plan zurücksetzen.
+7. **Ausschnitt:** **✂️ Ausschnitt** (im Abschnitt «Grundriss zum Abpausen») zeigt nur den gewählten Teil des Bildes, zum Beispiel ohne Bemassung am Rand; das Bild bleibt vollständig gespeichert, «Ausschnitt aufheben» zeigt es wieder ganz.
+8. **Grundriss abpausen:** Pro Stockwerk lässt sich ein JPG/PNG des Plans hochladen («Grundriss zum Abpausen»). **📏 Massstab setzen**: zwei Punkte anklicken und den echten Abstand in Metern eingeben. **✋ Bild verschieben**, **↻ 90° drehen** bzw. das Feld **Drehung (°)** (auch in Zehntelgrad, für schief gescannte Pläne) und der Regler **Deckkraft** richten das Bild aus. Danach mit **✏️ Raum zeichnen** die Ecken nacheinander anklicken (Doppelklick oder Klick auf die erste Ecke schliesst den Raum). **Shift oder Strg** gedrückt halten lässt die Linie bei 0°, 90°, 180° und 270° einrasten (**Alt**: 45°); beim Ziehen einer Ecke macht dasselbe die anliegenden Wände rechtwinklig. Das Bild (mit dem gewählten Ausschnitt) sehen auch die Gäste im Plan auf «Wo ist …?». Die Ansicht richtet sich nach dem Ausschnitt, nicht nach dem ganzen Gebäude.
+9. **Wanddicke:** Räume sind Innenflächen. Standard ist **0 = nur Umriss**, das genügt beim Abpausen, weil die echten Wände im Bild zu sehen sind. Mit einer Dicke (Einstellung «Wanddicke» bei «Gebäude») wird die Wand aussen um den Raum gezeichnet; weil Wände unterschiedlich dick sind, kann jeder Raum bei der Auswahl eine **eigene Wanddicke** bekommen (leer = Standard). Türen schneiden die Wand durch.
+10. **Plan zurücksetzen** (rechts bei «Gebäude»): löscht alle Räume, Treppen und Stockwerke (danach nur «EG») und nimmt alle Elemente vom Plan; Gebäude, Codes und Standorte bleiben. Vorher ein Backup machen.
+11. **Zoom:** «Einpassen» zeigt den ganzen Plan auf einen Blick, 25–300 % vergrössern oder verkleinern ihn.
+
+Änderungen werden sofort gespeichert. Der Plan ist unabhängig von den Codes; nach einem Umzug genügt es, Gebäude, Stockwerke und Räume neu zu zeichnen und die Elemente neu zu ziehen. Ein Stockwerk lässt sich nur löschen, wenn es leer ist. Gäste sehen den Plan auf der Seite «Wo ist …?» (nur eingezeichnete Elemente).
+
+### Etiketten
+
+Inventar → **Etiketten**: links die Auswahl (Möbel und Ebenen oder Werkzeug) mit **Anzahl**, rechts Vorlage und Vorschau. Vorbereitet ist der **Avery Zweckform L6009-20** (45,7 × 21,2 mm, 48 pro A4-Bogen, Laserdrucker); über die Startposition lassen sich angefangene Bögen weiterverwenden. Drucken in A4 mit 100 % Skalierung, ohne Kopf-/Fusszeilen und Ränder. Vor dem ersten Druck den **Testbogen** auf normales Papier drucken, gegen das Licht über einen Etikettenbogen halten und bei Bedarf den **Versatz X/Y** einstellen. Neue oder geänderte Möbel sind als «Etikett neu/veraltet» markiert.
+
+Der QR-Code führt Gäste zur Seite des Ortes bzw. des Werkzeugs («gehört nach …»); er bleibt nach dem Umlagern gültig.
+
+### Gäste-Seite «Wo ist …?»
+
+`/inventar.html` ist eine schlanke Seite **ohne Anmeldung** (zusätzlich als «🔎 Wo ist …?» in der Gast-App). Sie zeigt nur Name, Beschreibung, Menge, Status und Standort; ausgemustertes Werkzeug ist verborgen, Maschinen erscheinen ohne Status, Plug oder Seriennummer, Buchhaltungsfelder nie. Ist das Modul ausgeschaltet, antwortet sie mit «nicht aktiviert».
+
+### Rechte im Inventar
+
+| Funktion | Manager | Power-Manager | Admin |
+|---|:---:|:---:|:---:|
+| Suchen, ansehen | ✅ | ✅ | ✅ |
+| Werkzeug anlegen, bearbeiten, umlagern, importieren | ✅ | ✅ | ✅ |
+| Bereiche, Möbel, Ebenen, Plätze; Plan zeichnen; Maschinen einem Standort zuweisen | ❌ | ✅ | ✅ |
+| Modul ein-/ausschalten | ❌ | ❌ | ✅ |
 
 ---
 
@@ -328,6 +420,9 @@ Das Aktivitätslog ist das vollständige Protokoll aller Systemereignisse.
 | `machine_created` / `machine_deleted` | Maschine angelegt / gelöscht |
 | `login` / `guest_login` | Lab-Manager- / Gast-Anmeldung |
 | `maintenance_due` / `maintenance_done` | Wartung fällig / durchgeführt |
+| `inventory_*` | Inventar: Bereich, Möbel, Ebene bzw. Werkzeug angelegt, geändert, gelöscht, umgelagert oder importiert |
+| `machine_area_changed` | Maschine in einen anderen Bereich (Standort) verschoben |
+| `inventory_plan_updated` | Gebäude oder Stockwerke des Bauplans geändert |
 | `error` | Systemfehler |
 
 ---
@@ -434,6 +529,8 @@ Die Backup-Datei enthält:
 - Sitzungsaufzeichnungen
 - Komplettes Aktivitätslog
 - Wartungsintervalle und -protokolle
+- Kategorien, Standorte (Bereiche), Eigentümer und Akkus
+- Inventar (Möbel, Ebenen, Werkzeug mit Buchhaltungsfeldern, Standorte der Maschinen)
 
 ### Import (Wiederherstellung)
 
@@ -481,16 +578,21 @@ Der Update-Watcher muss einmalig auf dem Host eingerichtet sein (siehe [README �
 
 ## 13. Rollen und Rechte
 
-| Funktion | Manager | Admin |
-|---|---|---|
-| Gäste anzeigen / bearbeiten | ✅ | ✅ |
-| Gäste löschen | ✅ | ✅ |
-| Maschinen anzeigen / bearbeiten | ✅ | ✅ |
-| Berechtigungen verwalten | ✅ | ✅ |
-| Eigenes Profil bearbeiten | ✅ | ✅ |
-| Lab Manager anlegen / löschen | ❌ | ✅ |
-| Rollen anderer Benutzer ändern | ❌ | ✅ |
-| Backup exportieren / importieren | ❌ | ✅ |
+Es gibt drei Rollen mit aufsteigenden Rechten: **Manager** (Betrieb), **Power-Manager** (Konfiguration) und **Admin** (Systemverwaltung).
+
+| Funktion | Manager | Power-Manager | Admin |
+|---|:---:|:---:|:---:|
+| Gäste anzeigen / bearbeiten / löschen | ✅ | ✅ | ✅ |
+| Berechtigungen verwalten | ✅ | ✅ | ✅ |
+| Maschinen anzeigen und schalten | ✅ | ✅ | ✅ |
+| Maschinen anlegen / bearbeiten / löschen, CSV-Import, Kategorien, Standorte | ❌ | ✅ | ✅ |
+| Plug-Pool, Automationen, Aushänge, Wartungsintervalle, Push-Topics verwalten | ❌ | ✅ | ✅ |
+| Inventar: Werkzeug pflegen | ✅ | ✅ | ✅ |
+| Inventar: Bereiche, Möbel, Maschinen-Standorte | ❌ | ✅ | ✅ |
+| Lab Manager anlegen / löschen, Rollen ändern | ❌ | ❌ | ✅ |
+| Backup, Einstellungen (inkl. Inventar-Modul), In-App-Update | ❌ | ❌ | ✅ |
+
+Die vollständige Rechtetabelle steht in der App unter Hilfe → Rollen & Rechte.
 
 ---
 

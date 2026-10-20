@@ -594,6 +594,65 @@ async def run_migrations(engine: AsyncEngine) -> None:
         # bei manuell angelegten Plugs optional nachtragbar) ──
         await _add_column_if_missing(conn, "plugs", "mac", "VARCHAR(20) DEFAULT NULL")
 
+        # ── v1.51: Inventar-Modul (Lagerorte & Werkzeug) — Bereiche erweitern, Modul-Schalter.
+        # Die inv_*-Tabellen entstehen ueber Base.metadata.create_all(); S0/E0/P0 legt
+        # services/inventory.ensure_structure() nach den Migrationen an. ──
+        await _add_column_if_missing(conn, "machine_locations", "code", "VARCHAR(4) DEFAULT NULL")
+        await _add_column_if_missing(conn, "machine_locations", "color", "VARCHAR(9) DEFAULT NULL")
+        await _add_column_if_missing(conn, "machine_locations", "plan_x", "FLOAT DEFAULT NULL")
+        await _add_column_if_missing(conn, "machine_locations", "plan_y", "FLOAT DEFAULT NULL")
+        await _add_column_if_missing(conn, "machine_locations", "plan_w", "FLOAT DEFAULT NULL")
+        await _add_column_if_missing(conn, "machine_locations", "plan_h", "FLOAT DEFAULT NULL")
+        await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_machine_locations_code ON machine_locations (code)"))
+        await _add_column_if_missing(conn, "system_settings", "inventory_enabled", "TINYINT(1) NOT NULL DEFAULT 0")
+        await _extend_enum_if_needed(conn, "activity_log", "type", [
+            "inventory_area_updated",
+            "inventory_furniture_created", "inventory_furniture_updated", "inventory_furniture_deleted",
+            "inventory_item_created", "inventory_item_updated", "inventory_item_deleted",
+            "inventory_item_moved", "inventory_items_imported",
+        ])
+
+        # ── v1.52: Inventar Etappe 2 — Maschine → Bereich (area_id; wird aus dem Standort-Text befuellt,
+        # siehe services/inventory.sync_machine_areas), Platzierung inv_placements ueber create_all ──
+        await _add_column_if_missing(conn, "machines", "area_id", "INT UNSIGNED DEFAULT NULL")
+        await _extend_enum_if_needed(conn, "activity_log", "type", ["machine_area_changed"])
+
+        # ── v1.53: Maschine steht auf einer bestimmten Ebene eines Moebels (z.B. Regal 1 › Ebene 3) ──
+        await _add_column_if_missing(conn, "inv_placements", "level_id", "INT UNSIGNED DEFAULT NULL")
+
+        # ── v1.54: Werkzeug mit optionalen Buchhaltungsfeldern (versicherte Handgeraete, z.B. Akkuschrauber) ──
+        await _add_column_if_missing(conn, "inv_items", "serial_number", "VARCHAR(100) DEFAULT NULL")
+        await _add_column_if_missing(conn, "inv_items", "purchase_date", "DATE DEFAULT NULL")
+        await _add_column_if_missing(conn, "inv_items", "value_new", "DOUBLE DEFAULT NULL")
+        await _add_column_if_missing(conn, "inv_items", "owner_id", "INT DEFAULT NULL")
+
+        # ── v1.55: Inventar Etappe 4 — Bauplan (Tabelle inv_plan ueber create_all; Plan-Spalten gibt es seit v1.51) ──
+        await _extend_enum_if_needed(conn, "activity_log", "type", ["inventory_plan_updated"])
+
+        # ── v1.56: Bauplan mit Stockwerken und Raeumen (inv_floors, inv_rooms ueber create_all); Elemente tragen ihr Stockwerk ──
+        await _add_column_if_missing(conn, "machine_locations", "plan_floor_id", "INT DEFAULT NULL")
+        await _add_column_if_missing(conn, "inv_furniture", "plan_floor_id", "INT DEFAULT NULL")
+        await _add_column_if_missing(conn, "inv_placements", "plan_floor_id", "INT DEFAULT NULL")
+
+        # ── v1.57: Raeume als Vieleck (points, JSON), Tueren/Durchgaenge als kind in inv_rooms ──
+        await _add_column_if_missing(conn, "inv_rooms", "points", "TEXT DEFAULT NULL")
+        # ── v1.58: Tueren spiegeln (flip: Bit 1 = Anschlag, Bit 2 = Aufschlagseite) ──
+        await _add_column_if_missing(conn, "inv_rooms", "flip", "INT NOT NULL DEFAULT 0")
+
+        # ── v1.59: Hintergrund-Grundriss je Stockwerk (Bild in inv_floor_images via create_all) und Wanddicke ──
+        for col, typ in (("bg_x", "DOUBLE DEFAULT NULL"), ("bg_y", "DOUBLE DEFAULT NULL"), ("bg_w", "DOUBLE DEFAULT NULL"),
+                         ("bg_h", "DOUBLE DEFAULT NULL"), ("bg_opacity", "DOUBLE NOT NULL DEFAULT 0.5"),
+                         ("bg_version", "INT NOT NULL DEFAULT 0")):
+            await _add_column_if_missing(conn, "inv_floors", col, typ)
+        await _add_column_if_missing(conn, "inv_plan", "wall_cm", "DOUBLE NOT NULL DEFAULT 20")
+        # ── v1.60: Grundriss-Bild drehbar (bg_rot, Grad) ──
+        await _add_column_if_missing(conn, "inv_floors", "bg_rot", "DOUBLE NOT NULL DEFAULT 0")
+        # ── v1.61: Wanddicke je Raum (leer = Standard des Gebaeudes; der Standard selbst darf 0 = nur Umriss sein) ──
+        await _add_column_if_missing(conn, "inv_rooms", "wall_cm", "DOUBLE DEFAULT NULL")
+        # ── v1.62: sichtbarer Ausschnitt des Grundriss-Bildes (Anteile der weggeschnittenen Ränder) ──
+        for col in ("bg_crop_l", "bg_crop_t", "bg_crop_r", "bg_crop_b"):
+            await _add_column_if_missing(conn, "inv_floors", col, "DOUBLE NOT NULL DEFAULT 0")
+
     log.info("Migrationen abgeschlossen")
 
 
