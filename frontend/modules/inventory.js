@@ -1458,7 +1458,7 @@
     showToast('Grundriss wird hochgeladen…', 'info');
     try {
       const r = await fetch('/api/inventory/plan/floors/' + planCtl.floorId() + '/background', { method: 'PUT', headers: { Authorization: 'Bearer ' + token }, body: fd });
-      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || r.statusText); }
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(r.status === 413 ? 'Datei zu gross (höchstens 10 MB)' : (e.detail || r.statusText)); }
       showToast('Grundriss gespeichert. Jetzt den Massstab setzen (📏), dann das Bild verschieben.', 'success');
       undoClear(); await loadPlan();
     } catch (e) { showToast('Hochladen fehlgeschlagen: ' + e.message, 'error'); }

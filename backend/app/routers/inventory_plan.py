@@ -136,7 +136,7 @@ async def delete_floor(floor_id: int, db: AsyncSession = Depends(get_db), curren
 
 
 # ── Hintergrund-Grundriss (Bild zum Abpausen) ──
-MAX_UPLOAD = 12 * 1024 * 1024
+MAX_UPLOAD = 10 * 1024 * 1024                              # passt zu client_max_body_size in nginx/proxy.conf
 MAX_SIDE = 2400
 
 
@@ -170,7 +170,7 @@ async def upload_background(floor_id: int, file: UploadFile = File(...), db: Asy
     f = await _floor_or_404(db, floor_id)
     raw = await file.read(MAX_UPLOAD + 1)
     if len(raw) > MAX_UPLOAD:
-        raise HTTPException(413, "Das Bild ist zu gross (höchstens 12 MB)")
+        raise HTTPException(413, "Das Bild ist zu gross (höchstens 10 MB)")
     data, w, h = await asyncio.to_thread(_prepare_image, raw)
     img = await db.get(InvFloorImage, floor_id)
     if img is None:
