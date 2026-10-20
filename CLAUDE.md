@@ -275,6 +275,8 @@ Alle übrigen Endpoints ohne `Depends()`-Auth sind bewusst so: Login-Flows (`/au
 
 `services/login_guard.py` zählt Fehlversuche im Arbeitsspeicher (je Client-IP: 10, je Kennung: 8, Fenster 10 Minuten); danach antworten die Login-Endpoints (`/auth/login`, `/auth/token`, `/auth/login-by-token`, `/guest/login`, `/guest/login-by-token`) mit 429. Das Erreichen der Sperre wird einmalig als `login_blocked` geloggt, ein erfolgreicher Login setzt die Kennung zurück. Die Kennung wird zusätzlich zur IP gezählt, weil `X-Forwarded-For` vom Client gesetzt werden kann. Der Zustand geht beim Neustart verloren (bewusst). Login-Token für Gäste erzeugen/widerrufen wird als `guest_login_token_created`/`-revoked` geloggt. Der Notfall-Token wird mit `secrets.compare_digest` verglichen. Der tote Router `schedules.py` (nie eingebunden) wurde entfernt.
 
+**Gast-Token nicht in der URL:** Die Gast-App (`index.html`) schickt das Gast-JWT bei GET/DELETE-Aufrufen (`/guest/my`, `/queue/*`) im `Authorization: Bearer`-Header; POSTs tragen es im Body. `bearer_or_query()` (`services/auth.py`) nimmt zuerst den Header und fällt auf `?access_token=` zurück, damit noch geladene ältere Seiten bis zum Neuladen weiterlaufen. Neue Gast-Endpoints sollten den Header nutzen, nie die URL.
+
 ## Berechtigungshistorie (UI)
 
 `GET /permissions/history?guest_id=X` gibt den neuesten `ActivityLog`-Eintrag pro Maschine zurück (Typ `permission_granted` / `permission_revoked`). Der `comment` kommt aus `entry.meta["comment"]`. Das UI zeigt diesen Kommentar in der Berechtigungsmatrix.

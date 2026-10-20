@@ -35,3 +35,20 @@ def test_erfolg_setzt_kennung_zurueck():
         login_guard.record_failure("1.2.3.4", "a")
     login_guard.record_success("a")
     assert not login_guard.is_blocked("9.9.9.9", "a")
+
+
+@pytest.mark.asyncio
+async def test_gast_token_per_header_statt_query(client, session_factory):
+    from app.services.auth import bearer_or_query
+    from app.routers.guest_auth import create_guest_token
+    async with session_factory() as s:
+        g = Guest(name="A", username="a", password_hash=bcrypt.hashpw(b"x", bcrypt.gensalt()).decode(), is_active=True)
+        s.add(g)
+        await s.commit()
+        gid = g.id
+    t = create_guest_token(gid)
+    assert (await client.get("/api/guest/my")).status_code == 401
+    assert (await client.get("/api/guest/my", headers={"Authorization": f"Bearer {t}"})).status_code == 200
+    assert (await client.get(f"/api/guest/my?access_token={t}")).status_code == 200
+    assert (await client.get("/api/queue/my", headers={"Authorization": f"Bearer {t}"})).status_code == 200
+    assert bearer_or_query("Bearer abc", None) == "abc"

@@ -2,7 +2,8 @@
 Wartelisten-Endpoints für Gäste und Admins/Manager.
 """
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
@@ -53,12 +54,13 @@ async def get_all_queues(db: AsyncSession = Depends(get_db)):
 @router.post("/{machine_id}")
 async def join_queue(
     machine_id: int,
-    access_token: str,
+    access_token: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Gast tritt Warteliste bei."""
-    from app.services.auth import decode_guest_token
-    payload = decode_guest_token(access_token)
+    from app.services.auth import decode_guest_token, bearer_or_query
+    payload = decode_guest_token(bearer_or_query(authorization, access_token))
     if not payload:
         raise HTTPException(401, "Ungültiger Token")
     guest_id = payload.get("guest_id")
@@ -116,12 +118,13 @@ async def join_queue(
 @router.delete("/{machine_id}")
 async def leave_queue(
     machine_id: int,
-    access_token: str,
+    access_token: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Gast verlässt Warteliste."""
-    from app.services.auth import decode_guest_token
-    payload = decode_guest_token(access_token)
+    from app.services.auth import decode_guest_token, bearer_or_query
+    payload = decode_guest_token(bearer_or_query(authorization, access_token))
     if not payload:
         raise HTTPException(401, "Ungültiger Token")
     guest_id = payload.get("guest_id")
@@ -142,12 +145,13 @@ async def leave_queue(
 
 @router.get("/my")
 async def my_queue_entries(
-    access_token: str,
+    access_token: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Gibt alle aktiven Wartelisten-Einträge des eingeloggten Gasts zurück."""
-    from app.services.auth import decode_guest_token
-    payload = decode_guest_token(access_token)
+    from app.services.auth import decode_guest_token, bearer_or_query
+    payload = decode_guest_token(bearer_or_query(authorization, access_token))
     if not payload:
         raise HTTPException(401, "Ungültiger Token")
     guest_id = payload.get("guest_id")

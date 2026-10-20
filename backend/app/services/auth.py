@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
+from typing import Optional
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +21,15 @@ def get_client_ip(request: Request) -> str:
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unbekannt"
+
+
+def bearer_or_query(authorization: Optional[str], access_token: Optional[str]) -> str:
+    """Gast-Token bevorzugt aus `Authorization: Bearer`; der Query-Parameter bleibt nur für noch geladene ältere Seiten."""
+    if authorization and authorization.lower().startswith("bearer "):
+        return authorization[7:].strip()
+    if access_token:
+        return access_token
+    raise HTTPException(401, "Nicht angemeldet")
 
 
 def verify_password(plain: str, hashed: str) -> bool:

@@ -3,7 +3,7 @@ Gäste-Authentifizierung & Maschinenzugang
 """
 import secrets
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text, delete
 from jose import JWTError, jwt
@@ -17,7 +17,7 @@ from app.models import Guest, Machine, Permission, LogType, ActivityLog, User, M
 from app.config import get_settings
 from app.services import logger as log_svc
 from app.services import login_guard
-from app.services.auth import get_current_user, get_client_ip
+from app.services.auth import get_current_user, get_client_ip, bearer_or_query
 from app.config import APP_TIMEZONE
 from app.services.system_settings import get_system_settings
 
@@ -520,9 +520,10 @@ class GuestTokenRequest(BaseModel):
     access_token: str
 
 @router.get("/my")
-async def guest_get_own_profile(access_token: str, db: AsyncSession = Depends(get_db)):
+async def guest_get_own_profile(access_token: Optional[str] = None, authorization: Optional[str] = Header(None),
+                                db: AsyncSession = Depends(get_db)):
     """Gibt öffentliche Profildaten des eingeloggten Gastes zurück."""
-    guest = await get_current_guest(access_token, db)
+    guest = await get_current_guest(bearer_or_query(authorization, access_token), db)
     return {
         "guest_id": guest.id,
         "guest_name": guest.name,

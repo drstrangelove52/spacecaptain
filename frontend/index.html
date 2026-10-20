@@ -467,7 +467,7 @@ async function selfTestNtfy(btn) {
 async function _refreshLoginLinkStatus() {
   if (!S.guestToken) return;
   try {
-    const r = await fetch(`${API}/guest/my?access_token=${encodeURIComponent(S.guestToken)}`);
+    const r = await fetch(`${API}/guest/my`, {headers:{Authorization:'Bearer '+S.guestToken}});
     if (!r.ok) return;
     const d = await r.json();
     S.hasLoginToken = d.has_login_token;
@@ -1126,7 +1126,7 @@ async function showGuestDashboard() {
   document.getElementById('dash-user-label').textContent=S.username?'@'+S.username:'';
   const [machinesRaw, myQueueRaw] = await Promise.all([
     fetch('/api/guest/dashboard').then(r=>r.json()).catch(()=>[]),
-    S.guestToken ? fetch(`${API}/queue/my?access_token=${encodeURIComponent(S.guestToken)}`).then(r=>r.json()).catch(()=>[]) : [],
+    S.guestToken ? fetch(`${API}/queue/my`, {headers:{Authorization:'Bearer '+S.guestToken}}).then(r=>r.json()).catch(()=>[]) : [],
   ]);
   const machines = Array.isArray(machinesRaw) ? machinesRaw : [];
   const myQueue  = Array.isArray(myQueueRaw)  ? myQueueRaw  : [];
@@ -1204,9 +1204,9 @@ async function showGuestDashboard() {
 
 async function dashToggleQueue(machineId, isInQueue) {
   if (isInQueue) {
-    await fetch(`${API}/queue/${machineId}?access_token=${encodeURIComponent(S.guestToken)}`, {method:'DELETE'});
+    await fetch(`${API}/queue/${machineId}`, {method:'DELETE', headers:{Authorization:'Bearer '+S.guestToken}});
   } else {
-    const r = await fetch(`${API}/queue/${machineId}?access_token=${encodeURIComponent(S.guestToken)}`, {method:'POST'});
+    const r = await fetch(`${API}/queue/${machineId}`, {method:'POST', headers:{Authorization:'Bearer '+S.guestToken}});
     if (!r.ok) { const d=await r.json(); alert(d.detail||'Fehler'); return; }
   }
   await showGuestDashboard(); // neu laden
@@ -1361,7 +1361,7 @@ async function init() {
 async function refreshQueueStatus() {
   if (!S.guestToken || !S.machine) return;
   try {
-    const entries = await fetch(`${API}/queue/my?access_token=${encodeURIComponent(S.guestToken)}`).then(r=>r.json());
+    const entries = await fetch(`${API}/queue/my`, {headers:{Authorization:'Bearer '+S.guestToken}}).then(r=>r.json());
     const entry = entries.find(e => e.machine_id === S.machine.id);
     S.inQueue = !!entry;
     S.queuePosition = null;
@@ -1396,10 +1396,10 @@ async function toggleQueue() {
   btn.disabled = true;
   try {
     if (S.inQueue) {
-      await fetch(`${API}/queue/${S.machine.id}?access_token=${encodeURIComponent(S.guestToken)}`, {method:'DELETE'});
+      await fetch(`${API}/queue/${S.machine.id}`, {method:'DELETE', headers:{Authorization:'Bearer '+S.guestToken}});
       S.inQueue = false;
     } else {
-      const r = await fetch(`${API}/queue/${S.machine.id}?access_token=${encodeURIComponent(S.guestToken)}`, {method:'POST'});
+      const r = await fetch(`${API}/queue/${S.machine.id}`, {method:'POST', headers:{Authorization:'Bearer '+S.guestToken}});
       if (!r.ok) { const d=await r.json(); alert(d.detail||'Fehler'); btn.disabled=false; return; }
       S.inQueue = true;
     }
