@@ -68,10 +68,10 @@ async def test_room_update_is_logged(client, enabled, power, db):
 
 async def test_public_plan_shows_only_placed_elements(client, enabled, power, db):
     laser, t, mid = await _fill(client, power, db)
-    empty = (await client.get("/api/inventory-public/plan")).json()
+    empty = (await client.get("/api/inventory-public/plan", headers=power)).json()
     assert empty["areas"] == [] and empty["furniture"] == [] and empty["machines"] == []
     await client.patch(f"/api/inventory/plan/furniture/{t['id']}", headers=power, json={"x": 10, "y": 10, "w": 100, "h": 50})
-    pub = (await client.get("/api/inventory-public/plan")).json()
+    pub = (await client.get("/api/inventory-public/plan", headers=power)).json()
     assert [f["code"] for f in pub["furniture"]] == ["LAS-M01"] and pub["room"]["width_cm"] == 1500.0
 
 
@@ -124,7 +124,7 @@ async def test_floors_rooms_and_stairs(client, enabled, power, manager, db):
     r = await client.patch(f"/api/inventory/plan/furniture/{t['id']}", headers=power,
                            json={"x": 10, "y": 10, "w": 100, "h": 50, "floor_id": og["id"]})
     assert r.json()["plan"]["floor_id"] == og["id"]
-    pub = (await client.get("/api/inventory-public/plan")).json()
+    pub = (await client.get("/api/inventory-public/plan", headers=power)).json()
     assert [r["name"] for r in pub["rooms"]] == ["Werkstatt", "Treppe Süd"] and pub["furniture"][0]["plan"]["floor_id"] == og["id"]
     # Räume ändern und löschen
     r = await client.patch(f"/api/inventory/plan/rooms/{room['id']}", headers=power, json={"w": 900, "name": "Grosse Werkstatt"})
@@ -293,11 +293,11 @@ async def test_floor_background_upload_adjust_download_delete(client, enabled, p
     assert (await client.patch(f"/api/inventory/plan/floors/{eg}/background", headers=power, json={"opacity": 5})).status_code == 422
     plan = (await client.get("/api/inventory/plan", headers=power)).json()
     assert plan["floors"][0]["background"]["x"] == 20
-    pub = (await client.get("/api/inventory-public/plan")).json()["floors"][0]
+    pub = (await client.get("/api/inventory-public/plan", headers=power)).json()["floors"][0]
     assert pub["background"]["version"] == 1 and pub["background"]["crop"]["l"] == 0.1               # Gäste sehen den Grundriss ebenfalls
-    img = await client.get(f"/api/inventory-public/plan/floors/{eg}/background")                      # ohne Anmeldung
+    img = await client.get(f"/api/inventory-public/plan/floors/{eg}/background", headers=power)                      # mit Anmeldung
     assert img.status_code == 200 and img.headers["content-type"] == "image/jpeg"
-    assert (await client.get("/api/inventory-public/plan/floors/9999/background")).status_code == 404
+    assert (await client.get("/api/inventory-public/plan/floors/9999/background", headers=power)).status_code == 404
     assert (await client.put(f"/api/inventory/plan/floors/{eg}/background", headers=manager,
                              files={"file": ("x.jpg", _jpeg(), "image/jpeg")})).status_code == 403
     assert (await client.put(f"/api/inventory/plan/floors/{eg}/background", headers=power,

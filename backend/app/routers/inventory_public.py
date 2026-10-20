@@ -2,16 +2,20 @@
 Inventar-Modul, Etappe 3: oeffentliche Nur-Lese-Sicht fuer Gaeste (ohne Anmeldung).
 
 Ziel der QR-Codes auf Moebeln, Ebenen und Werkzeug (`/inventar.html?code=…` bzw. `?item=…`) und der Suche «Wo ist …?».
-Es gibt hier nur GET-Endpunkte; ausgemustertes Werkzeug wird nicht gezeigt. Wie alle Inventar-Endpunkte ist die Sicht
+Seit v1.64 nur noch mit Anmeldung: Gast-Token oder Lab-Manager-Token im `Authorization: Bearer`-Header. Es gibt hier nur GET-Endpunkte; ausgemustertes Werkzeug wird nicht gezeigt. Wie alle Inventar-Endpunkte ist die Sicht
 mit der Einstellung `inventory_enabled` ein-/ausschaltbar (aus = 404). Sie ist bewusst schlanker als `/api/inventory`.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from jose import JWTError, jwt
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
-from app.models import MachineLocation
+from app.models import Guest, MachineLocation, User
 from app.models_inventory import InvFurniture, InvLevel, InvItem, InvItemStatus, InvFloorImage
 from app.routers import inventory as admin
 from app.services import inventory as inv
@@ -24,8 +28,24 @@ async def require_public_inventory(db: AsyncSession = Depends(get_db)) -> None:
         raise HTTPException(404, "Das Inventar ist nicht aktiviert")
 
 
+async def require_login(authorization: Optional[str] = Header(None), db: AsyncSession = Depends(get_db)) -> None:
+    """Gast oder Lab Manager muss angemeldet sein (gültiges, nicht abgelaufenes JWT eines aktiven Kontos)."""
+    unauth = HTTPException(401, "Bitte anmelden", headers={"WWW-Authenticate": "Bearer"})
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise unauth
+    cfg = get_settings()
+    try:
+        payload = jwt.decode(authorization[7:].strip(), cfg.jwt_secret, algorithms=[cfg.jwt_algorithm])
+        uid = int(payload.get("sub"))
+    except (JWTError, TypeError, ValueError):
+        raise unauth
+    model = Guest if payload.get("type") == "guest" else User
+    if await db.scalar(select(model.id).where(model.id == uid, model.is_active == True)) is None:
+        raise unauth
+
+
 router = APIRouter(prefix="/inventory-public", tags=["inventory-public"],
-                   dependencies=[Depends(require_public_inventory)])
+                   dependencies=[Depends(require_public_inventory), Depends(require_login)])
 
 
 def _visible(item: dict) -> bool:
@@ -114,4 +134,4 @@ async def plan_background(floor_id: int, db: AsyncSession = Depends(get_db)):
     img = await db.get(InvFloorImage, floor_id)
     if img is None:
         raise HTTPException(404, "Kein Grundriss hinterlegt")
-    return Response(content=img.data, media_type=img.content_type, headers={"Cache-Control": "public, max-age=86400"})
+    return Response(content=img.data, media_type=img.content_type, headers={"Cache-Control": "private, max-age=86400"})

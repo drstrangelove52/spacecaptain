@@ -706,6 +706,7 @@ async function doLogin() {
     if (S.ntfyTopic) localStorage.setItem('guest_ntfy_topic', S.ntfyTopic);
     setHeaderUser(S.username);
     startSessionTimer(S.guestToken);
+    if (_goNext()) return;
 
     if (S.machineToken) {
       await showControlScreen();
@@ -1267,6 +1268,13 @@ async function doChangePassword() {
 }
 
 
+// Nach der Anmeldung zurück zu einer geschützten Seite (z.B. QR-Code auf einem Möbel → /inventar.html?code=…)
+function _nextTarget() {
+  const n = getParam('next') || '';
+  return /^inventar\.html(\?[\w%=&.\-]*)?$/.test(n) ? n : '';
+}
+function _goNext() { const n = _nextTarget(); if (n) { location.replace(n); return true; } return false; }
+
 async function init() {
   fetch('/api/settings/public').then(r=>r.json()).then(s=>{const n=s.space_name||'';if(n){document.getElementById('header-space-name').textContent=n;document.getElementById('dash-space-name').textContent=n;}if(s.inventory_enabled)document.querySelectorAll('.inv-find-link').forEach(a=>a.style.display='block');}).catch(()=>{});
   S.machineToken = getParam('m');
@@ -1296,6 +1304,7 @@ async function init() {
         if (S.ntfyTopic) localStorage.setItem('guest_ntfy_topic', S.ntfyTopic);
         setHeaderUser(S.username);
         startSessionTimer(S.guestToken);
+        if (_goNext()) return;
         // URL bereinigen (lt-Parameter entfernen) ohne Reload
         const cleanUrl = window.location.pathname + (S.machineToken ? `?m=${S.machineToken}` : '');
         window.history.replaceState({}, '', cleanUrl);
@@ -1341,6 +1350,7 @@ async function init() {
       _applyGuestTheme(localStorage.getItem('guest_theme_preference'));
       setHeaderUser(savedUsername);
       startSessionTimer(S.guestToken);
+      if (_goNext()) return;
 
       if (S.machineToken) {
         await showControlScreen();

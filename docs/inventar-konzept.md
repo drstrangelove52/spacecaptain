@@ -468,7 +468,7 @@ Ordnungsmerkmal:
 - Bei ausgeschaltetem Inventar bleibt alles wie bisher: Kategorie und «Standort» (einfache Auswahl der Standortliste) sind
   im Formular sichtbar und frei wählbar; nur Möbel/Ebene gibt es dann nicht. Die zuletzt abgeleiteten Kategorien bleiben stehen.
 
-## 11d. Stand Etappe 3: Gästesicht ohne Anmeldung
+## 11d. Stand Etappe 3: Gästesicht (seit v1.64 mit Anmeldung)
 
 - **Seite:** `frontend/inventar.html` ist jetzt eine eigenständige, schlanke Seite im Stil der Gast-App (Hell/Dunkel wie
   die übrigen Seiten ohne Login, Handy zuerst, keine Sidebar). Sie ersetzt die frühere Weiterleitung in den LabManager.
@@ -476,15 +476,16 @@ Ordnungsmerkmal:
   eines Bereichs, Möbels oder einer Ebene (Werkzeug und darauf stehende Maschinen), `?item=<ID>` = «**gehört nach** …» mit
   grossem Code und Pfad. Damit zeigen die gedruckten QR-Codes (Möbel, Ebenen, Werkzeug) ohne Änderung an den Etiketten auf
   die neue Seite.
-- **Schnittstelle:** neuer Router `routers/inventory_public.py`, Präfix `/api/inventory-public`, **nur GET und ohne Anmeldung**:
+- **Schnittstelle:** neuer Router `routers/inventory_public.py`, Präfix `/api/inventory-public`, **nur GET, seit v1.64 nur mit Anmeldung** (Gast- oder Lab-Manager-JWT im `Authorization`-Header, sonst 401):
   `overview`, `search?q=`, `code/{code}`, `items/{id}`. Er nutzt dieselbe Such- und Auflösungslogik wie der interne Router, gibt
   aber nur das Nötige heraus (Name, Beschreibung, Menge, Status, Standort mit Code und Pfad). **Ausgemustertes Werkzeug**
   bleibt verborgen, defektes wird mit «DEFEKT» gezeigt. Maschinen erscheinen mit Name, Kategorie und Pfad, nie mit Status,
   Plug oder Seriennummer. Ist das Modul ausgeschaltet, antworten alle vier Endpunkte mit 404.
 - **Gast-App (`index.html`):** Auf Anmelde- und Scan-Bildschirm erscheint «🔎 Wo ist …?» (nur bei aktivem Inventar,
   gesteuert über `inventory_enabled` aus `/api/settings/public`).
-- **Bewusst:** Der Standort von Werkzeug und Maschinen ist keine vertrauliche Information; deshalb braucht die Seite weder
-  Gast- noch Manager-Token. Wer sie nicht öffentlich haben will, schaltet das Inventar ab oder sperrt den Pfad im Proxy.
+- **Anmeldung (Entscheid 2026-10-20, v1.64):** Plan und Werkzeugsuche sind nur noch hinter dem Login erreichbar. `inventar.html` liest das Token
+  aus `localStorage` (`guest_token`, sonst `ms_token`); fehlt es oder ist es ungültig, geht es zu `/?next=inventar.html?…` und nach der
+  Anmeldung (Passwort oder Token-Link) automatisch zurück zum QR-Ziel. Das Grundriss-Bild wird per `fetch` mit Header geladen (kein Token in der URL).
 - **Tests:** `tests/test_inventory_public.py` (Suche ohne Login, Code-Ansicht mit Maschinen, Verbergen von Ausgemustertem,
   404 bei ausgeschaltetem Modul).
 

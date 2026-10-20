@@ -45,7 +45,7 @@ backend/app/
   routers/batteries.py       — Akku-Verwaltung CRUD (eigene Seite im Frontend, kein Machine-Bezug)
   routers/guest_auth.py      — Gast-Zugang inkl. Raum-Sperre
   routers/inventory.py       — Inventar-Modul (Bereiche, Möbel/Ebenen/Plätze, Werkzeug, Suche, Etiketten, Maschinen-Standort)
-  routers/inventory_public.py — Inventar: öffentliche Nur-Lese-Sicht für Gäste (ohne Login, `/api/inventory-public/*`)
+  routers/inventory_public.py — Inventar: Nur-Lese-Sicht für Gäste (mit Gast- oder Manager-Login, `/api/inventory-public/*`)
   services/inventory.py      — Codes, Nullplätze, Kategorie aus Bereich, Maschinen-Sync; services/inventory_backup.py — Backup-Sektion
   models_inventory.py        — ORM des Inventars (`inv_*`-Tabellen)
   routers/backup.py          — Backup REST-Endpoints
@@ -55,7 +55,7 @@ frontend/
   labmanager.html            — Komplette Admin-UI (single file, kein Framework)
   modules/inventory.js       — Inventar-Modul der Admin-UI (lazy geladen)
   inventory-plan.js          — Bauplan-Renderer/-Editor (SVG), von modules/inventory.js und inventar.html geladen
-  inventar.html              — Gäste-Seite «Wo ist …?» ohne Login (Ziel der QR-Codes auf Möbeln/Werkzeug)
+  inventar.html              — Gäste-Seite «Wo ist …?» mit Login (Ziel der QR-Codes auf Möbeln/Werkzeug)
   index.html                 — Gäste-App
   display.html               — Kiosk/Display-Seite
 ```
@@ -179,7 +179,7 @@ Ausführliche Doku mit allen Entscheidungen: `docs/inventar-konzept.md`. Kurzfas
 - **Keine DB-Fremdschlüssel** auf `machine_locations`/`machines`/`machine_owners` aus `inv_*` (Spaltentyp signed/unsigned je Installation → errno 150); Integrität im App-Code.
 - **MariaDB-Falle (Vorfall, «Illegal mix of collations»):** Textspalten verschiedener Tabellen **nie in SQL vergleichen** — `machines` (init.sql) hat `utf8mb4_unicode_ci`, per ORM erzeugte Tabellen `utf8mb4_uca1400_ai_ci`. Vergleiche in Python (siehe `machines_need_sync`). Tests laufen auf SQLite und fangen das nicht ab.
 - **Backup:** Sektion `inventory` in `services/inventory_backup.py` mit natürlichen Schlüsseln (Bereichsname, Möbelnummer, Ebenen-/Platznummer, Maschinenname, Eigentümername); alle Felder mit `.get()`, ältere Backups bleiben importierbar.
-- **Gäste:** `routers/inventory_public.py` (nur GET, ohne Login, nur das Nötige, Ausgemustertes und Buchhaltungsfelder verborgen) + `frontend/inventar.html`; Link «Wo ist …?» in `index.html` nur bei aktivem Inventar.
+- **Gäste:** `routers/inventory_public.py` (nur GET, **nur mit Login**: Gast- oder Lab-Manager-JWT im `Authorization`-Header, nur das Nötige, Ausgemustertes und Buchhaltungsfelder verborgen) + `frontend/inventar.html`; Link «Wo ist …?» in `index.html` nur bei aktivem Inventar.
 - **Bauplan:** Rechtecke in cm in `plan_*`-Spalten (Bereich `machine_locations`, Möbel `inv_furniture`, Maschine `inv_placements`) und `inv_plan` (Gebäude-Grundfläche, eine Zeile), `inv_floors` (Stockwerke), `inv_rooms` (Räume als Rechteck oder Vieleck via `points` (JSON), Treppen, Türen und Durchgänge; `kind` raum|treppe|tuer|durchgang, Treppe mit `link_floor_id`); jedes eingezeichnete Element hat `plan_floor_id` (ohne DB-FK); Grundriss-Bild je Stockwerk in `inv_floor_images` (LONGBLOB, per Pillow auf ≤2400 px/JPEG normalisiert, Lage in `inv_floors.bg_*`, im Editor mit Login, für Gäste über `/api/inventory-public/plan/floors/{id}/background`; die Ansicht folgt dem Ausschnitt), Wanddicke `inv_plan.wall_cm` als Standard (0 = nur Umriss) und je Raum `inv_rooms.wall_cm` (Wand ausserhalb der Raum-Innenfläche); `routers/inventory_plan.py` + `services/inventory_plan.py`, gemeinsamer SVG-Renderer `frontend/inventory-plan.js` (Admin-UI bearbeitbar, `inventar.html` nur ansehen). Plan-Ändern = Power-Manager; Verschieben wird nicht geloggt, nur der Raum (`inventory_plan_updated`).
 - **Tests:** `cd backend && pytest` (SQLite in-memory, `tests/conftest.py`; braucht `aiosqlite pytest pytest-asyncio`). Neue Inventar-Logik braucht Tests in `tests/test_inventory*.py`.
 - **Etiketten:** Vorlage Avery Zweckform L6009-20 (45,7 × 21,2 mm, 48/Bogen), Druck über iframe mit eigenem `@page`; das Raster ist noch nicht an einem echten Bogen verifiziert (Testbogen + Versatz X/Y vorhanden).

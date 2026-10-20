@@ -83,8 +83,21 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&a
 const P = new URLSearchParams(location.search);
 const API = '/api/inventory-public';
 
+// Nur mit Anmeldung: Gast-App-Token oder Lab-Manager-Token; sonst zur Anmeldung und danach hierher zurück
+const TOKEN_KEYS = ['guest_token', 'ms_token'];
+let tokenKey = null;
+const authToken = () => { try { for (const k of TOKEN_KEYS) { const v = localStorage.getItem(k); if (v) { tokenKey = k; return v; } } } catch (e) { /* kein Speicher */ } tokenKey = null; return ''; };
+const authHeaders = () => ({ Authorization: 'Bearer ' + authToken() });
+const dropToken = () => { try { if (tokenKey) localStorage.removeItem(tokenKey); } catch (e) { /* egal */ } };   // ungültiges Token entfernen, sonst Schleife mit der Anmeldeseite
+function goLogin() { location.replace('/?next=' + encodeURIComponent(location.pathname.split('/').pop() + location.search)); return new Promise(() => {}); }
 async function get(path) {
-  const r = await fetch(API + path);
+  let r;
+  for (;;) {
+    if (!authToken()) return goLogin();
+    r = await fetch(API + path, { headers: authHeaders() });
+    if (r.status !== 401) break;
+    dropToken();                                  // nächstes gespeichertes Token versuchen, sonst zur Anmeldung
+  }
   if (r.status === 404) { const d = await r.json().catch(() => ({})); const e = new Error(d.detail || 'Nicht gefunden'); e.notFound = true; throw e; }
   if (!r.ok) throw new Error('Fehler ' + r.status);
   return r.json();
@@ -162,7 +175,12 @@ async function viewPlan(code, machineId, machineName) {
       ${note ? `<div class="hero-path" style="margin-top:8px">${esc(note)}</div>` : ''}</div>
     <div id="plan"></div>
     <a class="card" href="inventar.html"><div class="card-name">Zur Suche ›</div></a>`, false);
-  d.floors.forEach(f => { if (f.background) f.bgUrl = '/api/inventory-public/plan/floors/' + f.id + '/background?v=' + f.background.version; });   // Grundriss als Hintergrund
+  await Promise.all(d.floors.filter(f => f.background).map(async f => {                          // Grundriss als Hintergrund (mit Anmeldung geladen, nicht über die URL)
+    try {
+      const r = await fetch('/api/inventory-public/plan/floors/' + f.id + '/background?v=' + f.background.version, { headers: authHeaders() });
+      if (r.ok) f.bgUrl = URL.createObjectURL(await r.blob());
+    } catch (e) { /* Plan bleibt ohne Grundriss */ }
+  }));
   const ctl = InvPlan.mount($('plan'), d, { editable: false, zoomControls: true });                 // Knöpfe, Pinch, ganzer Plan als Start
   ctl.setHighlight(hl);
   if (hl.codes.length + hl.machineIds.length + hl.areaCodes.length && ctl.zoomTo) { ctl.zoomTo(2.2); }   // auf das Ziel zoomen, mit − oder ⤢ wieder heraus
@@ -199,6 +217,7 @@ async function viewSearch() {
 
 (async function init() {
   fetch('/api/settings/public').then(r => r.json()).then(s => { $('space').textContent = s.space_name || ''; }).catch(() => {});
+  if (!authToken()) return goLogin();
   try {
     const item = P.get('item'), code = P.get('code'), plan = P.get('plan'), machine = P.get('machine');
     if (plan || machine) await viewPlan(plan, /^\d+$/.test(machine || '') ? machine : null, P.get('name'));
