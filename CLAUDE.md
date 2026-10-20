@@ -45,7 +45,7 @@ backend/app/
   routers/batteries.py       — Akku-Verwaltung CRUD (eigene Seite im Frontend, kein Machine-Bezug)
   routers/guest_auth.py      — Gast-Zugang inkl. Raum-Sperre
   routers/inventory.py       — Inventar-Modul (Bereiche, Möbel/Ebenen/Plätze, Werkzeug, Suche, Etiketten, Maschinen-Standort)
-  routers/inventory_public.py — Inventar: Nur-Lese-Sicht für Gäste (mit Gast- oder Manager-Login, `/api/inventory-public/*`)
+  routers/inventory_public.py — Inventar: Nur-Lese-Sicht für Gäste (mit Login, `/api/inventory-public/*`)
   services/inventory.py      — Codes, Nullplätze, Kategorie aus Bereich, Maschinen-Sync; services/inventory_backup.py — Backup-Sektion
   models_inventory.py        — ORM des Inventars (`inv_*`-Tabellen)
   routers/backup.py          — Backup REST-Endpoints

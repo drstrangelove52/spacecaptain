@@ -298,7 +298,7 @@ Der QR-Code führt Gäste zur Seite des Ortes bzw. des Werkzeugs («gehört nach
 
 ### Gäste-Seite «Wo ist …?»
 
-`/inventar.html` ist eine schlanke Seite, die eine **Anmeldung** braucht (Gast-App oder Lab Manager; Scannt jemand den QR-Code ohne Anmeldung, geht es zuerst zum Login und dann zurück) (zusätzlich als «🔎 Wo ist …?» in der Gast-App). Sie zeigt nur Name, Beschreibung, Menge, Status und Standort; ausgemustertes Werkzeug ist verborgen, Maschinen erscheinen ohne Status, Plug oder Seriennummer, Buchhaltungsfelder nie. Ist das Modul ausgeschaltet, antwortet sie mit «nicht aktiviert».
+`/inventar.html` ist eine schlanke Seite, die eine **Anmeldung** braucht (Gast-Anmeldung der Gast-App; ein Lab-Manager-Login zählt dort nicht. Scannt jemand den QR-Code ohne Anmeldung, geht es zuerst zum Login und dann zurück) (zusätzlich als «🔎 Wo ist …?» in der Gast-App). Sie zeigt nur Name, Beschreibung, Menge, Status und Standort; ausgemustertes Werkzeug ist verborgen, Maschinen erscheinen ohne Status, Plug oder Seriennummer, Buchhaltungsfelder nie. Ist das Modul ausgeschaltet, antwortet sie mit «nicht aktiviert».
 
 ### Rechte im Inventar
 

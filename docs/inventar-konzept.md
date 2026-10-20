@@ -484,7 +484,7 @@ Ordnungsmerkmal:
 - **Gast-App (`index.html`):** Auf Anmelde- und Scan-Bildschirm erscheint «🔎 Wo ist …?» (nur bei aktivem Inventar,
   gesteuert über `inventory_enabled` aus `/api/settings/public`).
 - **Anmeldung (Entscheid 2026-10-20, v1.64):** Plan und Werkzeugsuche sind nur noch hinter dem Login erreichbar. `inventar.html` liest das Token
-  aus `localStorage` (`guest_token`, sonst `ms_token`); fehlt es oder ist es ungültig, geht es zu `/?next=inventar.html?…` und nach der
+  aus `localStorage` (nur `guest_token`; ein Lab-Manager-Login im selben Browser zählt hier bewusst nicht); fehlt es oder ist es ungültig, geht es zu `/?next=inventar.html?…` und nach der
   Anmeldung (Passwort oder Token-Link) automatisch zurück zum QR-Ziel. Das Grundriss-Bild wird per `fetch` mit Header geladen (kein Token in der URL).
 - **Tests:** `tests/test_inventory_public.py` (Suche ohne Login, Code-Ansicht mit Maschinen, Verbergen von Ausgemustertem,
   404 bei ausgeschaltetem Modul).

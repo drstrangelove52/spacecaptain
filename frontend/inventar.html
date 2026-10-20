@@ -84,7 +84,7 @@ const P = new URLSearchParams(location.search);
 const API = '/api/inventory-public';
 
 // Nur mit Anmeldung: Gast-App-Token oder Lab-Manager-Token; sonst zur Anmeldung und danach hierher zurück
-const TOKEN_KEYS = ['guest_token', 'ms_token'];
+const TOKEN_KEYS = ['guest_token'];             // nur die Gast-Anmeldung zählt; ein Lab-Manager-Login im selben Browser öffnet diese Seite nicht
 let tokenKey = null;
 const authToken = () => { try { for (const k of TOKEN_KEYS) { const v = localStorage.getItem(k); if (v) { tokenKey = k; return v; } } } catch (e) { /* kein Speicher */ } tokenKey = null; return ''; };
 const authHeaders = () => ({ Authorization: 'Bearer ' + authToken() });
