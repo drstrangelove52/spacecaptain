@@ -204,7 +204,10 @@
         <div class="power-dot power-on"></div>
         <span>@<span id="scan-username" style="color:var(--accent)"></span></span>
       </div>
-      <div id="session-remaining" class="user-strip-timer">Session aktiv</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div id="session-remaining" class="user-strip-timer">Session aktiv</div>
+        <button class="settings-btn settings-btn-danger" style="flex:none;padding:6px 10px;font-size:12px" onclick="tryLogout(this)">⎋ Abmelden</button>
+      </div>
     </div>
 
     <!-- Primäre Aktion: QR scannen -->
@@ -256,7 +259,6 @@
         <!-- Aktionen -->
         <div style="display:flex;gap:8px">
           <button class="settings-btn" onclick="showChangePassword()">🔑 Passwort ändern</button>
-          <button class="settings-btn settings-btn-danger" onclick="doLogout()">⎋ Abmelden</button>
         </div>
       </div>
     </div>
@@ -1049,6 +1051,21 @@ function stopSessionTimer() {
 }
 
 // ── Logout ────────────────────────────────────────────
+// Abmelden per Knopf: nicht möglich, solange der Gast selbst eine Maschine eingeschaltet hat (Abgleich mit dem Server, nicht nur mit dem lokalen Merker)
+async function tryLogout(btn) {
+  if (btn) btn.disabled = true;
+  try {
+    await _restoreActiveMachine();
+    const running = JSON.parse(localStorage.getItem('active_machine_tokens') || '[]');
+    if (running.length) {
+      _updateActiveMachineBanner();
+      showToast(`Abmelden nicht möglich: «${running.map(e => escHtml(e.name)).join('», «')}» läuft noch. Bitte zuerst ausschalten.`, 'error');
+      return;
+    }
+    doLogout();
+  } finally { if (btn) btn.disabled = false; }
+}
+
 function doLogout() {
   stopLiveRefresh();
   stopSessionTimer();
