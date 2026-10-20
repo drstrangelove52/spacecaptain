@@ -244,6 +244,9 @@ async def generate_login_token(
     guest.login_token = secrets.token_urlsafe(32)
     await db.commit()
     await db.refresh(guest)
+    await log_svc.log(db, LogType.guest_login_token_created,
+                      f"Login-Token für Gast {guest.name} erzeugt von {current.name}",
+                      user_id=current.id, guest_id=guest.id)
     return {"login_token": guest.login_token}
 
 
@@ -260,6 +263,9 @@ async def revoke_login_token(
         raise HTTPException(404, "Gast nicht gefunden")
     guest.login_token = None
     await db.commit()
+    await log_svc.log(db, LogType.guest_login_token_revoked,
+                      f"Login-Token für Gast {guest.name} widerrufen von {current.name}",
+                      user_id=current.id, guest_id=guest.id)
     return {"ok": True}
 
 

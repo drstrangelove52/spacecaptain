@@ -653,6 +653,11 @@ async def run_migrations(engine: AsyncEngine) -> None:
         for col in ("bg_crop_l", "bg_crop_t", "bg_crop_r", "bg_crop_b"):
             await _add_column_if_missing(conn, "inv_floors", col, "DOUBLE NOT NULL DEFAULT 0")
 
+        # ── v1.63: LogType-Erweiterung — Login-Sperre nach Fehlversuchen, Login-Token für Gäste erzeugt/widerrufen ──
+        await _extend_enum_if_needed(conn, "activity_log", "type", [
+            "login_blocked", "guest_login_token_created", "guest_login_token_revoked",
+        ])
+
     log.info("Migrationen abgeschlossen")
 
 

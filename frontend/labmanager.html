@@ -3145,7 +3145,8 @@ const ROLE_MATRIX = [
     ['Raum öffnen/schliessen, Notfall-Alarm', 1],
     ['Eigenes Profil bearbeiten', 1],
     ['Aushänge verwalten', 2],
-    ['Push-Topics (ntfy) verwalten', 2]]],
+    ['Push-Topics (ntfy) verwalten', 2],
+    ['Warteliste einer Maschine verwalten; NFC-Writer benutzen', 1]]],
   ['Inventar (wenn aktiviert)', [
     ['Suchen; Werkzeug anlegen, bearbeiten, umlagern, importieren', 1],
     ['Bereiche, Möbel, Ebenen und Bauplan bearbeiten; Maschinen einem Standort zuweisen', 2],
@@ -3154,7 +3155,8 @@ const ROLE_MATRIX = [
     ['Lab Manager anlegen, löschen, Rollen ändern', 3],
     ['Backup und Restore', 3],
     ['Einstellungen', 3],
-    ['In-App-Update', 3]]],
+    ['In-App-Update', 3],
+    ['Daten aufräumen (Log, Sessions, Wartungshistorie löschen); NFC-Writer suchen', 3]]],
 ];
 let _rolesFilter = 0;
 function renderRolesHelp() {
@@ -5554,6 +5556,9 @@ const logColors={
   owner_updated: 'var(--accent2)',
   owner_deleted: 'var(--accent)',
   tailscale_updated: 'var(--accent2)',
+  login_blocked: 'var(--danger)',
+  guest_login_token_created: 'var(--accent2)',
+  guest_login_token_revoked: 'var(--accent2)',
   machine_qr_regenerated: 'var(--accent2)',
 };
 const logTypeLabels={
@@ -5632,6 +5637,9 @@ const logTypeLabels={
   owner_updated: 'Eigentümer aktualisiert',
   owner_deleted: 'Eigentümer gelöscht',
   tailscale_updated: 'Tailscale geändert',
+  login_blocked: 'Login gesperrt',
+  guest_login_token_created: 'Gast-Login-Token erzeugt',
+  guest_login_token_revoked: 'Gast-Login-Token widerrufen',
   machine_qr_regenerated: 'QR-Code neu generiert',
 };
 

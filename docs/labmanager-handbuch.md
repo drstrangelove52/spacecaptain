@@ -612,6 +612,7 @@ Es gibt drei Rollen, die **aufeinander aufbauen**: Jede Rolle kann alles, was di
 | Eigenes Profil bearbeiten | ✅ | ✅ | ✅ |
 | Aushänge verwalten | ❌ | ✅ | ✅ |
 | Push-Topics (ntfy) verwalten | ❌ | ✅ | ✅ |
+| Warteliste einer Maschine verwalten; NFC-Writer benutzen | ✅ | ✅ | ✅ |
 | **Inventar (wenn aktiviert)** | | | |
 | Suchen; Werkzeug anlegen, bearbeiten, umlagern, importieren | ✅ | ✅ | ✅ |
 | Bereiche, Möbel, Ebenen und Bauplan bearbeiten; Maschinen einem Standort zuweisen | ❌ | ✅ | ✅ |
@@ -621,6 +622,7 @@ Es gibt drei Rollen, die **aufeinander aufbauen**: Jede Rolle kann alles, was di
 | Backup und Restore | ❌ | ❌ | ✅ |
 | Einstellungen | ❌ | ❌ | ✅ |
 | In-App-Update | ❌ | ❌ | ✅ |
+| Daten aufräumen (Log, Sessions, Wartungshistorie löschen); NFC-Writer suchen | ❌ | ❌ | ✅ |
 
 Dieselbe Übersicht steht in der App unter **Hilfe → Rollen & Rechte**, dort mit Filter «Was darf Rolle X?».
 

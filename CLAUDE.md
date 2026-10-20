@@ -271,6 +271,10 @@ Drei Stufen: `manager` < `power_manager` < `admin`.
 
 Alle übrigen Endpoints ohne `Depends()`-Auth sind bewusst so: Login-Flows (`/auth/login`, `/guest/login`, …), Gast-Trust-Tier mit eigenem Token-System (`guest_auth.py`, `queue.py`), MCP mit `require_mcp`, Display-/Kiosk-Endpoints (`/settings/public`, `/settings/room`, `/emergency/status`, `/guest/dashboard`, `/qr/url-png`), sowie `/mcp/bootstrap-token` (per `nginx/proxy.conf` `return 403` auf Netzwerkebene blockiert, verifiziert). `GET /machines/{id}/qr.png` prüft das JWT manuell im Funktionskörper statt per `Depends` (nötig wegen `?token=`-Query-Param-Fallback für `<img>`-Tags, die keinen Authorization-Header senden können) — funktional geschützt, aber strukturell inkonsistent; nicht verändert, da kein echter Bug.
 
+## Login-Sperre (Migration v1.63)
+
+`services/login_guard.py` zählt Fehlversuche im Arbeitsspeicher (je Client-IP: 10, je Kennung: 8, Fenster 10 Minuten); danach antworten die Login-Endpoints (`/auth/login`, `/auth/token`, `/auth/login-by-token`, `/guest/login`, `/guest/login-by-token`) mit 429. Das Erreichen der Sperre wird einmalig als `login_blocked` geloggt, ein erfolgreicher Login setzt die Kennung zurück. Die Kennung wird zusätzlich zur IP gezählt, weil `X-Forwarded-For` vom Client gesetzt werden kann. Der Zustand geht beim Neustart verloren (bewusst). Login-Token für Gäste erzeugen/widerrufen wird als `guest_login_token_created`/`-revoked` geloggt. Der Notfall-Token wird mit `secrets.compare_digest` verglichen. Der tote Router `schedules.py` (nie eingebunden) wurde entfernt.
+
 ## Berechtigungshistorie (UI)
 
 `GET /permissions/history?guest_id=X` gibt den neuesten `ActivityLog`-Eintrag pro Maschine zurück (Typ `permission_granted` / `permission_revoked`). Der `comment` kommt aus `entry.meta["comment"]`. Das UI zeigt diesen Kommentar in der Berechtigungsmatrix.

@@ -16,6 +16,7 @@ from app.database import get_db
 from app.models import Guest, Machine, Permission, LogType, ActivityLog, User, MachineQueue, QueueStatus, SystemSettings
 from app.config import get_settings
 from app.services import logger as log_svc
+from app.services import login_guard
 from app.services.auth import get_current_user, get_client_ip
 from app.config import APP_TIMEZONE
 from app.services.system_settings import get_system_settings
@@ -137,16 +138,19 @@ async def _auto_open_room(db: AsyncSession, guest_name: str) -> None:
 @router.post("/login")
 async def guest_login(payload: GuestLoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     ip = get_client_ip(request)
+    login_guard.check(ip, "g:" + payload.username)
     result = await db.execute(
         select(Guest).where(Guest.username == payload.username, Guest.is_active == True)
     )
     guest = result.scalar_one_or_none()
     if not guest or not guest.password_hash or not bcrypt.checkpw(payload.password.encode(), guest.password_hash.encode()):
+        await login_guard.note_failure(db, ip, "g:" + payload.username)
         await log_svc.log(db, LogType.guest_login_failed,
             f"Fehlgeschlagener Gast-Login-Versuch: @{payload.username} von {ip}",
             meta={"ip": ip, "username": payload.username})
         raise HTTPException(401, "Ungültiger Benutzername oder Passwort")
 
+    login_guard.record_success("g:" + payload.username)
     sys_settings = await get_system_settings(db)
     token = create_guest_token(guest.id, ttl_hours=sys_settings.guest_token_ttl_hours)
     await log_svc.log(db, LogType.guest_login, f"Gast-Login: {guest.name} (@{guest.username}) von {ip}", guest_id=guest.id, meta={"ip": ip})
@@ -171,11 +175,13 @@ async def guest_login_by_token(
 ):
     """Gast-Login per persönlichem Token-Link — kein Passwort nötig."""
     ip = get_client_ip(request)
+    login_guard.check(ip)
     result = await db.execute(
         select(Guest).where(Guest.login_token == payload.login_token, Guest.is_active == True)
     )
     guest = result.scalar_one_or_none()
     if not guest:
+        await login_guard.note_failure(db, ip, None)
         await log_svc.log(db, LogType.guest_login_failed,
             f"Fehlgeschlagener Gast-Login-Versuch (Token-Link) von {ip}",
             meta={"ip": ip})

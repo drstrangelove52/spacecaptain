@@ -9,6 +9,7 @@ from app.models import User
 from app.schemas import LoginRequest, Token, UserOut
 from app.services.auth import verify_password, create_access_token, get_current_user, get_client_ip
 from app.services import logger as log_svc
+from app.services import login_guard
 from app.services.system_settings import get_system_settings
 from app.models import LogType
 
@@ -18,12 +19,14 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/login", response_model=Token)
 async def login(payload: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     ip = get_client_ip(request)
+    login_guard.check(ip, payload.email)
     result = await db.execute(
         select(User).where(User.email == payload.email, User.is_active == True)
     )
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(payload.password, user.password_hash):
+        await login_guard.note_failure(db, ip, payload.email)
         await log_svc.log(db, LogType.login_failed,
             f"Fehlgeschlagener Login-Versuch: {payload.email} von {ip}",
             meta={"ip": ip, "email": payload.email})
@@ -32,6 +35,7 @@ async def login(payload: LoginRequest, request: Request, db: AsyncSession = Depe
             detail="Ungültige Email oder Passwort",
         )
 
+    login_guard.record_success(payload.email)
     s = await get_system_settings(db)
     token = create_access_token(user.id, user.role, expire_minutes=s.jwt_expire_minutes)
     await log_svc.log(db, LogType.login, f"Login: {user.name} ({user.email}) von {ip}", user_id=user.id, meta={"ip": ip})
@@ -46,11 +50,13 @@ async def token_form(
 ):
     """OAuth2-kompatibler Endpoint für Swagger UI — username = E-Mail."""
     ip = get_client_ip(request)
+    login_guard.check(ip, form.username)
     result = await db.execute(
         select(User).where(User.email == form.username, User.is_active == True)
     )
     user = result.scalar_one_or_none()
     if not user or not verify_password(form.password, user.password_hash):
+        await login_guard.note_failure(db, ip, form.username)
         await log_svc.log(db, LogType.login_failed,
             f"Fehlgeschlagener Login-Versuch (Swagger): {form.username} von {ip}",
             meta={"ip": ip, "email": form.username})
@@ -59,6 +65,7 @@ async def token_form(
             detail="Ungültige Email oder Passwort",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    login_guard.record_success(form.username)
     s = await get_system_settings(db)
     token = create_access_token(user.id, user.role, expire_minutes=s.jwt_expire_minutes)
     await log_svc.log(db, LogType.login, f"Login (Swagger): {user.name} ({user.email}) von {ip}", user_id=user.id, meta={"ip": ip})
@@ -77,11 +84,13 @@ class LoginByTokenRequest(BaseModel):
 async def login_by_token(payload: LoginByTokenRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Lab-Manager-Login per persönlichem Token-Link — kein Passwort nötig."""
     ip = get_client_ip(request)
+    login_guard.check(ip)
     result = await db.execute(
         select(User).where(User.login_token == payload.login_token, User.is_active == True)
     )
     user = result.scalar_one_or_none()
     if not user:
+        await login_guard.note_failure(db, ip, None)
         await log_svc.log(db, LogType.login_failed,
             f"Fehlgeschlagener Login-Versuch (Token-Link) von {ip}",
             meta={"ip": ip})

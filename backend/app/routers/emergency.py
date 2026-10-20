@@ -2,6 +2,7 @@
 Notfall-Alarm — Trigger, Cancel, Status
 """
 import asyncio
+import secrets
 import logging
 from datetime import datetime, timezone
 
@@ -79,7 +80,7 @@ async def trigger_emergency(request: Request, db: AsyncSession = Depends(get_db)
     if not cfg.emergency_trigger_token:
         raise HTTPException(403, "Kein Notfall-Token konfiguriert")
     token = request.headers.get("X-Emergency-Token", "")
-    if token != cfg.emergency_trigger_token:
+    if not secrets.compare_digest(token.encode(), cfg.emergency_trigger_token.encode()):
         raise HTTPException(403, "Ungültiger Token")
 
     state = await _get_state(db)
