@@ -598,6 +598,7 @@ Es gibt drei Rollen, die **aufeinander aufbauen**: Jede Rolle kann alles, was di
 | Berechtigungsmatrix, Aktivitätslog und Statistiken ansehen | ✅ | ✅ | ✅ |
 | **Maschinen** | | | |
 | Maschinen anzeigen und schalten (EIN/AUS) | ✅ | ✅ | ✅ |
+| Maschinen-Status ändern (Freigegeben / Gesperrt / In Wartung) | ✅ | ✅ | ✅ |
 | Maschinen anlegen, bearbeiten, löschen, QR neu generieren | ❌ | ✅ | ✅ |
 | CSV-Import; Kategorien, Standorte, Eigentümer verwalten | ❌ | ✅ | ✅ |
 | **Plug-Pool und Automationen** | | | |

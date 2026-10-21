@@ -3132,6 +3132,7 @@ const ROLE_MATRIX = [
     ['Berechtigungsmatrix, Aktivitätslog und Statistiken ansehen', 1]]],
   ['Maschinen', [
     ['Maschinen anzeigen und schalten (EIN/AUS)', 1],
+    ['Maschinen-Status ändern (Freigegeben / Gesperrt / In Wartung)', 1],
     ['Maschinen anlegen, bearbeiten, löschen, QR neu generieren', 2],
     ['CSV-Import; Kategorien, Standorte, Eigentümer verwalten', 2]]],
   ['Plug-Pool und Automationen', [
@@ -4619,7 +4620,7 @@ function _machineCard(m) {
     ${m.comment?`<div class="machine-comment" style="display:block">⚠ ${escHtml(m.comment)}</div>`:''}
     ${sessionHtml}
     <div class="machine-stats">
-      <div class="machine-stat"><strong style="color:${statusColor}">${m.status}</strong>Status</div>
+      <div class="machine-stat"><select class="form-input" style="padding:2px 6px;font-weight:700;color:${statusColor}" title="Status ändern" onchange="setMachineStatus(${m.id},this.value,this)">${[['online','Freigegeben'],['offline','Gesperrt'],['maintenance','In Wartung']].map(([v,l])=>`<option value="${v}" ${m.status===v?'selected':''}>${l}</option>`).join('')}</select>Status</div>
       ${m.plug_type!=='none'?`<div class="machine-stat"><strong style="color:${m.plug_on?'var(--success)':'var(--text-dim)'}">${m.plug_on==null?'—':m.plug_on?'EIN':'AUS'}</strong>Steckdose</div>`:''}
       ${m.plug_type!=='none'?`<div class="machine-stat"><strong style="color:var(--accent2)">${m.power_w!=null?Math.round(m.power_w)+' W':'— W'}</strong>Verbrauch</div>`:''}
     </div>
@@ -4712,6 +4713,14 @@ function formatDuration(min) {
   if (min==null) return '';
   if (min<60) return `${Math.round(min)} min`;
   return `${Math.floor(min/60)}h ${Math.round(min%60)}min`;
+}
+
+async function setMachineStatus(id, status, sel) {
+  sel.disabled=true;
+  const res=await POST(`/machines/${id}/status`,{status});
+  sel.disabled=false;
+  if (res&&res.ok) { showToast('Status geändert','success'); await loadAll(); }
+  else await loadAll();
 }
 
 async function managerSwitchMachine(id, action, btn) {

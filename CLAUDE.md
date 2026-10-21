@@ -243,6 +243,7 @@ Drei Stufen: `manager` < `power_manager` < `admin`.
 | Gäste: anzeigen, freischalten, bearbeiten, anlegen, löschen | ✓ | ✓ | ✓ |
 | Gäste: Berechtigungen vergeben/entziehen | ✓ | ✓ | ✓ |
 | Maschinen: anzeigen, schalten (EIN/AUS) | ✓ | ✓ | ✓ |
+| Maschinen: Status ändern (Freigegeben/Gesperrt/In Wartung, `POST /machines/{id}/status`) | ✓ | ✓ | ✓ |
 | Maschinen: anlegen, bearbeiten, löschen, QR neu generieren | ✗ | ✓ | ✓ |
 | Maschinen: CSV-Import, Kategorien, Standorte verwalten | ✗ | ✓ | ✓ |
 | Plug-Pool: anzeigen | ✓ | ✓ | ✓ |

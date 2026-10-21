@@ -7,6 +7,7 @@ import qrcode
 from datetime import datetime, date
 
 log = logging.getLogger(__name__)
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +17,7 @@ from typing import List
 from app.services.auth import require_admin, require_power_manager
 
 from app.database import get_db
-from app.models import User, Machine, MachinePlug, Permission, LogType, MachineCategory, MachineLocation, MachineOwner
+from app.models import MachineStatus, User, Machine, MachinePlug, Permission, LogType, MachineCategory, MachineLocation, MachineOwner
 from app.models import Plug as PlugModel
 from app.schemas import MachineCreate, MachineUpdate, MachineOut
 from app.services.auth import get_current_user
@@ -292,6 +293,32 @@ async def update_machine(
                       machine_id=machine.id, user_id=current.id,
                       meta={"changed": list(changes.keys())})
     return await _machine_out(machine, db)
+
+
+class StatusPayload(BaseModel):
+    status: MachineStatus
+
+
+@router.post("/{machine_id}/status")
+async def set_machine_status(
+    machine_id: int,
+    payload: StatusPayload,
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    """Betriebsstatus (Freigegeben / Gesperrt / In Wartung) ändern — Manager-Recht, ohne die übrigen Maschinendaten bearbeiten zu dürfen."""
+    machine = await db.get(Machine, machine_id)
+    if not machine:
+        raise HTTPException(404, "Maschine nicht gefunden")
+    old = machine.status
+    machine.status = payload.status
+    await db.commit()
+    if old != payload.status:
+        await log_svc.log(db, LogType.machine_updated,
+                          f"Status von {machine.name}: {getattr(old, 'value', old)} → {payload.status.value} (von {current.name})",
+                          machine_id=machine.id, user_id=current.id,
+                          meta={"changed": ["status"], "status": payload.status.value})
+    return {"ok": True, "status": payload.status.value}
 
 
 @router.delete("/{machine_id}")
