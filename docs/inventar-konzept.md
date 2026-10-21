@@ -387,7 +387,7 @@ Idempotent, rein additiv, bei jedem Start:
   Dev-Test und mit ausdrücklicher Freigabe von Martin, per «Update starten».
 - `inventar.html` ist eine statische Datei im gemounteten `frontend/`-Verzeichnis; an
   `nginx/proxy.conf` ändert sich nichts.
-- `APP_VERSION` wird von Martin manuell hochgesetzt (aktuell 1.42), nicht automatisch.
+- `APP_VERSION` wird von Martin manuell hochgesetzt (aktuell 1.50), nicht automatisch.
 
 ### MCP (Etappe 5)
 
