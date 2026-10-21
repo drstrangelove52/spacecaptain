@@ -26,6 +26,37 @@
     if (parent) parent.appendChild(e);
     return e;
   }
+  // Beschriftung, die in die Box passt: umbrechen, Schrift verkleinern, zuletzt mit «…» kürzen (der volle Text steht als Tooltip daran)
+  const CHAR_W = 0.62;                                           // Breite eines Zeichens in Schrifthöhen (fett, eher grosszügig geschätzt)
+  function fitText(txt, w, h, maxSize, minSize, pad) {
+    const aw = Math.max(1, w - 2 * pad), ah = Math.max(1, h - pad);
+    const clip = (t, n) => (t.length <= n ? t : n <= 1 ? '…' : t.slice(0, n - 1).trimEnd() + '…');
+    const wrap = (size) => {
+      const n = Math.max(1, Math.floor(aw / (size * CHAR_W))), lines = [];
+      let cur = '';
+      for (const word of String(txt).split(/\s+/).filter(Boolean)) {
+        if (!cur) cur = word;
+        else if ((cur + ' ' + word).length <= n) cur += ' ' + word;
+        else { lines.push(cur); cur = word; }
+      }
+      if (cur) lines.push(cur);
+      return { lines, n };
+    };
+    for (let size = maxSize; size >= minSize; size *= 0.92) {
+      const { lines, n } = wrap(size);
+      if (lines.length * size * 1.15 <= ah && lines.every(l => l.length <= n)) return { size, lines };
+    }
+    const size = minSize, { lines, n } = wrap(size), maxLines = Math.max(1, Math.floor(ah / (size * 1.15)));
+    const cut = lines.slice(0, maxLines).map(l => clip(l, n));
+    if (lines.length > maxLines) cut[cut.length - 1] = clip(cut[cut.length - 1] + '…', n);
+    return { size, lines: cut };
+  }
+  function drawLabel(parent, txt, fit, attrs, anchorX, topY) {
+    const t = svgEl('text', Object.assign({ 'font-size': fit.size, 'font-weight': 700, 'pointer-events': 'none' }, attrs), parent);
+    fit.lines.forEach((l, i) => { const ts = svgEl('tspan', { x: anchorX, y: topY + fit.size * (0.85 + i * 1.15) }, t); ts.textContent = l; });
+    svgEl('title', {}, t).textContent = txt;
+    return t;
+  }
   const snap = (v) => Math.round(v / SNAP) * SNAP;
   const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
   const furnitureCode = (code) => { const m = /^([A-Z0-9]{3}-M\d{2})/.exec(code || ''); return m ? m[1] : null; };
@@ -225,11 +256,10 @@
           const ti = floors().findIndex(f => f.id === target), ci = floors().findIndex(f => f.id === floor);
           txt += ` ${ti > ci ? '↑' : '↓'} ${(floors()[ti] || {}).name || ''}`;
         }
-        const fmax = Math.max(22, span / 40), size = Math.max(fmax * 0.45, Math.min(fmax, vh * 0.5, vw * 1.7 / Math.max(txt.length, 3)));
-        const tx = svgEl('text', stairs ? { x: cx, y: cy + size * 0.35, 'text-anchor': 'middle', 'font-size': size, 'font-weight': 700, fill: 'var(--text)',
-          transform: `rotate(${-(p.rot || 0)} ${cx} ${cy})`, 'pointer-events': 'none', stroke: 'var(--surface)', 'stroke-width': 4, 'paint-order': 'stroke' }
-          : { x: p.x + 10, y: p.y + size + 6, 'font-size': size, 'font-weight': 700, fill: 'var(--text)', 'fill-opacity': .7, 'pointer-events': 'none' }, g);
-        tx.textContent = txt;
+        const fmax = Math.max(22, span / 40), fit = fitText(txt, vw, vh, Math.min(fmax, vh * 0.5), fmax * 0.3, 4);
+        const bh = fit.lines.length * fit.size * 1.15;
+        drawLabel(g, txt, fit, stairs ? { 'text-anchor': 'middle', fill: 'var(--text)', transform: `rotate(${-(p.rot || 0)} ${cx} ${cy})`, stroke: 'var(--surface)', 'stroke-width': 4, 'paint-order': 'stroke' }
+          : { fill: 'var(--text)', 'fill-opacity': .7 }, stairs ? cx : p.x + 10, stairs ? cy - bh / 2 : p.y + 6);
         return;
       }
 
@@ -240,14 +270,14 @@
       if (hit) svgEl('rect', { class: 'invplan-pulse', x: p.x - span / 150, y: p.y - span / 150, width: p.w + span / 75, height: p.h + span / 75, rx: 10, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 4, 'vector-effect': 'non-scaling-stroke', 'pointer-events': 'none' }, g);
       // Beschriftung bleibt waagrecht (gegen die Drehung des Elements gedreht) und passt in die sichtbare Breite
       const txt = labelFor(kind, o);
-      const fmax = Math.max(22, span / 40), size = Math.max(fmax * 0.42, Math.min(fmax, vh * 0.6, vw * 1.7 / Math.max(txt.length, 3)));
-      if (kind === 'area') {                                 // Bereichsname oben links, ungedreht
-        const a = svgEl('text', { x: p.x + 8, y: p.y + size + 4, 'font-size': size, 'font-weight': 700, fill: 'var(--text)', 'fill-opacity': .8, 'pointer-events': 'none' }, g);
-        a.textContent = txt;
+      const fmax = Math.max(22, span / 40);
+      if (kind === 'area') {                                 // Bereichsname oben links, ungedreht, höchstens im oberen Drittel
+        const fit = fitText(txt, p.w, p.h * 0.34, Math.min(fmax, vh * 0.6), fmax * 0.3, 8);
+        drawLabel(g, txt, fit, { fill: 'var(--text)', 'fill-opacity': .8 }, p.x + 8, p.y + 4);
       } else {
-        const tx = svgEl('text', { x: cx, y: cy + size * 0.35, 'font-size': size, 'font-weight': 700, 'text-anchor': 'middle', fill: kind === 'machine' ? '#000' : 'var(--text)',
-          transform: `rotate(${-(p.rot || 0)} ${cx} ${cy})`, 'pointer-events': 'none' }, g);
-        tx.textContent = txt;
+        const fit = fitText(txt, vw, vh, Math.min(fmax, vh * 0.6), fmax * 0.3, 4);
+        const bh = fit.lines.length * fit.size * 1.15;
+        drawLabel(g, txt, fit, { 'text-anchor': 'middle', fill: kind === 'machine' ? '#000' : 'var(--text)', transform: `rotate(${-(p.rot || 0)} ${cx} ${cy})` }, cx, cy - bh / 2);
       }
     }
 
